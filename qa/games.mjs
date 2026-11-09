@@ -287,9 +287,12 @@ ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValu
 ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
 await course();
 await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
-ok((await p.getByRole('switch', { name: /^Press/ }).getAttribute('aria-checked')) === 'true', 'Chicago: press is on by default (a switch)');
-// its limits right under the switch, not up in the settings (Sascha 03.11.2026)
-ok((await p.getByRole('group', { name: 'Press' }).locator('.settings-row').count()) === 2, 'Höchsteinsatz and Erlaubte Pressen in their own list under the press switch');
+// the press one row like the house rules and the stake (Sascha 10.11.2026), its switch and limits in its sheet
+const pressMain = p.locator('.settings-row').filter({ hasText: /^\s*Press/ });
+ok(/An · bis 1,60 €/.test(await pressMain.innerText()), `Chicago: press on by default – one row "An · bis 1,60 €" (${(await pressMain.innerText()).replace(/\s+/g, ' ')})`);
+await pressMain.click();
+const pressSheet = p.getByRole('dialog', { name: 'Press (Einsatz verdoppeln)' });
+ok((await pressSheet.getByRole('switch', { name: /^Press/ }).getAttribute('aria-checked')) === 'true' && (await pressSheet.locator('.settings-row').count()) === 2, 'its sheet: the switch on, Höchsteinsatz and Erlaubte Pressen');
 // the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026) –
 // a row, its picker in the sheet
 const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });
@@ -320,6 +323,8 @@ await presses.locator('.pick-option').filter({ has: p.locator('strong', { hasTex
 ok(/0,40 €/.test(await capRow.innerText()), '2× pressing = highest stake 0,40 €');
 await capRow.click();
 await cap.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
+await pressSheet.getByRole('button', { name: 'Speichern', exact: true }).click();
+ok(/An · bis 1,60 €/.test(await pressMain.innerText()), 'the press row after its sheet: "An · bis 1,60 €"');
 await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);

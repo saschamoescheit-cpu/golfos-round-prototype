@@ -1250,35 +1250,42 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
               </ToggleList>
             </SheetRow>
           )}
+          {/* the press: one row like the house rules and the stake, its switch and limits in the sheet (Sascha 10.11.2026:
+              "Press everywhere as the other settings – as Hausregeln, Einsatz") */}
+          {f.settings.some((s) => s.key === 'double') && (
+            <SheetRow label={tr('Press', 'Press')} title={tr('Press (double the stake)', 'Press (Einsatz verdoppeln)')} value={pressText(d.settings)}>
+              <ToggleList>
+                <ToggleRow inList label={tr('Press (double the stake)', 'Press (Einsatz verdoppeln)')} text={tr('The last one may double the stake.', 'Der Letzte darf den Einsatz verdoppeln.')} on={d.settings.double === true || d.settings.double === 'true'} onChange={(v) => set({ settings: { ...d.settings, double: v } })} />
+              </ToggleList>
+              {f.settings.some((s) => (s.type === 'cap' || s.type === 'presses') && (!s.when || s.when(d.settings))) && (
+                <SettingsList>
+                  {f.settings
+                    .filter((s) => (s.type === 'cap' || s.type === 'presses') && (!s.when || s.when(d.settings)))
+                    .map((s) =>
+                      s.type === 'cap' ? (
+                        <CapRow key={s.key} label={s.label()} stake={Number(d.settings.stake ?? 0)} value={Number(d.settings[s.key] ?? 0)} onChange={(v) => set({ settings: { ...d.settings, [s.key]: String(v), maxPresses: '0' } })} />
+                      ) : (
+                        <PressRow key={s.key} label={s.label()} settings={d.settings} onChange={(patch) => set({ settings: { ...d.settings, ...patch } })} />
+                      ),
+                    )}
+                </SettingsList>
+              )}
+            </SheetRow>
+          )}
         </SettingsList>
         {whs && f.settings.some((s) => s.key === 'allowance' && (!s.when || s.when(d.settings))) && (
           <span className="muted small">
             {tr(`WHS recommendation for ${f.name()} with ${n} players: ${whs} %`, `WHS-Empfehlung für ${f.name()} mit ${n} Spielern: ${whs} %`)}
           </span>
         )}
-        {f.settings.some((s) => s.group !== 'house' && s.type === 'bool' && (!s.when || s.when(d.settings))) && (
+        {f.settings.some((s) => s.group !== 'house' && s.type === 'bool' && s.key !== 'double' && (!s.when || s.when(d.settings))) && (
           <ToggleList>
             {f.settings
-              .filter((s) => s.group !== 'house' && s.type === 'bool' && (!s.when || s.when(d.settings)))
-              .sort((a, b) => Number(a.key === 'double') - Number(b.key === 'double'))
+              .filter((s) => s.group !== 'house' && s.type === 'bool' && s.key !== 'double' && (!s.when || s.when(d.settings)))
               .map((s) => (
                 <ToggleRow key={s.key} inList label={s.label()} on={d.settings[s.key] === true || d.settings[s.key] === 'true'} onChange={(v) => set({ settings: { ...d.settings, [s.key]: v } })} />
               ))}
           </ToggleList>
-        )}
-        {/* the press's limits right under its switch, not up in the list (Sascha 03.11.2026) */}
-        {f.settings.some((s) => (s.type === 'cap' || s.type === 'presses') && (!s.when || s.when(d.settings))) && (
-          <SettingsList label={tr('Press', 'Press')}>
-            {f.settings
-              .filter((s) => (s.type === 'cap' || s.type === 'presses') && (!s.when || s.when(d.settings)))
-              .map((s) =>
-                s.type === 'cap' ? (
-                  <CapRow key={s.key} label={s.label()} stake={Number(d.settings.stake ?? 0)} value={Number(d.settings[s.key] ?? 0)} onChange={(v) => set({ settings: { ...d.settings, [s.key]: String(v), maxPresses: '0' } })} />
-                ) : (
-                  <PressRow key={s.key} label={s.label()} settings={d.settings} onChange={(patch) => set({ settings: { ...d.settings, ...patch } })} />
-                ),
-              )}
-          </SettingsList>
         )}
       </section>
       )}
@@ -1934,6 +1941,15 @@ function HammerCard(props: { game: Game; hole: number; onChange: (x: Partial<Hol
 /** The highest stake (Sascha 15.10.2026): the steps of the doubling chain up to 6,40 €, "no cap", and a field for higher
  *  steps (12,80 €, 25,60 € …) that only takes a step of the chain – since 03.11.2026 a row with its list like every other
  *  ("auch wieder mit Tabs"): each step with its doublings, one tap picks and closes. */
+/** The press in one line (Sascha 10.11.2026): "Aus" – or "An · bis 1,60 $", "An · 4×", "An · ohne Limit". */
+function pressText(s: Record<string, number | boolean | string>): string {
+  if (!(s.double === true || s.double === 'true')) return tr('Off', 'Aus');
+  const cap = Number(s.maxStake ?? 0);
+  const presses = Number(s.maxPresses ?? 0);
+  const limit = presses > 0 ? `${presses}×` : cap > 0 ? tr(`up to ${money(cap)}`, `bis ${money(cap)}`) : tr('no cap', 'ohne Limit');
+  return `${tr('On', 'An')} · ${limit}`;
+}
+
 function CapRow(props: { label: string; stake: number; value: number; onChange: (v: number) => void }) {
   const chain = capChain(props.stake);
   const custom = props.value > 0 && !chain.some((c) => Math.abs(c - props.value) < 0.005);

@@ -113,10 +113,13 @@ const CHI = [
 await setup('Chicago', ['Ich', 'Ben', 'Chris', 'Anna']);
 await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
 {
+  // the press: its row, its sheet (Sascha 10.11.2026)
+  await p.locator('.settings-row').filter({ hasText: /^\s*Press/ }).click();
   const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });
   const capLabel = (await capRow.locator('span').first().innerText()).trim();
   await capRow.click();
   await p.getByRole('dialog', { name: capLabel }).locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
+  await p.getByRole('dialog', { name: 'Press (Einsatz verdoppeln)' }).getByRole('button', { name: 'Speichern', exact: true }).click();
 }
 await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
