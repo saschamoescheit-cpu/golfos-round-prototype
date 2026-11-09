@@ -2316,3 +2316,4 @@ button.tile:disabled { opacity: 1; }
 /* 5+5+10: a player made in the opponents' sheet (Sascha 10.11.2026) */
 .duel-add { display: flex; gap: 8px; align-items: center; }
 .duel-add .input { flex: 1; min-width: 0; }
+.duel-add .btn-secondary { width: auto; flex: none; padding-inline: 18px; }

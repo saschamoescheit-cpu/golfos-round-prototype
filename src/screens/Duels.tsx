@@ -106,20 +106,20 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
       <section className="setup-part">
         <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
         <SettingsList>
-          {pools.length > 1 ? (
-            <ChoiceRow<string>
-              label={tr('Pool', 'Pool')}
-              title={tr('Which pool of bets', 'Welche Wetten')}
-              value={entry!.code}
-              onChange={(c) => {
-                setCode(c);
-                setAgainst([]);
-              }}
-              options={pools.map((e) => ({ value: e.code, name: e.pool.name, text: `${dayText(e.pool.from)} – ${dayText(e.pool.to)}` }))}
-            />
-          ) : (
-            <SettingsRow label={tr('Pool', 'Pool')} value={pool ? pool.name : tr(`New: side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Neu: Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`)} onClick={() => undefined} disabled />
-          )}
+          <ChoiceRow<string>
+            label={tr('Pool', 'Pool')}
+            title={tr('Which pool of bets', 'Welche Wetten')}
+            value={entry?.code ?? 'new'}
+            onChange={(c) => {
+              setCode(c);
+              setAgainst([]);
+            }}
+            options={
+              pools.length
+                ? pools.map((e) => ({ value: e.code, name: e.pool.name, text: `${dayText(e.pool.from)} – ${dayText(e.pool.to)}` }))
+                : [{ value: 'new', name: tr(`New: side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Neu: Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`), text: tr('Made with the first challenge – you its host.', 'Entsteht mit der ersten Herausforderung – du bist Host.') }]
+            }
+          />
         </SettingsList>
       </section>
       {/* Wann – one round: the day, and which round of it */}
