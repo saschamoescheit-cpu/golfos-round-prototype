@@ -1092,6 +1092,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             nameLabel={tr(`Player ${i + 1}`, `Spieler ${i + 1}`)}
             rating={ratingOf(p)}
             playing={playingOf(p)}
+            allowance={d.settings.allowance != null ? Number(d.settings.allowance) : d.settings.net === false ? 0 : 100}
             nine={nine}
             tees={teeChoices.length ? teeChoices : undefined}
             onChange={(np) => setPlayer(p.id, { name: np.name, hcp: np.index, tee: np.tee })}

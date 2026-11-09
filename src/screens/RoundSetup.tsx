@@ -426,7 +426,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} nine={nine} tees={teeChoices} />
+        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} allowance={allowance} nine={nine} tees={teeChoices} />
         {others.map((p, i) => (
           <PlayerRow
             key={p.id}
@@ -434,6 +434,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             nameLabel={tr(`Player ${i + 2}`, `Spieler ${i + 2}`)}
             rating={ratingOf(p)}
             playing={playingHandicap(p)}
+            allowance={allowance}
             tees={teeChoices}
             onChange={(np) => setOthers(others.map((o) => (o.id === p.id ? np : o)))}
             onRemove={() => setOthers(others.filter((o) => o.id !== p.id))}
@@ -642,11 +643,13 @@ export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[
   });
 }
 
-export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean; /** the name required – "Name eingeben" in green while empty */ nameNeeded?: boolean }) {
+export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; /** the handicap allowance in %: the column shows what counts (Sascha 09.11.2026: 75 % → 75 % of it) */ allowance?: number; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean; /** the name required – "Name eingeben" in green while empty */ nameNeeded?: boolean }) {
   const { player } = props;
   const [teeOpen, setTeeOpen] = useState(false);
   const myTee = props.tees?.find((t) => t.id === player.tee);
-  const shown = props.playing == null ? '–' : props.playing < 0 ? `+${-props.playing}` : String(props.playing);
+  // the playing handicap times the allowance, rounded as the scoring does (games.ts holeValues)
+  const counted = props.playing == null ? null : props.allowance == null ? props.playing : Math.round((props.playing * props.allowance) / 100);
+  const shown = counted == null ? '–' : counted < 0 ? `+${-counted}` : String(counted);
   // one line (Sascha 21.10.2026): name, HCP typed, the playing handicap following from it – shown, not typed
   return (
     <div className={`card player-row${props.className ? ' ' + props.className : ''}`}>

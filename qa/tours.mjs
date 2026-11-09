@@ -126,7 +126,7 @@ ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Planen|Tur
 ok(await H.getByText('Neues Turnier planen').isVisible() && (await H.getByRole('button', { name: 'Neue Wette' }).count()) === 0, 'its start page: "Neues Turnier planen", no bets');
 await H.locator('.module-switch').click();
 const cards = (await H.locator('.module-card strong').allInnerTexts()).join('|');
-ok(cards === 'Rounds|Games & Bets|Tournaments|Training|Agility', `the start page: ${cards}`);
+ok(cards === 'Rounds|Games & Bets|Tournaments|Training (Beta)|Agility (Beta)', `the start page: ${cards}`);
 await H.locator('.module-card').filter({ hasText: 'Games & Bets' }).click();
 ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil' && (await H.getByText('Neues Turnier planen').count()) === 0, 'Games & Bets: no tournaments any more');
 await H.locator('.module-switch').click();
@@ -220,7 +220,24 @@ for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
 }
 await H.locator('input[id^="hcp-"]').first().fill('7');
 await H.waitForTimeout(300);
-const fl = (k) => H.locator('.tour-flight:not(.tour-unplaced)').nth(k);
+// the column "Vorgabe" follows the HCP-Vorgabe (Sascha 09.11.2026: 75 % chosen, the players' values stayed): gross 0,
+// 100 % the full playing handicap, 75 % three quarters of it – back to gross for the rest
+{
+  const vals = async () => H.locator('.game-player-row .playing-hcp').allInnerTexts();
+  const pick = async (v) => {
+    await H.locator('.settings-row').filter({ hasText: /^HCP-Vorgabe/ }).click();
+    await H.locator('.sheet .pick-option').filter({ hasText: new RegExp(`^${v} %`) }).first().click();
+    await H.waitForTimeout(200);
+  };
+  const gross = await vals();
+  await pick(100);
+  const full = await vals();
+  await pick(75);
+  const three = await vals();
+  ok(gross.join() === '0,0,0,0,–' && full.every((x, i) => (i === 4 ? x === '–' : Number(x) > 0)) && three.join() === full.map((x) => (x === '–' ? x : String(Math.round((Number(x) * 75) / 100)))).join(), `players' Vorgabe follows the allowance: 0 % ${gross.join(' ')} · 100 % ${full.join(' ')} · 75 % ${three.join(' ')}`);
+  await pick(0);
+}
+const fl =(k) => H.locator('.tour-flight:not(.tour-unplaced)').nth(k);
 const names = async (k) => (await fl(k).locator('.tour-flight-player strong').allInnerTexts()).join(',');
 const sorted = async (k) => (await fl(k).locator('.tour-flight-player strong').allInnerTexts()).sort().join(',');
 const setting = (label) => H.locator('.settings-row').filter({ hasText: new RegExp(`^${label}`) });

@@ -89,6 +89,17 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
       await p.waitForTimeout(200);
       const shown3 = await p.locator('.playing-hcp').allInnerTexts();
       ok(shown3[1] === '4' && shown3[0] === shown2[0], `setup: Ben from red gets his own playing handicap (${shown3.join(' · ')})`);
+      // the allowance chosen: the column shows what counts – 75 % of the playing handicap (Sascha 09.11.2026), back at 100 % as before
+      const pickAllowance = async (v) => {
+        await p.locator('.settings-row').filter({ hasText: 'HCP-Vorgabe' }).click();
+        await p.locator('.pick-option').filter({ hasText: new RegExp(`^\\s*${v} %`) }).first().click();
+        await p.waitForTimeout(200);
+      };
+      await pickAllowance(75);
+      const shown75 = await p.locator('.playing-hcp').allInnerTexts();
+      ok(shown75.join() === shown3.map((x) => String(Math.round((Number(x) * 75) / 100))).join(), `setup: 75 % allowance – the playing handicaps follow (${shown3.join(' · ')} → ${shown75.join(' · ')})`);
+      await pickAllowance(100);
+      ok((await p.locator('.playing-hcp').allInnerTexts()).join() === shown3.join(), 'setup: 100 % – the full playing handicaps again');
     }
     step = 'mode';
     await p.locator('.settings-row').filter({ hasText: 'Modus' }).click();

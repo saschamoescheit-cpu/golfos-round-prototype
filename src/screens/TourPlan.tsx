@@ -745,6 +745,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
             rating={t0.ratingOf(p, k)}
             playing={t0.playingOf(p, k)}
+            allowance={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
             nine={t0.nine}
             tees={teeChoices.length ? teeChoices : undefined}
             onChange={(np) => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, name: np.name, hcp: np.index, tee: np.tee, fixed: np.index !== x.hcp ? null : x.fixed } : x)) })}
