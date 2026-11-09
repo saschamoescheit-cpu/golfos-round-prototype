@@ -4,7 +4,7 @@ import { KeyHint } from '../components/KeyHint';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -1015,7 +1015,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
     const k = d.rounds.findIndex((r) => r.code === entry.code);
     props.onEdit(flights ? { ...d, focus: 'flights', ...(multi && k >= 0 ? { open: k } : {}) } : d);
   };
-  const classes = ev.classes?.length ? CLASS_NAMES.slice(0, ev.classes.length + 1) : [];
+  const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
   return (
     <main className="screen tour-screen">
       <TopBar
@@ -1035,7 +1035,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       />
       <span className="muted small">
         {longDate(ev.date)} · {ev.course.name} · {tourFormat(fmt)}
-        {ev.classes?.length ? ` · ${tr(`${ev.classes.length + 1} classes`, `${ev.classes.length + 1} Klassen`)}` : ''}
+        {netClasses(ev).length ? ` · ${tr(`${netClasses(ev).length + 1} classes`, `${netClasses(ev).length + 1} Klassen`)}` : ''}
       </span>
       {!host && <span className="muted small">{tr('Only whoever set up the tournament changes it.', 'Nur wer das Turnier angelegt hat, ändert es.')}</span>}
       {ev.series?.code && props.onOpenSeries && (

@@ -45,6 +45,25 @@ await H.evaluate(async (c) => {
   return ts.changeTour(c, { ...ev, classes: [18] });
 }, code);
 ok(JSON.stringify(sim.shared.get(code).game.classes) === '[18]', 'two classes again: saved');
+// gross with old net classes still stored (Sascha 09.11.2026: "switched Kissimmee to gross – the net classes still show
+// in front"): the page shows none – no "3 Klassen", no "Klasse A" in the leaderboard, "Keine" when editing
+const gross = await sim.plan(H, {
+  name: 'Kissimmee Brutto',
+  classes: [12, 24],
+  format: { mode: 'single', scoring: 'stroke', allowance: 0 },
+  flights: [{ teeTime: '12:00', players: [{ name: 'Sascha', playingHandicap: 7 }, { name: 'Cedric', playingHandicap: 13 }] }],
+});
+await H.evaluate(async ({ c, row }) => (await import('/src/lib/tourstore.ts')).keepTour(c, row.game, row.owner), { c: gross, row: sim.shared.get(gross) });
+await H.evaluate((c) => {
+  sessionStorage.setItem('golfos.module', 'tournaments');
+  sessionStorage.setItem('golfos.openTour', c);
+}, gross);
+await H.goto('about:blank');
+await H.goto(url);
+await H.locator('.tour-screen').waitFor({ timeout: 15000 });
+await H.waitForTimeout(1000);
+const page = (await H.locator('.tour-screen').innerText()).replace(/\s+/g, ' ');
+ok(!/Klassen/.test(page) && !/Klasse [A-C]/.test(page), `gross with old classes stored: no net classes on the page (${page.slice(0, 120)})`);
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

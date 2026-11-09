@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { fetchLive, type LiveView } from '../lib/live';
-import { CLASS_NAMES, eventCard, eventStandings, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, netClasses, eventCard, eventStandings, type RoundEvent } from '../lib/sharedround';
 import { seriesStandings } from '../lib/seriesstandings';
 import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
@@ -128,7 +128,7 @@ function EventBoard(props: { ev: RoundEvent; label?: string }) {
   const [cls, setCls] = useState<string | null>(null);
   const b = eventStandings(ev, { gross, cls });
   const net = (ev.format?.allowance ?? 100) > 0 && ev.format?.scoring !== 'stroke';
-  const classes = ev.classes?.length ? CLASS_NAMES.slice(0, ev.classes.length + 1) : [];
+  const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
   const played = b.rows.some((r) => r.thru);
   const done = b.rows.length > 0 && b.rows.every((r) => r.finished);
   return (

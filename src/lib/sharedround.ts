@@ -606,6 +606,10 @@ export interface Standing {
 /** the names of the net classes, A to J (Sascha 03.11.2026: "there can be more than four – freely configurable") */
 export const CLASS_NAMES = 'ABCDEFGHIJ'.split('');
 /** The class of a playing handicap: limits [18] – A up to 18, B above; [12, 24] – A, B, C. */
+/** The net classes of a tournament – only when it is scored net (Sascha 09.11.2026: "switched to gross, the net classes
+ *  still show"): gross (stroke play, or an allowance of 0) has none, whatever is still stored. */
+export const netClasses = (ev: { classes?: number[]; format?: { scoring?: string; allowance?: number } }): number[] =>
+  ev.format?.scoring === 'stroke' || ev.format?.allowance === 0 ? [] : (ev.classes ?? []);
 export const classOf = (hcp: number | null, limits: number[] | undefined): string => (!limits?.length ? '' : CLASS_NAMES[limits.filter((l) => (hcp ?? 54) > l).length] ?? '');
 /** Countback sums of a player's hole values: the last 9, 6, 3, 1 holes (fewer holes: as many as there are). */
 const countbackOf = (per: (number | null)[]): number[] => [9, 6, 3, 1].map((n) => per.slice(-Math.min(n, per.length)).reduce<number>((s, v) => s + (v ?? 0), 0));
@@ -620,7 +624,7 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
       entries[id] = ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, p.id, i)));
-      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, ev.classes), signed: isSigned(f, p.id) };
+      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, netClasses(ev)), signed: isSigned(f, p.id) };
     }
   }
   const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
@@ -709,8 +713,8 @@ export function eventCard(ev: RoundEvent, key: string): Round | null {
 export function standingsCsv(ev: RoundEvent, gross = false): string {
   const s = eventStandings(ev, { gross });
   const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  const head = [tr('Place', 'Platz'), tr('Player', 'Spieler'), 'Flight', ...(ev.classes?.length ? [tr('Class', 'Klasse')] : []), s.higherBetter ? tr('Points', 'Punkte') : tr('To par', 'Zu Par'), tr('Holes', 'Löcher'), tr('Countback', 'Stechen')];
-  const lines = s.rows.map((r) => [r.pos, r.name, r.flight, ...(ev.classes?.length ? [r.cls] : []), r.sort ?? '', r.thru, r.countback ? tr('yes', 'ja') : ''].map(q).join(';'));
+  const head = [tr('Place', 'Platz'), tr('Player', 'Spieler'), 'Flight', ...(netClasses(ev).length ? [tr('Class', 'Klasse')] : []), s.higherBetter ? tr('Points', 'Punkte') : tr('To par', 'Zu Par'), tr('Holes', 'Löcher'), tr('Countback', 'Stechen')];
+  const lines = s.rows.map((r) => [r.pos, r.name, r.flight, ...(netClasses(ev).length ? [r.cls] : []), r.sort ?? '', r.thru, r.countback ? tr('yes', 'ja') : ''].map(q).join(';'));
   return [`${q(ev.name)};${q(s.title)}`, head.map(q).join(';'), ...lines].join('\n');
 }
 /** A tournament's flights as they stand: holes played, and when a phone of the flight was last heard of. */

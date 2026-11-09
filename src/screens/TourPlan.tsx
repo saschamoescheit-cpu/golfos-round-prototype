@@ -12,7 +12,7 @@ import { isLady, loadProfile, shownName } from '../lib/profile';
 import { FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type GameMode, type Scoring } from '../lib/games';
 import { ROUND_KINDS, type RoundKind } from '../lib/roundkind';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
-import { CLASS_NAMES, plannedEvent, plannedFlight, type Flight, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, netClasses, plannedEvent, plannedFlight, type Flight, type RoundEvent } from '../lib/sharedround';
 import type { RoundHole } from '../types';
 import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
@@ -267,7 +267,7 @@ export function draftOf(e: TourEntry): TourDraft {
     ...(ev.format?.aids ? { aids: true } : {}),
     ...(ev.format?.ownDetails?.length ? { ownDetails: ev.format.ownDetails } : {}),
     scoring: ev.format?.scoring ?? 'net',
-    classes: ev.classes ?? [],
+    classes: netClasses(ev),
     players,
     rounds: [r],
     specials: ev.specials ?? [],
@@ -293,7 +293,7 @@ export function draftOfMulti(s: SeriesEntry, tours: TourEntry[]): TourDraft | nu
     ...(first.format?.aids ? { aids: true } : {}),
     ...(first.format?.ownDetails?.length ? { ownDetails: first.format.ownDetails } : {}),
     scoring: first.format?.scoring ?? 'net',
-    classes: first.classes ?? [],
+    classes: netClasses(first),
     players,
     rounds,
     specials: first.specials ?? [],

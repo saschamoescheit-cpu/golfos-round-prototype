@@ -25,3 +25,14 @@ describe('what is taken away does not come back', () => {
     expect(withFrame(e, { ...round, rating: { cr: 72, slope: 131 } } as Round).rating).toEqual({ cr: 72, slope: 131 });
   });
 });
+
+// Sascha 09.11.2026: "switched Kissimmee to gross – the net classes still show in front": net classes only when net
+describe('net classes only with a net scoring', () => {
+  it('gross (stroke play or 0 %): none, whatever is stored; net: the stored ones', async () => {
+    const { netClasses } = await import('./sharedround');
+    expect(netClasses({ classes: [12, 24], format: { scoring: 'stroke', allowance: 0 } })).toEqual([]);
+    expect(netClasses({ classes: [12, 24], format: { scoring: 'net', allowance: 0 } })).toEqual([]);
+    expect(netClasses({ classes: [12, 24], format: { scoring: 'net', allowance: 75 } })).toEqual([12, 24]);
+    expect(netClasses({ format: { scoring: 'stableford' } })).toEqual([]);
+  });
+});
