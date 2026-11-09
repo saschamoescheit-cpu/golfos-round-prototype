@@ -153,6 +153,33 @@ await p.waitForTimeout(1500);
 const gone = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').length);
 const ended = await p.evaluate(() => window.__watch.ended);
 ok(gone === 0 && ended > endedBefore, `deleted on the phone: the watch ends it too (${gone} rounds, end ${endedBefore} → ${ended})`);
+// 7 · a game on the map (Sascha 10.11.2026: "why does it count no shots? always – someone may want his own round analysis
+// of a game afterwards"): the watch's swing is a shot of the game's round too
+{
+  const { pickPrize } = await import('./prize.mjs');
+  await p.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+  await p.reload();
+  await p.waitForTimeout(1500);
+  await p.getByRole('button', { name: 'Neues Spiel' }).click();
+  await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+  await p.locator('.pick-option').filter({ hasText: 'Skins' }).first().click();
+  await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
+  await p.fill('#course-search', 'Hetzenhof');
+  await p.waitForTimeout(2000);
+  await p.locator('button.list-item').first().click();
+  await p.waitForTimeout(800);
+  if ((await p.locator('.game-player-row').count()) < 2) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+  await pickPrize(p).catch(() => null);
+  await p.getByRole('button', { name: 'Spiel starten' }).click();
+  await p.waitForTimeout(6000);
+  const gameRound = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0]?.round?.id ?? null);
+  ok(!!gameRound && (await p.getByText(/Apple Watch verbunden – sie zählt deine Schläge/).count()) > 0, `a game: "Apple Watch verbunden – sie zählt deine Schläge" (${gameRound})`);
+  await p.evaluate((it) => window.__watchSend(it), { ...shot('g1', 0.01, 0, true), shot: { ...shot('g1', 0.01, 0, true).shot, round: gameRound } });
+  await p.waitForTimeout(1200);
+  const gm = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.games.v1'))[0]?.round?.manualShots ?? []).map((x) => x.watch));
+  ok(gm.includes('g1'), `a game: the watch's swing a shot of its round (${JSON.stringify(gm)})`);
+}
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.join(' / ') : ''}`);
 await b.close();
 process.exit(bad ? 1 : 0);

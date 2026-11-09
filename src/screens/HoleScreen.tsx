@@ -1245,7 +1245,7 @@ export function HoleScreen(props: {
   }, []);
   // the Apple Watch (Sascha 08.11.2026: "the shot detection by the watch – the phone often lies in the cart"): the round
   // goes to the watch, its workout starts once per round; every swing it feels comes back with the watch's place and
-  // is a "shot here" of the round (rounds only – a game counts no shots)
+  // is a "shot here" of the round – in a game too (10.11.2026)
   const [watchOn, setWatchOn] = useState(false);
   useEffect(() => {
     if (!isNative() || round.preview) return;
@@ -1264,7 +1264,7 @@ export function HoleScreen(props: {
       const json = watchRound(round, allMaps, unit === 'yd' ? 'yd' : 'm', getLang());
       void sendRound(json, holeRef.current, !started).then((ok) => {
         if (!ok || started) return;
-        setTestMsg(props.game ? tr('Apple Watch connected – the distances are on it', 'Apple Watch verbunden – die Entfernungen sind auf der Uhr') : tr('Apple Watch connected – it counts your shots', 'Apple Watch verbunden – sie zählt deine Schläge'));
+        setTestMsg(tr('Apple Watch connected – it counts your shots', 'Apple Watch verbunden – sie zählt deine Schläge'));
         try {
           sessionStorage.setItem(key, '1');
         } catch {
@@ -1283,7 +1283,8 @@ export function HoleScreen(props: {
           if (it.round === r.id && !r.preview) addWatchFixes(r.id, it.pts);
           return;
         }
-        if (props.game) return; // a game counts no shots
+        // a game counts the shots too (Sascha 10.11.2026: "why does it count no shots? always – someone may want his own
+        // round analysis of a game afterwards")
         if (it.kind === 'remove') {
           const next = removeWatchShot(r, it.id);
           if (next !== r) {
