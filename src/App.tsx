@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt, finishRound } from './lib/scoring';
-import { endWatchRound, endWatchRoundIfGone } from './lib/watch';
+import { endWatchIfIdle, endWatchRound, endWatchRoundIfGone } from './lib/watch';
 import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
@@ -24,6 +24,7 @@ import { CourseStats } from './screens/CourseStats';
 import { GamesApp, type GamesTab } from './screens/Games';
 import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
+import { roundsInPlay } from './lib/poolround';
 import type { TrainingTab } from './screens/Training';
 import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
@@ -258,8 +259,19 @@ export function App() {
 
   // the round on the Apple Watch gone or over, however (finished, given up, deleted, synced): the watch ends it too
   // (Sascha 08.11.2026: "Erik deletes the round on the phone – on the watch it is still there")
+  // every round that may be on the watch: of Rounds, a game on the map, a pool's round (Sascha 09.11.2026)
   useEffect(() => {
-    endWatchRoundIfGone(rounds);
+    const all = () => [
+      ...rounds.filter((r) => !r.preview),
+      ...loadGames().flatMap((g) => (g.round ? [{ id: g.round.id, finishedAt: g.finishedAt ?? g.round.finishedAt }] : [])),
+      ...roundsInPlay(),
+    ];
+    endWatchRoundIfGone(all());
+    // nothing running: the watch told again – now and whenever the app comes back (the first "over" may not have reached it)
+    endWatchIfIdle(all());
+    const back = () => document.visibilityState === 'visible' && endWatchIfIdle(all());
+    document.addEventListener('visibilitychange', back);
+    return () => document.removeEventListener('visibilitychange', back);
   }, [rounds]);
 
   // "Undo" after a delete brings the round back: show it again

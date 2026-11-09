@@ -202,6 +202,11 @@ export async function sendRound(json: ReturnType<typeof watchRound>, hole: numbe
   try {
     if (start) await Link.forget({ round: json.id });
     setSent(json.id);
+    try {
+      localStorage.setItem(USED, '1');
+    } catch {
+      /* told again only while the app runs */
+    }
     const r = await Link.round({ json: JSON.stringify(json), hole, start });
     return r.started;
   } catch {
@@ -219,8 +224,28 @@ export function endWatchRound(): void {
   if (isNative()) void Link.end().catch(() => undefined);
 }
 
+/** a watch was used with this phone – told again that nothing runs (Sascha 09.11.2026) */
+const USED = 'golfos.watch.used';
+const watchUsed = (): boolean => {
+  try {
+    return localStorage.getItem(USED) === '1';
+  } catch {
+    return false;
+  }
+};
+/** No round running on the phone – of Rounds, a game on the map, a pool's round – while a watch was used with it: the
+ *  watch is told again that nothing runs (Sascha 09.11.2026: "the deleted round is still on the watch" – the first
+ *  "over" may not have reached it; it is harmless again and again). True when told. */
+export function endWatchIfIdle(running: { id: string; finishedAt: string | null }[]): boolean {
+  if (!watchUsed() || running.some((r) => !r.finishedAt)) return false;
+  endWatchRound();
+  return true;
+}
+
 /** The rounds changed: the round on the watch no longer there or over – the watch ends it too (Sascha 08.11.2026: "Erik
- *  saves or deletes the round on the phone, on the watch it is still there"). True when the watch was told. */
+ *  saves or deletes the round on the phone, on the watch it is still there"). `rounds`: every round that may be on the
+ *  watch – of Rounds, a game on the map, a pool's round (09.11.2026: a game's round was taken for gone). True when the
+ *  watch was told. */
 export function endWatchRoundIfGone(rounds: { id: string; finishedAt: string | null }[]): boolean {
   const id = sentId();
   if (!id || rounds.some((r) => r.id === id && !r.finishedAt)) return false;

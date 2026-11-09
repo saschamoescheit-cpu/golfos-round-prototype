@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addWatchShot, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { addWatchShot, endWatchIfIdle, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
 import type { HoleMapData } from './geo';
 import type { LngLat, Round } from '../types';
 
@@ -139,5 +139,30 @@ describe('the crack heard on the wrist', () => {
     const r2 = addWatchShot(r1, swing('c2', 20000, p, false), 0, null);
     expect(r2.manualShots).toHaveLength(1);
     expect(r2.manualShots?.[0]).toMatchObject({ watch: 'c1', also: ['c2'] });
+  });
+});
+
+// Sascha 09.11.2026: "the deleted round is still on the watch" – the watch told again whenever nothing runs
+describe('nothing running: the watch told again', () => {
+  const store = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+  };
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', store());
+    vi.stubGlobal('sessionStorage', store());
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  it('only once a watch was used with this phone; not while a round of Rounds, a game or a pool runs', () => {
+    localStorage.removeItem('golfos.watch.used');
+    expect(endWatchIfIdle([])).toBe(false); // never a watch: nothing to tell
+    localStorage.setItem('golfos.watch.used', '1');
+    expect(endWatchIfIdle([{ id: 'g-round', finishedAt: null }])).toBe(false); // a game on the map runs
+    expect(endWatchIfIdle([{ id: 'r1', finishedAt: '2026-11-09T20:00:00Z' }])).toBe(true);
+    expect(endWatchIfIdle([])).toBe(true); // and again – the first may not have reached the watch
+  });
+  it("a game's round sent to the watch is not taken for gone (it is not in Rounds' list)", () => {
+    localStorage.setItem('golfos.watch.round', 'g-round');
+    expect(endWatchRoundIfGone([{ id: 'r9', finishedAt: null }, { id: 'g-round', finishedAt: null }])).toBe(false);
   });
 });

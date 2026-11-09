@@ -1996,6 +1996,7 @@ button.tile:disabled { opacity: 1; }
 .duel-answer button { flex: 1; }
 .duel-takeback { min-height: 40px; padding: 0 14px; }
 .pool-invite-state { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.pool-invite-edit { background: none; border: 0; padding: 4px 0; text-align: left; font: inherit; font-size: 14px; color: var(--muted); width: 100%; min-height: 40px; }
 .invite-mark { flex: none; }
 .pool-edit-player { display: flex; align-items: center; gap: 8px; }
 .setup-part { display: flex; flex-direction: column; gap: 10px; }

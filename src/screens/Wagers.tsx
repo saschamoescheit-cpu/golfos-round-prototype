@@ -5,7 +5,8 @@ import { loadCachedCourse, newId } from '../lib/storage';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import type { Course } from '../types';
 import { loadProfile, shownName } from '../lib/profile';
-import { joinLink } from '../lib/sharedgame';
+import { joinGame, joinLink } from '../lib/sharedgame';
+import { loadSession } from '../lib/sync';
 import { money } from '../lib/gameforms';
 import { isMoney, isNone, prizeOf, prizeStakes, prizeSym, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
@@ -14,11 +15,11 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, editedPlayer, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, editedPlayer, isPool, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
-import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
@@ -683,7 +684,24 @@ function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; 
             })}
           </div>
         )}
-        {!twins.length && !friends.length && <span className="muted">{tr('No linked friend and nobody joined without bets – invite with the QR code or the link below.', 'Kein verknüpfter Freund und niemand ohne Wetten beigetreten – einladen mit dem QR-Code oder dem Link unten.')}</span>}
+        {!twins.length && !friends.length && !player.joined && <span className="muted">{tr('No linked friend and nobody joined without bets – invite with the QR code or the link below.', 'Kein verknüpfter Freund und niemand ohne Wetten beigetreten – einladen mit dem QR-Code oder dem Link unten.')}</span>}
+        {/* taken back – an invitation still open, or the phone of one who accepted (Sascha 09.11.2026): then invited anew */}
+        {(player.invited || player.joined) && (
+          <button
+            type="button"
+            className="btn-secondary btn-danger"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              const r = await uninvitePlayer(props.code, player.id);
+              setBusy(false);
+              if (!r) return setMsg(NO_NET());
+              setMsg(player.joined ? tr(`${player.name} is no longer linked – invite him again.`, `${player.name} ist nicht mehr verknüpft – lade ihn neu ein.`) : tr('Invitation taken back.', 'Einladung zurückgenommen.'));
+            }}
+          >
+            {player.joined ? tr(`Unlink ${player.joined.name || player.name}`, `Verknüpfung mit ${player.joined.name || player.name} lösen`) : tr('Take the invitation back', 'Einladung zurücknehmen')}
+          </button>
+        )}
         {msg && (
           <span className="muted small" role="status">
             {msg}
@@ -745,11 +763,18 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | { whois: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
-  const [lookup, setLookup] = useState<'busy' | 'none' | null>(null);
+  const [lookup, setLookup] = useState<'busy' | 'none' | 'signin' | null>(null);
   useEffect(() => {
     if (entry) return;
     setLookup('busy');
-    void refreshPool(props.code).then((p) => setLookup(p ? null : 'none'));
+    void (async () => {
+      // not signed in: neither the invitation nor the code can let this phone in (Sascha 09.11.2026, Erik)
+      if (!loadSession()) return setLookup('signin');
+      let p = await refreshPool(props.code);
+      // not in it yet – an invitation opened before the server let him in: in by the code, as "Spiel beitreten" does
+      if (!p && isPool(await joinGame(props.code))) p = await refreshPool(props.code);
+      setLookup(p ? null : 'none');
+    })();
   }, [props.code]); // eslint-disable-line react-hooks/exhaustive-deps
   // the own bets judged from the rounds, then the pool as it is on the server – at once and every 20 s on screen
   useEffect(() => {
@@ -775,7 +800,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         <p className="muted">
           {lookup === 'busy'
             ? tr('Loading the pool …', 'Lade den Pool …')
-            : tr('The pool could not be loaded – no connection, or this account is not in it. Join it with its code under "Join a game".', 'Der Pool ließ sich nicht laden – keine Verbindung, oder dieses Konto ist nicht dabei. Mit dem Code unter „Spiel beitreten“ beitreten.')}
+            : lookup === 'signin'
+              ? tr('Sign in first (Profile → Sign in with Google) – then the invitation lets you in.', 'Bitte zuerst anmelden (Profil → Mit Google anmelden) – dann lässt dich die Einladung hinein.')
+              : tr('The pool could not be loaded – no connection, or this account is not in it. Join it with its code under "Join a game".', 'Der Pool ließ sich nicht laden – keine Verbindung, oder dieses Konto ist nicht dabei. Mit dem Code unter „Spiel beitreten“ beitreten.')}
         </p>
       </main>
     );
@@ -891,12 +918,18 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
                 {tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`)}
               </span>
             )}
-            {p.joined && p.id !== entry.me && (
+            {p.joined && p.id !== entry.me && (host ? (
+              <button type="button" className="pool-invite-state pool-invite-edit" aria-label={tr(`Accepted: ${p.joined.name || p.name} – change`, `Angenommen: ${p.joined.name || p.name} – ändern`)} onClick={() => setSheet({ whois: p.id })}>
+                <InviteMark state="in" />
+                <span className="grow">{tr(`Accepted: ${p.joined.name || p.name}`, `Angenommen: ${p.joined.name || p.name}`)}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ) : (
               <span className="pool-invite-state">
                 <InviteMark state="in" />
                 {tr(`Accepted: ${p.joined.name || p.name}`, `Angenommen: ${p.joined.name || p.name}`)}
               </span>
-            )}
+            ))}
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
             {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
             {ws.map(({ w, shown, prog }) => {

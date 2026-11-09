@@ -74,6 +74,21 @@ function claimInvited(code: string, pool: WagerPool, me: string): void {
 
 /** The host invites a linked friend right at a player (Sascha 06.11.2026) – kept on the player; the push goes as for
  *  the pool (InviteCard). The pool as written, or null. */
+/** The host takes a player's invitation back – or, once accepted, the phone off him (Sascha 09.11.2026: "the host takes
+ *  an invitation back and sends it again; also one sent by mistake"): the player stays with his bets, without a phone;
+ *  invited again, his phone takes him again. */
+export const uninvitePlayer = (code: string, pid: string): Promise<WagerPool | null> =>
+  changePool(code, (p) => {
+    const x = p.players.find((q) => q.id === pid);
+    if (!x || (!x.invited && !x.joined)) return null;
+    return { ...p, players: p.players.map((q) => (q.id === pid ? withoutPhone(q) : q)) };
+  });
+export function withoutPhone(p: PoolPlayer): PoolPlayer {
+  const { invited: _i, joined: _j, ...rest } = p;
+  void _i;
+  void _j;
+  return rest;
+}
 export const invitePlayer = (code: string, pid: string, friend: { uid: string; name: string }): Promise<WagerPool | null> =>
   changePool(code, (p) => ({ ...p, players: p.players.map((x) => (x.id === pid ? { ...x, invited: { uid: friend.uid, name: friend.name, at: new Date().toISOString() } } : x)) }));
 
