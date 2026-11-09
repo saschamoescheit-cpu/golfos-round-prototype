@@ -15,7 +15,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, editedPlayer, isPool, restake, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -722,9 +722,11 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
     props.state === 'host' ? tr('host', 'Host') : props.state === 'in' ? tr('accepted – on his phone', 'angenommen – auf seinem Handy') : props.state === 'sent' ? tr('invited – not accepted yet', 'eingeladen – noch nicht angenommen') : tr('not invited yet', 'noch nicht eingeladen');
   const s = props.size ?? 22;
   const cls = props.state === 'out' ? 'bad-text' : props.state === 'sent' ? 'muted' : 'good-text';
+  const wide = props.state === 'in' || props.state === 'sent';
   return (
     <span className={`join-mark person-mark ${cls}`} role="img" aria-label={label} title={label}>
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* with a tick or an arrow the figure is wider – the sign clear of it (Sascha 10.11.2026, twice: "too close") */}
+      <svg width={wide ? Math.round((s * 30) / 24) : s} height={s} viewBox={wide ? '0 0 30 24' : '0 0 24 24'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {props.state === 'host' || props.state === 'out' ? (
           <>
             <circle cx="12" cy="8" r="4" />
@@ -734,9 +736,9 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
           <>
             {/* the figure smaller on the left, the tick or the arrow clear of it on the right (Sascha 10.11.2026: "the tick
                 too close to the figure") */}
-            <circle cx="7" cy="7.5" r="3.4" />
-            <path d="M1.5 20c0-3.3 2.5-6 5.5-6 1.6 0 3 .6 4 1.6" />
-            {props.state === 'in' ? <path d="M14.5 15.5l2.8 2.8 5.2-5.6" /> : <path d="M14 16h8M19 13l3 3-3 3" />}
+            <circle cx="8" cy="7.5" r="3.6" />
+            <path d="M1.5 20.5c0-3.5 2.9-6.3 6.5-6.3s6.5 2.8 6.5 6.3" />
+            {props.state === 'in' ? <path d="M19 15l3 3 6-6.5" /> : <path d="M19 15.5h9M24.5 12l3.5 3.5-3.5 3.5" />}
           </>
         )}
       </svg>
@@ -970,8 +972,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           prize={prizeOf(pool)}
           me={entry.me}
           anyone={host}
-          onMark={(t, as) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }) }])}
-          onConfirm={(id) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now() } : x)))}
+          onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
+          onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
+          paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
+          currency={pool.currency === 'USD' ? 'USD' : 'EUR'}
           onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
         />}
         {isNone(prizeOf(pool)) && <span className="muted small">{tr('No stake – for the honour: one point a bet won.', 'Ohne Einsatz – um die Ehre: ein Punkt je gewonnene Wette.')}</span>}
@@ -1149,6 +1153,32 @@ export function figuresOf(w: Wager, n: number | null): string {
 /** A bet made in one round – green in its cell: only a bet that holds for each round (Sascha 10.11.2026: "the bets over
  *  7 rounds must not be green in one round") – a sum over several rounds or the whole trip is judged as a whole. */
 export const madeInRound = (w: Wager, value: number | null): boolean => value != null && perRoundBet(w) && reached(w, value);
+/** A score added up over N rounds, its share of one round (Sascha 10.11.2026: "Erik +35 over 7 rounds – +5 a round"). */
+export const shareOf = (w: Wager): number | null => (shapeOf(w.kind) === 'sum' && w.rounds ? w.target / w.rounds : null);
+/** A score as the cells write it: "+5", "−1,4", "E". */
+export const parText = (x: number): string => {
+  const v = Math.round(x * 10) / 10;
+  return v === 0 ? 'E' : `${v > 0 ? '+' : '−'}${String(Math.abs(v)).replace('.', ',')}`;
+};
+/** A bet in one round, once it is decided (Sascha 10.11.2026: "a round played – green when made, else red"): 'made',
+ *  'missed' – or null while it is played, without a figure, or a bet not of single rounds (the trip as one). A score over
+ *  N rounds by its share of the round. */
+export function roundVerdict(w: Wager, r: RoundResult | undefined): 'made' | 'missed' | null {
+  if (!r || r.value == null) return null;
+  const share = shareOf(w);
+  if (share != null) return r.open ? null : r.value <= share + 1e-9 ? 'made' : 'missed';
+  if (!perRoundBet(w)) return null;
+  if (reached(w, r.value) && (!r.open || !lower(w))) return 'made';
+  return r.open ? null : 'missed';
+}
+/** A score over N rounds so far (Sascha 10.11.2026: "in the total the rounds added up – where one stands"): the rounds
+ *  played added up, how many of how many; decided once all are played. */
+export function sumSoFar(w: Wager, p: Progress | undefined): { sum: number; played: number; of: number; verdict: 'made' | 'missed' | null } | null {
+  if (shapeOf(w.kind) !== 'sum' || !w.rounds) return null;
+  const done = (p?.perRound ?? []).filter((r) => r.value != null && !r.open).slice(0, w.rounds);
+  const sum = done.reduce((a, r) => a + (r.value ?? 0), 0);
+  return { sum, played: done.length, of: w.rounds, verdict: done.length < w.rounds ? null : sum <= w.target ? 'made' : 'missed' };
+}
 /** A bet's target as the cells write it: "3", "−5", "E". */
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 /** What a round brought, under the target (Sascha 10.11.2026: "a 0 instead of the dash"): a count's 0 is "0"; a score
@@ -1159,13 +1189,20 @@ export function valueOf(w: Wager, n: number | null): string {
   return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
 }
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
-export function standingRounds(pool: Pick<WagerPool, 'progress'>): { key: string; day: string; course: string }[] {
+export function standingRounds(pool: Pick<WagerPool, 'progress'> & Partial<Pick<WagerPool, 'wagers' | 'from' | 'to' | 'rounds'>>): { key: string; day: string; course: string }[] {
   const seen = new Map<string, { key: string; day: string; course: string }>();
-  for (const p of Object.values(pool.progress ?? {}))
+  // only the bets still in the pool, only rounds that count (Sascha 10.11.2026: "Hetzenhof is in it though it is not
+  // there" – the progress of bets deleted and a round outside the trip's rounds)
+  const ids = pool.wagers ? new Set(pool.wagers.map((w) => w.id)) : null;
+  const counts = (r: { day: string; course: string }) => !pool.from || !pool.to || inPool({ day: r.day, course: r.course }, { from: pool.from, to: pool.to, rounds: pool.rounds });
+  for (const [id, p] of Object.entries(pool.progress ?? {})) {
+    if (ids && !ids.has(id)) continue;
     for (const r of [...(p?.perRound ?? []), ...(p?.duels ?? [])]) {
+      if (!counts(r)) continue;
       const key = `${r.day}|${r.course}`;
       if (!seen.has(key)) seen.set(key, { key, day: r.day, course: r.course });
     }
+  }
   return [...seen.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
 }
 /** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
@@ -1188,6 +1225,9 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // total, and then per round")
   const [shown, setShown] = useState<string | null>(null);
   const roundsShown = standingRounds(pool);
+  // a round played to its end (Sascha 10.11.2026: "a round played – make it recognisable"): its chip with a tick
+  const ids = new Set(pool.wagers.map((w) => w.id));
+  const played = new Set(Object.entries(pool.progress ?? {}).flatMap(([id, p]) => (ids.has(id) ? (p?.perRound ?? []).filter((r) => r.value != null && !r.open).map((r) => `${r.day}|${r.course}`) : [])));
   const one = roundsShown.find((r) => r.key === shown) ?? null;
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const grid = pool.wagers.filter((w) => w.kind !== 'free');
@@ -1226,6 +1266,15 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
         </span>
       );
+    const s = sumSoFar(w, pool.progress[w.id]);
+    if (s)
+      return (
+        <span key={w.id} className={`bet-cell ${s.verdict === 'made' ? 'done' : s.verdict === 'missed' ? 'miss' : 'open'}`} title={wagerLabel(w)}>
+          <strong>{targetOf(w)}</strong>
+          <small className="bet-made">{s.played ? `${parText(s.sum)} · ${s.played}/${s.of}` : '–'}</small>
+          {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
+        </span>
+      );
     return (
       <span key={w.id} className={`bet-cell ${state(w) === 'done' || provisional(w, pool.progress[w.id]) ? 'done' : state(w)}`} title={wagerLabel(w)}>
         <strong>{targetOf(w)}</strong>
@@ -1237,10 +1286,11 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // one round: each bet as it went in that round – made green, else its figure; no figure from that round: a dash
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
-    const made = madeInRound(w, r?.value ?? null);
+    const verdict = roundVerdict(w, r);
+    const share = shareOf(w);
     return (
-      <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}`} title={wagerLabel(w)}>
-        <strong>{targetOf(w)}</strong>
+      <span key={w.id} className={`bet-cell ${verdict === 'made' ? 'done' : verdict === 'missed' ? 'miss' : 'open'}`} title={wagerLabel(w)}>
+        <strong>{share != null ? parText(share) : targetOf(w)}</strong>
         <small className="bet-made">{valueOf(w, r?.value ?? null)}</small>
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
@@ -1275,6 +1325,11 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           </button>
           {roundsShown.map((r) => (
             <button key={r.key} type="button" className={`chip${one?.key === r.key ? ' on' : ''}`} aria-pressed={one?.key === r.key} onClick={() => setShown(r.key)}>
+              {played.has(r.key) && (
+                <svg className="chip-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={tr('played', 'gespielt')}>
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              )}
               {`${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`}
             </button>
           ))}

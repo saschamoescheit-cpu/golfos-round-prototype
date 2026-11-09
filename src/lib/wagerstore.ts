@@ -4,8 +4,9 @@ import { cachedEvent, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, 
 import { loadTours } from './tourstore';
 import { newCode } from './sharedgame';
 import { tr } from './i18n';
+import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, cardsFor, dayOf, fromCards, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, balances, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -439,8 +440,11 @@ function keptFor(r: Round, name: string): boolean {
 }
 /** Another player's bet: this phone's judgement only when it knows more – more rounds, or a better result from as many
  *  (his own phone may have reported from rounds this one does not have). His own phone's always. */
-function takes(w: Wager, me: string, old: Progress | undefined, now: Progress): boolean {
+export function takes(w: Wager, me: string, old: Progress | undefined, now: Progress, pool?: Pick<WagerPool, 'from' | 'to' | 'rounds'>): boolean {
   if (w.player === me || !old) return true;
+  // a round counted before that no longer counts – the host narrowed the pool's rounds (Sascha 10.11.2026: a test round
+  // on the Hetzenhof made Moritz's bets, "nobody has made a bet yet"): the judgement anew
+  if (pool && old.perRound?.some((r) => !inPool({ day: r.day, course: r.course }, pool, w))) return true;
   if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
@@ -517,7 +521,10 @@ export function reportWagers(): Promise<void> {
           }
           return changed ? cards : null;
         };
-        if (!cardsNow(e.pool) && mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id]))) continue;
+        // one's PayPal.me name to one's player in the pool – the others' settlement offers it (Sascha 10.11.2026)
+        const pp = loadProfile().paypal || undefined;
+        const ppStale = (p: WagerPool) => !!pp && !!myAccount() && p.players.some((x) => x.id === e.me && x.joined?.uid === myAccount() && x.joined.paypal !== pp);
+        if (!ppStale(e.pool) && !cardsNow(e.pool) && mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id], e.pool))) continue;
         let made: string[] = []; // bets made with this report – everyone in the pool hears of it (push)
         const written = await changePool(e.code, (p) => {
           let changed = false;
@@ -527,10 +534,13 @@ export function reportWagers(): Promise<void> {
           // guard): a join from before the account was kept in "joined" gets it now
           const uid = myAccount();
           const stamp = !!uid && p.players.some((x) => x.id === e.me && x.joined && !x.joined.uid);
-          const players = stamp ? p.players.map((x) => (x.id === e.me && x.joined && !x.joined.uid ? { ...x, joined: { ...x.joined, uid: uid! } } : x)) : p.players;
+          const stamped = stamp ? p.players.map((x) => (x.id === e.me && x.joined && !x.joined.uid ? { ...x, joined: { ...x.joined, uid: uid! } } : x)) : p.players;
+          const paypalNow = ppStale({ ...p, players: stamped });
+          const players = paypalNow ? stamped.map((x) => (x.id === e.me && x.joined ? { ...x, joined: { ...x.joined, paypal: pp } } : x)) : stamped;
+          if (paypalNow) changed = true;
           for (const w of p.wagers.filter(judged)) {
             const now = judge(w, p, roundsOf.get(w.player)!); // the bet as it is on the server (changed meanwhile, maybe)
-            if (sameProgress(progress[w.id], now) || !takes(w, e.me, progress[w.id], now)) continue;
+            if (sameProgress(progress[w.id], now) || !takes(w, e.me, progress[w.id], now, p)) continue;
             if (now.done && !progress[w.id]?.done && !progress[w.id]?.manual) made.push(w.id);
             progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
             changed = true;

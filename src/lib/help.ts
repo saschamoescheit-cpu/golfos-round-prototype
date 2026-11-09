@@ -121,6 +121,16 @@ export const FAQ: FaqTopic[] = [
         video: 'start',
       },
       {
+        // Sascha 10.11.2026: "beside the arrow for back, swipe one level back"
+        q: () => tr('How do I go back – is there a swipe?', 'Wie komme ich zurück – geht das auch mit Wischen?'),
+        a: () =>
+          tr(
+            'The arrow at the top left – or swipe from the left edge of the screen to the right, as everywhere on the iPhone: an open sheet closes first, then one level back.',
+            'Mit dem Pfeil oben links – oder vom linken Bildschirmrand nach rechts wischen, wie überall auf dem iPhone: Ein offenes Blatt schließt sich zuerst, dann geht es eine Ebene zurück.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('Can I use my Apple Watch?', 'Kann ich meine Apple Watch nutzen?'),
         a: () =>
           tr(
@@ -393,6 +403,16 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Every bet holds for each round on its own and is settled after every round: made, the stake from each of the others – missed, nothing (or the stake to each, when the bet is "both ways"). In the pool, "Standing" shows "Total" – each cell the target in bold on top, below in how many rounds it was made, "2/5", green once made – and a chip per round (day and course): tapped, the target on top and below what each one did in that round (0 when nothing). On the round itself: menu → Leaderboard → tab "Bets" – the same standing, live. A tournament on the pool’s days counts for everyone who played in it – also the scores the host entered afterwards ("Enter scores" in the tournament), they count like a signed card. Where a phone has the round itself, its card counts with putts and greens; scores entered afterwards have strokes only. A tournament or a round of a series on a day of the pool: no own round from the pool – "To the tournament" at the bottom of the pool opens it in Rounds, "Take part"; it counts for the bets.',
             'Jede Wette gilt für jede Runde einzeln und wird nach jeder Runde abgerechnet: geschafft – der Einsatz von jedem anderen; nicht geschafft – nichts (bei „beidseitig“ der Einsatz an jeden). Im Pool zeigt „Stand“ „Gesamt“ – in jeder Zelle oben fett das Ziel, darunter, in wie vielen Runden es geschafft ist, „2/5“, grün sobald geschafft – und einen Chip je Runde (Tag und Platz): angetippt oben das Ziel und darunter, was jeder in dieser Runde erreicht hat (0, wenn nichts). Auf der Runde selbst: Menü → Leaderboard → Reiter „Wetten“ – derselbe Stand, live. Ein Turnier in den Tagen des Pools zählt für jeden, der darin gespielt hat – auch die Scores, die der Host nachträglich eingetragen hat („Scores eintragen“ im Turnier), sie zählen wie eine unterschriebene Karte. Hat ein Handy die Runde selbst, zählt seine Karte mit Putts und Grüns; nachgetragene Scores haben nur Schläge. Ein Turnier oder eine Runde der Serie an einem Tag des Pools: keine eigene Runde aus dem Pool – „Zum Turnier“ unten im Pool öffnet es in Rounds, „Teilnehmen“; es zählt für die Wetten.',
+          ),
+        video: 'wagers',
+      },
+      {
+        // Sascha 10.11.2026: "pay by PayPal right from the app – or cash, or transfer"
+        q: () => tr('Can I pay by PayPal from the settlement?', 'Kann ich aus der Abrechnung per PayPal zahlen?'),
+        a: () =>
+          tr(
+            'Yes: put your PayPal.me name in your profile (the part after paypal.me/). Who owes you sees "PayPal" beside the amount under "Who pays whom" – it opens PayPal with the amount; then "Paid". When you confirm "Received", you choose how it came: PayPal, cash or bank transfer – the payments say so.',
+            'Ja: Trag im Profil deinen PayPal.me-Namen ein (der Teil nach paypal.me/). Wer dir etwas schuldet, sieht unter „Wer zahlt wem“ neben dem Betrag „PayPal“ – das öffnet PayPal mit dem Betrag; danach „Bezahlt“. Bestätigst du „Erhalten“, wählst du, wie es kam: PayPal, bar oder Überweisung – das steht dann bei den Zahlungen.',
           ),
         video: 'wagers',
       },

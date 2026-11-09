@@ -2317,3 +2317,7 @@ button.tile:disabled { opacity: 1; }
 .duel-add { display: flex; gap: 8px; align-items: center; }
 .duel-add .input { flex: 1; min-width: 0; }
 .duel-add .btn-secondary { width: auto; flex: none; padding-inline: 18px; }
+/* a bet missed in a round played (Sascha 10.11.2026: "green when made, else red") – white figures on the colour */
+.bet-cell.miss { background: var(--bad); color: #fff; }
+.bet-cell.miss small { color: inherit; opacity: 0.9; }
+.chip .chip-tick { margin-right: 4px; vertical-align: -2px; }

@@ -26,9 +26,11 @@ import { startErrorLog } from './lib/errorlog';
 import { watchForUpdates } from './lib/appupdate';
 import { installNativeShims } from './lib/native';
 import { liveCodeOf } from './lib/live';
+import { installSwipeBack } from './lib/swipeback';
 
 applyTheme(); // sun mode before the first paint
 installNativeShims(); // the iOS app: its share sheet for sharing and downloads (01.11.2026)
+installSwipeBack(); // back by a swipe from the left edge (Sascha 10.11.2026)
 guardStorage(); // storage full: course map copies make room, nothing the player entered is lost silently
 startErrorLog(); // app errors reported by themselves – from the live app only (final list, 22.10.2026)
 watchForUpdates(); // a new version also reaches the home-screen app that is never closed (24.10.2026)

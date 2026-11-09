@@ -1,3 +1,4 @@
+import { paypalName } from '../lib/wagers';
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, Segmented, TopBar } from '../components/ui';
@@ -213,6 +214,19 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               onChange={(e) => set({ hcpIndex: e.target.value.replace(/[^0-9.,+-]/g, '').slice(0, 5) })}
             />
           </div>
+        </div>
+        {/* paid by PayPal right from the settlement (Sascha 10.11.2026) – the name behind paypal.me/ */}
+        <div className="field">
+          <label htmlFor="pf-paypal">{tr('PayPal.me name', 'PayPal.me-Name')}</label>
+          <input
+            id="pf-paypal"
+            className="input"
+            autoCapitalize="none"
+            autoCorrect="off"
+            placeholder={tr('e.g. SaschaM (paypal.me/SaschaM)', 'z. B. SaschaM (paypal.me/SaschaM)')}
+            value={p.paypal ?? ''}
+            onChange={(e) => set({ paypal: paypalName(e.target.value) })}
+          />
         </div>
         <div className="field">
           <label>{tr('Home club', 'Heimatclub')}</label>

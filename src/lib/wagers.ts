@@ -317,7 +317,7 @@ export interface PoolPlayer {
   id: string;
   name: string;
   /** a phone plays as him (the name of the account, when, its account – to find him again on a new phone) */
-  joined?: { name: string; at: string; uid?: string };
+  joined?: { name: string; at: string; uid?: string; /** his PayPal.me name, from his profile (10.11.2026) */ paypal?: string };
   /** invited by the host right at him (Sascha 06.11.2026: "invite Erik Hausotter right at Erik"): the linked friend's
    *  account – his phone takes this player on opening the pool, no "who are you?", no second player */
   invited?: { uid: string; name: string; at: string };
@@ -410,7 +410,14 @@ export interface Payment {
   amount: number;
   paidAt?: string;
   receivedAt?: string;
+  /** how it came – the receiver says so when he confirms (Sascha 10.11.2026: "PayPal, cash, transfer") */
+  how?: PayHow;
 }
+export type PayHow = 'paypal' | 'cash' | 'transfer';
+/** A PayPal.me name as typed: the link's last part, only its letters and digits. */
+export const paypalName = (s: string): string => s.trim().replace(/^.*paypal\.me\//i, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
+/** The link to pay one by PayPal: his name, the amount and the currency (paypal.me/SaschaM/40USD). */
+export const paypalLink = (name: string, amount: number, currency: 'EUR' | 'USD'): string => `https://paypal.me/${encodeURIComponent(name)}/${(Math.round(amount * 100) / 100).toFixed(2)}${currency}`;
 
 /** The balances once the payments are off: what the payer paid he owes no more, what the receiver got he is owed no
  *  more – the open transfers follow from them. */
