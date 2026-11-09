@@ -21,6 +21,7 @@ import { InvitePanel, myName } from '../components/ShareRound';
 import { ToggleRow } from '../components/Settings';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
+import { SideBetRow } from './Duels';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -461,6 +462,10 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           </p>
         )}
       </section>
+
+      {/* a side bet: 5+5+10 against the flight's players, friends or anyone (Sascha 10.11.2026: "between the players and
+          the invitation") – into the pool of bets of the day */}
+      <SideBetRow preset={{ players: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), ...(o.index.trim() ? { hcp: o.index.trim() } : {}) })) }} />
 
       {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
           or competition, any format ("not only scramble or a tournament"); its own section (Sascha 02.11.2026) */}

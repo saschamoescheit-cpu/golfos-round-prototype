@@ -7,6 +7,8 @@ import { atTheTee, deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieA
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
+import { SideBetSheet } from './Duels';
+import { dayOf as poolDay } from '../lib/wagers';
 import { addWatchFixes, autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { DuelBar } from '../components/DuelBar';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
@@ -660,6 +662,7 @@ export function HoleScreen(props: {
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [sideBetOpen, setSideBetOpen] = useState(false); // 5+5+10 as a side bet (Sascha 10.11.2026)
   // a bet counts this round: the marked player in detail too (Sascha 02.11.2026) – looked at when the sheet opens
   const withBets = useMemo(() => !round.preview && betLinked(round), [round.id, scoreSheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const [canShareRound, setCanShareRound] = useState(false);
@@ -1949,6 +1952,16 @@ export function HoleScreen(props: {
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
+        {sideBetOpen && (
+          <SideBetSheet
+            preset={{
+              day: poolDay(round.createdAt),
+              players: round.players.filter((p) => !p.isMe && p.name.trim()).map((p) => ({ name: p.name.trim() })),
+              ...(round.shared?.tournament ? { on: { code: round.shared.code, name: round.courseName, course: round.courseName } } : {}),
+            }}
+            onClose={() => setSideBetOpen(false)}
+          />
+        )}
         {drawerOpen && (
           <HoleDrawer
             round={round}
@@ -1976,6 +1989,9 @@ export function HoleScreen(props: {
                 ? [{ label: props.game.shared ? tr(`Players' phones · code ${props.game.shared}`, `Handys der Mitspieler · Code ${props.game.shared}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); props.game!.onInvite!(); } }]
                 : !props.game && !round.preview
                   ? [
+                      // a side bet in the round – in a tournament too (Sascha 10.11.2026: "in the menu by the code, the bag
+                      // and the caddie")
+                      { label: tr('Side bet · 5+5+10', 'Sidebet · 5+5+10'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
                       ...(round.shared || canShareRound
                         ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
                         : []),

@@ -354,3 +354,52 @@ export function DuelMark(props: { state: 'accepted' | 'open' | 'declined' }) {
     </svg>
   );
 }
+
+// ---------- a side bet from Rounds (Sascha 10.11.2026: "5+5+10 as a side game in the round's settings – between the
+// players and the invitation; in a tournament's round in the menu by the code, the bag and the caddie") ----------
+
+/** The duels of a day of this phone's owner (not declined) – his own and those against him. */
+export const myDuelsOn = (day: string): { e: PoolEntry; w: Wager }[] =>
+  duelPoolsOn(day).flatMap((e) => e.pool.wagers.filter((w) => !!w.challenge && w.kind === 'nassau' && w.day === day && w.challenge.state !== 'declined' && (w.player === e.me || w.opponent === e.me)).map((w) => ({ e, w })));
+
+type SideBetPreset = { day?: string; on?: Wager['on']; players?: { name: string; hcp?: string }[] };
+/** The side bet's sheet: the duel's setup with the round's day, its players and its tournament. */
+export function SideBetSheet(props: { preset: SideBetPreset; onClose: () => void }) {
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet sidebet-sheet" role="dialog" aria-label={tr('Side bet · 5+5+10', 'Sidebet · 5+5+10')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Side bet · 5+5+10', 'Sidebet · 5+5+10')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <DuelSetup preset={props.preset} onDone={() => props.onClose()} />
+      </section>
+    </div>
+  );
+}
+/** "Sidebet" in the round's setup: one row – the day's duels or "hinzufügen" –, its sheet the duel's setup. */
+export function SideBetRow(props: { preset: SideBetPreset }) {
+  const [open, setOpen] = useState(false);
+  const [, setTick] = useState(0);
+  const day = props.preset.day ?? dayOf(new Date());
+  const n = myDuelsOn(day).length;
+  return (
+    <section className="setup-part">
+      <span className="eyebrow">{tr('Side bet', 'Sidebet')}</span>
+      <SettingsList>
+        <SettingsRow label="5+5+10" value={n ? (n === 1 ? tr('1 duel today', '1 Duell heute') : tr(`${n} duels today`, `${n} Duelle heute`)) : tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
+      </SettingsList>
+      {open && (
+        <SideBetSheet
+          preset={props.preset}
+          onClose={() => {
+            setOpen(false);
+            setTick((t) => t + 1);
+          }}
+        />
+      )}
+    </section>
+  );
+}
