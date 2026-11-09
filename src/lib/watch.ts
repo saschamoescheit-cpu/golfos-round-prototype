@@ -178,6 +178,24 @@ export function addWatchShot(round: Round, s: WatchShot, hole: number, fallback:
   return { ...round, manualShots: [...list, entry] };
 }
 
+/**
+ * A swing of warming up – on the range, before the round began (Sascha 09.11.2026 at Kissimmee Bay: "the shots on the
+ * range were registered" – 11:27 and 11:47, the flight's tee time 12:08; they went to hole 1). Only while nothing of the
+ * round counts yet (no shot, no score of this phone's owner): more than 10 minutes before the tee time of a tournament's
+ * flight, or farther than 60 m (and what the GPS may be off) from every tee of the course. A shot noted by hand on the
+ * watch always counts.
+ */
+export function warmUpSwing(round: Round, s: Pick<WatchShot, 't' | 'manual' | 'acc'>, at: { pos: LngLat | null; tees: (LngLat | null | undefined)[]; teeTime?: number | null }): 'early' | 'away' | null {
+  if (s.manual) return null;
+  if ((round.manualShots ?? []).length) return null;
+  const me = round.players.find((p) => p.isMe) ?? round.players[0];
+  if (me && (round.entries[me.id] ?? []).some((e) => e && (e.strokes != null || e.pickedUp))) return null;
+  if (at.teeTime != null && s.t < at.teeTime - 10 * 60000) return 'early';
+  const tees = at.tees.filter((x): x is LngLat => !!x);
+  if (at.pos && tees.length && tees.every((t) => distanceM(t, at.pos!) > 60 + Math.min(s.acc ?? 10, 30))) return 'away';
+  return null;
+}
+
 /** A shot taken back on the watch: gone from the round too. */
 export function removeWatchShot(round: Round, id: string): Round {
   const list = round.manualShots ?? [];

@@ -82,6 +82,12 @@ const along = (f) => [tee[0] + (green[0] - tee[0]) * f, tee[1] + (green[1] - tee
 const shot = (id, f, dt, hit, extra = {}) => ({ kind: 'shot', shot: { id, round: roundId, hole: 0, t: Date.now() + dt, lng: along(f)[0], lat: along(f)[1], acc: 4, peak: 24, jolt: hit ? 5 : 0, full: true, hit, manual: false, ...extra } });
 const manual = () => p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots ?? []).map((x) => ({ watch: x.watch, hole: x.hole, also: x.also ?? [] })));
 
+// 1b · warming up on the range before the first shot (Sascha 09.11.2026: "the shots on the range were registered"): far
+// from every tee – not a shot of the round, said on the screen
+await p.evaluate((it) => window.__watchSend(it), shot('r1', 0, 0, true, { lng: tee[0], lat: tee[1] - 0.02 }));
+await p.waitForTimeout(800);
+ok((await manual()).length === 0 && (await p.getByText(/Weg vom Abschlag \(Range\) – nicht gezählt/).count()) > 0, 'a swing on the range before the round: not counted, "Weg vom Abschlag (Range) – nicht gezählt"');
+
 // 2 · a swing: a shot of the round, said on the screen – the same swing again: once
 await p.evaluate((it) => window.__watchSend(it), shot('w1', 0.01, 0, true));
 await p.waitForTimeout(800);

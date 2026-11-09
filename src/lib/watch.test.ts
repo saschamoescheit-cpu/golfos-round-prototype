@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addWatchShot, endWatchIfIdle, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
+import { addWatchShot, endWatchIfIdle, warmUpSwing, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
 import type { HoleMapData } from './geo';
 import type { LngLat, Round } from '../types';
 
@@ -69,6 +69,31 @@ describe('a swing from the watch', () => {
 });
 
 // Sascha 08.11.2026: "the hole's picture on the watch beside the score and the distances"
+describe('warming up on the range (Sascha 09.11.2026 at Kissimmee Bay: 11:27 and 11:47, the tee time 12:08)', () => {
+  const teeTime = Date.parse('2026-11-09T12:08:00');
+  const t = (hm: string) => Date.parse(`2026-11-09T${hm}:00`);
+  const tees = [at(0, 0), at(300, 400)];
+  const me = { ...round, players: [{ id: 'p', name: 'Erik', isMe: true }], entries: { p: [null, null] } } as unknown as Round;
+  it('before the tee time (more than 10 minutes): not counted', () => {
+    expect(warmUpSwing(me, swing('a', t('11:47'), at(0, 2)), { pos: at(0, 2), tees, teeTime })).toBe('early');
+    expect(warmUpSwing(me, swing('a', t('12:00'), at(0, 2)), { pos: at(0, 2), tees, teeTime })).toBeNull();
+  });
+  it('on the range – 150 m from every tee – not counted; at a tee it is the first shot', () => {
+    expect(warmUpSwing(me, swing('a', t('12:05'), at(-150, 0)), { pos: at(-150, 0), tees, teeTime: null })).toBe('away');
+    expect(warmUpSwing(me, swing('a', t('12:05'), at(5, 3)), { pos: at(5, 3), tees, teeTime: null })).toBeNull();
+    // starting on another hole's tee
+    expect(warmUpSwing(me, swing('a', t('12:05'), at(300, 395)), { pos: at(300, 395), tees, teeTime: null })).toBeNull();
+  });
+  it('once the round has a shot or a score, a shot by hand on the watch, or no map: counted as ever', () => {
+    const shot = addWatchShot(me, swing('w', t('12:09'), at(0, 2)), 0, null);
+    expect(warmUpSwing(shot, swing('a', t('12:20'), at(-150, 0)), { pos: at(-150, 0), tees, teeTime })).toBeNull();
+    const scored = { ...me, entries: { p: [{ strokes: 4 }, null] } } as unknown as Round;
+    expect(warmUpSwing(scored, swing('a', t('11:00'), at(-150, 0)), { pos: at(-150, 0), tees, teeTime })).toBeNull();
+    expect(warmUpSwing(me, swing('a', t('11:00'), at(-150, 0), true, true), { pos: at(-150, 0), tees, teeTime })).toBeNull();
+    expect(warmUpSwing(me, swing('a', t('12:05'), at(-150, 0)), { pos: at(-150, 0), tees: [null, null], teeTime: null })).toBeNull();
+  });
+});
+
 describe('the hole drawn on the watch', () => {
   it('in metres from the tee, the green straight up', async () => {
     const { watchMap } = await import('./watch');

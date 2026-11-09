@@ -39,7 +39,7 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
-import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, watchHoleFor, watchReady, watchRound } from '../lib/watch';
+import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -358,6 +358,9 @@ export function HoleScreen(props: {
 
   // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
   const allMaps = useMemo(() => round.holes.map((h) => forTee(holeMapData(geometry, h.loop, h.number), h.label)), [geometry, round.holes, round.tee]);
+  // the maps as they are now – for the watch's swings, which come in an effect set up once
+  const allMapsNow = useRef(allMaps);
+  allMapsNow.current = allMaps;
   // green charts made on the phone for a course without built-in ones (below, with the green heights)
   const [made, setMade] = useState<{ m: MadeCharts; urls: Record<string, string> } | null>(null);
   const [making, setMaking] = useState<{ done: number; total: number } | null>(null);
@@ -1305,6 +1308,15 @@ export function HoleScreen(props: {
           const e = meP ? r.entries[meP.id]?.[k] : undefined;
           return e?.strokes == null && !e?.pickedUp;
         };
+        // warming up on the range before the round (Sascha 09.11.2026): not a shot of the round
+        const fl = r.shared ? cachedEvent(r.shared.code) : null;
+        const tt = fl?.flights[r.shared!.flight]?.teeTime;
+        const teeTime = tt ? new Date(`${fl?.date ?? r.createdAt.slice(0, 10)}T${tt}:00`).getTime() : null;
+        const warm = warmUpSwing(r, s, { pos, tees: allMapsNow.current.map((m) => m?.tee), teeTime: Number.isFinite(teeTime) ? teeTime : null });
+        if (warm) {
+          setTestMsg(warm === 'early' ? tr('Warming up before the tee time – not counted', 'Einspielen vor der Startzeit – nicht gezählt') : tr('Away from the tees (range) – not counted', 'Weg vom Abschlag (Range) – nicht gezählt'));
+          return;
+        }
         const base = s.hole >= 0 && s.hole < r.holes.length ? s.hole : holeRef.current;
         const hole = pos ? (detectHole(pos, allMaps, base, { start: r.startHole, open }) ?? base) : base;
         const next = addWatchShot(r, s, hole, fb);
