@@ -75,8 +75,7 @@ const CASES = [
   ['Hammer', 4],
   ['Rabbit', 3],
   ['Acey Deucey', 4],
-  // Sascha 02.11.2026: "5+5+10 is no bet but a game – to choose under Games"
-  ['5+5+10', 3],
+  // 5+5+10: a duel in the pool of bets since 09./10.11.2026 (qa/duels.mjs) – no game in the flight any more
 ];
 // a game needs a course (Sascha 15.10.2026) – Hetzenhof for every game
 const course = async () => {

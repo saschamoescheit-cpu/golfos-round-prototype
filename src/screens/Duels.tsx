@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { loadProfile, shownName } from '../lib/profile';
-import { dayOf, type Wager } from '../lib/wagers';
-import { answerDuel, challengeDuels, duelPools, openChallenges, sameDuel, takeBackDuel, type PoolEntry } from '../lib/wagerstore';
-import { pushWagers } from '../lib/push';
+import { dayOf, sameName, type Wager } from '../lib/wagers';
+import { answerDuel, challengeDuels, duelPoolsOn, loadPools, openChallenges, poolForDuel, sameDuel, takeBackDuel, type NewOpponent, type PoolEntry } from '../lib/wagerstore';
+import { loadTours } from '../lib/tourstore';
+import { loadFriends } from '../lib/friends';
+import { inviteFriend, pushWagers } from '../lib/push';
 import { prizeOf, prizeStakes, prizeSym } from '../lib/prize';
-import { money } from '../lib/gameforms';
+import { currencySymbol, money } from '../lib/gameforms';
 import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleList, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 
@@ -18,80 +20,150 @@ import { StakeRow } from '../components/StakePicker';
 const NO_NET = () => tr('No connection – try again.', 'Keine Verbindung – bitte nochmal versuchen.');
 const DUEL_STAKES = [0, 1, 2, 5, 10, 20, 50];
 
-/** The duel's setup below the game form "5+5+10": the pool (when several), the day, against whom, the stakes, gross
- *  or net – and "Herausfordern" at the end. */
-export function DuelSetup(props: { onDone: (code: string) => void }) {
+/** The duel's setup below the game form "5+5+10" (and as a side bet from a round – Sascha 10.11.2026): the pool (when
+ *  several – without one a new one of the day), the day and its round, against whom – the pool's players, the round's,
+ *  friends, or one made here –, who keeps the score, the stakes, gross or net with its share; "Herausfordern" at the end. */
+export function DuelSetup(props: { onDone: (code: string) => void; /** from a round: its day, its tournament, its players */ preset?: { day?: string; on?: Wager['on']; players?: { name: string; hcp?: string }[] } }) {
   const today = dayOf(new Date());
-  const pools = duelPools(today);
-  const [code, setCode] = useState(pools[0]?.code ?? '');
-  const entry = pools.find((e) => e.code === code) ?? pools[0];
-  const first = entry ? (entry.pool.from > today ? entry.pool.from : today) : today;
-  const [day, setDay] = useState(first);
+  const [day, setDay] = useState(props.preset?.day ?? today);
+  const pools = duelPoolsOn(day);
+  const [code, setCode] = useState('');
+  const entry = pools.find((e) => e.code === code) ?? pools[0] ?? null;
+  const pool = entry?.pool ?? null;
+  // the tournaments of the day on this phone – "all rounds of the day" or one of them (Sascha 10.11.2026)
+  const tours = loadTours().filter((t) => !t.ev.deletedAt && t.ev.date === day);
+  const [onCode, setOnCode] = useState(props.preset?.on?.code ?? '');
+  const on = tours.find((t) => t.code === onCode) ?? null;
+  // chosen: "p:<pool player>", "n:<name>" (a player of the round or one made here), "f:<friend>"
   const [against, setAgainst] = useState<string[]>([]);
+  const [made, setMade] = useState<{ name: string; hcp?: string }[]>([]);
+  const [typed, setTyped] = useState('');
+  const [scorer, setScorer] = useState<'by' | 'own'>('by');
   const [parts, setParts] = useState({ front: 5, back: 5, total: 10 });
   const [net, setNet] = useState(false);
+  const [share, setShare] = useState(100);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [whoOpen, setWhoOpen] = useState(false);
-  if (!entry) return null;
-  const pool = entry.pool;
-  const sym = prizeSym(prizeOf(pool));
-  const others = pool.players.filter((p) => p.id !== entry.me);
+  const meName = shownName(loadProfile()) || pool?.players.find((p) => p.id === entry?.me)?.name || tr('Me', 'Ich');
+  const currency = pool?.currency ?? loadPools().find((e) => !e.pool.deletedAt)?.pool.currency ?? 'EUR';
+  const sym = pool ? prizeSym(prizeOf(pool)) : currencySymbol(currency);
+  const stakes = pool ? prizeStakes(prizeOf(pool), DUEL_STAKES) : DUEL_STAKES;
+  const others = pool ? pool.players.filter((p) => p.id !== entry!.me) : [];
+  const inPool = (name: string) => others.some((p) => sameName(p.name, name));
+  // the round's players and those made here – not one of the pool, not me
+  const named = [...(props.preset?.players ?? []), ...made].filter((x, k, all) => x.name.trim() && !sameName(x.name, meName) && !inPool(x.name) && all.findIndex((y) => sameName(y.name, x.name)) === k);
+  const friends = loadFriends().filter((f) => f.name.trim() && !sameName(f.name, meName) && !inPool(f.name) && !named.some((x) => sameName(x.name, f.name)) && !others.some((p) => !!f.uid && (p.joined?.uid === f.uid || p.invited?.uid === f.uid)));
   // a duel with him on that day already – not offered twice
-  const taken = (pid: string) => pool.wagers.some((w) => sameDuel(w, { player: entry.me, opponent: pid, day }));
-  const chosen = against.filter((id) => others.some((p) => p.id === id) && !taken(id));
-  const names = chosen.map((id) => others.find((p) => p.id === id)?.name ?? '').filter(Boolean);
+  const taken = (pid: string) => !!pool && pool.wagers.some((w) => sameDuel(w, { player: entry!.me, opponent: pid, day }));
+  const chosen = against.filter((k) => (k.startsWith('p:') ? others.some((p) => `p:${p.id}` === k && !taken(p.id)) : k.startsWith('n:') ? named.some((x) => `n:${x.name}` === k) : friends.some((f) => `f:${f.id}` === k)));
+  const nameOf = (k: string) => (k.startsWith('p:') ? (others.find((p) => `p:${p.id}` === k)?.name ?? '') : k.startsWith('n:') ? k.slice(2) : (friends.find((f) => `f:${f.id}` === k)?.name ?? ''));
+  const names = chosen.map(nameOf).filter(Boolean);
+  const flip = (k: string, v: boolean) => setAgainst(v ? [...new Set([...against, k])] : against.filter((x) => x !== k));
+  const add = () => {
+    const name = typed.trim();
+    if (!name) return;
+    if (!named.some((x) => sameName(x.name, name)) && !inPool(name)) setMade([...made, { name }]);
+    const p = others.find((x) => sameName(x.name, name));
+    flip(p ? `p:${p.id}` : `n:${named.find((x) => sameName(x.name, name))?.name ?? name}`, true);
+    setTyped('');
+  };
   const go = async () => {
     setBusy(true);
     setMsg(null);
-    const r = await challengeDuels(entry.code, entry.me, chosen, { day, parts, net, by: shownName(loadProfile()) || pool.players.find((p) => p.id === entry.me)?.name || '' });
+    const e = entry ?? (await poolForDuel(day, { me: meName, currency }));
+    if (!e) {
+      setBusy(false);
+      return setMsg(NO_NET());
+    }
+    const opps: (string | NewOpponent)[] = chosen.map((k) => {
+      if (k.startsWith('p:')) return k.slice(2);
+      if (k.startsWith('n:')) {
+        const x = named.find((y) => `n:${y.name}` === k)!;
+        return { name: x.name, ...(x.hcp ? { hcp: x.hcp } : {}) };
+      }
+      const f = friends.find((y) => `f:${y.id}` === k)!;
+      return { name: f.name, ...(f.hcp ? { hcp: f.hcp } : {}), ...(f.uid ? { friend: { uid: f.uid, name: f.fullName || f.name } } : {}) };
+    });
+    const r = await challengeDuels(e.code, e.me, opps, {
+      day,
+      parts,
+      net,
+      ...(net ? { allowance: share } : {}),
+      scorer,
+      ...(on ? { on: { code: on.code, name: on.ev.name, course: on.ev.course.name } } : {}),
+      by: meName,
+    });
     setBusy(false);
     if (!r) return setMsg(NO_NET());
-    if (r.ids.length) pushWagers(entry.code, r.ids); // the one challenged hears of it
-    props.onDone(entry.code);
+    if (r.ids.length) pushWagers(e.code, r.ids); // the one challenged hears of it
+    for (const f of r.invite) void inviteFriend(e.code, f.uid, f.name, meName); // a friend brought in: let in, told
+    props.onDone(e.code);
   };
   return (
     <>
-      {/* Wo – the pool of bets the duel goes into */}
-      {pools.length > 1 && (
-        <section className="setup-part">
-          <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
-          <SettingsList>
+      {/* Wo – the pool of bets the duel goes into; without one a new one of the day */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
+        <SettingsList>
+          {pools.length > 1 ? (
             <ChoiceRow<string>
               label={tr('Pool', 'Pool')}
               title={tr('Which pool of bets', 'Welche Wetten')}
-              value={entry.code}
+              value={entry!.code}
               onChange={(c) => {
                 setCode(c);
                 setAgainst([]);
               }}
               options={pools.map((e) => ({ value: e.code, name: e.pool.name, text: `${dayText(e.pool.from)} – ${dayText(e.pool.to)}` }))}
             />
-          </SettingsList>
-        </section>
-      )}
-      {/* Wann – one round: the day */}
+          ) : (
+            <SettingsRow label={tr('Pool', 'Pool')} value={pool ? pool.name : tr(`New: side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Neu: Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`)} onClick={() => undefined} disabled />
+          )}
+        </SettingsList>
+      </section>
+      {/* Wann – one round: the day, and which round of it */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Day', 'Tag')}</span>
         <SettingsList>
-          <DateRow label={tr('Round of', 'Runde am')} value={day} min={first} max={pool.to} onChange={setDay} />
+          <DateRow label={tr('Round of', 'Runde am')} value={day} min={today} onChange={(d) => { setDay(d); setOnCode(''); }} />
+          {tours.length > 0 && (
+            <ChoiceRow<string>
+              label={tr('Round', 'Runde')}
+              title={tr('Which round of the day', 'Welche Runde des Tages')}
+              value={on ? on.code : ''}
+              onChange={setOnCode}
+              options={[
+                { value: '', name: tr('All rounds of the day', 'Alle Runden des Tages'), text: tr('The first round you both play that day.', 'Die erste Runde, die ihr beide an dem Tag spielt.') },
+                ...tours.map((t) => ({ value: t.code, name: t.ev.name, text: t.ev.course.name })),
+              ]}
+            />
+          )}
         </SettingsList>
       </section>
-      {/* Wer – one duel per opponent; across flights, any player of the pool */}
+      {/* Wer – one duel per opponent; across flights, anyone */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Against', 'Gegen wen')}</span>
         <SettingsList>
           <SettingsRow label={tr('Opponents', 'Gegner')} value={names.length ? names.join(', ') : tr('Choose opponents', 'Gegner wählen')} need={!names.length} onClick={() => setWhoOpen(true)} />
+          <ChoiceRow<'by' | 'own'>
+            label={tr('Who keeps the score', 'Wer erfasst')}
+            value={scorer}
+            onChange={setScorer}
+            options={[
+              { value: 'by', name: tr('Me for both', 'Ich für beide'), text: tr('From my round – one not in my flight counts with his own.', 'Aus meiner Runde – wer nicht in meinem Flight spielt, zählt mit seiner eigenen.') },
+              { value: 'own', name: tr('Each his own', 'Jeder seinen'), text: tr('Each from his own round – across flights too.', 'Jeder aus seiner eigenen Runde – auch über Flights.') },
+            ]}
+          />
         </SettingsList>
-        {names.length > 1 && <span className="muted small">{tr(`${names.length} duels – each one on its own.`, `${names.length} Duelle – jedes für sich.`)}</span>}
       </section>
       {/* Worum – the stakes and gross or net */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Stakes', 'Einsätze')}</span>
         <SettingsList>
-          <StakeRow label={tr('Front nine', 'Vorne (9)')} value={parts.front} sym={sym} stakes={prizeStakes(prizeOf(pool), DUEL_STAKES)} onChange={(front) => setParts({ ...parts, front })} />
-          <StakeRow label={tr('Back nine', 'Hinten (9)')} value={parts.back} sym={sym} stakes={prizeStakes(prizeOf(pool), DUEL_STAKES)} onChange={(back) => setParts({ ...parts, back })} />
-          <StakeRow label={tr('All 18', 'Gesamt (18)')} value={parts.total} sym={sym} stakes={prizeStakes(prizeOf(pool), DUEL_STAKES)} onChange={(total) => setParts({ ...parts, total })} />
+          <StakeRow label={tr('Front nine', 'Vorne (9)')} value={parts.front} sym={sym} stakes={stakes} onChange={(front) => setParts({ ...parts, front })} />
+          <StakeRow label={tr('Back nine', 'Hinten (9)')} value={parts.back} sym={sym} stakes={stakes} onChange={(back) => setParts({ ...parts, back })} />
+          <StakeRow label={tr('All 18', 'Gesamt (18)')} value={parts.total} sym={sym} stakes={stakes} onChange={(total) => setParts({ ...parts, total })} />
           <ChoiceRow<'gross' | 'net'>
             label={tr('Scoring', 'Wertung')}
             value={net ? 'net' : 'gross'}
@@ -101,6 +173,15 @@ export function DuelSetup(props: { onDone: (code: string) => void }) {
               { value: 'net', name: tr('Net', 'Netto'), text: tr('Minus the strokes received on each hole – from the playing handicap of each one’s round.', 'Abzüglich der Vorgabeschläge je Loch – aus der Spielvorgabe der eigenen Runde.') },
             ]}
           />
+          {net && (
+            <ChoiceRow<number>
+              label={tr('Handicap share', 'Vorgabe')}
+              title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
+              value={share}
+              onChange={setShare}
+              options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
+            />
+          )}
         </SettingsList>
       </section>
       {msg && (
@@ -121,19 +202,37 @@ export function DuelSetup(props: { onDone: (code: string) => void }) {
                 ✕
               </button>
             </div>
-            <ToggleList>
-              {others.map((p) => (
-                <ToggleRow
-                  key={p.id}
-                  inList
-                  label={p.name}
-                  text={taken(p.id) ? tr('A duel on this day already', 'An diesem Tag schon ein Duell') : undefined}
-                  disabled={taken(p.id)}
-                  on={chosen.includes(p.id)}
-                  onChange={(on) => setAgainst(on ? [...new Set([...against, p.id])] : against.filter((x) => x !== p.id))}
-                />
-              ))}
-            </ToggleList>
+            {others.length > 0 && <span className="eyebrow">{pool!.name}</span>}
+            {others.length > 0 && (
+              <ToggleList>
+                {others.map((p) => (
+                  <ToggleRow key={p.id} inList label={p.name} text={taken(p.id) ? tr('A duel on this day already', 'An diesem Tag schon ein Duell') : undefined} disabled={taken(p.id)} on={chosen.includes(`p:${p.id}`)} onChange={(v) => flip(`p:${p.id}`, v)} />
+                ))}
+              </ToggleList>
+            )}
+            {named.length > 0 && <span className="eyebrow">{props.preset?.players?.length ? tr('In your round', 'In deiner Runde') : tr('Players', 'Spieler')}</span>}
+            {named.length > 0 && (
+              <ToggleList>
+                {named.map((x) => (
+                  <ToggleRow key={x.name} inList label={x.name} text={tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`n:${x.name}`)} onChange={(v) => flip(`n:${x.name}`, v)} />
+                ))}
+              </ToggleList>
+            )}
+            {friends.length > 0 && <span className="eyebrow">{tr('Friends', 'Freunde')}</span>}
+            {friends.length > 0 && (
+              <ToggleList>
+                {friends.map((f) => (
+                  <ToggleRow key={f.id} inList label={f.name} text={f.uid ? tr('Gets the challenge on his phone', 'Bekommt die Herausforderung aufs Handy') : tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`f:${f.id}`)} onChange={(v) => flip(`f:${f.id}`, v)} />
+                ))}
+              </ToggleList>
+            )}
+            <span className="eyebrow">{tr('Add a player', 'Spieler anlegen')}</span>
+            <div className="duel-add">
+              <input className="input" aria-label={tr('Name of the player', 'Name des Spielers')} placeholder={tr('Name', 'Name')} value={typed} onChange={(e) => setTyped(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
+              <button type="button" className="btn-secondary" disabled={!typed.trim()} onClick={add}>
+                {tr('Add', 'Hinzufügen')}
+              </button>
+            </div>
             <button type="button" className="btn-primary" onClick={() => setWhoOpen(false)}>
               {tr('Done', 'Fertig')}
             </button>
@@ -175,7 +274,8 @@ export function ChallengeInvites(props: { onOpen: (code: string) => void }) {
 export const duelText = (w: Wager, sym: string): string =>
   [
     `${money(w.parts?.front ?? 0, sym)} / ${money(w.parts?.back ?? 0, sym)} / ${money(w.parts?.total ?? 0, sym)}`,
-    w.net ? tr('net', 'netto') : tr('gross', 'brutto'),
+    w.net ? `${tr('net', 'netto')}${w.allowance != null && w.allowance !== 100 ? ` ${w.allowance} %` : ''}` : tr('gross', 'brutto'),
+    w.on?.name ?? '',
     w.day ? (w.day === dayOf(new Date()) ? tr('today', 'heute') : `${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`) : '',
   ]
     .filter(Boolean)

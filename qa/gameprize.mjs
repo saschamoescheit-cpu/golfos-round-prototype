@@ -43,22 +43,9 @@ await p.getByRole('dialog', { name: 'Worum wird gespielt' }).getByRole('button',
 await p.getByRole('dialog', { name: 'Wer gibt wem aus' }).locator('.pick-option').first().click();
 await p.waitForTimeout(300);
 ok((await value('Einsatz je Skin')) === '1 × Getränk', `Skins for drinks: 1 × Getränk a skin, not 5 (${await value('Einsatz je Skin')})`);
-// 5+5+10: one drink on the 18, front and back none
+// 5+5+10 is a duel in the pool of bets now (Sascha 09./10.11.2026): its stakes the pool's – not the game's prize
 await form(/^5\+5\+10/);
-ok((await value('Vorne')) === 'ohne' && (await value('Hinten')) === 'ohne' && (await value('Gesamt')) === '1 × Getränk', `5+5+10 for drinks: vorne ohne, hinten ohne, gesamt 1 × Getränk (${await value('Vorne')} · ${await value('Hinten')} · ${await value('Gesamt')})`);
-await row('Vorne').click();
-{
-  const opts = (await p.locator('.sheet .pick-option strong').allInnerTexts()).join('|');
-  ok(/^Ohne\|1 × Getränk\|2 × Getränk/.test(opts), `the front offers "Ohne" (${opts})`);
-  await p.locator('.sheet .pick-option').filter({ hasText: /^2 × Getränk/ }).first().click();
-}
-ok((await value('Vorne')) === '2 × Getränk', 'the front set to 2 × Getränk');
-// back to money: the form's own stakes
-await row('Worum wird gespielt').click();
-await p.getByRole('dialog', { name: 'Worum wird gespielt' }).getByRole('button', { name: /^Geld/ }).click();
-await p.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /^Euro/ }).click();
-await p.waitForTimeout(300);
-ok(/5/.test(await value('Vorne')) && /10/.test(await value('Gesamt')), `money again: the form's stakes (${await value('Vorne')} · ${await value('Gesamt')})`);
+ok((await p.locator('.settings-row').filter({ hasText: /^Gegner/ }).count()) === 1 && (await row('Worum wird gespielt').count()) === 0, '5+5+10: the duel – opponents, no "Worum wird gespielt" of a game');
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all passed');

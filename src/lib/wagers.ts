@@ -111,6 +111,16 @@ export interface Wager {
    *  player challenged the opponent, who accepts or declines – it counts once accepted. Unset (set up by the host
    *  before): it counts. */
   challenge?: { state: 'open' | 'accepted' | 'declined'; at: string };
+  /** a duel: who keeps the score (Sascha 10.11.2026: "to set who keeps the score of the game" – the default the one who
+   *  challenged, for both): 'by' – the challenger's round gives both cards (the opponent's own where he is not in it);
+   *  'own' (or unset, as before) – each one's own round */
+  scorer?: 'by' | 'own';
+  /** a duel net: the share of the playing handicap, % (Sascha 10.11.2026: "net – with how many percent the handicap
+   *  counts"); unset – 100 */
+  allowance?: number;
+  /** a duel: the round of its day it is played in (Sascha 10.11.2026: "all rounds of the day – or the tournament / the
+   *  planned round"): a tournament's code, its name and its course; unset – the first round of the day */
+  on?: { code: string; name: string; course: string };
   /** who set it up (a name) */
   by?: string;
   /** custom (an own bet, built – Sascha 02.11.2026): what is counted on each hole */
@@ -382,6 +392,13 @@ export interface DuelCard {
   received: number[];
   /** kept by the host's phone for a player without his own card of the day */
   by?: 'host';
+  /** kept by another player's phone – the challenger of a duel he keeps the score of (Sascha 10.11.2026): his player */
+  rec?: string;
+  /** the tournament the round was of (its code) */
+  tour?: string;
+  /** his playing handicap and the holes' stroke index – a duel with a share of the handicap (75 %) spreads it anew */
+  hcp?: number | null;
+  si?: number[];
 }
 
 /** A payment of the settlement, between two players: the payer says he paid, the receiver that he got it – either
@@ -507,6 +524,10 @@ export interface PlayedRound {
   holeKey?: string;
   /** not finished yet */
   open?: boolean;
+  /** the round of a tournament: its code */
+  tour?: string;
+  /** the holes' stroke index – a share of the handicap spread anew (a duel at 75 %) */
+  si?: number[];
   /** the others of his flight in that round – for "5+5+10" against one of them */
   others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean; marked?: (HoleEntry | undefined)[] }[];
 }
@@ -546,6 +567,8 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         day: dayOf(r.createdAt),
         course: r.courseName,
         holeKey: r.holes.map((h) => h.label).join(),
+        ...(r.shared?.code && r.shared.tournament ? { tour: r.shared.code } : {}),
+        si: r.holes.map((h) => h.strokeIndex),
         pars: r.holes.map((h) => h.par),
         entries: r.holes.map((_, i) => r.entries[me.id]?.[i]),
         hcp: me.playingHandicap ?? null,
@@ -792,6 +815,8 @@ export function cardOf(r: PlayedRound, counted = false): DuelCard {
     day: r.day,
     course: r.course,
     ...(r.holeKey ? { key: r.holeKey } : {}),
+    ...(r.tour ? { tour: r.tour } : {}),
+    ...(r.si?.length ? { si: r.si.slice(0, 18), hcp: r.hcp } : {}),
     strokes: holes.map((e, i) => strokesOf(counted && r.marked ? (r.marked[i] ?? e) : e)),
     received: holes.map((_, i) => r.received?.[i] ?? 0),
   };
@@ -818,10 +843,22 @@ const sameCard = (a: DuelCard, b: DuelCard) => a.day === b.day && a.course === b
  *  keeps cards only for rounds the player has none of his own. */
 export function mergeCards(old: DuelCard[] | undefined, fresh: DuelCard[], byHost = false): DuelCard[] {
   const was = old ?? [];
+  // the cards a duel's challenger keeps for him (rec) stay as they are – only his phone changes them (mergeKept)
   const out = byHost
-    ? [...was.filter((o) => !o.by || !fresh.some((c) => sameCard(c, o))), ...fresh.filter((c) => !was.some((o) => !o.by && sameCard(o, c))).map((c) => ({ ...c, by: 'host' as const }))]
-    : [...was.filter((o) => o.by && !fresh.some((c) => sameCard(c, o))), ...fresh];
+    ? [...was.filter((o) => o.rec || !o.by || !fresh.some((c) => sameCard(c, o))), ...fresh.filter((c) => !was.some((o) => !o.by && !o.rec && sameCard(o, c))).map((c) => ({ ...c, by: 'host' as const }))]
+    : [...was.filter((o) => o.rec || (o.by && !fresh.some((c) => sameCard(c, o)))), ...fresh];
   return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+}
+/** The cards a duel's challenger keeps for his opponent from his own round (Sascha 10.11.2026: "the challenger keeps the
+ *  score of both"): his (`rec`) of the same round replaced, every other card as it was. */
+export function mergeKept(old: DuelCard[] | undefined, fresh: DuelCard[], rec: string): DuelCard[] {
+  const was = old ?? [];
+  const mark = fresh.map((c) => {
+    const { by: _by, ...rest } = c;
+    void _by;
+    return { ...rest, rec };
+  });
+  return [...was.filter((o) => o.rec !== rec || !mark.some((c) => sameCard(c, o))), ...mark].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 }
 
 const cardPart = (c: DuelCard, from: number, to: number, net: boolean): number | null => {
@@ -833,20 +870,33 @@ const cardPart = (c: DuelCard, from: number, to: number, net: boolean): number |
   }
   return sum;
 };
+/** A card with a share of the handicap (Sascha 10.11.2026: "net – with how many percent"): the strokes received spread
+ *  anew from the playing handicap × share over the stroke index; a card without them (from before) as it was. */
+export function withShare(c: DuelCard, share: number | undefined): DuelCard {
+  if (share == null || share === 100 || c.hcp == null || !c.si?.length) return c;
+  const holes = c.si.map((strokeIndex, index) => ({ index, label: String(index + 1), loop: 'A', number: index + 1, par: 4, strokeIndex }));
+  return { ...c, received: handicapStrokes(holes, Math.round((c.hcp * share) / 100)) };
+}
 
 /** A duel from the two players' cards: the round both played on its day (the bet's day – else every day of the pool),
  *  front nine, back nine and the 18 – and while it is played, the lead over the holes both have. */
 export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>, now = ''): Progress {
   // without its stakes (a watcher without the money – golfos-live.sql): who is ahead, the 18 counting twice
   const parts = w.parts ?? { front: 1, back: 1, total: 2 };
-  // a player's own card before one the host's phone kept for him
-  const ownFirst = (cs: DuelCard[]) => [...cs].sort((a, b) => (a.by ? 1 : 0) - (b.by ? 1 : 0));
-  const mine = ownFirst(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day));
-  const theirs = ownFirst(pool.cards?.[w.opponent ?? ''] ?? []);
+  // a player's own card before one another phone kept for him – but the challenger's, when he keeps the score of both
+  // (Sascha 10.11.2026)
+  const keeper = w.scorer === 'by' ? w.player : null;
+  const rank = (c: DuelCard) => (keeper && c.rec === keeper ? 0 : !c.by && !c.rec ? 1 : 2);
+  const ordered = (cs: DuelCard[]) => [...cs].sort((a, b) => rank(a) - rank(b));
+  // the round it is played in: the tournament's (by its code – a card from before without one by its course)
+  const inRound = (c: DuelCard) => !w.on || c.tour === w.on.code || (!c.tour && c.course === w.on.course);
+  const mine = ordered(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day) && inRound(c) && !c.rec);
+  const theirs = ordered(pool.cards?.[w.opponent ?? ''] ?? []).filter((c) => inRound(c) && (!c.rec || c.rec === keeper)).map((c) => (w.net ? withShare(c, w.allowance) : c));
   const net = !!w.net;
   let amount = 0;
   const duels: NonNullable<Progress['duels']> = [];
-  for (const a of mine) {
+  for (const own of mine) {
+    const a = w.net ? withShare(own, w.allowance) : own;
     if (duels.some((d) => d.day === a.day)) continue; // one duel a day: its first round
     const b = theirs.find((x) => x.day === a.day && x.course === a.course) ?? theirs.find((x) => x.day === a.day);
     if (!b) continue;

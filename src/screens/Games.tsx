@@ -40,7 +40,7 @@ import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, 
 import { SeriesScreen, TOURS_ICON, TourScreen, TourStartCard, ToursTab, useTours } from './Tournaments';
 import { TourSetup, newTourDraft, pickCourse, type TourDraft } from './TourPlan';
 import { loadSeries, tourState } from '../lib/tourstore';
-import { duelPools, isLive, loadPools } from '../lib/wagerstore';
+import { isLive, loadPools } from '../lib/wagerstore';
 import { ChallengeInvites, DuelSetup } from './Duels';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
@@ -915,9 +915,9 @@ export function FormRules(props: { form: FormDef }) {
 
 function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: () => void; onCourse: () => void; onStart: (g: Game) => void; /** 5+5+10 challenged in a pool: its page */ onDuel?: (code: string) => void }) {
   const d = props.draft;
-  // 5+5+10 with a pool of bets running: one against one, a duel each (Sascha 09.11.2026) – without one, the game in the
-  // flight as before
-  const duel = d.formChosen !== false && d.form === 'fivefiveten' && !!props.onDuel && duelPools().length > 0;
+  // 5+5+10: one against one, a duel each (Sascha 09.11.2026) – in the pool of bets of the day, without one a new one
+  // (10.11.2026: "against linked friends or players made as in a round")
+  const duel = d.formChosen !== false && d.form === 'fivefiveten' && !!props.onDuel;
   // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
   const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
   // what is played for (Sascha 03.11.2026) – money in its currency, a thing, nothing; the stakes shown in it

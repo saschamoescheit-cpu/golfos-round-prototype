@@ -3,8 +3,9 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, type Cell, type RoundEvent } from './sharedround';
 import { loadTours } from './tourstore';
 import { newCode } from './sharedgame';
+import { tr } from './i18n';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, cardsFor, dayOf, fromCards, mergeCards, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, balances, cardsFor, dayOf, fromCards, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -421,6 +422,13 @@ export function markerCount(r: Round, pid: string): Cell[] | null {
   return f.scorer && f.scorer !== pid ? (f.scores?.[pid] ?? null) : (f.marks?.[pid] ?? null);
 }
 
+/** The opponents of the duels this phone's owner challenged and keeps the score of (Sascha 10.11.2026: "the
+ *  challenger keeps both") – not declined. */
+export function keptOpponents(pool: WagerPool, me: string): PoolPlayer[] {
+  const ids = new Set(pool.wagers.filter((w) => fromCards(w) && w.player === me && w.scorer === 'by' && w.challenge?.state !== 'declined' && w.opponent).map((w) => w.opponent!));
+  return pool.players.filter((p) => ids.has(p.id));
+}
+
 /** Another player's round judged on this phone only where it kept his card as far as its owner's – this phone played
  *  for him; a partner's few holes would undercount him. */
 function keptFor(r: Round, name: string): boolean {
@@ -497,6 +505,16 @@ export function reportWagers(): Promise<void> {
             cards[pid] = next;
             changed = true;
           }
+          // the duels this phone's owner challenged and keeps the score of (Sascha 10.11.2026): his opponent's card from
+          // the rounds on this phone he is in – never one of another phone
+          for (const opp of keptOpponents(p, e.me)) {
+            const his = all.filter((r) => keptFor(r, opp.name));
+            if (!his.length) continue;
+            const next = mergeKept(cards[opp.id], cardsFor(playedRounds(his, counted, markerCount, opp.name), p), e.me);
+            if (JSON.stringify(next) === JSON.stringify(cards[opp.id] ?? [])) continue;
+            cards[opp.id] = next;
+            changed = true;
+          }
           return changed ? cards : null;
         };
         if (!cardsNow(e.pool) && mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id]))) continue;
@@ -531,18 +549,76 @@ export function reportWagers(): Promise<void> {
   return running;
 }
 
-/** 5+5+10 against one or more players of the pool, each a duel of its own (Sascha 09.11.2026) – challenged by this
- *  phone's owner (the host as any player): open until the other accepts. The pool as written, or null. */
-export async function challengeDuels(code: string, me: string, opponents: string[], o: { day: string; parts: { front: number; back: number; total: number }; net: boolean; by: string }): Promise<{ pool: WagerPool; ids: string[] } | null> {
+/** An opponent not in the pool yet (Sascha 10.11.2026: "linked friends, or players made as in a round"): a friend by
+ *  his account – invited –, else a player without a phone. */
+export type NewOpponent = { name: string; friend?: { uid: string; name: string }; hcp?: string };
+/** The pool's player for an opponent: the one there already (by account, else by name), or a new one. */
+export function opponentIn(pool: WagerPool, o: string | NewOpponent): { player: PoolPlayer; added: boolean } | null {
+  if (typeof o === 'string') {
+    const p = pool.players.find((x) => x.id === o);
+    return p ? { player: p, added: false } : null;
+  }
+  const uid = o.friend?.uid;
+  const there = (uid && pool.players.find((x) => x.joined?.uid === uid || x.invited?.uid === uid)) || pool.players.find((x) => sameName(x.name, o.name) && (!uid || (!x.joined?.uid && !x.invited?.uid)));
+  if (there) return { player: there, added: false };
+  const name = o.name.trim();
+  if (!name) return null;
+  return { player: { id: newId(), name, ...(o.hcp ? { hcp: o.hcp } : {}), ...(o.friend ? { invited: { uid: o.friend.uid, name: o.friend.name, at: new Date().toISOString() } } : {}) }, added: true };
+}
+/** A player without a phone: nobody joined as him, nobody invited – his duels count at once, the challenger keeps his score. */
+export const phoneless = (p: PoolPlayer): boolean => !p.joined && !p.invited;
+
+/** 5+5+10 against one or more players, each a duel of its own (Sascha 09.11.2026) – challenged by this phone's owner (the
+ *  host as any player): open until the other accepts; a player without a phone at once. Opponents not in the pool yet
+ *  come in (Sascha 10.11.2026): a friend invited, a player made here without a phone. `scorer`: who keeps the
+ *  score (default the challenger, for both); `on`: the tournament of the day it is played in. The pool as written, the new
+ *  duels and the friends to tell – or null. */
+export async function challengeDuels(
+  code: string,
+  me: string,
+  opponents: (string | NewOpponent)[],
+  o: { day: string; parts: { front: number; back: number; total: number }; net: boolean; allowance?: number; by: string; scorer?: 'by' | 'own'; on?: Wager['on'] },
+): Promise<{ pool: WagerPool; ids: string[]; invite: { uid: string; name: string }[] } | null> {
   const at = new Date().toISOString();
-  const ws: Wager[] = opponents.map((opponent) => ({ id: newId(), player: me, opponent, kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: o.day, parts: o.parts, ...(o.net ? { net: true } : {}), by: o.by, challenge: { state: 'open', at } }));
   let ids: string[] = [];
+  let invite: { uid: string; name: string }[] = [];
   const pool = await changePool(code, (p) => {
-    const fresh = ws.filter((w) => p.players.some((x) => x.id === w.opponent) && !p.wagers.some((x) => sameDuel(x, w)));
+    let players = p.players;
+    const fresh: Wager[] = [];
+    invite = [];
+    for (const x of opponents) {
+      const got = opponentIn({ ...p, players }, x);
+      if (!got || got.player.id === me) continue;
+      const opp = got.player;
+      const w: Wager = {
+        id: newId(),
+        player: me,
+        opponent: opp.id,
+        kind: 'nassau',
+        target: 0,
+        stake: 0,
+        payout: 'opponent',
+        attempts: 'day',
+        day: o.day,
+        parts: o.parts,
+        ...(o.net ? { net: true, ...(o.allowance != null && o.allowance !== 100 ? { allowance: o.allowance } : {}) } : {}),
+        // without a phone he keeps no card – the challenger keeps it
+        scorer: phoneless(opp) ? 'by' : (o.scorer ?? 'by'),
+        ...(o.on ? { on: o.on } : {}),
+        by: o.by,
+        challenge: { state: phoneless(opp) ? 'accepted' : 'open', at },
+      };
+      if (p.wagers.some((y) => sameDuel(y, w)) || fresh.some((y) => sameDuel(y, w))) continue;
+      if (got.added) {
+        players = [...players, opp];
+        if (opp.invited) invite.push({ uid: opp.invited.uid, name: opp.name });
+      }
+      fresh.push(w);
+    }
     ids = fresh.map((w) => w.id);
-    return fresh.length ? { ...p, wagers: [...p.wagers, ...fresh] } : null;
+    return fresh.length ? { ...p, players, wagers: [...p.wagers, ...fresh] } : null;
   });
-  return pool ? { pool, ids } : null;
+  return pool ? { pool, ids, invite } : null;
 }
 /** The same duel already there – the two of them, on that day, not declined (either one challenged). */
 export const sameDuel = (a: Wager, b: Pick<Wager, 'player' | 'opponent' | 'day'>): boolean =>
@@ -563,6 +639,32 @@ export const takeBackDuel = (code: string, id: string): Promise<WagerPool | null
     void _gone;
     return { ...p, wagers: p.wagers.filter((x) => x.id !== id), progress };
   });
+/** The pool a duel of `day` goes into (Sascha 10.11.2026: "a side bet from Rounds into the pool of the day – without one
+ *  the app makes one"): the first one running then with this phone's owner in it – else a new one of that day, he its
+ *  host and its only player ("Sidebets 10.11."). Null offline. */
+export async function poolForDuel(day: string, o: { me: string; currency?: 'EUR' | 'USD' }): Promise<PoolEntry | null> {
+  const there = duelPoolsOn(day)[0];
+  if (there) return there;
+  const uid = myAccount();
+  const at = new Date().toISOString();
+  const pool: WagerPool = {
+    kind: 'wager-pool',
+    id: newId(),
+    name: tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
+    from: day,
+    to: day,
+    createdAt: at,
+    players: [{ id: newId(), name: o.me, joined: { name: o.me, at, ...(uid ? { uid } : {}) } }],
+    wagers: [],
+    progress: {},
+    currency: o.currency ?? 'EUR',
+  };
+  return createPool(pool, pool.players[0].id);
+}
+/** The pools of a day this phone's owner is in – for a duel against anyone (a friend, a player made then) one alone too. */
+export const duelPoolsOn = (day = dayOf(new Date())): PoolEntry[] =>
+  loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt && e.pool.from <= day && e.pool.to >= day);
+
 /** The pools running on a day this phone's owner can challenge in – his player and at least one other. */
 export const duelPools = (day = dayOf(new Date())): PoolEntry[] =>
   loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt && e.pool.to >= day && e.pool.players.some((p) => p.id !== e.me));

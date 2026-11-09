@@ -30,11 +30,11 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(1000);
-// 5+5+10 on Hetzenhof
+// Nassau on Hetzenhof (it was 5+5+10 – a duel in the pool of bets since 10.11.2026)
 await p.locator('.tabbar').getByRole('button', { name: /(^|\s)Spielen$/ }).click();
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
-await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^5\s*\+\s*5\s*\+\s*10$/ }) }).first().click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Nassau$/ }) }).first().click();
 await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
 await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
 await p.fill('#course-search', 'Hetzenhof');

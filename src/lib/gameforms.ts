@@ -137,6 +137,8 @@ export interface FormDef {
   rules: () => string[]; // how it is played
   players: [number, number];
   counts?: number[]; // only these player numbers (e.g. one against one or two against two)
+  /** the players in words, when not a number (5+5+10: "gegen eine oder mehrere Personen" – Sascha 10.11.2026) */
+  playersText?: () => string;
   settings: SettingDef[];
   input?: 'wolf' | 'bbb' | 'snake' | 'dots' | 'hammer' | 'chicago';
   /** WHS recommendation for the share of the playing handicap, by the number of players (night run 15./16.10.2026). */
@@ -988,12 +990,15 @@ export const FORMS: FormDef[] = [
     id: 'fivefiveten',
     hcpFor: () => '0',
     name: () => '5+5+10',
-    short: () => tr('Stroke play, everyone against everyone: front nine, back nine and the 18 – each its own stake.', 'Zählspiel jeder gegen jeden: vorne, hinten und über 18 – jedes mit eigenem Einsatz.'),
+    // Sascha 10.11.2026: "not 2–4 players – always against one or more persons"; each opponent a duel of its own
+    short: () => tr('Stroke play one against one – against one or more players, each a duel of its own: front nine, back nine and the 18, each its own stake.', 'Zählspiel eins gegen eins – gegen eine oder mehrere Personen, jedes Duell für sich: vorne, hinten und über 18, jedes mit eigenem Einsatz.'),
+    playersText: () => tr('against one or more', 'gegen eine oder mehrere Personen'),
     rules: () => [
       tr('Stroke play: the strokes of each nine and of the whole round are added up.', 'Zählspiel: Die Schläge jeder Neun und der ganzen Runde werden zusammengezählt.'),
-      tr('Everyone against everyone: in every pair the better score on the front nine wins the front stake (5), the same on the back nine (5), and over 18 the total stake (10).', 'Jeder gegen jeden: In jeder Paarung gewinnt der bessere Score vorne den Einsatz für vorne (5), ebenso hinten (5) und über 18 den Einsatz für gesamt (10).'),
+      tr('Each opponent a duel of its own – in the same flight or another: the better score on the front nine wins the front stake (5), the same on the back nine (5), and over 18 the total stake (10).', 'Jeder Gegner ein eigenes Duell – im selben Flight oder in einem anderen: Der bessere Score vorne gewinnt den Einsatz für vorne (5), ebenso hinten (5) und über 18 den Einsatz für gesamt (10).'),
+      tr('The one challenged accepts on his phone; against a player without a phone it counts at once. Who keeps the score: the challenger for both (default) or each his own.', 'Der Herausgeforderte nimmt auf seinem Handy an; gegen einen Spieler ohne Handy gilt es sofort. Wer erfasst: der Herausforderer für beide (Standard) oder jeder seinen.'),
       tr('A tie wins nothing. A nine counts once both have played all its holes.', 'Gleichstand gewinnt nichts. Eine Neun zählt, sobald beide alle ihre Löcher gespielt haben.'),
-      tr('Gross by default – with a handicap share net, the strokes received on each hole.', 'Standard brutto – mit Vorgabe-Anteil netto, mit den Vorgabeschlägen je Loch.'),
+      tr('Gross by default – net with the strokes received on each hole, from a share of the playing handicap (100 %, 75 % …).', 'Standard brutto – netto mit den Vorgabeschlägen je Loch, aus einem Anteil der Spielvorgabe (100 %, 75 % …).'),
     ],
     players: [2, 4],
     settings: [
@@ -1157,4 +1162,4 @@ export function sidesOf(form: FormId, n: number, partner = 1): [number[], number
 
 export const fitsPlayers = (f: FormDef, n: number): boolean => (f.counts ? f.counts.includes(n) : n >= f.players[0] && n <= f.players[1]);
 export const playersText = (f: FormDef): string =>
-  f.counts ? f.counts.join(tr(' or ', ' oder ')) + tr(' players', ' Spieler') : f.players[0] === f.players[1] ? `${f.players[0]}${tr(' players', ' Spieler')}` : `${f.players[0]}–${f.players[1]}${tr(' players', ' Spieler')}`;
+  f.playersText ? f.playersText() : f.counts ? f.counts.join(tr(' or ', ' oder ')) + tr(' players', ' Spieler') : f.players[0] === f.players[1] ? `${f.players[0]}${tr(' players', ' Spieler')}` : `${f.players[0]}–${f.players[1]}${tr(' players', ' Spieler')}`;

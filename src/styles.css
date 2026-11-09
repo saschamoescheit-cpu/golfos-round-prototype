@@ -2313,3 +2313,6 @@ button.tile:disabled { opacity: 1; }
 .score-extras > .card { box-shadow: none; background: transparent; border: 0; padding: 0; }
 /* the target on top, how far it is made below (Sascha 10.11.2026: "0/1") – readable under the bold target */
 .bet-cell small.bet-made, .bet-matrix td .bet-cell small.bet-made { font-size: 12px; }
+/* 5+5+10: a player made in the opponents' sheet (Sascha 10.11.2026) */
+.duel-add { display: flex; gap: 8px; align-items: center; }
+.duel-add .input { flex: 1; min-width: 0; }
