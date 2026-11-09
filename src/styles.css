@@ -1983,6 +1983,14 @@ button.tile:disabled { opacity: 1; }
 /* the host invites right at a player (06.11.2026) – a small row under the name, icon and word */
 .pool-whois { align-self: flex-start; min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; }
 .pool-tour-hint { text-align: center; }
+/* 5+5+10 challenges (Sascha 09.11.2026) */
+.duel-challenges { display: flex; flex-direction: column; gap: 14px; }
+.duel-challenges h2 { margin: 0; font-size: 18px; }
+.duel-challenge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.duel-challenge .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.duel-answer { display: flex; gap: 8px; width: 100%; }
+.duel-answer button { flex: 1; }
+.duel-takeback { min-height: 40px; padding: 0 14px; }
 .pool-invite-state { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .invite-mark { flex: none; }
 .pool-edit-player { display: flex; align-items: center; gap: 8px; }

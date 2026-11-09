@@ -107,6 +107,10 @@ export interface Wager {
   text?: string;
   /** "5+5+10" (Sascha 01.11.2026): the stake of the front nine, the back nine and the 18 – against `opponent` */
   parts?: { front: number; back: number; total: number };
+  /** a duel one against one (Sascha 09.11.2026: "Chris against Erik is a bet of its own – also across flights"): the
+   *  player challenged the opponent, who accepts or declines – it counts once accepted. Unset (set up by the host
+   *  before): it counts. */
+  challenge?: { state: 'open' | 'accepted' | 'declined'; at: string };
   /** who set it up (a name) */
   by?: string;
   /** custom (an own bet, built – Sascha 02.11.2026): what is counted on each hole */
@@ -266,7 +270,7 @@ export interface Progress {
   /** "5+5+10": what the player won (+) or lost (−) against his opponent so far, and per round who won front, back, total
    *  (1 he, −1 the opponent, 0 tied, null not complete) */
   amount?: number;
-  duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null }[];
+  duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null; /** during the round: the holes both played, and his lead in strokes over them (+ ahead) */ thru?: number; lead?: number }[];
   /** a bet "with marker": holes of the counted rounds where the marker's figures differ from the player's own */
   differ?: number;
   /** each round of the pool's days on its own – a bet holds for one round, the standing per round (Sascha 08.11.2026:
@@ -279,6 +283,8 @@ export interface RoundResult {
   course: string;
   value: number | null;
   counted: boolean;
+  /** still being played – a figure that can only grow counts as made already, missed only once it is over */
+  open?: boolean;
 }
 
 /** A bet in each round on its own: the round's figure – the best of it when one round shows twice (two phones). */
@@ -288,8 +294,11 @@ export function perRoundOf(w: Wager, inTime: PlayedRound[]): RoundResult[] {
     const value = bestOf(w, [r]).best;
     const counted = !w.counted || r.counted;
     const same = out.find((x) => x.day === r.day && x.course === r.course);
-    if (!same) out.push({ day: r.day, course: r.course, value, counted });
-    else if (value != null && (same.value == null || (lower(w) ? value < same.value : value > same.value))) Object.assign(same, { value, counted });
+    if (!same) out.push({ day: r.day, course: r.course, value, counted, ...(r.open ? { open: true } : {}) });
+    else {
+      if (value != null && (same.value == null || (lower(w) ? value < same.value : value > same.value))) Object.assign(same, { value, counted });
+      if (!r.open) delete same.open; // over on one of the phones
+    }
   }
   return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 }
@@ -358,6 +367,21 @@ export interface WagerPool {
   oneScorer?: boolean;
   /** what was paid of the settlement (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them") */
   payments?: Payment[];
+  /** each player's cards of the pool's days, for the duels (Sascha 09.11.2026: "5+5+10 across flights – the scores from
+   *  the own round"): his phone keeps them, the other flight's phone compares */
+  cards?: Record<string, DuelCard[]>;
+}
+
+/** A round as a duel needs it: the strokes per hole (the marker's where he counted differently), the strokes received. */
+export interface DuelCard {
+  day: string;
+  course: string;
+  /** the round's holes ("1A,2A,…") – two rounds on one day apart */
+  key?: string;
+  strokes: (number | null)[];
+  received: number[];
+  /** kept by the host's phone for a player without his own card of the day */
+  by?: 'host';
 }
 
 /** A payment of the settlement, between two players: the payer says he paid, the receiver that he got it – either
@@ -481,6 +505,8 @@ export interface PlayedRound {
   differ?: number[];
   /** the round's holes, their labels joined ("1A,2A,…") – which round of a day a pool's round means */
   holeKey?: string;
+  /** not finished yet */
+  open?: boolean;
   /** the others of his flight in that round – for "5+5+10" against one of them */
   others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean; marked?: (HoleEntry | undefined)[] }[];
 }
@@ -525,6 +551,7 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         hcp: me.playingHandicap ?? null,
         received: handicapStrokes(r.holes, me.playingHandicap ?? null),
         counted: counted(r, me.id),
+        ...(r.finishedAt ? {} : { open: true }),
         others: r.players
           .filter((p) => p.id !== me.id)
           .map((p) => {
@@ -751,6 +778,118 @@ function judgeDuel(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: 
   return { best: null, done: false, rounds: take.length, amount, duels, at: now };
 }
 
+// ---------- duels across flights (Sascha 09.11.2026) ----------
+
+/** A duel challenged and not accepted (yet): it does not count. */
+export const duelWaits = (w: Wager): boolean => shapeOf(w.kind) === 'duel' && !!w.challenge && w.challenge.state !== 'accepted';
+/** A duel judged from the players' cards in the pool (a challenge) – not from one phone's flight. */
+export const fromCards = (w: Wager): boolean => shapeOf(w.kind) === 'duel' && !!w.challenge;
+
+/** A round of 18 holes as a duel's card: the marker's figures where he counted (with marker) – else the player's own. */
+export function cardOf(r: PlayedRound, counted = false): DuelCard {
+  const holes = r.entries.slice(0, 18);
+  return {
+    day: r.day,
+    course: r.course,
+    ...(r.holeKey ? { key: r.holeKey } : {}),
+    strokes: holes.map((e, i) => strokesOf(counted && r.marked ? (r.marked[i] ?? e) : e)),
+    received: holes.map((_, i) => r.received?.[i] ?? 0),
+  };
+}
+
+/** The cards of a phone's owner for a pool: his rounds of 18 on its days – the same round twice (two phones) once, the
+ *  one with more holes played. */
+export function cardsFor(rounds: PlayedRound[], pool: Pick<WagerPool, 'from' | 'to'> & { counted?: boolean }): DuelCard[] {
+  const out: DuelCard[] = [];
+  const played = (x: DuelCard) => x.strokes.filter((s) => s != null).length;
+  for (const r of rounds) {
+    if (r.pars.length < 18 || r.day < pool.from || r.day > pool.to) continue;
+    const c = cardOf(r, !!pool.counted);
+    if (!played(c)) continue;
+    const same = out.findIndex((x) => x.day === c.day && x.course === c.course && (x.key ?? '') === (c.key ?? ''));
+    if (same < 0) out.push(c);
+    else if (played(c) > played(out[same])) out[same] = c;
+  }
+  return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+}
+
+const sameCard = (a: DuelCard, b: DuelCard) => a.day === b.day && a.course === b.course && (a.key ?? '') === (b.key ?? '');
+/** A player's cards anew: his own phone's replace all of his own (and a host's of the same round); the host's phone
+ *  keeps cards only for rounds the player has none of his own. */
+export function mergeCards(old: DuelCard[] | undefined, fresh: DuelCard[], byHost = false): DuelCard[] {
+  const was = old ?? [];
+  const out = byHost
+    ? [...was.filter((o) => !o.by || !fresh.some((c) => sameCard(c, o))), ...fresh.filter((c) => !was.some((o) => !o.by && sameCard(o, c))).map((c) => ({ ...c, by: 'host' as const }))]
+    : [...was.filter((o) => o.by && !fresh.some((c) => sameCard(c, o))), ...fresh];
+  return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+}
+
+const cardPart = (c: DuelCard, from: number, to: number, net: boolean): number | null => {
+  let sum = 0;
+  for (let i = from; i < to; i++) {
+    const s = c.strokes[i];
+    if (s == null) return null;
+    sum += s - (net ? (c.received[i] ?? 0) : 0);
+  }
+  return sum;
+};
+
+/** A duel from the two players' cards: the round both played on its day (the bet's day – else every day of the pool),
+ *  front nine, back nine and the 18 – and while it is played, the lead over the holes both have. */
+export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>, now = ''): Progress {
+  const parts = w.parts ?? { front: 0, back: 0, total: 0 };
+  // a player's own card before one the host's phone kept for him
+  const ownFirst = (cs: DuelCard[]) => [...cs].sort((a, b) => (a.by ? 1 : 0) - (b.by ? 1 : 0));
+  const mine = ownFirst(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day));
+  const theirs = ownFirst(pool.cards?.[w.opponent ?? ''] ?? []);
+  const net = !!w.net;
+  let amount = 0;
+  const duels: NonNullable<Progress['duels']> = [];
+  for (const a of mine) {
+    if (duels.some((d) => d.day === a.day)) continue; // one duel a day: its first round
+    const b = theirs.find((x) => x.day === a.day && x.course === a.course) ?? theirs.find((x) => x.day === a.day);
+    if (!b) continue;
+    const d = {
+      day: a.day,
+      course: a.course,
+      front: beats(cardPart(a, 0, 9, net), cardPart(b, 0, 9, net)),
+      back: beats(cardPart(a, 9, 18, net), cardPart(b, 9, 18, net)),
+      total: beats(cardPart(a, 0, 18, net), cardPart(b, 0, 18, net)),
+    };
+    let thru = 0;
+    let lead = 0;
+    for (let i = 0; i < 18; i++) {
+      const x = a.strokes[i];
+      const y = b.strokes[i];
+      if (x == null || y == null) continue;
+      thru++;
+      lead += y - (net ? (b.received[i] ?? 0) : 0) - (x - (net ? (a.received[i] ?? 0) : 0));
+    }
+    amount += (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + (d.total ?? 0) * parts.total;
+    duels.push(d.total == null && thru ? { ...d, thru, lead } : d);
+  }
+  duels.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  return { best: null, done: false, rounds: duels.length, amount, duels, at: now };
+}
+
+/** A bet's standing: a duel challenged from the cards (nothing while it waits for its answer), else as reported. */
+export function progressOf(pool: WagerPool, w: Wager): Progress | undefined {
+  if (fromCards(w)) return duelWaits(w) ? undefined : judgeDuelCards(w, pool);
+  return pool.progress[w.id];
+}
+/** The pool as shown: each duel's standing from the cards – judged the same on every phone –, a duel not accepted (yet)
+ *  not among its bets (it waits under the challenges). */
+export function withDuels(pool: WagerPool): WagerPool {
+  if (!pool.wagers.some(fromCards)) return pool;
+  const progress = { ...pool.progress };
+  for (const w of pool.wagers.filter(fromCards)) {
+    const p = progressOf(pool, w);
+    if (p) progress[w.id] = p;
+    else delete progress[w.id];
+  }
+  return { ...pool, wagers: pool.wagers.filter((w) => !duelWaits(w)), progress };
+}
+
 /** A bet judged from the player's rounds: the rounds of the period (of its day), counted ones only when it asks. */
 export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: PoolPlayer[]; rounds?: PoolRound[] }, played: PlayedRound[], now = new Date().toISOString()): Progress {
   // "with marker": the marker's figures count, as in a tournament (Sascha 01.11.2026)
@@ -785,7 +924,7 @@ export const sameProgress = (a: Progress | undefined, b: Progress): boolean => !
 export type WagerState = 'done' | 'missed' | 'open';
 /** Made, missed or still open: by hand if judged so; missed once its day or the period is over, or the pool finished. */
 export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): WagerState {
-  const p = pool.progress[w.id];
+  const p = progressOf(pool, w);
   if (shapeOf(w.kind) === 'duel') {
     // settled round by round; decided once its day or the period is over (or its one round played)
     const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && ((!!w.day && today > w.day) || (p?.duels?.some((d) => d.total != null) ?? false)));
@@ -793,11 +932,31 @@ export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): W
   }
   if (p?.manual) return p.manual.done ? 'done' : 'missed';
   if (w.kind !== 'free' && p?.done) return 'done';
+  // each round on its own: made once in a round – made (and each round settled on its own, ledger)
+  if (tally(w, p)?.made) return 'done';
   // a total over N rounds: decided once the N rounds are played
   if (shapeOf(w.kind) === 'sum' && p && p.rounds >= (w.rounds ?? 6)) return 'missed';
   const roundDay = w.attempts === 'round' ? pool.rounds?.find((x) => x.id === w.round)?.day : undefined;
   const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && !!w.day && today > w.day) || (!!roundDay && today > roundDay);
   return over ? 'missed' : 'open';
+}
+
+/** Bets that hold for each round on its own (Sascha 09.11.2026: "every bet holds for each round on its own and is then
+ *  closed – settled after every round played"): all but the free ones, the duels (settled per round anyway), a total
+ *  over N rounds and a count over the whole trip. */
+export const perRoundBet = (w: Wager): boolean => w.kind !== 'free' && shapeOf(w.kind) !== 'duel' && shapeOf(w.kind) !== 'sum' && w.scope !== 'trip';
+/** In how many rounds a bet was made, missed (rounds over), played – null: not per round, or judged by hand, or a
+ *  report from before (no rounds in it). */
+export function tally(w: Wager, p: Progress | undefined, signedOnly = false): { made: number; missed: number; played: number } | null {
+  if (!perRoundBet(w) || !p?.perRound || p.manual) return null;
+  let made = 0;
+  let missed = 0;
+  for (const r of p.perRound) {
+    if (r.value == null || (signedOnly && !r.counted)) continue;
+    if (reached(w, r.value) && (!r.open || !lower(w))) made++;
+    else if (!r.open) missed++;
+  }
+  return { made, missed, played: made + missed };
 }
 
 /** One bet's money for one player: what it brought him (+) or cost him (−) – the settlement's lines. */
@@ -821,10 +980,23 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
   for (const w of pool.wagers) {
     if (shapeOf(w.kind) === 'duel') {
       // "5+5+10": what the rounds played so far settled, between the two
-      const v = pool.progress[w.id]?.amount ?? 0;
+      const v = progressOf(pool, w)?.amount ?? 0;
       if (w.opponent && w.opponent !== w.player && v) {
         add(w.player, w, v, false);
         add(w.opponent, w, -v, false);
+      }
+      continue;
+    }
+    // each round on its own (Sascha 09.11.2026): made – the stake from each (or from the opponent) per round; missed –
+    // paid per round only when the bet is "both ways" or against one
+    const t = tally(w, pool.progress[w.id], !withProvisional);
+    if (t) {
+      const times = t.made - (w.payout === 'success' ? 0 : t.missed);
+      if (!times || !(w.stake > 0)) continue;
+      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+      for (const o of against) {
+        add(w.player, w, times * w.stake, false);
+        add(o, w, -times * w.stake, false);
       }
       continue;
     }
@@ -948,15 +1120,30 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency
 /** The standing of a bet in words: "best 2 (target 3)", "best round +3 (target −5)", "so far 7 (target 10)". */
 export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR' | 'USD' | Prize): string {
   if (w.kind === 'free') return '';
+  // each round on its own (Sascha 09.11.2026)
+  const t = tally(w, p);
+  if (t) {
+    const differ = p?.differ ? tr(` · the marker counted ${p.differ === 1 ? '1 hole' : `${p.differ} holes`} differently – his figures count`, ` · der Zähler hat ${p.differ === 1 ? '1 Loch' : `${p.differ} Löcher`} anders gezählt – seine Zahlen zählen`) : '';
+    // the best figure of a round too (a score of −2 against a target of −5 says how close it was)
+    const top = p?.pending ?? p?.best;
+    const best = top != null && t.played ? tr(` · best ${shapeOf(w.kind) === 'score' ? fmtPar(top) : top}`, ` · Bestwert ${shapeOf(w.kind) === 'score' ? fmtPar(top) : top}`) : '';
+    return (t.played ? tr(`made in ${t.made} of ${t.played} ${t.played === 1 ? 'round' : 'rounds'}`, `in ${t.made} von ${t.played} ${t.played === 1 ? 'Runde' : 'Runden'} geschafft`) : tr('no complete round yet', 'noch keine passende Runde')) + best + differ;
+  }
   if (shapeOf(w.kind) === 'duel') {
+    if (duelWaits(w)) return w.challenge?.state === 'declined' ? tr('declined', 'abgelehnt') : tr('waiting for the answer', 'wartet auf Annahme');
     if (!p?.duels?.length) return tr('no round together yet', 'noch keine gemeinsame Runde');
     const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, typeof currency === 'object' ? prizeSym(currency) : currencySymbol(currency))}`;
     const mark = (v: number | null) => (v == null ? '–' : v > 0 ? '✓' : v < 0 ? '✗' : '=');
     const last = p.duels[p.duels.length - 1];
+    // while it is played (Sascha 09.11.2026): the strokes ahead or behind after the holes both have
+    const live =
+      last.total == null && last.thru
+        ? tr(` · live: ${last.lead! > 0 ? `${last.lead} up` : last.lead! < 0 ? `${-last.lead!} down` : 'all square'} after ${last.thru}`, ` · live: ${last.lead! > 0 ? `${last.lead} vorn` : last.lead! < 0 ? `${-last.lead!} hinten` : 'gleichauf'} nach ${last.thru}`)
+        : '';
     return tr(
       `${p.duels.length} ${p.duels.length === 1 ? 'round' : 'rounds'} · ${sign(p.amount ?? 0)} · last: front ${mark(last.front)} back ${mark(last.back)} 18 ${mark(last.total)}`,
       `${p.duels.length} ${p.duels.length === 1 ? 'Runde' : 'Runden'} · ${sign(p.amount ?? 0)} · zuletzt: vorne ${mark(last.front)} hinten ${mark(last.back)} gesamt ${mark(last.total)}`,
-    );
+    ) + live;
   }
   const shape = shapeOf(w.kind);
   const show = (v: number): string => (shape === 'score' ? fmtPar(v) : String(v));

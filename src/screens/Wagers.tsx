@@ -14,9 +14,10 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
+import { Challenges, DuelMark } from './Duels';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
@@ -593,7 +594,7 @@ function ValidityRow(props: { allDay: boolean; onChange: (allDay: boolean) => vo
 
 /** A "5+5+10" from the opponent's side: what one won the other lost, front, back and 18 turned round. */
 const mirrored = (p: Progress | undefined): Progress | undefined =>
-  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map((d) => ({ ...d, front: d.front == null ? null : -d.front || 0, back: d.back == null ? null : -d.back || 0, total: d.total == null ? null : -d.total || 0 })) };
+  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map((d) => ({ ...d, front: d.front == null ? null : -d.front || 0, back: d.back == null ? null : -d.back || 0, total: d.total == null ? null : -d.total || 0, ...(d.lead != null ? { lead: -d.lead || 0 } : {}) })) };
 
 /** "5+5+10": what the player stands at against his opponent – won (green), lost (red), level or not played yet. */
 function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
@@ -729,8 +730,8 @@ function JoinMark(props: { state: 'me' | 'in' | 'out' }) {
   );
 }
 
-function StateBadge(props: { state: WagerState; provisional?: boolean }) {
-  if (props.state === 'done') return <span className="badge ok">{tr('Made', 'Geschafft')}</span>;
+function StateBadge(props: { state: WagerState; provisional?: boolean; /** each round on its own: in how many it was made */ times?: number }) {
+  if (props.state === 'done') return <span className="badge ok">{props.times && props.times > 1 ? tr(`Made ${props.times}×`, `${props.times}× geschafft`) : tr('Made', 'Geschafft')}</span>;
   if (props.state === 'missed') return <span className="badge bad">{tr('Missed', 'Verloren')}</span>;
   // made in a round not signed yet (Sascha 02.11.2026: "a result even when the marker has not signed")
   if (props.provisional) return <span className="badge warn">{tr('Made · provisional', 'Geschafft · vorläufig')}</span>;
@@ -779,7 +780,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       </main>
     );
   }
-  const pool = entry.pool;
+  // the duels (5+5+10) judged from the players' cards – the same on every phone (Sascha 09.11.2026)
+  const pool = withDuels(entry.pool);
   // only the host changes the pool (Sascha 01.11.2026: "the invited ones cannot edit the bets – only the host")
   const host = isHost(entry);
   if (pool.deletedAt) {
@@ -855,11 +857,13 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           </div>
         </section>
       )}
+      {/* 5+5+10 challenged – answered here, the own ones waiting with a clock (Sascha 09.11.2026) */}
+      <Challenges entry={entry} />
       <Standings pool={pool} today={today} me={entry.me} />
       {pool.players.map((p) => {
         // his own bets – and a "5+5+10" against him, seen from his side (Erik sees he is 10 $ behind Chris)
         const ws = pool.wagers
-          .filter((w) => w.player === p.id || (shapeOf(w.kind) === 'duel' && w.opponent === p.id))
+          .filter((w) => (w.player === p.id || (shapeOf(w.kind) === 'duel' && w.opponent === p.id)) && w.challenge?.state !== 'declined')
           .map((w) => (w.player === p.id ? { w, shown: w, prog: pool.progress[w.id] } : { w, shown: { ...w, player: p.id, opponent: w.player }, prog: mirrored(pool.progress[w.id]) }));
         return (
           <section key={p.id} className="card pool-player" aria-label={p.name}>
@@ -903,7 +907,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
                     <span className="muted small">{wagerRules(shown, pool)}</span>
                     {w.kind !== 'free' && <span className="small">{progressText(shown, prog, prizeOf(pool))}</span>}
                   </span>
-                  {shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={prizeSym(prizeOf(pool))} /> : <StateBadge state={stateOf(w, pool, today)} provisional={provisional(shown, prog)} />}
+                  {duelWaits(w) ? <DuelMark state="open" /> : shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={prizeSym(prizeOf(pool))} /> : <StateBadge state={stateOf(w, pool, today)} provisional={!tally(w, prog) && provisional(shown, prog)} times={tally(w, prog)?.made} />}
                 </>
               );
               // the host taps a bet to change, decide or delete it; the others only see it
@@ -1107,6 +1111,8 @@ export function figuresOf(w: Wager, n: number | null): string {
   const none = n == null || (n === 0 && shape !== 'score' && shape !== 'sum');
   return `${v(w.target)}/${none ? '–' : v(n)}`;
 }
+/** A bet's target as the cells write it: "3", "−5", "E". */
+export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
 export function standingRounds(pool: Pick<WagerPool, 'progress'>): { key: string; day: string; course: string }[] {
   const seen = new Map<string, { key: string; day: string; course: string }>();
@@ -1161,11 +1167,22 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       </span>
     );
   };
+  // the total (Sascha 09.11.2026: "every bet holds for each round on its own – the total shows how often it was made over
+  // all rounds"): "2 von 5", green once made, the target below; no "provisional"
   const cell = ({ w }: { w: Wager; against: boolean }) => {
+    // no round reported yet: "–" with its target, as the bets per round show it
+    const t = tally(w, pool.progress[w.id]) ?? (perRoundBet(w) && !pool.progress[w.id] ? { made: 0, missed: 0, played: 0 } : null);
+    if (t)
+      return (
+        <span key={w.id} className={`bet-cell ${t.made ? 'done' : 'open'}`} title={wagerLabel(w)}>
+          {t.played ? tr(`${t.made} of ${t.played}`, `${t.made} von ${t.played}`) : '–'}
+          <small>{tr(`target ${targetOf(w)}`, `Ziel ${targetOf(w)}`)}</small>
+          {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
+        </span>
+      );
     return (
-      <span key={w.id} className={`bet-cell ${state(w)}${provisional(w, pool.progress[w.id]) ? ' provisional' : ''}`} title={wagerLabel(w)}>
+      <span key={w.id} className={`bet-cell ${state(w) === 'done' || provisional(w, pool.progress[w.id]) ? 'done' : state(w)}`} title={wagerLabel(w)}>
         {cellOf(w, pool.progress[w.id])}
-        {pool.progress[w.id]?.pending != null && <small>{tr('provisional', 'vorläufig')}</small>}
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );
@@ -1175,9 +1192,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
     const made = !!r && reached(w, r.value);
     return (
-      <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}${made && !r!.counted ? ' provisional' : ''}`} title={wagerLabel(w)}>
+      <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}`} title={wagerLabel(w)}>
         {figuresOf(w, r?.value ?? null)}
-        {made && !r!.counted && <small>{tr('provisional', 'vorläufig')}</small>}
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );

@@ -82,7 +82,8 @@ ok(pg['w-s']?.done === false && pg['w-s']?.pending === 2, `Sascha's 2 birdies in
 ok(pg['w-c']?.done === true && pg['w-c']?.best === 9, `Chris's 3 pars in a row: made – judged on Sascha's phone, the host's (${JSON.stringify(pg['w-c'] ?? null)})`);
 ok(pg['w-e']?.done === true, `Erik's own bet "at least 1 birdie on the par 3s": made (${JSON.stringify(pg['w-e'] ?? null)})`);
 const bar = (await H.locator('.game-bar').innerText()).replace(/\s+/g, ' ');
-ok(/2 geschafft · 1 vorläufig/.test(bar), `the bar: "${bar}"`);
+// each round on its own, no "provisional" any more (Sascha 09.11.2026): made in an unsigned round is made
+ok(/3 geschafft/.test(bar) && !/vorläufig/.test(bar), `the bar: "${bar}"`);
 // finished: into the round analysis
 await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();

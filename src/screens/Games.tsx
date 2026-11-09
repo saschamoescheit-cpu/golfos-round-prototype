@@ -40,7 +40,8 @@ import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, 
 import { SeriesScreen, TOURS_ICON, TourScreen, TourStartCard, ToursTab, useTours } from './Tournaments';
 import { TourSetup, newTourDraft, pickCourse, type TourDraft } from './TourPlan';
 import { loadSeries, tourState } from '../lib/tourstore';
-import { isLive, loadPools } from '../lib/wagerstore';
+import { duelPools, isLive, loadPools } from '../lib/wagerstore';
+import { ChallengeInvites, DuelSetup } from './Duels';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
 import { dayOf } from '../lib/wagers';
@@ -309,6 +310,7 @@ export function GamesApp(props: {
             store(g);
             setView({ name: 'play', game: g });
           }}
+          onDuel={(code) => setView({ name: 'pool', code, back: 'play' })}
         />
       );
     case 'play':
@@ -569,6 +571,8 @@ function GamesTabs(props: {
           {running.map((g) => (
             <RunningGame key={g.id} game={g} onContinue={() => props.onOpen(g)} onFinish={() => props.onFinish(g)} onDelete={() => props.onDelete(g)} />
           ))}
+          {/* 5+5+10 challenges to answer (Sascha 09.11.2026) – each opens its pool */}
+          <ChallengeInvites onOpen={props.onOpenPool} />
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
@@ -909,8 +913,11 @@ export function FormRules(props: { form: FormDef }) {
 
 // ---------- setup ----------
 
-function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: () => void; onCourse: () => void; onStart: (g: Game) => void }) {
+function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: () => void; onCourse: () => void; onStart: (g: Game) => void; /** 5+5+10 challenged in a pool: its page */ onDuel?: (code: string) => void }) {
   const d = props.draft;
+  // 5+5+10 with a pool of bets running: one against one, a duel each (Sascha 09.11.2026) – without one, the game in the
+  // flight as before
+  const duel = d.formChosen !== false && d.form === 'fivefiveten' && !!props.onDuel && duelPools().length > 0;
   // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
   const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
   // what is played for (Sascha 03.11.2026) – money in its currency, a thing, nothing; the stakes shown in it
@@ -1016,6 +1023,11 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         </div>
       </section>
 
+      {/* 5+5+10 one against one, in the pool of bets – also across flights (Sascha 09.11.2026) */}
+      {duel && <DuelSetup onDone={props.onDuel!} />}
+
+      {!duel && (
+      <>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Course', 'Platz')}</span>
         <div className="settings-list">
@@ -1270,6 +1282,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         )}
       </section>
       )}
+      </>
+      )}
 
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(false)}>
@@ -1329,13 +1343,17 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         </div>
       )}
 
-      <span className="spacer" />
-      {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
-      <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={start} disabled={!chosen || !fits || !d.course || !prize}>
-          {tr('Start game', 'Spiel starten')}
-        </button>
-      </div>
+      {!duel && (
+        <>
+          <span className="spacer" />
+          {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
+          <div className="sticky-cta">
+            <button type="button" className="btn-primary" onClick={start} disabled={!chosen || !fits || !d.course || !prize}>
+              {tr('Start game', 'Spiel starten')}
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }

@@ -29,7 +29,7 @@ import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
-import { reportWagers, runningPools } from './lib/wagerstore';
+import { reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
 import { startTourPush, toursSoon } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
 
@@ -278,6 +278,8 @@ export function App() {
     if (round.finishedAt && round.shared) void exchangeRound(round);
     // the bets of Games judged from the round (Sascha 01.11.2026) – in the background, it never holds up saving
     if (round.finishedAt && !round.preview) void reportWagers().catch(() => null);
+    // a duel (5+5+10) today: the card goes along while playing – the other flight sees how it stands (Sascha 09.11.2026)
+    else if (!round.preview) reportDuelsSoon();
     setRounds(loadRounds());
     syncSoon();
   };

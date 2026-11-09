@@ -79,15 +79,18 @@ const cellText = async (row, player) => {
   return col < 0 ? '?' : ((await stand.locator('tbody tr').filter({ hasText: row }).first().locator('td').nth(col - 1).innerText().catch(() => '?')) ?? '?').replace(/\s+/g, ' ').trim();
 };
 let chris = '';
-for (let k = 0; k < 20 && !/2\/3/.test(chris); k++) {
+// "Gesamt" counts the rounds made (Sascha 09.11.2026: "every bet holds for each round on its own – the total shows how
+// often it was made over all rounds"): "1 von 1", green, the target below; no "vorläufig"
+for (let k = 0; k < 20 && !/^1 von 1/.test(chris); k++) {
   await H.waitForTimeout(1000);
   chris = await cellText('Birdies in Folge', 'Chris');
 }
-ok(/^2\/3$/.test(chris), `Gesamt: Chris "Birdies in Folge" from the tournament's flight – made, not provisional (${chris})`);
+const chrisDone = await stand.locator('tbody tr').filter({ hasText: 'Birdies in Folge' }).first().locator('.bet-cell.done').count();
+ok(/^1 von 1 Ziel 2$/.test(chris) && chrisDone >= 1, `Gesamt: Chris "Birdies in Folge" from the tournament's flight – made in 1 of 1, green (${chris})`);
 const sascha = await cellText('Pars in Folge', 'Sascha');
-ok(/^3\/\d+$/.test(sascha) && !/vorläufig/.test(sascha), `Gesamt: Sascha's pars in a row counted (${sascha})`);
+ok(/^1 von 1 Ziel 3$/.test(sascha) && !/vorläufig/.test(sascha), `Gesamt: Sascha's pars in a row counted (${sascha})`);
 const erik = await cellText('Birdies in Folge', 'Erik');
-ok(/^2\/–$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
+ok(/^(– Ziel 2|2\/–)$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
 
 // the rounds: "Gesamt" and yesterday's round
 const chips = await stand.getByRole('group', { name: 'Runden' }).getByRole('button').allInnerTexts();

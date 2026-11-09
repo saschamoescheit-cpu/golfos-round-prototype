@@ -4,7 +4,7 @@ import { cachedEvent, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, 
 import { loadTours } from './tourstore';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, dayOf, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, balances, cardsFor, dayOf, fromCards, mergeCards, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -465,10 +465,26 @@ export function reportWagers(): Promise<void> {
               // his tournament flights too – the scores entered afterwards by the host count for him (Sascha 08.11.2026)
               roundsOf.set(p.id, [...playedRounds(his, counted, markerCount, p.name), ...playedRounds(fromTours(his, p), counted, markerCount)]);
             }
-        const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free';
+        // a duel challenged is judged from the cards (every phone alike) – not reported
+        const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free' && !fromCards(w);
         const mine = e.pool.wagers.filter(judged);
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, roundsOf.get(w.player)!)]));
-        if (mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id]))) continue;
+        // the cards for the duels (Sascha 09.11.2026: "5+5+10 across flights – from the own round"): this phone's owner's
+        // own, and – the host's phone – a player's who has none of his own for a round it holds
+        const cardsNow = (p: WagerPool): WagerPool['cards'] | null => {
+          const inDuel = (pid: string) => p.wagers.some((w) => fromCards(w) && w.challenge?.state !== 'declined' && (w.player === pid || w.opponent === pid));
+          const cards = { ...(p.cards ?? {}) };
+          let changed = false;
+          for (const [pid, rs] of roundsOf) {
+            if (!inDuel(pid) || (pid !== e.me && !host)) continue;
+            const next = mergeCards(cards[pid], cardsFor(rs, p), pid !== e.me);
+            if (JSON.stringify(next) === JSON.stringify(cards[pid] ?? [])) continue;
+            cards[pid] = next;
+            changed = true;
+          }
+          return changed ? cards : null;
+        };
+        if (!cardsNow(e.pool) && mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id]))) continue;
         let made: string[] = []; // bets made with this report – everyone in the pool hears of it (push)
         const written = await changePool(e.code, (p) => {
           let changed = false;
@@ -486,7 +502,8 @@ export function reportWagers(): Promise<void> {
             progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
             changed = true;
           }
-          return changed ? { ...p, progress, players } : null;
+          const cards = cardsNow(p);
+          return changed || cards ? { ...p, progress, players, ...(cards ? { cards } : {}) } : null;
         });
         if (written) for (const id of made) pushBet(e.code, id);
       }
@@ -497,6 +514,61 @@ export function reportWagers(): Promise<void> {
     }
   })();
   return running;
+}
+
+/** 5+5+10 against one or more players of the pool, each a duel of its own (Sascha 09.11.2026) – challenged by this
+ *  phone's owner (the host as any player): open until the other accepts. The pool as written, or null. */
+export async function challengeDuels(code: string, me: string, opponents: string[], o: { day: string; parts: { front: number; back: number; total: number }; net: boolean; by: string }): Promise<{ pool: WagerPool; ids: string[] } | null> {
+  const at = new Date().toISOString();
+  const ws: Wager[] = opponents.map((opponent) => ({ id: newId(), player: me, opponent, kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: o.day, parts: o.parts, ...(o.net ? { net: true } : {}), by: o.by, challenge: { state: 'open', at } }));
+  let ids: string[] = [];
+  const pool = await changePool(code, (p) => {
+    const fresh = ws.filter((w) => p.players.some((x) => x.id === w.opponent) && !p.wagers.some((x) => sameDuel(x, w)));
+    ids = fresh.map((w) => w.id);
+    return fresh.length ? { ...p, wagers: [...p.wagers, ...fresh] } : null;
+  });
+  return pool ? { pool, ids } : null;
+}
+/** The same duel already there – the two of them, on that day, not declined (either one challenged). */
+export const sameDuel = (a: Wager, b: Pick<Wager, 'player' | 'opponent' | 'day'>): boolean =>
+  shapeOf(a.kind) === 'duel' && a.challenge?.state !== 'declined' && a.day === b.day && ((a.player === b.player && a.opponent === b.opponent) || (a.player === b.opponent && a.opponent === b.player));
+/** The challenged one answers: accepted – it counts – or declined. */
+export const answerDuel = (code: string, id: string, state: 'accepted' | 'declined'): Promise<WagerPool | null> =>
+  changePool(code, (p) => {
+    const w = p.wagers.find((x) => x.id === id);
+    if (!w || w.challenge?.state !== 'open') return null;
+    return { ...p, wagers: p.wagers.map((x) => (x.id === id ? { ...x, challenge: { state, at: new Date().toISOString() } } : x)) };
+  });
+/** Taken back by who challenged – while not accepted. */
+export const takeBackDuel = (code: string, id: string): Promise<WagerPool | null> =>
+  changePool(code, (p) => {
+    const w = p.wagers.find((x) => x.id === id);
+    if (!w || !w.challenge || w.challenge.state === 'accepted') return null;
+    const { [id]: _gone, ...progress } = p.progress;
+    void _gone;
+    return { ...p, wagers: p.wagers.filter((x) => x.id !== id), progress };
+  });
+/** The pools running on a day this phone's owner can challenge in – his player and at least one other. */
+export const duelPools = (day = dayOf(new Date())): PoolEntry[] =>
+  loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt && e.pool.to >= day && e.pool.players.some((p) => p.id !== e.me));
+/** Challenges to this phone's owner not answered yet, over all pools. */
+export const openChallenges = (): { e: PoolEntry; w: Wager }[] =>
+  loadPools().flatMap((e) => (e.me && !e.pool.finishedAt && !e.pool.deletedAt ? e.pool.wagers.filter((w) => w.opponent === e.me && w.challenge?.state === 'open').map((w) => ({ e, w })) : []));
+
+/** A duel running today for this phone's owner – his card goes to the pool while he plays (Sascha 09.11.2026: the
+ *  other flight sees how it stands). After a hole saved: at most every 20 seconds. */
+let soon: number | null = null;
+export function reportDuelsSoon(today = dayOf(new Date())): void {
+  if (soon != null) return;
+  const live = loadPools().some(
+    (e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt && today >= e.pool.from && today <= e.pool.to &&
+      e.pool.wagers.some((w) => fromCards(w) && w.challenge?.state === 'accepted' && (w.player === e.me || w.opponent === e.me) && (w.attempts !== 'day' || !w.day || w.day === today)),
+  );
+  if (!live) return;
+  soon = window.setTimeout(() => {
+    soon = null;
+    void reportWagers();
+  }, 20000);
 }
 
 // ---------- own bets for the library (Sascha 02.11.2026: "in the library to pick again and again") ----------
