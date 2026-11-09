@@ -722,9 +722,11 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
     props.state === 'host' ? tr('host', 'Host') : props.state === 'in' ? tr('accepted – on his phone', 'angenommen – auf seinem Handy') : props.state === 'sent' ? tr('invited – not accepted yet', 'eingeladen – noch nicht angenommen') : tr('not invited yet', 'noch nicht eingeladen');
   const s = props.size ?? 22;
   const cls = props.state === 'out' ? 'bad-text' : props.state === 'sent' ? 'muted' : 'good-text';
+  const wide = props.state === 'in' || props.state === 'sent';
   return (
     <span className={`join-mark person-mark ${cls}`} role="img" aria-label={label} title={label}>
-      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* with a tick or an arrow the figure is wider – the sign clear of it (Sascha 10.11.2026, twice: "too close") */}
+      <svg width={wide ? Math.round((s * 30) / 24) : s} height={s} viewBox={wide ? '0 0 30 24' : '0 0 24 24'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {props.state === 'host' || props.state === 'out' ? (
           <>
             <circle cx="12" cy="8" r="4" />
@@ -734,9 +736,9 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
           <>
             {/* the figure smaller on the left, the tick or the arrow clear of it on the right (Sascha 10.11.2026: "the tick
                 too close to the figure") */}
-            <circle cx="7" cy="7.5" r="3.4" />
-            <path d="M1.5 20c0-3.3 2.5-6 5.5-6 1.6 0 3 .6 4 1.6" />
-            {props.state === 'in' ? <path d="M14.5 15.5l2.8 2.8 5.2-5.6" /> : <path d="M14 16h8M19 13l3 3-3 3" />}
+            <circle cx="8" cy="7.5" r="3.6" />
+            <path d="M1.5 20.5c0-3.5 2.9-6.3 6.5-6.3s6.5 2.8 6.5 6.3" />
+            {props.state === 'in' ? <path d="M19 15l3 3 6-6.5" /> : <path d="M19 15.5h9M24.5 12l3.5 3.5-3.5 3.5" />}
           </>
         )}
       </svg>
