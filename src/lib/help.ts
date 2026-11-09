@@ -121,6 +121,16 @@ export const FAQ: FaqTopic[] = [
         video: 'start',
       },
       {
+        // Sascha 10.11.2026: "beside the arrow for back, swipe one level back"
+        q: () => tr('How do I go back – is there a swipe?', 'Wie komme ich zurück – geht das auch mit Wischen?'),
+        a: () =>
+          tr(
+            'The arrow at the top left – or swipe from the left edge of the screen to the right, as everywhere on the iPhone: an open sheet closes first, then one level back.',
+            'Mit dem Pfeil oben links – oder vom linken Bildschirmrand nach rechts wischen, wie überall auf dem iPhone: Ein offenes Blatt schließt sich zuerst, dann geht es eine Ebene zurück.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('Can I use my Apple Watch?', 'Kann ich meine Apple Watch nutzen?'),
         a: () =>
           tr(
