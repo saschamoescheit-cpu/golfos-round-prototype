@@ -179,7 +179,7 @@ ok(!shared.get(code).game.wagers.some((w) => w.opponent === 'e' && w.kind === 'n
   await M.locator('.sheet .pick-option').filter({ has: M.locator('strong', { hasText: /^5\+5\+10$/ }) }).first().click();
   await M.waitForTimeout(400);
   const poolRow = (await M.locator('.settings-row').filter({ hasText: /^Pool/ }).innerText()).replace(/\s+/g, ' ');
-  ok((await M.getByRole('button', { name: 'Spiel starten' }).count()) === 0 && /Neu: Sidebets/.test(poolRow), `no pool: the duel all the same – "${poolRow}"`);
+  ok((await M.getByRole('button', { name: 'Spiel starten' }).count()) === 0 && /Ohne Wett-Pool/.test(poolRow), `no pool: the duel all the same – "${poolRow}"`);
   await M.locator('.settings-row').filter({ hasText: 'Gegner' }).click();
   const sheet = M.getByRole('dialog', { name: 'Gegner' });
   ok((await sheet.getByRole('switch', { name: /^Stefan/ }).count()) === 1, 'the opponents: the linked friend Stefan offered');
@@ -197,10 +197,35 @@ ok(!shared.get(code).game.wagers.some((w) => w.opponent === 'e' && w.kind === 'n
   const stefan = g?.players.find((p) => p.name === 'Stefan');
   const wb = g?.wagers.find((w) => w.opponent === ben?.id);
   const wsf = g?.wagers.find((w) => w.opponent === stefan?.id);
-  ok(!!g && /^Sidebets/.test(g.name) && g.players.length === 3, `a new pool of the day: ${g?.name} · ${g?.players.map((p) => p.name).join(', ')}`);
+  ok(!!g && /^5\+5\+10 · /.test(g.name) && g.players.length === 3, `a pool of its own for the duels: ${g?.name} · ${g?.players.map((p) => p.name).join(', ')}`);
   ok(wb?.challenge?.state === 'accepted' && wb.scorer === 'by' && !ben?.joined && !ben?.invited, 'Ben without a phone: the duel counts at once, Moritz keeps his score');
   ok(wsf?.challenge?.state === 'open' && stefan?.invited?.uid === 'Stefan', `Stefan invited by his account: the duel open (${JSON.stringify(stefan)} ${wsf?.challenge?.state})`);
   ok(solo.errs.length === 0, `no page errors (Moritz) ${solo.errs.slice(0, 2).join(' | ')}`);
+}
+
+// with a pool of bets running – "Ohne Wett-Pool" all the same (Sascha 10.11.2026: "I must be able to play it without a
+// pool of bets"): a pool of its own, the trip's pool untouched
+{
+  const before = shared.get(code).game.wagers.length;
+  await toGames(E);
+  await E.getByRole('button', { name: 'Neues Spiel', exact: true }).click();
+  await E.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+  await E.locator('.sheet .pick-option').filter({ has: E.locator('strong', { hasText: /^5\+5\+10$/ }) }).first().click();
+  await E.waitForTimeout(400);
+  await E.locator('.settings-row').filter({ hasText: /^Pool/ }).click();
+  const pick = E.getByRole('dialog', { name: 'Welche Wetten' });
+  ok((await pick.locator('.pick-option').filter({ hasText: 'USA-Wetten' }).count()) === 1 && (await pick.locator('.pick-option').filter({ hasText: 'Ohne Wett-Pool' }).count()) === 1, 'the pool: "USA-Wetten" or "Ohne Wett-Pool"');
+  await pick.locator('.pick-option').filter({ hasText: 'Ohne Wett-Pool' }).click();
+  await E.locator('.settings-row').filter({ hasText: 'Gegner' }).click();
+  const who = E.getByRole('dialog', { name: 'Gegner' });
+  await who.getByRole('textbox', { name: 'Name des Spielers' }).fill('Tom');
+  await who.getByRole('button', { name: 'Hinzufügen' }).click();
+  await who.getByRole('button', { name: 'Fertig' }).click();
+  await E.getByRole('button', { name: 'Herausfordern' }).click();
+  await E.waitForTimeout(2500);
+  const mine = [...shared.values()].find((r) => r.game.kind === 'wager-pool' && r.owner === 'Erik')?.game;
+  ok(!!mine && /^5\+5\+10 · /.test(mine.name) && mine.wagers.length === 1 && mine.players.some((p) => p.name === 'Tom'), `Erik: a pool of its own "${mine?.name}" with Tom`);
+  ok(shared.get(code).game.wagers.length === before && !shared.get(code).game.players.some((p) => p.name === 'Tom'), 'USA-Wetten untouched');
 }
 
 ok([host, chris, erik].every((x) => x.errs.length === 0), `no page errors ${[host, chris, erik].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);

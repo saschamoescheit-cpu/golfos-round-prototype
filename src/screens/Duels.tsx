@@ -28,7 +28,10 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
   const [day, setDay] = useState(props.preset?.day ?? today);
   const pools = duelPoolsOn(day);
   const [code, setCode] = useState('');
-  const entry = pools.find((e) => e.code === code) ?? pools[0] ?? null;
+  // "Ohne Wett-Pool" (Sascha 10.11.2026: "I must be able to play it without a pool of bets"): a pool of its own for these
+  // duels, its own settlement – the trip's pool untouched
+  const own = code === 'own';
+  const entry = own ? null : (pools.find((e) => e.code === code) ?? pools[0] ?? null);
   const pool = entry?.pool ?? null;
   // the tournaments of the day on this phone – "all rounds of the day" or one of them (Sascha 10.11.2026)
   const tours = loadTours().filter((t) => !t.ev.deletedAt && t.ev.date === day);
@@ -71,7 +74,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
   const go = async () => {
     setBusy(true);
     setMsg(null);
-    const e = entry ?? (await poolForDuel(day, { me: meName, currency }));
+    const e = entry ?? (await poolForDuel(day, { me: meName, currency, own: own || !pools.length }));
     if (!e) {
       setBusy(false);
       return setMsg(NO_NET());
@@ -109,16 +112,15 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
           <ChoiceRow<string>
             label={tr('Pool', 'Pool')}
             title={tr('Which pool of bets', 'Welche Wetten')}
-            value={entry?.code ?? 'new'}
+            value={entry?.code ?? 'own'}
             onChange={(c) => {
               setCode(c);
               setAgainst([]);
             }}
-            options={
-              pools.length
-                ? pools.map((e) => ({ value: e.code, name: e.pool.name, text: `${dayText(e.pool.from)} – ${dayText(e.pool.to)}` }))
-                : [{ value: 'new', name: tr(`New: side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Neu: Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`), text: tr('Made with the first challenge – you its host.', 'Entsteht mit der ersten Herausforderung – du bist Host.') }]
-            }
+            options={[
+              ...pools.map((e) => ({ value: e.code, name: e.pool.name, text: `${dayText(e.pool.from)} – ${dayText(e.pool.to)}` })),
+              { value: 'own', name: tr('Without a pool of bets', 'Ohne Wett-Pool'), text: tr(`5+5+10 on its own – only these duels, settled on their own ("5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.", you the host).`, `5+5+10 für sich – nur diese Duelle, eigene Abrechnung („5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.“, du bist Host).`) },
+            ]}
           />
         </SettingsList>
       </section>

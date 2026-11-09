@@ -41,7 +41,7 @@ await P.waitForTimeout(2500);
 const pool = [...sim.shared.values()].find((r) => r.game.kind === 'wager-pool')?.game;
 const ben = pool?.players.find((p) => p.name === 'Ben');
 const w = pool?.wagers.find((x) => x.opponent === ben?.id);
-ok(!!pool && /^Sidebets/.test(pool.name) && w?.challenge?.state === 'accepted' && w.scorer === 'by', `a new pool of the day, the duel against Ben counts at once (${pool?.name})`);
+ok(!!pool && /^5\+5\+10 · /.test(pool.name) && w?.challenge?.state === 'accepted' && w.scorer === 'by', `a new pool of the day, the duel against Ben counts at once (${pool?.name})`);
 ok((await sheet.count()) === 0 && /1 Duell heute/.test(await row.innerText()), `the sheet closed, the row: "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
 
 // in the round: the menu with "Sidebet · 5+5+10"

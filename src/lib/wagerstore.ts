@@ -642,15 +642,15 @@ export const takeBackDuel = (code: string, id: string): Promise<WagerPool | null
 /** The pool a duel of `day` goes into (Sascha 10.11.2026: "a side bet from Rounds into the pool of the day – without one
  *  the app makes one"): the first one running then with this phone's owner in it – else a new one of that day, he its
  *  host and its only player ("Sidebets 10.11."). Null offline. */
-export async function poolForDuel(day: string, o: { me: string; currency?: 'EUR' | 'USD' }): Promise<PoolEntry | null> {
-  const there = duelPoolsOn(day)[0];
+export async function poolForDuel(day: string, o: { me: string; currency?: 'EUR' | 'USD'; /** "without a pool of bets" (Sascha 10.11.2026): a pool of its own for these duels, named "5+5+10 · 10.11." */ own?: boolean }): Promise<PoolEntry | null> {
+  const there = o.own ? null : duelPoolsOn(day)[0];
   if (there) return there;
   const uid = myAccount();
   const at = new Date().toISOString();
   const pool: WagerPool = {
     kind: 'wager-pool',
     id: newId(),
-    name: tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
+    name: o.own ? `5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.` : tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
     from: day,
     to: day,
     createdAt: at,
