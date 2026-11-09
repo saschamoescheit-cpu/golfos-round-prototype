@@ -525,8 +525,10 @@ await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', {
   if (process.env.SHOTS) await H.locator('.pool-settle').screenshot({ path: process.env.SHOTS + '/wagers-paid.png' });
   if (!ps[0]?.receivedAt) {
     await paid.first().locator('.paid-mark').click();
+    // how it came (Sascha 10.11.2026): PayPal, cash, transfer
+    await H.getByRole('dialog', { name: 'Wie erhalten?' }).locator('.pick-option').filter({ hasText: 'PayPal' }).click();
     await H.waitForTimeout(1500);
-    ok(!!shared.get(code).game.payments?.[0]?.receivedAt && /erhalten/.test(await paid.first().innerText()), 'payments: the receiver confirms – received');
+    ok(!!shared.get(code).game.payments?.[0]?.receivedAt && shared.get(code).game.payments?.[0]?.how === 'paypal' && /erhalten .* · PayPal/.test((await paid.first().innerText()).replace(/\s+/g, ' ')), 'payments: the receiver confirms – received, by PayPal');
   }
   await paid.first().getByRole('button', { name: /^Zurücknehmen/ }).click();
   await H.waitForTimeout(1500);

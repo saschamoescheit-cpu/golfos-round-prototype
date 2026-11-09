@@ -972,8 +972,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           prize={prizeOf(pool)}
           me={entry.me}
           anyone={host}
-          onMark={(t, as) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }) }])}
-          onConfirm={(id) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now() } : x)))}
+          onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
+          onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
+          paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
+          currency={pool.currency === 'USD' ? 'USD' : 'EUR'}
           onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
         />}
         {isNone(prizeOf(pool)) && <span className="muted small">{tr('No stake – for the honour: one point a bet won.', 'Ohne Einsatz – um die Ehre: ein Punkt je gewonnene Wette.')}</span>}

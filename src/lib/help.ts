@@ -407,6 +407,16 @@ export const FAQ: FaqTopic[] = [
         video: 'wagers',
       },
       {
+        // Sascha 10.11.2026: "pay by PayPal right from the app – or cash, or transfer"
+        q: () => tr('Can I pay by PayPal from the settlement?', 'Kann ich aus der Abrechnung per PayPal zahlen?'),
+        a: () =>
+          tr(
+            'Yes: put your PayPal.me name in your profile (the part after paypal.me/). Who owes you sees "PayPal" beside the amount under "Who pays whom" – it opens PayPal with the amount; then "Paid". When you confirm "Received", you choose how it came: PayPal, cash or bank transfer – the payments say so.',
+            'Ja: Trag im Profil deinen PayPal.me-Namen ein (der Teil nach paypal.me/). Wer dir etwas schuldet, sieht unter „Wer zahlt wem“ neben dem Betrag „PayPal“ – das öffnet PayPal mit dem Betrag; danach „Bezahlt“. Bestätigst du „Erhalten“, wählst du, wie es kam: PayPal, bar oder Überweisung – das steht dann bei den Zahlungen.',
+          ),
+        video: 'wagers',
+      },
+      {
         // Sascha 09.11.2026, USA: an invitation taken back, a pool that does not load
         q: () => tr('I invited someone by mistake – or his phone does not get into the pool. What now?', 'Ich habe jemanden versehentlich eingeladen – oder sein Handy kommt nicht in den Pool. Was tun?'),
         a: () =>

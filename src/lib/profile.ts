@@ -19,6 +19,8 @@ export interface Profile {
   /** The tee the player usually plays (Sascha 22.10.2026: "yellow as a rule, white now and then") – each round starts
    *  with it where the course has it, and can be changed before the start. */
   tee?: string;
+  /** PayPal.me name (Sascha 10.11.2026: "pay by PayPal right from the app") – the others' settlement offers it */
+  paypal?: string;
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };

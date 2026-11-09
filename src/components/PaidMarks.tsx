@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { money } from '../lib/gameforms';
-import type { Payment } from '../lib/wagers';
+import { paypalLink, type PayHow, type Payment } from '../lib/wagers';
 import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize';
 
 type Transfer = { from: string; to: string; amount: number };
 
 const day = (iso?: string) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '');
+/** how a payment came, in words */
+export const howText = (h: PayHow): string => (h === 'paypal' ? 'PayPal' : h === 'cash' ? tr('cash', 'bar') : tr('bank transfer', 'Überweisung'));
 
 /** "Wer zahlt wem" with what was paid (Sascha 03.11.2026: "everyone sees whether he paid his debts or received
  *  them"): each open transfer with "Bezahlt" for the payer, "Erhalten" for the receiver; below, the payments – paid,
@@ -20,12 +23,23 @@ export function PaidMarks(props: {
   prize?: Prize;
   me?: string;
   anyone?: boolean;
-  onMark: (t: Transfer, as: 'paid' | 'received') => void;
-  onConfirm: (id: string) => void;
+  onMark: (t: Transfer, as: 'paid' | 'received', how?: PayHow) => void;
+  onConfirm: (id: string, how?: PayHow) => void;
+  /** a player's PayPal.me name – the payer pays him by PayPal right from here (Sascha 10.11.2026) */
+  paypalOf?: (id: string) => string | null | undefined;
+  /** the money's currency, for the PayPal link */
+  currency?: 'EUR' | 'USD';
   onUndo: (id: string) => void;
 }) {
   const mine = (id: string) => !!props.anyone || id === props.me;
   const prize = props.prize ?? MONEY_EUR;
+  // "Erhalten": how it came – PayPal, cash, transfer (Sascha 10.11.2026: "the receiver chooses how he got it")
+  const [asking, setAsking] = useState<null | { t?: Transfer; id?: string; amount: number; from: string }>(null);
+  const received = (how: PayHow) => {
+    if (asking?.t) props.onMark(asking.t, 'received', how);
+    else if (asking?.id) props.onConfirm(asking.id, how);
+    setAsking(null);
+  };
   return (
     <div className="pool-pays-block">
       <span className="eyebrow">{isMoney(prize) ? tr('Who pays whom', 'Wer zahlt wem') : tr('Who owes whom', 'Wer schuldet wem')}</span>
@@ -41,12 +55,18 @@ export function PaidMarks(props: {
                   {oweText(props.name(t.from), props.name(t.to), props.prize ?? MONEY_EUR)}
                 </span>
                 <strong>{money(t.amount, props.sym)}</strong>
+                {/* the payer: straight to PayPal with the amount, when the receiver has his PayPal.me name */}
+                {t.from === props.me && isMoney(prize) && props.paypalOf?.(t.to) && (
+                  <a className="chip paypal-pay" href={paypalLink(props.paypalOf(t.to)!, t.amount, props.currency ?? 'EUR')} target="_blank" rel="noopener noreferrer" aria-label={tr(`Pay ${money(t.amount, props.sym)} to ${props.name(t.to)} by PayPal`, `${money(t.amount, props.sym)} an ${props.name(t.to)} per PayPal zahlen`)}>
+                    PayPal
+                  </a>
+                )}
                 {as && (
                   <button
                     type="button"
                     className="chip paid-mark"
                     aria-label={as === 'received' ? tr(`Received ${money(t.amount, props.sym)} from ${props.name(t.from)}`, `${money(t.amount, props.sym)} von ${props.name(t.from)} erhalten`) : tr(`${props.name(t.from)} paid ${money(t.amount, props.sym)} to ${props.name(t.to)}`, `${props.name(t.from)} hat ${money(t.amount, props.sym)} an ${props.name(t.to)} bezahlt`)}
-                    onClick={() => props.onMark(t, as)}
+                    onClick={() => (as === 'received' && isMoney(prize) ? setAsking({ t, amount: t.amount, from: t.from }) : props.onMark(t, as))}
                   >
                     {as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize)}
                   </button>
@@ -72,13 +92,13 @@ export function PaidMarks(props: {
                   {tr(`${props.name(p.from)} to ${props.name(p.to)}`, `${props.name(p.from)} an ${props.name(p.to)}`)}
                   <span className="muted small paid-state">
                     {p.receivedAt
-                      ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}`
+                      ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}${p.how ? ` · ${howText(p.how)}` : ''}`
                       : `${paidWord(prize).toLowerCase()} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
                   </span>
                 </span>
                 <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>
                 {!p.receivedAt && mine(p.to) && (
-                  <button type="button" className="chip paid-mark" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => props.onConfirm(p.id)}>
+                  <button type="button" className="chip paid-mark" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
                     {tr('Received', 'Erhalten')}
                   </button>
                 )}
@@ -91,6 +111,25 @@ export function PaidMarks(props: {
             ))}
           </ul>
         </>
+      )}
+      {asking && (
+        <div className="sheet-backdrop" onClick={() => setAsking(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('How did it come?', 'Wie erhalten?')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr(`${money(asking.amount, props.sym)} from ${props.name(asking.from)} – how?`, `${money(asking.amount, props.sym)} von ${props.name(asking.from)} – wie erhalten?`)}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setAsking(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {(['paypal', 'cash', 'transfer'] as PayHow[]).map((h) => (
+                <button key={h} type="button" className="pick-option" onClick={() => received(h)}>
+                  <strong>{howText(h).replace(/^./, (c) => c.toUpperCase())}</strong>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );
