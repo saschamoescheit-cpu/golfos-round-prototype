@@ -84,7 +84,7 @@ await H.waitForTimeout(2000);
 }
 // Christopher's phone: Chris now
 await openPool(C);
-ok((await C.getByText('Wer bist du?').count()) === 0 && (await cardOf(C, 'Chris').getByRole('img', { name: 'du' }).count()) === 1, "Christopher's phone: Chris, \"du\" – no \"who are you?\"");
+ok((await C.getByText('Wer bist du?').count()) === 0 && (await cardOf(C, 'Chris').getByRole('img', { name: /angenommen – auf seinem Handy/ }).count()) === 1, "Christopher's phone: Chris, \"du\" – no \"who are you?\"");
 ok(await C.evaluate((c) => JSON.parse(localStorage.getItem('golfos.pools.v1')).find((e) => e.code === c)?.me === 'pc', code), "Christopher's phone reports as Chris (pc)");
 
 // Erik invited right at Erik
@@ -98,7 +98,7 @@ await whoE.getByRole('button', { name: 'Schließen' }).click();
 await H.waitForTimeout(800);
 ok(/Eingeladen: Erik/.test(await cardOf(H, 'Erik').innerText()), 'the card: "Eingeladen: Erik"');
 // the invitation's state as an icon (Sascha 09.11.2026): open – a clock in the button, nothing "accepted" yet
-ok((await cardOf(H, 'Erik').locator('.pool-whois .invite-mark.muted').count()) === 1 && (await cardOf(H, 'Erik').getByText(/^Angenommen/).count()) === 0, 'Erik invited, not in yet: the clock at "Eingeladen: Erik"');
+ok((await cardOf(H, 'Erik').locator('.pool-whois .person-mark.muted').count()) === 1 && (await cardOf(H, 'Erik').getByText(/^Angenommen/).count()) === 0, 'Erik invited, not in yet: the grey figure with the arrow at "Eingeladen: Erik"');
 const erik = await sim.phone('Erik');
 const E = erik.p;
 await E.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
@@ -110,12 +110,12 @@ ok(/Sascha lädt dich zu seinen Wetten/.test(await askE.innerText().catch(() => 
 await askE.getByRole('button', { name: 'Beitreten' }).click().catch(() => {});
 await E.waitForTimeout(3000);
 if (process.env.SHOTS) await E.screenshot({ path: process.env.SHOTS + '/pool-erik.png', fullPage: true });
-ok((await E.getByText('Wer bist du?').count()) === 0 && (await cardOf(E, 'Erik').getByRole('img', { name: 'du' }).count()) === 1, "Erik's phone: Erik, \"du\" – no \"who are you?\"");
+ok((await E.getByText('Wer bist du?').count()) === 0 && (await cardOf(E, 'Erik').getByRole('img', { name: /angenommen – auf seinem Handy/ }).count()) === 1, "Erik's phone: Erik, \"du\" – no \"who are you?\"");
 ok(players().find((p) => p.id === 'pe')?.joined?.uid === 'Erik' && players().length === 3, `Erik's phone took Erik by his account – no second player (${players().map((p) => p.name).join(', ')})`);
 
 // Sascha's phone: Erik accepted – the tick and "Angenommen", the button gone; Chris (linked) as well
 await openPool(H);
-ok((await cardOf(H, 'Erik').locator('.pool-invite-state .invite-mark.good-text').count()) === 1 && /Angenommen: Erik/.test(await cardOf(H, 'Erik').innerText()) && (await cardOf(H, 'Erik').locator('.pool-whois').count()) === 0, 'Erik accepted: a green tick, "Angenommen: Erik", no invite button');
+ok((await cardOf(H, 'Erik').locator('.pool-invite-state .person-mark.good-text').count()) === 1 && /Angenommen: Erik/.test(await cardOf(H, 'Erik').innerText()) && (await cardOf(H, 'Erik').locator('.pool-whois').count()) === 0, 'Erik accepted: a green tick, "Angenommen: Erik", no invite button');
 ok(/Angenommen: Christopher/.test(await cardOf(H, 'Chris').innerText()), 'Chris: "Angenommen: Christopher"');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/pool-accepted.png', fullPage: true });
 

@@ -713,40 +713,36 @@ function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; 
 }
 
 /** An invitation's state as an icon beside its words (Sascha 09.11.2026): accepted – a green tick, still open – a clock. */
-function InviteMark(props: { state: 'in' | 'open' }) {
+/** A player's figure (Sascha 10.11.2026: "the figure for the host; a red figure when not invited at all; a grey one with
+ *  an arrow as a sent e-mail while the invitation is not accepted"): 'host' the figure, 'in' with a tick (on a phone),
+ *  'sent' grey with the arrow, 'out' red. */
+export type PersonState = 'host' | 'in' | 'sent' | 'out';
+export function PersonMark(props: { state: PersonState; size?: number }) {
+  const label =
+    props.state === 'host' ? tr('host', 'Host') : props.state === 'in' ? tr('accepted – on his phone', 'angenommen – auf seinem Handy') : props.state === 'sent' ? tr('invited – not accepted yet', 'eingeladen – noch nicht angenommen') : tr('not invited yet', 'noch nicht eingeladen');
+  const s = props.size ?? 22;
+  const cls = props.state === 'out' ? 'bad-text' : props.state === 'sent' ? 'muted' : 'good-text';
   return (
-    <svg className={`invite-mark ${props.state === 'in' ? 'good-text' : 'muted'}`} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      {props.state === 'in' ? <path d="M8 12.5l2.6 2.6L16 9.5" /> : <path d="M12 7v5l3 2" />}
-    </svg>
-  );
-}
-
-function JoinMark(props: { state: 'me' | 'in' | 'out' }) {
-  const label = props.state === 'me' ? tr('you', 'du') : props.state === 'in' ? tr('joined', 'beigetreten') : tr('not joined yet', 'noch nicht beigetreten');
-  return (
-    <span className={`join-mark ${props.state === 'out' ? 'bad-text' : 'good-text'}`} role="img" aria-label={label} title={label}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {props.state === 'me' ? (
+    <span className={`join-mark person-mark ${cls}`} role="img" aria-label={label} title={label}>
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {props.state === 'host' || props.state === 'out' ? (
           <>
             <circle cx="12" cy="8" r="4" />
             <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
           </>
-        ) : props.state === 'in' ? (
-          <>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M8 12.5l2.6 2.6L16 9.5" />
-          </>
         ) : (
           <>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 2" />
+            <circle cx="9" cy="8" r="4" />
+            <path d="M2 21c0-3.9 3.1-7 7-7 1.9 0 3.6.7 4.9 1.9" />
+            {props.state === 'in' ? <path d="M15 17.5l2.3 2.3L22 15" /> : <path d="M15 17.5h7M19 14.5l3 3-3 3" />}
           </>
         )}
       </svg>
     </span>
   );
 }
+/** A pool player's state: the host, on his phone, invited, not invited. */
+const personOf = (p: PoolPlayer, owner?: string): PersonState => (owner && p.joined?.uid === owner ? 'host' : p.joined ? 'in' : p.invited ? 'sent' : 'out');
 
 function StateBadge(props: { state: WagerState; provisional?: boolean; /** each round on its own: in how many it was made */ times?: number }) {
   if (props.state === 'done') return <span className="badge ok">{props.times && props.times > 1 ? tr(`Made ${props.times}×`, `${props.times}× geschafft`) : tr('Made', 'Geschafft')}</span>;
@@ -885,8 +881,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         </section>
       )}
       {/* 5+5+10 challenged – answered here, the own ones waiting with a clock (Sascha 09.11.2026) */}
-      <Challenges entry={entry} />
       <Standings pool={pool} today={today} me={entry.me} />
+      {/* the standing on top, the 5+5+10 challenges below it (Sascha 10.11.2026) */}
+      <Challenges entry={entry} />
       {pool.players.map((p) => {
         // his own bets – and a "5+5+10" against him, seen from his side (Erik sees he is 10 $ behind Chris)
         const ws = pool.wagers
@@ -896,12 +893,12 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           <section key={p.id} className="card pool-player" aria-label={p.name}>
             <div className="pool-player-head">
               <h2>{p.name}</h2>
-              <JoinMark state={p.id === entry.me ? 'me' : p.joined ? 'in' : 'out'} />
+              <PersonMark state={personOf(p, entry.owner)} />
             </div>
             {/* the host invites right at a player not on a phone yet – or gives him the one who joined as a new player */}
             {host && !p.joined?.uid && p.id !== entry.me && (
               <button type="button" className="btn-secondary pool-whois" aria-label={p.invited ? tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`) : tr(`Invite ${p.name}`, `${p.name} einladen`)} onClick={() => setSheet({ whois: p.id })}>
-                {p.invited ? <InviteMark state="open" /> : (
+                {p.invited ? <PersonMark state="sent" size={18} /> : (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="10" cy="8" r="4" />
                     <path d="M3 21c0-3.9 3.1-7 7-7s7 3.1 7 7" />
@@ -914,19 +911,19 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
             {/* how the invitation stands, with its icon (Sascha 09.11.2026: "accepted – an icon; still open – an icon too") */}
             {!host && p.invited && !p.joined?.uid && p.id !== entry.me && (
               <span className="pool-invite-state">
-                <InviteMark state="open" />
+                <PersonMark state="sent" size={18} />
                 {tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`)}
               </span>
             )}
             {p.joined && p.id !== entry.me && (host ? (
               <button type="button" className="pool-invite-state pool-invite-edit" aria-label={tr(`Accepted: ${p.joined.name || p.name} – change`, `Angenommen: ${p.joined.name || p.name} – ändern`)} onClick={() => setSheet({ whois: p.id })}>
-                <InviteMark state="in" />
+                <PersonMark state="in" size={18} />
                 <span className="grow">{tr(`Accepted: ${p.joined.name || p.name}`, `Angenommen: ${p.joined.name || p.name}`)}</span>
                 <span aria-hidden="true">›</span>
               </button>
             ) : (
               <span className="pool-invite-state">
-                <InviteMark state="in" />
+                <PersonMark state="in" size={18} />
                 {tr(`Accepted: ${p.joined.name || p.name}`, `Angenommen: ${p.joined.name || p.name}`)}
               </span>
             ))}
