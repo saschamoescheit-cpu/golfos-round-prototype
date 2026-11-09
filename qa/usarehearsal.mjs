@@ -7,7 +7,8 @@
 //     server (what the bets "with marker" judge from)
 // 5 · the bets: the pool "USA 2026" in $ tied to the tournament's round, joined by its link (only the host changes it);
 //     pars in a row "with marker" – judged by each phone from its signed round, the push for a bet made, the
-//     settlement (5+5+10 is a game in Games, not a bet – Sascha 02.11.2026)
+//     settlement; and a 5+5+10 duel across flights (Sascha 09.11.2026): Chris (flight 1) challenges Erik (flight 2),
+//     Erik accepts – each phone's card of the day in the pool, the duel judged from both, into the settlement
 // 18 holes, as over there.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/usarehearsal.mjs [url]
 import { webkit } from 'playwright';
@@ -101,6 +102,17 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
 }
 const joined = sim.shared.get(poolCode).game.players;
 ok(['Chris', 'Erik', 'Cedric'].every((n) => joined.find((x) => x.id === ID[n])?.joined?.uid === n), `the server: each joined as himself, with his account (${joined.map((x) => `${x.name}:${x.joined?.uid ?? '–'}`).join(' ')})`);
+// 5+5+10 across flights (Sascha 09.11.2026): Chris challenges Erik – another flight – for today, 5/5/10 $ gross; Erik accepts
+const duelIds = await P('Chris').evaluate(
+  async ({ code, me, vs }) => {
+    const ws = await import('/src/lib/wagerstore.ts');
+    const { dayOf } = await import('/src/lib/wagers.ts');
+    return (await ws.challengeDuels(code, me, [vs], { day: dayOf(new Date()), parts: { front: 5, back: 5, total: 10 }, net: false, by: 'Chris' }))?.ids ?? [];
+  },
+  { code: poolCode, me: ID.Chris, vs: ID.Erik },
+);
+await P('Erik').evaluate(async ({ code, id }) => (await import('/src/lib/wagerstore.ts')).answerDuel(code, id, 'accepted'), { code: poolCode, id: duelIds[0] });
+ok(sim.shared.get(poolCode).game.wagers.find((w) => w.id === duelIds[0])?.challenge?.state === 'accepted', 'a 5+5+10 duel across flights: Chris challenged Erik, Erik accepted');
 
 // ---------- 2 · the day: the card on every phone ----------
 for (const n of NAMES) {
@@ -236,6 +248,20 @@ const openPool = async (n) => {
 for (const n of NAMES) await openPool(n);
 await P('Sascha').waitForTimeout(6000);
 const pg = sim.shared.get(poolCode).game.progress;
+// the duel: each phone put its owner's card in the pool – Chris +3/+3, Erik +3/+2: front halved, back and 18 Erik's
+{
+  const cards = sim.shared.get(poolCode).game.cards ?? {};
+  ok(cards[ID.Chris]?.length === 1 && cards[ID.Erik]?.length === 1, `the cards in the pool: Chris and Erik (${Object.keys(cards).join(', ')})`);
+  const bal = await P('Cedric').evaluate(async (c) => {
+    const ws = await import('/src/lib/wagerstore.ts');
+    const w = await import('/src/lib/wagers.ts');
+    const pool = await ws.refreshPool(c);
+    const d = w.withDuels(pool).wagers.find((x) => x.kind === 'nassau');
+    return { duel: w.progressOf(pool, d), bal: w.balances(w.withDuels(pool), undefined, true) };
+  }, poolCode);
+  const d0 = bal.duel?.duels?.[0];
+  ok(d0?.front === 0 && d0?.back === -1 && d0?.total === -1 && bal.duel?.amount === -15, `Cedric's phone (in neither): Chris against Erik – front halved, back and 18 Erik's: −15 $ (${JSON.stringify(d0)})`);
+}
 // the marker's figures count; this pool bets on the score only – by Sascha's rule (02.11.2026) the marker enters no putts
 ok(pg['w-s5']?.done === true && pg['w-s5'].best === 5 && pg['w-s5'].rounds === 1, `Sascha: 5 pars in a row (14–18) made – a counted round, the marker's figures (${JSON.stringify(pg['w-s5'] ?? null).slice(0, 120)})`);
 ok(pg['w-c4']?.done === false && pg['w-c4'].best === 3 && pg['w-c4'].rounds === 1, `Chris (his phone): 3 pars in a row of 4 – open (${pg['w-c4']?.best})`);
@@ -246,10 +272,11 @@ await openPool('Sascha');
 const H = P('Sascha');
 await H.locator('.pool-settle').waitFor({ timeout: 10000 });
 const settle = (await H.locator('.pool-settle').innerText()).replace(/\s+/g, ' ');
-ok(/Chris zahlt an Sascha 20 \$/.test(settle) && /Erik zahlt an Sascha 20 \$/.test(settle) && /Cedric zahlt an Sascha 20 \$/.test(settle), `the settlement: "${settle.slice(0, 220)}"`);
+// with the duel: Chris −20 −15, Erik −20 +15, Cedric −20 – all to Sascha
+ok(/Chris zahlt an Sascha 35 \$/.test(settle) && /Erik zahlt an Sascha 5 \$/.test(settle) && /Cedric zahlt an Sascha 20 \$/.test(settle), `the settlement with the duel: "${settle.slice(0, 260)}"`);
 const standing = (await H.locator('.pool-standings').innerText().catch(() => '')).replace(/\s+/g, ' ');
 // each round on its own (Sascha 09.11.2026): Sascha made in 1 of 1 – Chris's round still on, nothing missed yet
-ok(/Sascha Chris Pars in Folge 1 von 1 Ziel 5 (–|0 von 1) Ziel 4/.test(standing), `the standing at the top – those with bets, Sascha 1 of 1, Chris not yet: "${standing.slice(0, 160)}"`);
+ok(/Pars in Folge 1 von 1 Ziel 5 (–|0 von 1) Ziel 4/.test(standing) && /5\+5\+10 brutto/.test(standing), `the standing at the top – Sascha 1 of 1, Chris not yet, the duel's row: "${standing.slice(0, 200)}"`);
 
 const errs = Object.entries(phones).flatMap(([n, x]) => x.errs.map((e) => `${n}: ${e}`));
 ok(errs.length === 0, `no page errors ${errs.slice(0, 3).join(' | ')}`);
