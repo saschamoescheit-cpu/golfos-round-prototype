@@ -349,6 +349,23 @@ export const wagerNewNote = (o: { pool: string; code: string; labels: string[]; 
   url: `./#pool=${o.code}`,
 });
 
+/** 4b · a 5+5+10 challenge (Sascha 10.11.2026: "Chris challenged me from the tournament – no message; a push where I
+ *  accept it"): who challenges, the stakes, and a tap opens the pool with "Annehmen" on top of it. */
+export const challengeNote = (o: { pool: string; code: string; by: string; parts?: { front: number; back: number; total: number } | null; net?: boolean; allowance?: number | null; day?: string | null }, lang?: string | null): Note => ({
+  title: T(lang, `${o.by || 'Someone'} challenges you to 5+5+10`, `${o.by || 'Jemand'} fordert dich zu 5+5+10 heraus`),
+  body: [
+    o.parts ? `${o.parts.front} / ${o.parts.back} / ${o.parts.total}` : '',
+    o.net ? `${T(lang, 'net', 'netto')}${o.allowance != null && o.allowance !== 100 ? ` ${o.allowance} %` : ''}` : T(lang, 'gross', 'brutto'),
+    o.day ? `${o.day.slice(8, 10)}.${o.day.slice(5, 7)}.` : '',
+    o.pool,
+    T(lang, 'tap to accept', 'antippen zum Annehmen'),
+  ]
+    .filter(Boolean)
+    .join(' · '),
+  tag: `golfos-duel-${o.code}`,
+  url: `./#pool=${o.code}`,
+});
+
 /** 5 · the pool is over: what one pays and gets – once; a day later what is still to pay. */
 export interface Transfer {
   from: string;
@@ -1059,15 +1076,27 @@ export async function handle(req: Request): Promise<Response> {
     if (action === 'wager-new') {
       const code = codeOf(body.code);
       const ids = (Array.isArray(body.wagers) ? body.wagers : []).slice(0, 30).map((x) => String(x).replace(/[^A-Za-z0-9-]/g, '').slice(0, 64));
-      type Pool = { kind?: string; name?: string; players?: { id: string; name: string; joined?: { uid?: string } }[]; wagers?: (BetWager & { opponent?: string; by?: string })[] };
+      type Pool = { kind?: string; name?: string; players?: { id: string; name: string; joined?: { uid?: string } }[]; wagers?: (BetWager & { opponent?: string; by?: string; challenge?: { state?: string }; parts?: { front: number; back: number; total: number }; net?: boolean; allowance?: number; day?: string })[] };
       const [g] = await d.get<{ owner: string; members: string[]; game: Pool }[]>(`golfos_shared_games?select=owner,members,game&code=eq.${code}`);
       if (!g || g.game?.kind !== 'wager-pool' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this pool' }, 403);
       const players = g.game.players ?? [];
+      // a 5+5+10 challenge, still open: "… fordert dich heraus" to the one challenged (10.11.2026) – not as a bet against him
+      const challenges = (g.game.wagers ?? []).filter((x) => ids.includes(x.id) && x.challenge?.state === 'open' && x.opponent);
+      let c = 0;
+      for (const w of challenges) {
+        const ou = players.find((p) => p.id === w.opponent)?.joined?.uid;
+        if (!ou || ou === user || (await wasSent(ou, `wager-new:${code}:${w.id}`))) continue;
+        for (const s of await subsOf([ou])) {
+          if (s.kinds?.games === false) continue;
+          if (await send(s, challengeNote({ pool: String(g.game.name ?? 'GolfOS').slice(0, 60), code, by: players.find((p) => p.id === w.player)?.name ?? String(w.by ?? ''), parts: w.parts ?? null, net: !!w.net, allowance: w.allowance ?? null, day: w.day ?? null }, s.lang), 24 * 3600, 'high')) c++;
+        }
+        await d.insertIgnore('golfos_push_sent', [{ user_id: ou, key: `wager-new:${code}:${w.id}` }]);
+      }
       const uidOf = (pid?: string) => players.find((p) => p.id === pid)?.joined?.uid;
       const nameOf = (pid?: string) => players.find((p) => p.id === pid)?.name ?? '';
       // per account: its own new targets, and the bets against it (each with the one who bets)
       const mine = new Map<string, { own: BetWager[]; against: { w: BetWager; by: string }[]; by: string }>();
-      for (const w of (g.game.wagers ?? []).filter((x) => ids.includes(x.id))) {
+      for (const w of (g.game.wagers ?? []).filter((x) => ids.includes(x.id) && !challenges.includes(x))) {
         const pu = uidOf(w.player);
         if (pu && pu !== user) {
           const m = mine.get(pu) ?? { own: [], against: [], by: String(w.by ?? '') };
@@ -1099,7 +1128,7 @@ export async function handle(req: Request): Promise<Response> {
       }
       const rows = [...mine.entries()].flatMap(([u, m]) => [...m.own, ...m.against.map((x) => x.w)].map((w) => ({ user_id: u, key: `wager-new:${code}:${w.id}` })));
       await d.insertIgnore('golfos_push_sent', rows);
-      return json({ ok: true, sent: n });
+      return json({ ok: true, sent: n + c });
     }
     // 5 · a pool over: the settlement to every player in it, once – and a day later, to who still has to pay, what is
     // open. The amounts are the app's (the judging of the bets lives there); only a phone of the pool tells.

@@ -235,6 +235,8 @@ describe('the pushes of 07.11.2026: tournament changed, result, countersign, new
           { id: 'w1', player: 'b', kind: 'birdies', target: 3, by: 'Sascha' },
           { id: 'w2', player: 'a', kind: 'score', target: 5, opponent: 'c' },
           { id: 'w3', player: 'd', kind: 'pars', target: 9 },
+          // a 5+5+10 challenge from Max to Tim (Sascha 10.11.2026: "a push where I accept it")
+          { id: 'd1', player: 'b', opponent: 'c', kind: 'nassau', target: 0, parts: { front: 5, back: 5, total: 10 }, net: true, allowance: 75, day: '2026-11-10', challenge: { state: 'open', at: 'x' }, by: 'Max' },
         ],
       },
     });
@@ -250,6 +252,15 @@ describe('the pushes of 07.11.2026: tournament changed, result, countersign, new
     await post({ action: 'wager-new', code: 'POOL01', wagers: ['w1', 'w2'] }, 'token-sascha');
     expect([...(await fresh('max')), ...(await fresh('tim'))]).toHaveLength(0);
     expect((await post({ action: 'wager-new', code: 'POOL01', wagers: ['w1'] }, 'token-nobody')).status).toBe(401);
+    // the challenge: to Tim "Max fordert dich zu 5+5+10 heraus", a tap opens the pool – once; nothing to Max
+    await post({ action: 'wager-new', code: 'POOL01', wagers: ['d1'] }, 'token-max');
+    const [c] = await fresh('tim');
+    expect(c.title).toBe('Max fordert dich zu 5+5+10 heraus');
+    expect(c.body).toBe('5 / 5 / 10 · netto 75 % · 10.11. · USA-Wetten · antippen zum Annehmen');
+    expect(c.url).toBe('./#pool=POOL01');
+    expect(await fresh('max')).toHaveLength(0);
+    await post({ action: 'wager-new', code: 'POOL01', wagers: ['d1'] }, 'token-max');
+    expect(await fresh('tim')).toHaveLength(0);
   });
 
   it('5 · a pool over: the settlement once to each – a day later the reminder to who still has to pay', async () => {
