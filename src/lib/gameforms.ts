@@ -163,7 +163,8 @@ export function received(holes: GameHole[], hcp: number | null): number[] {
 }
 
 /** Share of the playing handicap that counts, 0 = gross (older games: the switch "net"). */
-export const allowanceOf = (g: Game): number => (g.settings.allowance != null ? Number(g.settings.allowance) : g.settings.net === false ? 0 : 100);
+// a form without a handicap (Bingo Bango Bongo, Snake, Dots): 0 – no "Vorgabe 100 %", no strokes (audit 09.11.2026)
+export const allowanceOf = (g: Game): number => (!WITH_HCP.includes(g.form) ? 0 : g.settings.allowance != null ? Number(g.settings.allowance) : g.settings.net === false ? 0 : 100);
 const hcpOf = (g: Game, p: GamePlayer): number | null => (p.hcp == null ? null : Math.round((p.hcp * allowanceOf(g)) / 100));
 /** Strokes a player receives per hole in this game. */
 export const strokesOn = (g: Game, p: GamePlayer): number[] => received(g.holes, hcpOf(g, p));

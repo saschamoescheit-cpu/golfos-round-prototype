@@ -285,7 +285,7 @@ describe('a tournament: the standings', () => {
     expect(marksIn({ mode: 'single', scoring: 'net', marker: true }, false)).toBe(true);
   });
   it('the results as CSV: place, player, flight, class, score, holes', () => {
-    const csv = standingsCsv(event({ a: [4, 4, 4], b: [5, 5, 5] }, { a: 3, b: 30 }, { allowance: 0, classes: [18] }), true);
+    const csv = standingsCsv(event({ a: [4, 4, 4], b: [5, 5, 5] }, { a: 3, b: 30 }, { allowance: 100, classes: [18] }), true); // a net event's gross view – a gross event has no classes (09.11.2026)
     const lines = csv.split('\n');
     expect(lines[0]).toContain('"Clubturnier"');
     expect(lines[1]).toBe('"Place";"Player";"Flight";"Class";"To par";"Holes";"Countback"'); // the tests speak English

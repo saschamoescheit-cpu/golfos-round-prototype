@@ -1675,7 +1675,7 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
       {st.status && <span className="small game-status">{st.status}</span>}
       <span className="muted small">
         {allowanceOf(g) ? tr(`Handicap ${allowanceOf(g)} %`, `Vorgabe ${allowanceOf(g)} %`) : tr('Gross, without handicap', 'Brutto, ohne Vorgabe')}
-        {Number(g.settings.stake ?? 0) > 0 ? ` · ${tr('stake', 'Einsatz')} ${euroText(stakeNow(g))}` : ''}
+        {Number(g.settings.stake ?? 0) > 0 && !isNone(gamePrize(g)) ? ` · ${tr('stake', 'Einsatz')} ${euroText(stakeNow(g))}` : ''}
 
       </span>
       <ol className="game-rows">

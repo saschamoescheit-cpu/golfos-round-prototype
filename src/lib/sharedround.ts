@@ -629,7 +629,8 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   }
   const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
   const hb = fmt.scoring === 'stableford';
-  const gross = !!o.gross || (fmt.allowance ?? 100) === 0;
+  // gross: asked for, an allowance of 0 – or stroke play gross as an event from before 04.11.2026 set it, with 100 %
+  const gross = !!o.gross || (fmt.allowance ?? 100) === 0 || fmt.scoring === 'stroke';
   const n = ev.holes.length;
   const single = players.filter((p) => !o.cls || meta[p.id].cls === o.cls).map((p) => ({ p, per: holeScoresOf(round, p.id, fmt, gross) }));
   // Better Ball (Sascha 07.11.2026: every mode in a tournament): each flight's pairs – players 1 & 2, 3 & 4 – rank as
@@ -703,6 +704,8 @@ export function eventCard(ev: RoundEvent, key: string): Round | null {
     loopOrder: ev.loopOrder,
     holes: ev.holes,
     mode: 'quick',
+    // its format: the card's strokes and points as the leaderboard counts them – the allowance, gross (audit 09.11.2026)
+    ...(ev.format ? { format: ev.format } : {}),
     players: [{ id: key, name: p.name, playingHandicap: p.playingHandicap, isMe: true }],
     entries: { [key]: ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, pid, i))) },
     currentHole: 0,

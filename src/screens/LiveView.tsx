@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { fetchLive, type LiveView } from '../lib/live';
+import { setMoneySym } from '../lib/gameforms';
+import { gamePrize } from '../lib/gamepay';
+import { prizeSym } from '../lib/prize';
 import { CLASS_NAMES, netClasses, eventCard, eventStandings, type RoundEvent } from '../lib/sharedround';
 import { seriesStandings } from '../lib/seriesstandings';
 import { specialName } from '../lib/specials';
@@ -72,6 +75,8 @@ export function LiveScreen(props: { code: string }) {
       </main>
     );
   }
+  // a game: its money in its own symbol – $, a drink, none (audit 09.11.2026: the spectators saw €)
+  if (view.kind === 'game') setMoneySym(prizeSym(gamePrize(view.game)));
   return (
     <main className="screen live-screen">
       {view.kind === 'event' && <EventLive ev={view.event} />}

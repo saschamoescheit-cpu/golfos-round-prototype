@@ -670,7 +670,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   const b = eventStandings(ev, { gross, cls });
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
   const flights = liveFlights(ev).length;
-  const net = (ev.format?.allowance ?? 100) > 0;
+  const net = (ev.format?.allowance ?? 100) > 0 && ev.format?.scoring !== 'stroke';
   const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
   const diff = (key: string): string | null => {
     const [fid, pid] = key.split('/');
@@ -705,7 +705,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
           {net && (
             <>
               <button type="button" className={`chip${!gross ? ' on' : ''}`} aria-pressed={!gross} onClick={() => setGross(false)}>
-                {tr('Net', 'Netto')}
+                {ev.format?.scoring === 'stableford' ? 'Stableford' : tr('Net', 'Netto')}
               </button>
               <button type="button" className={`chip${gross ? ' on' : ''}`} aria-pressed={gross} onClick={() => setGross(true)}>
                 {tr('Gross', 'Brutto')}
@@ -900,7 +900,10 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
                       : tr('Your marker signed – now you', 'Dein Zähler hat unterschrieben – jetzt du')
                     : tr(`${c.name} signed – now you`, `${c.name} hat unterschrieben – jetzt du`)
                   : locked
-                  ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
+                  ? // "everyone his own" (no marker – Sascha 09.11.2026, audit): signed by him alone
+                    !markerOf(f, c.pid)
+                    ? tr('Signed – handed in, locked', 'Unterschrieben – abgegeben, gesperrt')
+                    : tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
                   : done
                     ? c.as === 'player'
                       ? tr('Signed by you – the marker signs next', 'Von dir unterschrieben – jetzt unterschreibt der Zähler')

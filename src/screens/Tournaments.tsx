@@ -1003,7 +1003,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   const standings = eventStandings(live ?? ev, { gross: gross || (ev.format?.scoring ?? 'net') === 'stroke', cls });
   const played = started && standings.rows.some((r) => r.thru > 0);
   const done = played && standings.rows.every((r) => r.finished);
-  const net = (ev.format?.scoring ?? 'net') !== 'stroke';
+  const net = (ev.format?.scoring ?? 'net') !== 'stroke' && (ev.format?.allowance ?? 100) > 0;
   // changed: the tournament as a whole (a round of a tournament over rounds: all its rounds) – `flights`: opened at the
   // flights, a round over rounds on its own page (Sascha 04.11.2026: "the flights, the scorer, the tee time not to change
   // from here")
@@ -1228,9 +1228,11 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           }}
         />
       )}
-      {host && <TourInvite code={props.code} name={ev.name} date={ev.date} />}
+      {/* a round of a series: the series' invitation and live link – one code, one QR, one switch for all its rounds (Sascha
+          09.11.2026: "invited to the series, a round still offers Stefan; live on in the series, off in its rounds") */}
+      {host && <TourInvite code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} date={ev.date} />}
       {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
-      {host && <LiveShare code={props.code} name={ev.name} />}
+      {host && <LiveShare code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} />}
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}

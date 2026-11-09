@@ -412,7 +412,7 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
     },
     ...(t.myTee ? { tee: t.myTee } : {}),
     roundKind: d.kind ?? 'tournament',
-    ...(d.classes.length ? { classes: d.classes } : {}),
+    ...(d.classes.length && d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 ? { classes: d.classes } : {}),
     flights: plan,
   }) as PlannedEvent;
   fresh.draw = r.draw;
@@ -654,7 +654,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           {!d.code && !d.series && (
             <RoundsRow value={d.rounds.length} onChange={setCount} />
           )}
-          {d.scoring !== 'stroke' && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
+          {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
           {multi && (
             <ChoiceRow<number>
               label={tr('Cut', 'Cut')}
@@ -679,7 +679,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           {(d.kind ?? 'tournament') === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
         </SettingsList>
         {/* the limits under the list – the row stays one line */}
-        {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
+        {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
         {/* how the teams come about – in every flight */}
         {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>

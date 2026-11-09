@@ -18,7 +18,10 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
   const { round } = props;
   const differs = (pid: string, i: number) => !!props.differ?.[pid]?.includes(i);
   const holeDiffers = (i: number) => round.players.some((p) => differs(p.id, i));
-  const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
+  // the strokes received as the round counts them (audit 09.11.2026): its allowance – gross (stroke play, 0 %) none; a
+  // round without a format the full playing handicap, as ever
+  const share = round.format ? (round.format.scoring === 'stroke' ? 0 : (round.format.allowance ?? 100)) : 100;
+  const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap == null ? null : Math.round((p.playingHandicap * share) / 100))]));
   const teeData = TEES[round.courseId];
   const ti = round.tee && teeData ? teeData.tees.indexOf(round.tee) : -1;
   const metres = (h: RoundHole) => (ti >= 0 ? (teeData!.holes[h.label]?.[ti] ?? null) : null);

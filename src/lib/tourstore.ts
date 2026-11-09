@@ -135,16 +135,33 @@ async function headers(): Promise<Record<string, string> | null> {
 
 /** Every planned tournament this account is in (host or let in), from the server – a phone emptied or new gets them
  *  back, as the pools of bets. Nothing on the phone is dropped. */
+/** the series this phone joined into all its rounds this session */
+const joinedSeries = new Set<string>();
 export async function syncTours(): Promise<boolean> {
   const h = await headers();
   if (!h) return false;
   try {
     // the series this account is in
     const sr = await fetch(`${table()}?select=code,game,owner&event_code=is.null&game->>kind=eq.tour-series`, { headers: h });
-    if (sr.ok) for (const row of (await sr.json()) as { code: string; game: unknown; owner?: string }[]) if (row?.code && isSeries(row.game)) keepSeries(row.code, row.game, row.owner);
-    const r = await fetch(`${table()}?select=code,game,owner&event_code=is.null&game->>kind=eq.round-event&game->>planned=eq.true`, { headers: h });
+    const seriesRows = sr.ok ? ((await sr.json()) as { code: string; game: unknown; owner?: string }[]) : [];
+    for (const row of seriesRows) if (row?.code && isSeries(row.game)) keepSeries(row.code, row.game, row.owner);
+    const fetchRounds = () => fetch(`${table()}?select=code,game,owner&event_code=is.null&game->>kind=eq.round-event&game->>planned=eq.true`, { headers: h });
+    let r = await fetchRounds();
     if (!r.ok) return false;
-    const rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
+    let rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
+    // in a series but not yet in all its rounds (Sascha 09.11.2026: invited to the series by a tap, not joined by its code –
+    // a round would not show on its day): in by the series' code, which lets him into every round of it – once a session
+    const have = new Set(rows.map((x) => x.code));
+    const missing = seriesRows.filter((s) => isSeries(s.game) && !s.game.deletedAt && !joinedSeries.has(s.code) && s.game.rounds.some((x) => !have.has(x.code)));
+    if (missing.length) {
+      for (const s of missing) {
+        joinedSeries.add(s.code);
+        await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_join_game`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: s.code }) }).catch(() => null);
+      }
+      r = await fetchRounds();
+      if (!r.ok) return false;
+      rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
+    }
     const list = loadTours();
     const hidden = hiddenTours();
     let changed = false;
