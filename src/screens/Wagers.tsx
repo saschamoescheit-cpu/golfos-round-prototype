@@ -16,6 +16,7 @@ import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/Inv
 import { ActionBar } from '../components/ActionBar';
 import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
+import { tourState } from '../lib/tourstore';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
@@ -692,6 +693,16 @@ function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; 
   );
 }
 
+/** An invitation's state as an icon beside its words (Sascha 09.11.2026): accepted – a green tick, still open – a clock. */
+function InviteMark(props: { state: 'in' | 'open' }) {
+  return (
+    <svg className={`invite-mark ${props.state === 'in' ? 'good-text' : 'muted'}`} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      {props.state === 'in' ? <path d="M8 12.5l2.6 2.6L16 9.5" /> : <path d="M12 7v5l3 2" />}
+    </svg>
+  );
+}
+
 function JoinMark(props: { state: 'me' | 'in' | 'out' }) {
   const label = props.state === 'me' ? tr('you', 'du') : props.state === 'in' ? tr('joined', 'beigetreten') : tr('not joined yet', 'noch nicht beigetreten');
   return (
@@ -726,7 +737,7 @@ function StateBadge(props: { state: WagerState; provisional?: boolean }) {
   return <span className="badge warn">{tr('Open', 'Offen')}</span>;
 }
 
-export function PoolScreen(props: { code: string; onBack: () => void; /** where back leads, when not to "Wetten" */ backLabel?: string; onRound?: (code: string) => void }) {
+export function PoolScreen(props: { code: string; onBack: () => void; /** where back leads, when not to "Wetten" */ backLabel?: string; onRound?: (code: string) => void; /** today's tournament: Rounds, to take part (Sascha 09.11.2026) */ onTour?: () => void }) {
   useTop(props.code);
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
@@ -793,6 +804,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   }
   const today = dayOf(new Date());
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
+  // a tournament of this account today, in the pool's days – a round of the series (Sascha 09.11.2026)
+  const tourToday = today >= pool.from && today <= pool.to ? loadTours().find((e) => tourState(e, today) === 'today') : undefined;
   const change = async (fn: (p: WagerPool) => WagerPool | null) => {
     setMsg(null);
     const r = await changePool(props.code, fn);
@@ -856,14 +869,29 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
             </div>
             {/* the host invites right at a player not on a phone yet – or gives him the one who joined as a new player */}
             {host && !p.joined?.uid && p.id !== entry.me && (
-              <button type="button" className="btn-secondary pool-whois" aria-label={tr(`Invite ${p.name}`, `${p.name} einladen`)} onClick={() => setSheet({ whois: p.id })}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="10" cy="8" r="4" />
-                  <path d="M3 21c0-3.9 3.1-7 7-7s7 3.1 7 7" />
-                  <path d="M19 8v6M16 11h6" />
-                </svg>
+              <button type="button" className="btn-secondary pool-whois" aria-label={p.invited ? tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`) : tr(`Invite ${p.name}`, `${p.name} einladen`)} onClick={() => setSheet({ whois: p.id })}>
+                {p.invited ? <InviteMark state="open" /> : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="10" cy="8" r="4" />
+                    <path d="M3 21c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+                    <path d="M19 8v6M16 11h6" />
+                  </svg>
+                )}
                 {p.invited ? tr(`Invited: ${p.invited.name}`, `Eingeladen: ${p.invited.name}`) : tr(`Invite ${p.name}`, `${p.name} einladen`)}
               </button>
+            )}
+            {/* how the invitation stands, with its icon (Sascha 09.11.2026: "accepted – an icon; still open – an icon too") */}
+            {!host && p.invited && !p.joined?.uid && p.id !== entry.me && (
+              <span className="pool-invite-state">
+                <InviteMark state="open" />
+                {tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`)}
+              </span>
+            )}
+            {p.joined && p.id !== entry.me && (
+              <span className="pool-invite-state">
+                <InviteMark state="in" />
+                {tr(`Accepted: ${p.joined.name || p.name}`, `Angenommen: ${p.joined.name || p.name}`)}
+              </span>
             )}
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
             {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
@@ -948,8 +976,16 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           />
         </>
       )}
-      {/* the round right from the bets, the one main button at the very bottom (Sascha 02.11.2026) */}
-      {entry.me && !pool.finishedAt && props.onRound && (
+      {/* a tournament today – a round of the series (Sascha 09.11.2026: "'Runde starten' only makes sense for a single
+          round – the bets run over all rounds of the series"): it is played in Rounds and counts for the bets anyway */}
+      {entry.me && !pool.finishedAt && tourToday && !poolRoundOf(props.code) && props.onTour ? (
+        <>
+          <span className="muted small pool-tour-hint">{tr(`Today: ${tourToday.ev.name} – it counts for the bets.`, `Heute: ${tourToday.ev.name} – zählt für die Wetten.`)}</span>
+          <button type="button" className="btn-primary" onClick={props.onTour}>
+            {tr('To the tournament', 'Zum Turnier')}
+          </button>
+        </>
+      ) : entry.me && !pool.finishedAt && props.onRound && (
         <button type="button" className="btn-primary" onClick={() => props.onRound!(props.code)}>
           {poolRoundOf(props.code) ? tr('Continue the round', 'Runde fortsetzen') : tr('Start the round', 'Runde starten')}
         </button>

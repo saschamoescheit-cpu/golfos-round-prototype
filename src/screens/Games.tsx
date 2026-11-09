@@ -188,7 +188,7 @@ export function GamesApp(props: {
   /** 'games' – "Games & Bets": games and pools of bets; 'tours' – "Tournaments", a module of its own (Sascha
    *  03.11.2026: "the tournaments out of Games, their own menu item below Games") – the same screens of a tournament */
   kind?: 'games' | 'tours';
-  onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void }) {
+  onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void; /** Rounds, its start page – today's tournament to take part in (a pool's "Zum Turnier") */ onOpenRounds?: () => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => {
@@ -363,6 +363,7 @@ export function GamesApp(props: {
         <PoolScreen
           code={view.code}
           backLabel={view.back === 'balance' ? tr('Balance', 'Bilanz') : undefined}
+          onTour={props.onOpenRounds}
           onRound={(code) => {
             const running = poolRoundOf(code);
             if (running) return setView({ name: 'poolRound', code, round: running, back: view.back });

@@ -432,7 +432,7 @@ export function App() {
     );
   // the tournaments a module of their own (Sascha 03.11.2026) – the same screens of a tournament as before
   if (module === 'tournaments') return <GamesApp kind="tours" onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} onOpenRounds={() => { setScreen(HOME); setModule('rounds'); }} />;
   if (module === 'mobility')
     return (
       <Suspense fallback={<Waiting />}>

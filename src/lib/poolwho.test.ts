@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canLinkInto, meOf } from './wagerstore';
+import { canLinkInto, meOf, twinsOf } from './wagerstore';
 import type { WagerPool } from './wagers';
 
 // Who a phone is in a pool (Sascha 06.11.2026, USA trip: "Chris made by hand, Christopher joined – twice"; "invite Erik
@@ -32,5 +32,18 @@ describe('a player joined as a new one, linked into the one made by hand', () =>
     expect(canLinkInto(pool([christopher], [{ id: 'w', player: 'px' }]), christopher)).toBe(false);
     expect(canLinkInto(pool([christopher], [{ id: 'w', player: 'pc', opponent: 'px' }]), christopher)).toBe(false);
     expect(canLinkInto(pool([{ id: 'pm', name: 'Moritz' }]), { id: 'pm', name: 'Moritz' })).toBe(false);
+  });
+});
+
+describe('the invited account joined before as a new player – linked by the host (Sascha 09.11.2026)', () => {
+  const christopher = { id: 'px', name: 'Christopher', joined: { name: 'Christopher', at: '', uid: 'u-chris' } };
+  const chris = { id: 'pc', name: 'Chris', invited: { uid: 'u-chris', name: 'Christopher Glatting', at: '' } };
+  it('Chris made by hand and invited, Christopher joined: linked', () => {
+    expect(twinsOf(pool([chris, christopher]))).toEqual([['pc', 'px']]);
+  });
+  it('not when the one who joined has bets, nor when Chris is taken already, nor without an invitation', () => {
+    expect(twinsOf(pool([chris, christopher], [{ id: 'w', player: 'px' }]))).toEqual([]);
+    expect(twinsOf(pool([{ ...chris, joined: { name: 'C', at: '', uid: 'u-other' } }, christopher]))).toEqual([]);
+    expect(twinsOf(pool([{ id: 'pc', name: 'Chris' }, christopher]))).toEqual([]);
   });
 });

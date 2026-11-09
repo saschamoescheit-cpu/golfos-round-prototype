@@ -99,6 +99,29 @@ export const linkPlayer = (code: string, target: string, from: string): Promise<
     };
   });
 
+/** The players made by hand whose invited account joined on its own as a new player (Sascha 09.11.2026: "Christopher
+ *  is still in twice" – Chris invited as Christopher Glatting, who had joined as "Christopher" before): [made by hand,
+ *  joined] – the host's phone links them, as "Wer ist Chris?" would. Only one without bets or payments goes. */
+export function twinsOf(pool: WagerPool): [string, string][] {
+  const out: [string, string][] = [];
+  for (const p of pool.players) {
+    if (!p.invited?.uid || p.joined?.uid) continue;
+    const twin = pool.players.find((q) => q.id !== p.id && q.joined?.uid === p.invited!.uid);
+    if (twin && canLinkInto(pool, twin) && !out.some(([, f]) => f === twin.id)) out.push([p.id, twin.id]);
+  }
+  return out;
+}
+const linking = new Set<string>();
+function linkTwins(code: string, pool: WagerPool): void {
+  if (linking.has(code)) return;
+  const twins = twinsOf(pool);
+  if (!twins.length) return;
+  linking.add(code);
+  void (async () => {
+    for (const [target, from] of twins) await linkPlayer(code, target, from);
+  })().finally(() => linking.delete(code));
+}
+
 // Who this account is in each pool – synced between its devices (lib/sync.ts, kind 'pool-me'): a new phone or the app
 // knows it without asking, also for a pool joined before the account was kept in "joined". Only the code and the
 // player's id – the pool itself always comes from the shared table.
@@ -180,6 +203,7 @@ export async function syncPools(): Promise<boolean> {
       // the player kept while he is still in the pool – else found by the account or the invitation (linked by the host)
       const mine = meOf(row.game, old?.me || meIn(row.code), me);
       claimInvited(row.code, row.game, mine);
+      if (me && row.owner === me && !row.game.deletedAt) linkTwins(row.code, row.game);
       if (mine) rememberMe(row.code, mine); // also for a pool unchanged – to the account's other devices
       if (old && old.me === mine && old.owner === row.owner && JSON.stringify(old.pool) === JSON.stringify(row.game)) continue;
       const entry: PoolEntry = { code: row.code, me: mine, pool: row.game, ...(row.owner ? { owner: row.owner } : {}) };
@@ -395,6 +419,8 @@ function keptFor(r: Round, name: string): boolean {
 function takes(w: Wager, me: string, old: Progress | undefined, now: Progress): boolean {
   if (w.player === me || !old) return true;
   if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
+  // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
+  if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
   if (now.rounds !== old.rounds) return now.rounds > old.rounds;
   if (now.done !== old.done) return now.done;
   if (now.pending != null && old.pending == null) return true;

@@ -101,6 +101,26 @@ if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betr
 await stand.getByRole('button', { name: 'Gesamt' }).click();
 ok((await stand.getByRole('button', { name: 'Gesamt' }).getAttribute('aria-pressed')) === 'true', 'back to "Gesamt"');
 
+// a round of the series today (Sascha 09.11.2026: "'Runde starten' only makes sense for a single round"): the pool's
+// button leads to the tournament in Rounds – "Turnier heute", "Teilnehmen" – instead of a round of its own
+ok((await H.getByRole('button', { name: 'Runde starten' }).count()) === 1 && (await H.getByRole('button', { name: 'Zum Turnier' }).count()) === 0, 'no tournament today: "Runde starten"');
+const todayCode = await sim.plan(H, {
+  name: 'Kissimmee Bay',
+  date: day(0),
+  flights: [{ teeTime: '09:00', players: [{ name: 'Sascha', playingHandicap: 10 }, { name: 'Christopher', playingHandicap: 8 }] }],
+});
+await H.evaluate(async ({ code, row }) => (await import('/src/lib/tourstore.ts')).keepTour(code, row.game, row.owner), { code: todayCode, row: sim.shared.get(todayCode) });
+await H.locator('.topbar button, .back-btn').first().click().catch(() => {});
+await H.waitForTimeout(500);
+await H.getByText('USA-Wetten').first().click();
+await H.locator('.pool-standings').waitFor({ timeout: 15000 });
+ok((await H.getByRole('button', { name: 'Zum Turnier' }).count()) === 1 && (await H.getByRole('button', { name: 'Runde starten' }).count()) === 0 && /Heute: Kissimmee Bay – zählt für die Wetten/.test(await H.locator('.pool-tour-hint').innerText().catch(() => '')), 'a tournament today: "Zum Turnier" with "Heute: Kissimmee Bay – zählt für die Wetten." – no "Runde starten"');
+if (process.env.SHOTS) await H.screenshot({ path: `${process.env.SHOTS}/pool-tour.png`, fullPage: true });
+await H.getByRole('button', { name: 'Zum Turnier' }).click();
+const todayCard = H.locator('.play-card').filter({ hasText: 'Turnier heute' }).filter({ hasText: 'Kissimmee Bay' });
+await todayCard.waitFor({ timeout: 10000 }).catch(() => {});
+ok((await todayCard.getByRole('button', { name: 'Teilnehmen' }).count()) === 1, 'Rounds: "Turnier heute · Kissimmee Bay" – "Teilnehmen"');
+
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

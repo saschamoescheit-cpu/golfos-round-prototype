@@ -97,6 +97,8 @@ ok(players().find((p) => p.id === 'pe')?.invited?.uid === 'Erik' && pushes.some(
 await whoE.getByRole('button', { name: 'Schließen' }).click();
 await H.waitForTimeout(800);
 ok(/Eingeladen: Erik/.test(await cardOf(H, 'Erik').innerText()), 'the card: "Eingeladen: Erik"');
+// the invitation's state as an icon (Sascha 09.11.2026): open – a clock in the button, nothing "accepted" yet
+ok((await cardOf(H, 'Erik').locator('.pool-whois .invite-mark.muted').count()) === 1 && (await cardOf(H, 'Erik').getByText(/^Angenommen/).count()) === 0, 'Erik invited, not in yet: the clock at "Eingeladen: Erik"');
 const erik = await sim.phone('Erik');
 const E = erik.p;
 await E.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
@@ -111,6 +113,35 @@ if (process.env.SHOTS) await E.screenshot({ path: process.env.SHOTS + '/pool-eri
 ok((await E.getByText('Wer bist du?').count()) === 0 && (await cardOf(E, 'Erik').getByRole('img', { name: 'du' }).count()) === 1, "Erik's phone: Erik, \"du\" – no \"who are you?\"");
 ok(players().find((p) => p.id === 'pe')?.joined?.uid === 'Erik' && players().length === 3, `Erik's phone took Erik by his account – no second player (${players().map((p) => p.name).join(', ')})`);
 
-ok([host, chris, erik].every((x) => x.errs.length === 0), `no page errors ${[host, chris, erik].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);
+// Sascha's phone: Erik accepted – the tick and "Angenommen", the button gone; Chris (linked) as well
+await openPool(H);
+ok((await cardOf(H, 'Erik').locator('.pool-invite-state .invite-mark.good-text').count()) === 1 && /Angenommen: Erik/.test(await cardOf(H, 'Erik').innerText()) && (await cardOf(H, 'Erik').locator('.pool-whois').count()) === 0, 'Erik accepted: a green tick, "Angenommen: Erik", no invite button');
+ok(/Angenommen: Christopher/.test(await cardOf(H, 'Chris').innerText()), 'Chris: "Angenommen: Christopher"');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/pool-accepted.png', fullPage: true });
+
+// Sascha 09.11.2026 "Christopher is still in twice": Moritz made by hand and invited, but Moritz had joined as a new
+// player before – Sascha's phone links them on its own when it opens the pools
+cards.set('Moritz', card('Moritz', 'Moritz', '0'));
+{
+  const g = shared.get(code).game;
+  shared.get(code).game = { ...g, players: [...g.players, { id: 'pm', name: 'Moritz', invited: { uid: 'Moritz', name: 'Moritz Kopp', at: new Date().toISOString() } }], wagers: [...g.wagers, { stake: 20, payout: 'success', attempts: 'any', by: 'Sascha', id: 'w-m', player: 'pm', kind: 'parRun', target: 8 }] };
+  shared.get(code).members.push('Moritz');
+}
+const moritz = await sim.phone('Moritz');
+await moritz.p.evaluate(async (c) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  await ws.joinPool(c, { name: 'Moritz K' }, 'Moritz');
+}, code);
+ok(players().some((p) => p.name === 'Moritz K'), `Moritz joined as a new player: in twice (${players().map((p) => p.name).join(', ')})`);
+await openPool(H);
+await H.waitForTimeout(2000);
+{
+  const ps = players();
+  ok(!ps.some((p) => p.name === 'Moritz K') && ps.find((p) => p.id === 'pm')?.joined?.uid === 'Moritz' && shared.get(code).game.wagers.find((w) => w.id === 'w-m')?.player === 'pm', `linked by Sascha's phone on its own: Moritz has his phone and his bet, the second one gone (${ps.map((p) => p.name).join(', ')})`);
+}
+await openPool(moritz.p);
+ok(await moritz.p.evaluate((c) => JSON.parse(localStorage.getItem('golfos.pools.v1')).find((e) => e.code === c)?.me === 'pm', code), "Moritz's phone reports as Moritz (pm)");
+
+ok([host, chris, erik, moritz].every((x) => x.errs.length === 0), `no page errors ${[host, chris, erik, moritz].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
