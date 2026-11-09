@@ -10,7 +10,9 @@ import { decodeTrack, encodeTrack, type Row } from './trackcodec';
 // that write is done. Without IndexedDB (a private window, a blocked database) nothing changes – localStorage as before.
 
 /** the keys kept in the big store – data that is large and grows (all else stays in localStorage) */
-export const BIG_PREFIXES = ['golfos.track.v1.', 'golfos.geo.v1.', 'golfos.course.v1.', 'golfos.elevation.v1'];
+// + the tournaments' copies (every flight of every round of a series – loaded again from the server) and the caddie's
+// log of each round (Sascha 09.11.2026, night run: Erik's "storage full" again – both grow with every round)
+export const BIG_PREFIXES = ['golfos.track.v1.', 'golfos.geo.v1.', 'golfos.course.v1.', 'golfos.elevation.v1', 'golfos.event.v1.', 'golfos.caddielog.v1.'];
 export const isBig = (key: string): boolean => typeof key === 'string' && BIG_PREFIXES.some((p) => key.startsWith(p));
 
 /** where the big data lies – IndexedDB in the app, a map in the tests */

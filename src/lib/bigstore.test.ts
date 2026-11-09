@@ -68,6 +68,9 @@ describe('the big store', () => {
     expect(isBig('golfos.geo.v1.osm:way/1')).toBe(true);
     expect(isBig('golfos.course.v1.x')).toBe(true);
     expect(isBig('golfos.elevation.v1')).toBe(true);
+    // the tournaments' copies and the caddie's log too (09.11.2026)
+    expect(isBig('golfos.event.v1.ABC123')).toBe(true);
+    expect(isBig('golfos.caddielog.v1.r1')).toBe(true);
     expect(isBig('golfos.rounds.v1')).toBe(false);
     expect(isBig('golfos.profile.v1')).toBe(false);
   });
