@@ -732,9 +732,11 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
           </>
         ) : (
           <>
-            <circle cx="9" cy="8" r="4" />
-            <path d="M2 21c0-3.9 3.1-7 7-7 1.9 0 3.6.7 4.9 1.9" />
-            {props.state === 'in' ? <path d="M15 17.5l2.3 2.3L22 15" /> : <path d="M15 17.5h7M19 14.5l3 3-3 3" />}
+            {/* the figure smaller on the left, the tick or the arrow clear of it on the right (Sascha 10.11.2026: "the tick
+                too close to the figure") */}
+            <circle cx="7" cy="7.5" r="3.4" />
+            <path d="M1.5 20c0-3.3 2.5-6 5.5-6 1.6 0 3 .6 4 1.6" />
+            {props.state === 'in' ? <path d="M14.5 15.5l2.8 2.8 5.2-5.6" /> : <path d="M14 16h8M19 13l3 3-3 3" />}
           </>
         )}
       </svg>

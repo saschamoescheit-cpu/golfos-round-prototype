@@ -52,6 +52,17 @@ const item = P.locator('.hole-drawer').getByRole('button', { name: /Sidebet · 5
 ok((await item.count()) === 1, 'the round\'s menu: "Sidebet · 5+5+10"');
 await item.click();
 ok((await P.getByRole('dialog', { name: 'Sidebet · 5+5+10' }).count()) === 1, 'its sheet opens in the round');
+await P.getByRole('dialog', { name: 'Sidebet · 5+5+10' }).getByRole('button', { name: 'Schließen' }).first().click();
+// the leaderboard of the round with a tab "Wetten" (Sascha 10.11.2026): the bets of the day, the duel against Ben
+await P.locator('.hole-bar-handle').click();
+await P.locator('.hole-drawer').getByRole('button', { name: /^Leaderboard/ }).click();
+const board = P.getByRole('dialog', { name: 'Leaderboard' });
+const tabs = (await board.getByRole('group', { name: 'Anzeigen' }).getByRole('button').allInnerTexts()).join('|');
+ok(tabs === 'Leaderboard|Wetten', `the round's leaderboard: tabs ${tabs}`);
+await board.getByRole('button', { name: 'Wetten' }).click();
+await P.waitForTimeout(1500);
+const bets = (await board.locator('.pool-standings').innerText().catch(() => '')).replace(/s+/g, ' ');
+ok(/5\+5\+10/.test(bets) && /Ben/.test(bets), `"Wetten": the standing with the duel against Ben (${bets.slice(0, 120)})`);
 ok(me.errs.length === 0, `no page errors ${me.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
