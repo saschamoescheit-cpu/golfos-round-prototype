@@ -949,7 +949,10 @@ export const perRoundBet = (w: Wager): boolean => w.kind !== 'free' && shapeOf(w
 /** In how many rounds a bet was made, missed (rounds over), played – null: not per round, or judged by hand, or a
  *  report from before (no rounds in it). */
 export function tally(w: Wager, p: Progress | undefined, signedOnly = false): { made: number; missed: number; played: number } | null {
-  if (!perRoundBet(w) || !p?.perRound || p.manual) return null;
+  if (!perRoundBet(w) || !p || p.manual) return null;
+  // reported without its rounds: none played yet – nothing made, nothing missed ("–" as everywhere); else a report from
+  // an older app (the trip as one)
+  if (!p.perRound) return p.rounds === 0 && p.best == null && p.pending == null ? { made: 0, missed: 0, played: 0 } : null;
   let made = 0;
   let missed = 0;
   for (const r of p.perRound) {

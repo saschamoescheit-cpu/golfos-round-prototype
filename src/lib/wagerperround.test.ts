@@ -135,3 +135,12 @@ describe('the cards of a phone', () => {
     expect(mergeCards([own, hostOld], [{ ...own, strokes: [5] }])).toEqual([hostOld, { ...own, strokes: [5] }]);
   });
 });
+
+describe('a bet with no round yet', () => {
+  it('reported without rounds: none played – "nothing yet", the same as with no report at all', () => {
+    const w = bet({});
+    expect(tally(w, { best: null, done: false, rounds: 0, at: '' })).toEqual({ made: 0, missed: 0, played: 0 });
+    // a report from an older app with a round in it: the trip as one, as before
+    expect(tally(w, { best: 2, done: false, rounds: 1, at: '' })).toBeNull();
+  });
+});
