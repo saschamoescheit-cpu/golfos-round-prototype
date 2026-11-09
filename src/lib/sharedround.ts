@@ -209,6 +209,15 @@ export function eventOf(round: Round, course: CourseSummary, o: { name: string; 
     flights: { [o.flight]: flightOf(round, o.flight, flightName(round), o.phone, o.tournament, o.who) },
   };
 }
+/** The event with the round's frame in place of its own – what the round no longer has (a rating, a tee) goes too. */
+export function withFrame(e: RoundEvent, round: Round): RoundEvent {
+  const { tee: _t, rating: _r, format: _f, roundKind: _k, ...rest } = e;
+  void _t;
+  void _r;
+  void _f;
+  void _k;
+  return { ...rest, ...eventFrame(round) };
+}
 /** What the event takes from the round that set it up: holes and format. */
 function eventFrame(round: Round): Pick<RoundEvent, 'loopOrder' | 'holes' | 'format' | 'tee' | 'rating' | 'roundKind'> {
   return {
@@ -780,7 +789,7 @@ export async function startShared(round: Round, who: string): Promise<Round> {
     const old = e.flights[s.flight];
     // the scores entered by a joined phone already stay (none yet as a rule – nobody plays before the start)
     const scores = old ? Object.fromEntries(Object.entries(fresh.scores).map(([pid, cells]) => [pid, old.scores?.[pid] ?? cells])) : fresh.scores;
-    return { ...e, ...eventFrame(round), flights: { ...e.flights, [s.flight]: { ...fresh, scores, phones: { ...fresh.phones, ...(old?.phones ?? {}) } } } }; // the phones as they joined – the host's first (he keeps a team's card)
+    return { ...withFrame(e, round), flights: { ...e.flights, [s.flight]: { ...fresh, scores, phones: { ...fresh.phones, ...(old?.phones ?? {}) } } } }; // the phones as they joined – the host's first (he keeps a team's card)
   });
   const f = ev?.flights[s.flight];
   if (!f) return round;
@@ -1263,9 +1272,9 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   if (own !== 'legacy') {
     ev = own;
     if (frameOf(own)) {
-      const framed = await update(share.code, (e) => (frameOf(e) ? { ...e, ...frameOf(e)! } : null));
-      if (framed) {
-        ev = { ...framed, flights: own.flights }; // the flights as their own rows have them
+      const written = await update(share.code, (e) => (frameOf(e) ? withFrame(e, r0) : null));
+      if (written) {
+        ev = { ...written, flights: own.flights }; // the flights as their own rows have them
         keepEvent(share.code, ev);
       }
     }
@@ -1273,7 +1282,7 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
     ev = await update(share.code, (e) => {
       merged = mergeFlight(r0, e.flights[share.flight], e.tournament, who);
       const frame = frameOf(e);
-      return merged.changedHere || frame ? { ...e, ...(frame ?? {}), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
+      return merged.changedHere || frame ? { ...(frame ? withFrame(e, r0) : e), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
     });
   if (!ev || !merged) return null;
   const m = merged as ReturnType<typeof mergeFlight>;

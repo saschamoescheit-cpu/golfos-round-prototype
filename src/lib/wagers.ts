@@ -1015,6 +1015,14 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
   return out;
 }
 
+/** A pool's player as edited over the one on the server: his joining and invitation kept, a field emptied here empty
+ *  there too (Sascha 09.11.2026: what is taken away must not come back) – the HCP. */
+export function editedPlayer(old: PoolPlayer | undefined, edited: PoolPlayer): PoolPlayer {
+  const m = { ...old, ...edited };
+  if (!edited.hcp) delete m.hcp;
+  return m;
+}
+
 /** One round's money (Sascha 09.11.2026: "settled after every round played"): what the bets of each round on its own
  *  and the duels brought each player on that day – the rounds over only. Null: nothing settled that day. */
 export function roundLedger(pool: WagerPool, day: string): Record<string, number> | null {

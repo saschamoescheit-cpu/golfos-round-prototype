@@ -14,7 +14,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, editedPlayer, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -1050,7 +1050,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               // the players as changed here; one added meanwhile on another phone stays; one taken out here goes – with his
               // bets and the bets against him (Sascha 04.11.2026: "players cannot be deleted")
               const out = (id: string) => x.removed.includes(id);
-              const players = [...x.players.map((q) => ({ ...p.players.find((o) => o.id === q.id), ...q })), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && !out(q.id) && !pool.players.some((o) => o.id === q.id))];
+              const players = [...x.players.map((q) => editedPlayer(p.players.find((o) => o.id === q.id), q)), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && !out(q.id) && !pool.players.some((o) => o.id === q.id))];
               const wagers = p.wagers.filter((w) => !out(w.player) && !(w.opponent && out(w.opponent)));
               const progress = Object.fromEntries(Object.entries(p.progress).filter(([id]) => wagers.some((w) => w.id === id)));
               // what is played for: money keeps `currency` (as phones from before read it), a thing `prize` beside it
