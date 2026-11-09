@@ -104,7 +104,7 @@ ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1
 {
   const sum = stand.locator('tbody tr').filter({ hasText: 'in 7 Runden' }).first();
   const txt = (await sum.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok((await sum.count()) === 1 && (await sum.locator('.bet-cell.done').count()) === 0 && /\+126/.test(txt), `the score over 7 rounds in one round: its figure, not green (${txt})`);
+  ok((await sum.count()) === 1 && (await sum.locator('.bet-cell.done').count()) === 0 && /\+18/.test(txt), `the score over 7 rounds in one round: its share +126 / 7 = +18 on top, not green while not played (${txt})`);
 }
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betrounds.png` });
 await stand.getByRole('button', { name: 'Gesamt' }).click();

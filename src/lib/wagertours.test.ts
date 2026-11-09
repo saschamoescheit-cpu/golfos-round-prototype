@@ -70,6 +70,13 @@ describe('the standing per round', () => {
       '2026-11-08|Orange',
       '2026-11-09|Kissimmee',
     ]);
+    // Sascha 10.11.2026: "Hetzenhof is in it though it is not there" – a deleted bet's progress, a round outside the
+    // trip's rounds: no chip
+    const hz = { best: 2, done: false, rounds: 1, at: '', perRound: [{ day: '2026-11-08', course: 'Golfclub Hetzenhof', value: 2, counted: true }] };
+    expect(standingRounds({ progress: { w: p, gone: hz }, wagers: [w] }).map((r) => r.key)).toEqual(['2026-11-07|Celebration', '2026-11-09|Kissimmee']);
+    expect(
+      standingRounds({ progress: { w: { ...p, perRound: [...(p.perRound ?? []), ...hz.perRound] } }, wagers: [w], from: '2026-11-05', to: '2026-11-18', rounds: [{ id: 'a', day: '2026-11-07', course: 'Celebration' }, { id: 'b', day: '2026-11-09', course: 'Kissimmee' }] }).map((r) => r.key),
+    ).toEqual(['2026-11-07|Celebration', '2026-11-09|Kissimmee']);
     expect(figuresOf(w, 0)).toBe('2/–');
     expect(figuresOf(w, 3)).toBe('2/3');
   });
