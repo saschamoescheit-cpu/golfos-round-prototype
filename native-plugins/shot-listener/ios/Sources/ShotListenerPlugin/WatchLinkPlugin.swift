@@ -171,6 +171,10 @@ public class WatchLinkPlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
             item = ["kind": "shot", "shot": shot]
         } else if let id = info["remove"] as? String {
             item = ["kind": "remove", "id": id]
+        } else if let json = info["track"] as? String, let data = json.data(using: .utf8),
+                  let pts = try? JSONSerialization.jsonObject(with: data) as? [[Double]] {
+            // the watch's own track (Sascha 09.11.2026): [ms, lng, lat, accuracy] per fix
+            item = ["kind": "track", "round": (info["round"] as? String) ?? "", "pts": pts]
         } else if let h = info["hole"] as? Int {
             // the watch's own time and round (an older watch app: the time it came, no round)
             var it: [String: Any] = ["kind": "hole", "hole": h, "t": (info["t"] as? Double) ?? Date().timeIntervalSince1970 * 1000]
@@ -180,7 +184,7 @@ public class WatchLinkPlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
         guard let it = item else { return }
         lock.lock()
         kept.append(it)
-        if kept.count > 600 { kept.removeFirst(kept.count - 600) }
+        if kept.count > 2000 { kept.removeFirst(kept.count - 2000) }
         let list = kept
         lock.unlock()
         if let data = try? JSONSerialization.data(withJSONObject: list) {
@@ -193,6 +197,7 @@ public class WatchLinkPlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
     private func dropOld(except round: String) {
         lock.lock()
         kept = kept.filter { x in
+            if (x["kind"] as? String) == "track" { return (x["round"] as? String) == round }
             guard let shot = x["shot"] as? [String: Any] else { return false }
             return (shot["round"] as? String) == round
         }

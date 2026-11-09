@@ -23,9 +23,16 @@ export interface WatchShot {
   full: boolean;
   hit: boolean;
   manual: boolean;
+  /** the crack of the hit heard on the wrist (Sascha 09.11.2026) */
+  sound?: boolean;
 }
 /** 'hole': `round` and the watch's own `t` from the watch app of 08.11.2026 on – before, `t` is when it reached the phone */
-export type WatchItem = { kind: 'shot'; shot: WatchShot } | { kind: 'remove'; id: string } | { kind: 'hole'; hole: number; t: number; round?: string };
+export type WatchItem =
+  | { kind: 'shot'; shot: WatchShot }
+  | { kind: 'remove'; id: string }
+  | { kind: 'hole'; hole: number; t: number; round?: string }
+  // the watch's own GPS track, a batch: [ms, lng, lat, accuracy] per fix (Sascha 09.11.2026)
+  | { kind: 'track'; round: string; pts: number[][] };
 
 /** A hole changed on the watch – for this round, and in the last minute? (Sascha 08.11.2026: Erik's new round jumped to
  *  the hole the watch still showed of the round he had deleted) */
@@ -156,7 +163,8 @@ export function addWatchShot(round: Round, s: WatchShot, hole: number, fallback:
   const pos: LngLat | null = s.lng != null && s.lat != null ? [s.lng, s.lat] : (fallback?.pos ?? null);
   if (!pos) return round;
   const acc = s.lng != null && s.lat != null ? Math.round(s.acc ?? 10) : Math.round(fallback?.accuracy ?? 10);
-  const entry: ManualShot = { hole, pos, t: s.t, acc, watch: s.id, ...(s.hit ? { hit: true } : {}) };
+  // the ball felt – or its crack heard on the wrist
+  const entry: ManualShot = { hole, pos, t: s.t, acc, watch: s.id, ...(s.hit || s.sound ? { hit: true } : {}) };
   let k = -1;
   list.forEach((x, j) => {
     if (x.hole === hole) k = j;
@@ -164,7 +172,7 @@ export function addWatchShot(round: Round, s: WatchShot, hole: number, fallback:
   const prev = k >= 0 ? list[k] : null;
   if (prev && prev.watch && !s.manual && s.t - prev.t <= 120000 && s.t >= prev.t && distanceM(prev.pos, pos) <= 12) {
     // the earlier one felt the ball, this one not (a swing after the shot): the earlier stays
-    if (prev.hit && !s.hit) return { ...round, manualShots: list.map((x, j) => (j === k ? { ...x, also: [...(x.also ?? []), s.id] } : x)) };
+    if (prev.hit && !(s.hit || s.sound)) return { ...round, manualShots: list.map((x, j) => (j === k ? { ...x, also: [...(x.also ?? []), s.id] } : x)) };
     return { ...round, manualShots: list.map((x, j) => (j === k ? { ...entry, also: [...(x.also ?? []), x.watch!] } : x)) };
   }
   return { ...round, manualShots: [...list, entry] };

@@ -7,7 +7,7 @@ import { atTheTee, deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieA
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
-import { autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
+import { addWatchFixes, autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
@@ -1275,6 +1275,11 @@ export function HoleScreen(props: {
         // the hole changed on the watch by hand (in the last minute): the phone goes along – as by GPS, no par written
         if (it.kind === 'hole') {
           if (it.hole !== holeRef.current && watchHoleFor(it, r.id, r.holes.length)) goToRef.current(it.hole, true, r);
+          return;
+        }
+        // the watch's own track (Sascha 09.11.2026): the player's way in the round's track, also in a game on the map
+        if (it.kind === 'track') {
+          if (it.round === r.id && !r.preview) addWatchFixes(r.id, it.pts);
           return;
         }
         if (props.game) return; // a game counts no shots

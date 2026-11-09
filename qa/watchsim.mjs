@@ -105,6 +105,27 @@ await p.waitForTimeout(600);
 m = await manual();
 ok(m.length === 1 && m[0].watch === 'w1', `taken back on the watch: gone (${m.length})`);
 
+// 4b · the crack heard on the wrist (Sascha 09.11.2026): a short chip the motion alone did not feel as a hit, its crack
+// heard – the shot; a swing after it at the same spot (the club put away) does not replace it
+await p.evaluate((it) => window.__watchSend(it), shot('w4', 0.8, 120000, false, { sound: true, full: false, peak: 4 }));
+await p.evaluate((it) => window.__watchSend(it), shot('w5', 0.8, 130000, false));
+await p.waitForTimeout(800);
+m = await manual();
+ok(m.length === 2 && m[1].watch === 'w4' && m[1].also.includes('w5'), `the chip with its crack stays the shot, the swing after it does not replace it (${JSON.stringify(m)})`);
+
+// 4c · the watch's own GPS track (Sascha 09.11.2026: "the phone in the cart – the watch must record the GPS track"): its
+// fixes in the round's track, in place of the phone's of that time; the same batch again changes nothing
+const t0 = Date.now() + 200000;
+const pts = [0.1, 0.2, 0.3, 0.4].map((f, k) => [t0 + k * 10000, along(f)[0], along(f)[1], 4]);
+const inTrack = () => p.evaluate(({ id, t0 }) => import('/src/lib/track.ts').then((T) => T.loadTrack(id).filter((x) => x.t >= t0).map((x) => x.t)), { id: roundId, t0 });
+await p.evaluate((it) => window.__watchSend(it), { kind: 'track', round: roundId, pts });
+await p.waitForTimeout(500);
+ok((await inTrack()).length === 4, `the watch's track in the round's track (${(await inTrack()).length} fixes)`);
+await p.evaluate((it) => window.__watchSend(it), { kind: 'track', round: roundId, pts });
+await p.evaluate((it) => window.__watchSend(it), { kind: 'track', round: 'an-old-round', pts: [[t0 + 50000, along(0.5)[0], along(0.5)[1], 4]] });
+await p.waitForTimeout(500);
+ok((await inTrack()).length === 4, 'the same batch again, and one of another round: nothing changes');
+
 // 5 · the hole changed on the watch
 await p.evaluate(() => window.__watchSend({ kind: 'hole', hole: 1, t: Date.now() }));
 await p.waitForTimeout(1200);

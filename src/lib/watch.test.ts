@@ -127,3 +127,17 @@ describe('the round on the watch and on the phone', () => {
     expect(endWatchRoundIfGone([{ id: 'r1', finishedAt: null }])).toBe(true); // deleted
   });
 });
+
+// Sascha 09.11.2026: "the phone in the cart, the player at the ball with the watch only" – the crack heard on the wrist,
+// and the watch's own track in place of the phone's
+describe('the crack heard on the wrist', () => {
+  it('a short chip without the jolt, its crack heard: the shot – a swing after it at the spot does not replace it', () => {
+    const p = at(0, 200);
+    const chip = { ...swing('c1', 1000, p, false), sound: true };
+    const r1 = addWatchShot(round, chip, 0, null);
+    expect(r1.manualShots?.[0]).toMatchObject({ watch: 'c1', hit: true });
+    const r2 = addWatchShot(r1, swing('c2', 20000, p, false), 0, null);
+    expect(r2.manualShots).toHaveLength(1);
+    expect(r2.manualShots?.[0]).toMatchObject({ watch: 'c1', also: ['c2'] });
+  });
+});

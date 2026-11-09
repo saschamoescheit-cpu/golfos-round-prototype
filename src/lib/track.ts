@@ -444,8 +444,45 @@ export function fixAt(track: TrackPoint[], t: number): { pos: LngLat; accuracy: 
   return best ? { pos: best.p, accuracy: best.acc } : null;
 }
 
+/** The watch's own track (Sascha 09.11.2026: "the phone may lie in the cart – the watch must have GPS to record the
+ *  shots and the GPS track"): its fixes take the place of the phone's over the same time – the player's way, not the
+ *  cart's. A batch again (the watch app hands everything kept so far) changes nothing. While the watch sends, the phone
+ *  keeps none of its own (watchFresh). */
+export function addWatchFixes(roundId: string, pts: number[][]): number {
+  const rows = pts
+    .filter((x) => x.length >= 4 && x.every((v) => Number.isFinite(v)) && x[3] >= 0 && x[3] <= 30)
+    .map((x): Row => [Math.round(x[0]), Math.round(x[1] * 1e6) / 1e6, Math.round(x[2] * 1e6) / 1e6, Math.round(x[3])])
+    .sort((a, b) => a[0] - b[0]);
+  if (!rows.length) return 0;
+  const c = cached(roundId);
+  const from = rows[0][0];
+  const to = rows[rows.length - 1][0];
+  const merged = mergeWatchRows(c.raw, rows);
+  if (merged === c.raw) return 0;
+  c.raw = merged.slice(-MAX_POINTS);
+  c.pts = c.raw.map(([t, lon, lat, acc, o]): TrackPoint => (o ? { t, p: [lon, lat], acc, open: true } : { t, p: [lon, lat], acc }));
+  watchSeen[roundId] = Math.max(watchSeen[roundId] ?? 0, to);
+  dirty = true;
+  flushTrack();
+  return rows.filter((r) => r[0] >= from && r[0] <= to).length;
+}
+/** The rows of a track with a batch of the watch's in their place: the phone's rows of the batch's time out, the batch's
+ *  in, by time. The same rows when nothing is new. */
+export function mergeWatchRows(raw: Row[], rows: Row[]): Row[] {
+  const from = rows[0][0];
+  const to = rows[rows.length - 1][0];
+  const batch = new Set(rows.map((r) => r[0]));
+  const have = new Set(raw.map((r) => r[0]));
+  if (rows.every((r) => have.has(r[0])) && !raw.some((r) => r[0] >= from && r[0] <= to && !batch.has(r[0]))) return raw;
+  return [...raw.filter((r) => r[0] < from || r[0] > to), ...rows].sort((a, b) => a[0] - b[0]);
+}
+// the last fix of the watch per round – the phone keeps none of its own while the watch sends (two minutes)
+const watchSeen: Record<string, number> = {};
+export const watchFresh = (roundId: string, t: number): boolean => (watchSeen[roundId] ?? 0) > 0 && t - (watchSeen[roundId] ?? 0) < 120000;
+
 /** Appends a GPS fix when the player moved ≥ 3 m or 5 s passed (compact storage). */
 export function recordFix(roundId: string, fix: TrackPoint): void {
+  if (watchFresh(roundId, fix.t)) return; // the watch's track is the player's
   const c = cached(roundId);
   const last = c.raw[c.raw.length - 1];
   // a cached fix handed out again (iOS, after the phone was unlocked) is no new position – and would break the order

@@ -1,6 +1,14 @@
 // The round on the watch: what the iPhone sent (the holes), where the player is (the watch's GPS), the workout that
 // keeps the watch awake on the wrist (a golf workout – the swings are felt only during one), and the shots.
+//
+// Sascha 09.11.2026 ("the phone may lie in the cart while the player stands at the ball with only the watch – take what
+// gives the best and most reliable result"): the watch also listens for the crack of the hit (the same detector as the
+// phone's, ImpactCore – nothing is recorded) and keeps its own GPS track. A swing with a crack at its moment is a shot
+// for sure; a turn too soft for a swing (a short chip) counts when the crack came with it; a practice swing has none.
+// Without the microphone (not allowed, not running) the watch counts by the motion alone, as before. The track goes to
+// the iPhone in batches – the round's track is the watch's where it has one (the player's way, not the cart's).
 
+import AVFoundation
 import CoreLocation
 import CoreMotion
 import Foundation
@@ -53,6 +61,8 @@ struct WatchShot: Codable {
     let full: Bool
     let hit: Bool
     let manual: Bool
+    /// the crack heard at its moment (absent from a watch app before 09.11.2026)
+    let sound: Bool?
 }
 
 final class RoundModel: NSObject, ObservableObject {
@@ -78,6 +88,12 @@ final class RoundModel: NSObject, ObservableObject {
     private var seq = 0
     private var holeByHand = Date.distantPast
     private var unsent: [[String: Any]] = []
+    /// the crack of the hit (Sascha 09.11.2026)
+    private let ear = Ear()
+    /// the watch's own track, sent to the iPhone in batches: [ms, lng, lat, accuracy]
+    private var trackBuf: [[Double]] = []
+    private var trackLast: [Double]?
+    private var trackSent = Date()
 
     // MARK: start
 
@@ -96,6 +112,32 @@ final class RoundModel: NSObject, ObservableObject {
         if round != nil { locations.startUpdatingLocation() }
     }
 
+    // MARK: the watch's track (Sascha 09.11.2026: "the watch must have GPS to record the shots and the GPS track")
+
+    /// a fix into the track – when the player moved 3 m or 5 s passed, as the phone keeps its own (src/lib/track.ts)
+    fileprivate func keepFix(_ p: CLLocation) {
+        guard round != nil else { return }
+        let t = (p.timestamp.timeIntervalSince1970 * 1000).rounded()
+        let row = [t, (p.coordinate.longitude * 1e6).rounded() / 1e6, (p.coordinate.latitude * 1e6).rounded() / 1e6, p.horizontalAccuracy.rounded()]
+        if let last = trackLast {
+            if t <= last[0] { return }
+            if t - last[0] < 5000 && Geo.distance([last[1], last[2]], [row[1], row[2]]) < 3 { return }
+        }
+        trackLast = row
+        trackBuf.append(row)
+        sendTrack(all: false)
+    }
+
+    /// the track kept so far to the iPhone – every minute (or 60 fixes), and all of it when the round ends
+    private func sendTrack(all: Bool) {
+        guard let r = round, !trackBuf.isEmpty else { return }
+        if !all && trackBuf.count < 60 && Date().timeIntervalSince(trackSent) < 60 { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: trackBuf), let json = String(data: data, encoding: .utf8) else { return }
+        trackBuf = []
+        trackSent = Date()
+        send(["track": json, "round": r.id])
+    }
+
     func t(_ en: String, _ de: String) -> String {
         let lang = round?.lang ?? (Locale.current.language.languageCode?.identifier ?? "de")
         return lang == "en" ? en : de
@@ -106,6 +148,8 @@ final class RoundModel: NSObject, ObservableObject {
     fileprivate func apply(_ ctx: [String: Any]) {
         DispatchQueue.main.async {
             if let active = ctx["active"] as? Bool, !active {
+                self.sendTrack(all: true)
+                self.trackLast = nil
                 self.endWorkout()
                 self.round = nil
                 self.shots = []
@@ -116,6 +160,8 @@ final class RoundModel: NSObject, ObservableObject {
             if let json = ctx["round"] as? String, let data = json.data(using: .utf8),
                let r = try? JSONDecoder().decode(WatchRound.self, from: data) {
                 if self.round?.id != r.id {
+                    self.sendTrack(all: true)
+                    self.trackLast = nil
                     self.shots = []
                     self.hole = max(0, min(r.start, r.holes.count - 1))
                 }
@@ -215,23 +261,41 @@ final class RoundModel: NSObject, ObservableObject {
 
     fileprivate func felt(_ swings: [Swing]) {
         for s in swings {
-            let id = add(t: s.t * 1000, peak: s.peak, jolt: s.jolt, full: s.full, hit: s.hit, manual: false)
-            recordSwing(s, counted: true, shot: id)
+            let heard = ear.crack(near: s.t * 1000)
+            let id = add(t: s.t * 1000, peak: s.peak, jolt: s.jolt, full: s.full, hit: s.hit || heard, manual: false, sound: heard)
+            recordSwing(s, counted: true, shot: id, heard: heard)
+        }
+    }
+
+    /// turns too soft or too short for a swing: a shot when the crack came with it (a short chip) – else only recorded
+    fileprivate func nearly(_ swings: [Swing]) {
+        for s in swings {
+            // the sound may come a moment after the motion's batch: look again shortly
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let self = self else { return }
+                if s.peak >= SwingParams.start && self.ear.crack(near: s.t * 1000) {
+                    let id = self.add(t: s.t * 1000, peak: s.peak, jolt: s.jolt, full: false, hit: true, manual: false, sound: true)
+                    self.recordSwing(s, counted: true, shot: id, heard: true)
+                } else {
+                    self.recordSwing(s, counted: false, shot: nil, heard: false)
+                }
+            }
         }
     }
 
     /// the motion around a swing (or a turn that was no swing) to the iPhone – kept there in a file for tuning the
     /// detection; taken once the second after it is there too
-    fileprivate func recordSwing(_ s: Swing, counted: Bool, shot: String?) {
+    fileprivate func recordSwing(_ s: Swing, counted: Bool, shot: String?, heard: Bool = false) {
         guard let r = round else { return }
         let feed = self.feed
         let rid = r.id
+        let ear = self.ear.state
         DispatchQueue.global().asyncAfter(deadline: .now() + 1.5) { [weak self] in
             let w = feed.window(around: s.t)
             if w.rot.isEmpty { return }
             var d: [String: Any] = [
                 "round": rid, "t": (s.t * 1000).rounded(), "peak": s.peak, "jolt": s.jolt, "dur": s.duration,
-                "counted": counted, "rot": w.rot, "acc": w.acc,
+                "counted": counted, "rot": w.rot, "acc": w.acc, "sound": heard, "ear": ear,
             ]
             if let shot = shot { d["shot"] = shot }
             guard let data = try? JSONSerialization.data(withJSONObject: d), let json = String(data: data, encoding: .utf8) else { return }
@@ -240,11 +304,11 @@ final class RoundModel: NSObject, ObservableObject {
     }
 
     func addByHand() {
-        _ = add(t: Date().timeIntervalSince1970 * 1000, peak: 0, jolt: 0, full: false, hit: false, manual: true)
+        _ = add(t: Date().timeIntervalSince1970 * 1000, peak: 0, jolt: 0, full: false, hit: false, manual: true, sound: false)
     }
 
     @discardableResult
-    private func add(t: Double, peak: Double, jolt: Double, full: Bool, hit: Bool, manual: Bool) -> String? {
+    private func add(t: Double, peak: Double, jolt: Double, full: Bool, hit: Bool, manual: Bool, sound: Bool) -> String? {
         guard let r = round else { return nil }
         seq += 1
         var lng: Double?
@@ -256,7 +320,7 @@ final class RoundModel: NSObject, ObservableObject {
             acc = (p.horizontalAccuracy * 10).rounded() / 10
         }
         let id = "\(r.id)-w\(Int(t))-\(seq)"
-        let shot = WatchShot(id: id, round: r.id, hole: hole, t: t.rounded(), lng: lng, lat: lat, acc: acc, peak: peak, jolt: jolt, full: full, hit: hit, manual: manual)
+        let shot = WatchShot(id: id, round: r.id, hole: hole, t: t.rounded(), lng: lng, lat: lat, acc: acc, peak: peak, jolt: jolt, full: full, hit: hit, manual: manual, sound: sound)
         shots.append(shot)
         if let data = try? JSONEncoder().encode(shot), let json = String(data: data, encoding: .utf8) {
             send(["shot": json])
@@ -349,9 +413,10 @@ final class RoundModel: NSObject, ObservableObject {
             if found.isEmpty && near.isEmpty { return }
             DispatchQueue.main.async {
                 self?.felt(found)
-                for s in near { self?.recordSwing(s, counted: false, shot: nil) }
+                self?.nearly(near)
             }
         }
+        ear.start()
         if CMBatchedSensorManager.isDeviceMotionSupported && CMBatchedSensorManager.isAccelerometerSupported {
             // Series 8 and later: the rotation 200 times, the acceleration 800 times a second
             let mgr = batched
@@ -388,6 +453,8 @@ final class RoundModel: NSObject, ObservableObject {
     }
 
     private func stopSensors() {
+        ear.stop()
+        sendTrack(all: true)
         for task in tasks { task.cancel() }
         tasks = []
         if plain.isDeviceMotionActive { plain.stopDeviceMotionUpdates() }
@@ -460,14 +527,100 @@ extension RoundModel: HKWorkoutSessionDelegate {
 
 extension RoundModel: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locs: [CLLocation]) {
-        guard let p = locs.last, p.horizontalAccuracy >= 0, p.horizontalAccuracy <= 30 else { return }
+        let good = locs.filter { $0.horizontalAccuracy >= 0 && $0.horizontalAccuracy <= 30 }
+        guard let p = good.last else { return }
         DispatchQueue.main.async {
             self.location = p
             self.autoHole(p)
+            for q in good { self.keepFix(q) }
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+}
+
+/// The crack of the hit on the wrist (Sascha 09.11.2026): the microphone into ImpactCore, the phone's detector – only the
+/// moments of the cracks are kept, a few seconds back; nothing is recorded. Off (not allowed, the audio not running): the
+/// watch counts by the motion alone.
+final class Ear {
+    private let engine = AVAudioEngine()
+    private let lock = NSLock()
+    private var cracks: [Double] = [] // ms since 1970
+    private var on = false
+    /// for the recordings: "on", "denied", "failed", "off"
+    private(set) var state = "off"
+
+    func start() {
+        if on { return }
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                guard granted else {
+                    self.state = "denied"
+                    return
+                }
+                self.open()
+            }
+        }
+    }
+
+    private func open() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.record, mode: .measurement, options: [])
+            try session.setActive(true)
+            let input = engine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            guard format.sampleRate > 0 else {
+                state = "failed"
+                return
+            }
+            input.removeTap(onBus: 0)
+            let core = ImpactCore()
+            let t0 = Date().timeIntervalSince1970 * 1000
+            let rate = format.sampleRate
+            var samples = 0.0
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+                guard let data = buffer.floatChannelData else { return }
+                let n = Int(buffer.frameLength)
+                // the time from the samples, as on the phone: the blocks may come in bursts
+                let hit = core.feed(UnsafeBufferPointer(start: data[0], count: n), now: t0 + samples * 1000 / rate)
+                samples += Double(n)
+                if let hit = hit { self?.heard(hit.t) }
+            }
+            engine.prepare()
+            try engine.start()
+            on = true
+            state = "on"
+        } catch {
+            state = "failed"
+        }
+    }
+
+    func stop() {
+        guard on else { return }
+        on = false
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        state = "off"
+    }
+
+    private func heard(_ t: Double) {
+        lock.lock()
+        cracks.append(t)
+        if cracks.count > 40 { cracks.removeFirst(cracks.count - 40) }
+        lock.unlock()
+    }
+
+    /// a crack within 0.3 s of the moment (ms since 1970) – each crack for one swing only
+    func crack(near t: Double) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let k = cracks.firstIndex(where: { abs($0 - t) <= 300 }) else { return false }
+        cracks.remove(at: k)
+        return true
+    }
 }
 
 /// SwingCore from two streams at once – one at a time; and the last seconds of the motion, for the recording of each

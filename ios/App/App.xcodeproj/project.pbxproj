@@ -20,6 +20,7 @@
 		A1B2C3D4E5F6A7B8C9D00013 /* RoundModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00003 /* RoundModel.swift */; };
 		A1B2C3D4E5F6A7B8C9D00014 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00004 /* ContentView.swift */; };
 		A1B2C3D4E5F6A7B8C9D00015 /* SwingCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00005 /* SwingCore.swift */; };
+		A1B2C3D4E5F6A7B8C9D00017 /* ImpactCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00010 /* ImpactCore.swift */; };
 		A1B2C3D4E5F6A7B8C9D00016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00006 /* Assets.xcassets */; };
 		A1B2C3D4E5F6A7B8C9D00042 /* GolfOSWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D00001 /* GolfOSWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -65,6 +66,7 @@
 		A1B2C3D4E5F6A7B8C9D00003 /* RoundModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundModel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D00004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D00005 /* SwingCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwingCore.swift; path = "../../native-plugins/shot-listener/ios/Sources/SwingCore/SwingCore.swift"; sourceTree = SOURCE_ROOT; };
+		A1B2C3D4E5F6A7B8C9D00010 /* ImpactCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImpactCore.swift; path = "../../native-plugins/shot-listener/ios/Sources/ShotCore/ImpactCore.swift"; sourceTree = SOURCE_ROOT; };
 		A1B2C3D4E5F6A7B8C9D00006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D00007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D00008 /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 				A1B2C3D4E5F6A7B8C9D00003 /* RoundModel.swift */,
 				A1B2C3D4E5F6A7B8C9D00004 /* ContentView.swift */,
 				A1B2C3D4E5F6A7B8C9D00005 /* SwingCore.swift */,
+				A1B2C3D4E5F6A7B8C9D00010 /* ImpactCore.swift */,
 				A1B2C3D4E5F6A7B8C9D00006 /* Assets.xcassets */,
 				A1B2C3D4E5F6A7B8C9D00007 /* Info.plist */,
 				A1B2C3D4E5F6A7B8C9D00008 /* Watch.entitlements */,
@@ -264,6 +267,7 @@
 				A1B2C3D4E5F6A7B8C9D00013 /* RoundModel.swift in Sources */,
 				A1B2C3D4E5F6A7B8C9D00014 /* ContentView.swift in Sources */,
 				A1B2C3D4E5F6A7B8C9D00015 /* SwingCore.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D00017 /* ImpactCore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
