@@ -4,7 +4,7 @@ import { KeyHint } from '../components/KeyHint';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent,reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -584,12 +584,43 @@ const clock = (d: Date) => d.toLocaleTimeString(tr('en-GB', 'de-DE'), { hour: '2
 // the total of a series lives in lib/seriesstandings (the result's push needs it too – 07.11.2026)
 export { seriesStandings, type SeriesPart } from '../lib/seriesstandings';
 
+/** The line under a leaderboard: live now – when it was read; else when the next round goes live (30 minutes before its
+ *  first tee time); nothing once all is played. */
+export function liveNote(evs: RoundEvent[], at: Date | null, now: Date = new Date()): string | undefined {
+  if (evs.some((e) => boardLive(e, now))) return at ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`) : tr('Live – every 30 seconds.', 'Live – alle 30 Sekunden.');
+  const next = evs
+    .map((e) => liveFrom(e))
+    .filter((d): d is Date => !!d && d.getTime() > now.getTime())
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+  if (!next) return undefined;
+  const day = dayOf(next) === dayOf(now) ? tr('today', 'heute') : longDate(dayOf(next));
+  if (next.getHours() === 0 && next.getMinutes() === 0) return tr(`Live from ${day} – then every 30 seconds.`, `Live ab ${day} – dann alle 30 Sekunden.`);
+  return tr(`Live from ${day}, ${clock(next)} – 30 minutes before the first tee time, then every 30 seconds.`, `Live ab ${day}, ${clock(next)} – 30 Min. vor der ersten Startzeit, dann alle 30 Sekunden.`);
+}
+
+/** A series' rounds as this phone has kept them,without the server: a round from its day on its last read copy (with
+ *  the scores), a round to come – or one never read – its plan. */
+export function keptRounds(code: string, today: string = dayOf(new Date())): RoundEvent[] {
+  const entry = loadSeries().find((e) => e.code === code);
+  if (!entry) return [];
+  const tours = loadTours();
+  return entry.series.rounds
+    .map((r) => {
+      const plan = tours.find((t) => t.code === r.code)?.ev ?? null;
+      const read = r.date <= today ? cachedEvent(r.code) : null;
+      return read ?? plan;
+    })
+    .filter((e): e is RoundEvent => !!e);
+}
+
 export function SeriesScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
   useTop(props.code);
   const allSeries = useSeries();
   const entry = allSeries.find((e) => e.code === props.code);
   const tours = useTours();
-  const [evs, setEvs] = useState<RoundEvent[]>([]);
+  // what this phone has kept, at once (Sascha 09.11.2026: "back from a round of the series the leaderboard takes a
+  // moment – it should show at once"): a round already on its day its last read copy, a round to come its plan
+  const [evs, setEvs] = useState<RoundEvent[]>(() => keptRounds(props.code));
   const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve' | 'adopt'>(null);
   const [dealing, setDealing] = useState<number | null>(null);
   const [adopting, setAdopting] = useState<string | null>(null);
@@ -601,17 +632,25 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   useEffect(() => {
     void syncTours();
   }, []);
-  // the rounds as the server has them – from the first day on every 30 s, for the total
+  // the rounds as the server has them – read once on opening (behind what is shown already), then every 30 s only while
+  // a round is live: from 30 minutes before its first tee time until its flights are in (Sascha 09.11.2026)
   useEffect(() => {
     if (!codes) return;
     let alive = true;
-    const tick = () =>
+    let last: RoundEvent[] = [];
+    const read = () =>
       void Promise.all(codes.split(',').map((c) => refreshEvent(c))).then((xs) => {
         if (!alive) return;
-        setEvs(xs.filter((x): x is RoundEvent => !!x));
+        const got = xs.filter((x): x is RoundEvent => !!x);
+        if (!got.length) return; // offline: what is kept stays
+        last = got;
+        setEvs((was) => [...got, ...was.filter((w) => !got.some((g) => g.id === w.id))]);
         setAt(new Date());
       });
-    tick();
+    read();
+    const tick = () => {
+      if (last.some((e) => boardLive(e))) read();
+    };
     const t = window.setInterval(tick, 30000);
     return () => {
       alive = false;
@@ -722,13 +761,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
               })
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, value: '–', thru: '' }))
         }
-        note={
-          total.rows.length
-            ? at
-              ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`)
-              : undefined
-            : tr('Starts with the first round – then live, every 30 seconds.', 'Startet mit der ersten Runde – dann live, alle 30 Sekunden.')
-        }
+        note={liveNote(evs, at)}
         cutAfter={cutPlayed ? cut!.after : undefined}
       />
       {/* the host deals a round by result once the rounds before are played (Sascha 04.11.2026) */}
@@ -950,9 +983,11 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   const started = !!entry && entry.ev.date <= today;
   useEffect(() => {
     let alive = true;
+    let last: RoundEvent | null = cachedEvent(props.code);
     const tick = () =>
       void refreshEvent(props.code).then((ev) => {
         if (!alive || !ev) return;
+        last = ev;
         setLive(ev);
         setAt(new Date());
         if (isPlanned(ev)) keepTour(props.code, ev);
@@ -960,13 +995,17 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
         if (liveFlights(ev).length && liveFlights(ev).every((f) => f.finishedAt)) window.dispatchEvent(new CustomEvent('golfos:event-in', { detail: { code: props.code, ev } }));
       });
     if (!entry) void syncTours();
+    // read once on opening, then every 30 s only while live: from 30 minutes before the first tee time until the flights
+    // are in (Sascha 09.11.2026)
     tick();
-    const t = started ? window.setInterval(tick, 30000) : 0;
+    const t = window.setInterval(() => {
+      if (last && boardLive(last)) tick();
+    }, 30000);
     return () => {
       alive = false;
       window.clearInterval(t);
     };
-  }, [props.code, started]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [props.code]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!entry) {
     return (
       <main className="screen">
@@ -1098,8 +1137,8 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}
           note={
-            !started
-              ? tr(`Starts on ${longDate(ev.date)} – then live, every 30 seconds.`, `Startet am ${longDate(ev.date)} – dann live, alle 30 Sekunden.`)
+            !boardLive(live ?? ev) && !played
+              ? liveNote([live ?? ev], at)
               : !played
                 ? tr('Live as soon as the first score is in.', 'Live, sobald der erste Score eingetragen ist.')
                 : !done && at

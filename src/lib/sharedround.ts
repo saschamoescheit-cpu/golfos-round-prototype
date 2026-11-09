@@ -1195,6 +1195,33 @@ export function canRejoin(ev: RoundEvent, name: string, now = new Date()): boole
   return !!flightOfName(ev, name)?.finishedAt; // the whole day – ended by mistake at any hour
 }
 
+/** When an event's leaderboard goes live (Sascha 09.11.2026: "live only 30 min before the tee time – until then what is
+ *  loaded, shown at once"): 30 minutes before its first tee time on its day; without tee times its day from 00:00.
+ *  null without a day. */
+export function liveFrom(ev: RoundEvent): Date | null {
+  if (!ev.date || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return null;
+  const [y, mo, d] = ev.date.split('-').map(Number);
+  const at = new Date(y, mo - 1, d, 0, 0, 0, 0);
+  const first = Object.values(ev.flights)
+    .filter((f) => f.players.length)
+    .map((f) => f.teeTime ?? '')
+    .filter((t) => /^\d{1,2}:\d{2}$/.test(t))
+    .sort((a, b) => a.padStart(5, '0').localeCompare(b.padStart(5, '0')))[0];
+  if (first) {
+    const [h, m] = first.split(':').map(Number);
+    at.setHours(h, m - 30, 0, 0);
+  }
+  return at;
+}
+/** The leaderboard is to be read from the server every 30 s now: from `liveFrom` on, while a flight is still out – a
+ *  day gone with a flight still out stays live too (the host enters the scores afterwards). */
+export function boardLive(ev: RoundEvent, now: Date = new Date()): boolean {
+  const from = liveFrom(ev);
+  if (!from || now.getTime() < from.getTime()) return false;
+  const flights = Object.values(ev.flights).filter((f) => f.players.length);
+  return !flights.length || flights.some((f) => !f.finishedAt);
+}
+
 /** The day is gone, or six hours after the last tee time (from when it was set up, set up later). */
 function playOver(ev: RoundEvent, now: Date): boolean {
   const today = localDay(now);
