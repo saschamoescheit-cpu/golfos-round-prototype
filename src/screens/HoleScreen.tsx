@@ -8,6 +8,7 @@ import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { addWatchFixes, autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
+import { DuelBar } from '../components/DuelBar';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
@@ -2026,6 +2027,8 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {/* today's 5+5+10 duels, live – also against a player in another flight (Sascha 09.11.2026) */}
+          {!greenFocus && !round.preview && <DuelBar />}
           {props.game && !greenFocus && (
             <button type="button" className={`game-bar${props.game.teams ? ' with-teams' : ''}`} onClick={props.game.onOpen} aria-label={tr(`${props.game.name} – standing and input`, `${props.game.name} – Stand und Eingabe`)}>
               <span className="game-bar-head">
