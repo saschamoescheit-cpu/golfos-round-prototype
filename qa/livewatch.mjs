@@ -131,7 +131,7 @@ sim.shared.set(pool, {
     progress: { w1: { best: null, done: false, rounds: 1, amount: -15, at: 'x' }, w2: { best: 1, done: false, rounds: 1, at: 'x' } }, payments: [] },
 });
 t = await watch('aaaa0123456789abcdef0123');
-ok(/Zocker-Pool/.test(t) && /3\/1/.test(t) && /Sascha/.test(t) && /Erik/.test(t), `the pool: its bets and where they stand (${t.slice(0, 160)})`);
+ok(/Zocker-Pool/.test(t) && /Birdies auf 18 3 1/.test(t) && /Sascha/.test(t) && /Erik/.test(t), `the pool: its bets and where they stand (${t.slice(0, 160)})`);
 ok(!/\$|15|€/.test(await V.locator('.pool-standings').innerText()) && /hinten/.test(await V.locator('.pool-standings').innerText()), 'without the money: no amounts – the "5+5+10" only "hinten"');
 sim.shared.get(pool).liveMoney = true;
 t = await watch('aaaa0123456789abcdef0123');

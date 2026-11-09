@@ -80,17 +80,17 @@ const cellText = async (row, player) => {
 };
 let chris = '';
 // "Gesamt" counts the rounds made (Sascha 09.11.2026: "every bet holds for each round on its own – the total shows how
-// often it was made over all rounds"): "1 von 1", green, the target below; no "vorläufig"
-for (let k = 0; k < 20 && !/^1 von 1/.test(chris); k++) {
+// often it was made over all rounds"): the target on top, "1/1" below (10.11.), green; no "vorläufig"
+for (let k = 0; k < 20 && !/^2 1\/1$/.test(chris); k++) {
   await H.waitForTimeout(1000);
   chris = await cellText('Birdies in Folge', 'Chris');
 }
 const chrisDone = await stand.locator('tbody tr').filter({ hasText: 'Birdies in Folge' }).first().locator('.bet-cell.done').count();
-ok(/^1 von 1 Ziel 2$/.test(chris) && chrisDone >= 1, `Gesamt: Chris "Birdies in Folge" from the tournament's flight – made in 1 of 1, green (${chris})`);
+ok(/^2 1\/1$/.test(chris) && chrisDone >= 1, `Gesamt: Chris "Birdies in Folge" from the tournament's flight – made in 1 of 1, green (${chris})`);
 const sascha = await cellText('Pars in Folge', 'Sascha');
-ok(/^1 von 1 Ziel 3$/.test(sascha) && !/vorläufig/.test(sascha), `Gesamt: Sascha's pars in a row counted (${sascha})`);
+ok(/^3 1\/1$/.test(sascha) && !/vorläufig/.test(sascha), `Gesamt: Sascha's pars in a row counted (${sascha})`);
 const erik = await cellText('Birdies in Folge', 'Erik');
-ok(/^(– Ziel 2|2\/–)$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
+ok(/^2 0(\/0)?$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
 
 // the rounds: "Gesamt" and yesterday's round
 const chips = await stand.getByRole('group', { name: 'Runden' }).getByRole('button').allInnerTexts();
@@ -99,7 +99,7 @@ ok(chips[0] === 'Gesamt' && chips.length === 2 && chips[1].startsWith(label), `t
 await stand.getByRole('group', { name: 'Runden' }).getByRole('button').nth(1).click();
 await H.waitForTimeout(300);
 const inRound = await cellText('Birdies in Folge', 'Chris');
-ok(/^2\/3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
+ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betrounds.png` });
 await stand.getByRole('button', { name: 'Gesamt' }).click();
 ok((await stand.getByRole('button', { name: 'Gesamt' }).getAttribute('aria-pressed')) === 'true', 'back to "Gesamt"');

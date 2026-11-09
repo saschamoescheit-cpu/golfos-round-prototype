@@ -1149,6 +1149,13 @@ export function figuresOf(w: Wager, n: number | null): string {
 }
 /** A bet's target as the cells write it: "3", "−5", "E". */
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
+/** What a round brought, under the target (Sascha 10.11.2026: "a 0 instead of the dash"): a count's 0 is "0"; a score
+ *  not played yet stays a dash (its 0 would read as par). */
+export function valueOf(w: Wager, n: number | null): string {
+  const shape = shapeOf(w.kind);
+  if (n == null) return shape === 'score' || shape === 'sum' ? '–' : '0';
+  return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
+}
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
 export function standingRounds(pool: Pick<WagerPool, 'progress'>): { key: string; day: string; course: string }[] {
   const seen = new Map<string, { key: string; day: string; course: string }>();
@@ -1204,21 +1211,23 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     );
   };
   // the total (Sascha 09.11.2026: "every bet holds for each round on its own – the total shows how often it was made over
-  // all rounds"): "2 von 5", green once made, the target below; no "provisional"
+  // all rounds"; 10.11.2026: "the target on top in bold, without the word 'Ziel', below how far it is made: 0/1"):
+  // green once made, no "provisional"
   const cell = ({ w }: { w: Wager; against: boolean }) => {
     // no round reported yet: "–" with its target, as the bets per round show it
     const t = tally(w, pool.progress[w.id]) ?? (perRoundBet(w) && !pool.progress[w.id] ? { made: 0, missed: 0, played: 0 } : null);
     if (t)
       return (
-        <span key={w.id} className={`bet-cell ${t.made ? 'done' : 'open'}`} title={wagerLabel(w)}>
-          {t.played ? tr(`${t.made} of ${t.played}`, `${t.made} von ${t.played}`) : '–'}
-          <small>{tr(`target ${targetOf(w)}`, `Ziel ${targetOf(w)}`)}</small>
+        <span key={w.id} className={`bet-cell ${t.made ? 'done' : 'open'}`} title={wagerLabel(w)} aria-label={tr(`target ${targetOf(w)}: made in ${t.made} of ${t.played} rounds`, `Ziel ${targetOf(w)}: in ${t.made} von ${t.played} Runden geschafft`)}>
+          <strong>{targetOf(w)}</strong>
+          <small className="bet-made">{`${t.made}/${t.played}`}</small>
           {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
         </span>
       );
     return (
       <span key={w.id} className={`bet-cell ${state(w) === 'done' || provisional(w, pool.progress[w.id]) ? 'done' : state(w)}`} title={wagerLabel(w)}>
-        {cellOf(w, pool.progress[w.id])}
+        <strong>{targetOf(w)}</strong>
+        <small className="bet-made">{valueOf(w, pool.progress[w.id]?.pending ?? pool.progress[w.id]?.best ?? null)}</small>
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );
@@ -1229,7 +1238,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     const made = !!r && reached(w, r.value);
     return (
       <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}`} title={wagerLabel(w)}>
-        {figuresOf(w, r?.value ?? null)}
+        <strong>{targetOf(w)}</strong>
+        <small className="bet-made">{valueOf(w, r?.value ?? null)}</small>
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );

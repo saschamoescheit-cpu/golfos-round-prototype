@@ -276,7 +276,7 @@ const settle = (await H.locator('.pool-settle').innerText()).replace(/\s+/g, ' '
 ok(/Chris zahlt an Sascha 35 \$/.test(settle) && /Erik zahlt an Sascha 5 \$/.test(settle) && /Cedric zahlt an Sascha 20 \$/.test(settle), `the settlement with the duel: "${settle.slice(0, 260)}"`);
 const standing = (await H.locator('.pool-standings').innerText().catch(() => '')).replace(/\s+/g, ' ');
 // each round on its own (Sascha 09.11.2026): Sascha made in 1 of 1 – Chris's round still on, nothing missed yet
-ok(/Pars in Folge 1 von 1 Ziel 5 (–|0 von 1) Ziel 4/.test(standing) && /5\+5\+10 brutto/.test(standing), `the standing at the top – Sascha 1 of 1, Chris not yet, the duel's row: "${standing.slice(0, 200)}"`);
+ok(/Pars in Folge 5 1\/1 4 0\/[01]/.test(standing) && /5\+5\+10 brutto/.test(standing), `the standing at the top – Sascha 1 of 1, Chris not yet, the duel's row: "${standing.slice(0, 200)}"`);
 
 const errs = Object.entries(phones).flatMap(([n, x]) => x.errs.map((e) => `${n}: ${e}`));
 ok(errs.length === 0, `no page errors ${errs.slice(0, 3).join(' | ')}`);
