@@ -51,7 +51,7 @@ await H.route(/supabase\.co\/rest\/v1\/golfos_shared_games/, async (route) => {
   if ([r1, r2].some((c) => u.includes(`code=eq.${c}&`))) reads++;
   if (process.env.DBG) console.log(Date.now() % 100000, route.request().method(), route.request().url().slice(-110));
   await new Promise((r) => setTimeout(r, 4000));
-  await route.fallback();
+  await route.fallback().catch(() => undefined);
 });
 await H.locator('li .list-item').filter({ hasText: 'Stonegate Oaks' }).first().click();
 await H.locator('.topbar h1').filter({ hasText: 'Stonegate Oaks' }).waitFor({ timeout: 8000 });
@@ -69,11 +69,13 @@ ok(reads === before, `no reading every 30 s before the first round is live (${re
 // a round live (today, 30 minutes before its tee time gone): read every 30 s
 const r0 = await sim.plan(H, { name: 'Kissimmee Bay', date: day(0), flights: flights.map((f) => ({ ...f, teeTime: '00:05' })) });
 const live = sim.series('Sascha', 'Live Series', [r0]);
+// the slow reads still on the way finished before the route goes (else the simulated server answers a handled one)
+await H.waitForTimeout(4500);
 await H.unroute(/supabase\.co\/rest\/v1\/golfos_shared_games/);
 let liveReads = 0;
 await H.route(/supabase\.co\/rest\/v1\/golfos_shared_games/, async (route) => {
   if (route.request().url().includes(`code=eq.${r0}&`)) liveReads++;
-  await route.fallback();
+  await route.fallback().catch(() => undefined);
 });
 await H.evaluate(async ({ code }) => {
   const ts = await import('/src/lib/tourstore.ts');
