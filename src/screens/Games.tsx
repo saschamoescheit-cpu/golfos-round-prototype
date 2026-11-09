@@ -1024,7 +1024,16 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       </section>
 
       {/* 5+5+10 one against one, in the pool of bets – also across flights (Sascha 09.11.2026) */}
-      {duel && <DuelSetup onDone={props.onDuel!} />}
+      {duel && (
+        <>
+          {/* its rules as every form's – one or more opponents, who keeps the score (Sascha 10.11.2026: "that belongs in the
+              form's description") */}
+          <div className="card">
+            <FormRules form={f} />
+          </div>
+          <DuelSetup onDone={props.onDuel!} />
+        </>
+      )}
 
       {!duel && (
       <>
