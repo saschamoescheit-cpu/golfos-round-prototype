@@ -1067,7 +1067,15 @@ export async function publishPlannedEvent(ev: RoundEvent): Promise<string | null
  *  written, or null (no connection, or another change came in between four times). */
 export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<RoundEvent | null> {
   const { flights, ...frame } = ev;
-  const written = await update(code, (now) => ({ ...now, ...frame, flights: now.flights }));
+  // what the setup may take away is taken away (Sascha 09.11.2026: "3 net classes set to none and saved – it shows 3
+  // again"): the net classes, the special prizes, the tee – absent from the change, absent from the event
+  const written = await update(code, (now) => {
+    const { classes: _c, specials: _s, tee: _t, ...kept } = now as RoundEvent & { tee?: string };
+    void _c;
+    void _s;
+    void _t;
+    return { ...kept, ...frame, flights: now.flights };
+  });
   // every flight as it stands – its own rows too (a flight added after the plan lives only there)
   const now = written ? await refreshEvent(code) : null;
   if (!now) return null;
