@@ -837,7 +837,8 @@ const cardPart = (c: DuelCard, from: number, to: number, net: boolean): number |
 /** A duel from the two players' cards: the round both played on its day (the bet's day – else every day of the pool),
  *  front nine, back nine and the 18 – and while it is played, the lead over the holes both have. */
 export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>, now = ''): Progress {
-  const parts = w.parts ?? { front: 0, back: 0, total: 0 };
+  // without its stakes (a watcher without the money – golfos-live.sql): who is ahead, the 18 counting twice
+  const parts = w.parts ?? { front: 1, back: 1, total: 2 };
   // a player's own card before one the host's phone kept for him
   const ownFirst = (cs: DuelCard[]) => [...cs].sort((a, b) => (a.by ? 1 : 0) - (b.by ? 1 : 0));
   const mine = ownFirst(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day));
@@ -1012,6 +1013,43 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
     }
   }
   return out;
+}
+
+/** One round's money (Sascha 09.11.2026: "settled after every round played"): what the bets of each round on its own
+ *  and the duels brought each player on that day – the rounds over only. Null: nothing settled that day. */
+export function roundLedger(pool: WagerPool, day: string): Record<string, number> | null {
+  const out: Record<string, number> = Object.fromEntries(pool.players.map((p) => [p.id, 0]));
+  let any = false;
+  const add = (id: string, v: number) => {
+    out[id] = (out[id] ?? 0) + v;
+  };
+  for (const w of pool.wagers) {
+    const p = progressOf(pool, w);
+    if (shapeOf(w.kind) === 'duel') {
+      const d = p?.duels?.find((x) => x.day === day);
+      if (!d || d.total == null || !w.opponent || w.opponent === w.player) continue;
+      const parts = w.parts ?? { front: 0, back: 0, total: 0 };
+      const v = (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + d.total * parts.total;
+      any = true;
+      add(w.player, v);
+      add(w.opponent, -v);
+      continue;
+    }
+    if (!perRoundBet(w) || !p?.perRound || p.manual || !(w.stake > 0)) continue;
+    for (const r of p.perRound) {
+      if (r.day !== day || r.value == null || r.open) continue;
+      any = true;
+      const made = reached(w, r.value);
+      if (!made && w.payout === 'success') continue;
+      const sign = made ? 1 : -1;
+      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((x) => x.id).filter((id) => id !== w.player);
+      for (const o of against) {
+        add(w.player, sign * w.stake);
+        add(o, -sign * w.stake);
+      }
+    }
+  }
+  return any ? out : null;
 }
 
 /** Each player's balance from the bets made or missed (€) – `withProvisional`: a bet made in a round not signed yet as made. */

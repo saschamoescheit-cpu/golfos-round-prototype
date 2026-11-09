@@ -5,7 +5,7 @@ import { CLASS_NAMES, eventCard, eventStandings, type RoundEvent } from '../lib/
 import { seriesStandings } from '../lib/seriesstandings';
 import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
-import { dayOf } from '../lib/wagers';
+import { dayOf, withDuels } from '../lib/wagers';
 import { leaderText } from '../components/Specials';
 import { LiveBoard } from './Tournaments';
 import { ScoreGrid, StandingCard } from './Games';
@@ -91,7 +91,8 @@ export function LiveScreen(props: { code: string }) {
           <span className="muted small">
             {dm(view.pool.from)}–{dm(view.pool.to)} · {view.pool.players.map((p) => p.name).join(', ')}
           </span>
-          <Standings pool={view.pool} today={dayOf(new Date())} me="" noMoney={!view.money} />
+          {/* the duels (5+5+10) from the players' cards, as in the app (Sascha 09.11.2026, night run) */}
+          <Standings pool={withDuels(view.pool)} today={dayOf(new Date())} me="" noMoney={!view.money} />
         </>
       )}
       <span className="muted small live-note" role="status">

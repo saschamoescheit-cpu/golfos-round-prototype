@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { RoundSettleCards } from '../components/RoundSettle';
 import { tr } from '../lib/i18n';
 import { loadFriends, type Friend } from '../lib/friends';
 import { Friends } from '../components/Friends';
@@ -30,6 +31,8 @@ export function Home(props: {
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
+      {/* each round of the bets settled (Sascha 09.11.2026) – once, above the modules */}
+      {props.tab === 'start' && <RoundSettleCards />}
       {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} tours={props.tours} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends onSignIn={() => props.onTab('profile')} />}
       {props.tab === 'profile' && props.profile}

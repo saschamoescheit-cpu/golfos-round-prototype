@@ -1983,6 +1983,10 @@ button.tile:disabled { opacity: 1; }
 /* the host invites right at a player (06.11.2026) – a small row under the name, icon and word */
 .pool-whois { align-self: flex-start; min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; }
 .pool-tour-hint { text-align: center; }
+/* each round of the bets settled, on the start page (Sascha 09.11.2026) */
+.round-settle { display: flex; flex-direction: column; gap: 10px; }
+.round-settle-rows { display: flex; flex-direction: column; gap: 6px; }
+.round-settle-row { display: flex; align-items: center; gap: 10px; font-size: 16px; }
 /* 5+5+10 challenges (Sascha 09.11.2026) */
 .duel-challenges { display: flex; flex-direction: column; gap: 14px; }
 .duel-challenges h2 { margin: 0; font-size: 18px; }
