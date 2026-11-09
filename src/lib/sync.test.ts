@@ -199,6 +199,13 @@ describe('sync between devices', () => {
     const kept = conflictCopies(b);
     expect(kept).toHaveLength(1);
     expect((kept[0].data as { entries: { me: { strokes: number | null }[] } }).entries.me[1].strokes).toBe(6);
+    // the same version losing again: kept once, not again with every sync (10.11.2026, Erik: 4,9 MB of copies)
+    a.set('golfos.rounds.v1', JSON.stringify([round('r1', [4, 5, 4])]));
+    b.set('golfos.rounds.v1', JSON.stringify([round('r1', [4, 6, null])]));
+    await syncOnce(a, srv, clock);
+    await syncOnce(b, srv, clock);
+    expect(rounds(b)[0].entries.me.map((e) => e.strokes)).toEqual([4, 5, 4]);
+    expect(conflictCopies(b)).toHaveLength(1);
   });
   it('a setting edited on this device since the last sync is kept', async () => {
     const srv = server();

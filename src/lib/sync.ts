@@ -312,8 +312,12 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
       // the other device's version wins: this device's is kept aside, never lost
       if (conflict && r.kind !== 'setting' && r.kind !== 'course') {
         const kept = parse<{ kind: string; id: string; at: string; data: unknown }[]>(store.get(CONFLICTS), []);
-        kept.push({ kind: r.kind, id: r.id, at, data: JSON.parse(l!.json) });
-        store.set(CONFLICTS, JSON.stringify(kept));
+        // the same copy once (10.11.2026, Erik: the same version kept again with every sync – 4,9 MB)
+        const mine = hashOf(l!.json);
+        if (!kept.some((c) => c.kind === r.kind && c.id === r.id && hashOf(JSON.stringify(c.data)) === mine)) {
+          kept.push({ kind: r.kind, id: r.id, at, data: JSON.parse(l!.json) });
+          store.set(CONFLICTS, JSON.stringify(kept));
+        }
       }
     }
     // a setting of this device replaced by another device's: kept aside, never lost – the player can keep this

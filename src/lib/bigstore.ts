@@ -12,7 +12,9 @@ import { decodeTrack, encodeTrack, type Row } from './trackcodec';
 /** the keys kept in the big store – data that is large and grows (all else stays in localStorage) */
 // + the tournaments' copies (every flight of every round of a series – loaded again from the server) and the caddie's
 // log of each round (Sascha 09.11.2026, night run: Erik's "storage full" again – both grow with every round)
-export const BIG_PREFIXES = ['golfos.track.v1.', 'golfos.geo.v1.', 'golfos.course.v1.', 'golfos.elevation.v1', 'golfos.event.v1.', 'golfos.caddielog.v1.'];
+// + the sync's copies of a round or game that lost to another device's version (10.11.2026, Erik: 4,9 MB of the 5 –
+// the server's error log showed it): kept, never deleted – only out of the small storage
+export const BIG_PREFIXES = ['golfos.track.v1.', 'golfos.geo.v1.', 'golfos.course.v1.', 'golfos.elevation.v1', 'golfos.event.v1.', 'golfos.caddielog.v1.', 'golfos.sync.conflicts.v1'];
 export const isBig = (key: string): boolean => typeof key === 'string' && BIG_PREFIXES.some((p) => key.startsWith(p));
 
 /** where the big data lies – IndexedDB in the app, a map in the tests */
