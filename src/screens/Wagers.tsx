@@ -1144,6 +1144,9 @@ export function figuresOf(w: Wager, n: number | null): string {
   const none = n == null || (n === 0 && shape !== 'score' && shape !== 'sum');
   return `${v(w.target)}/${none ? '–' : v(n)}`;
 }
+/** A bet made in one round – green in its cell: only a bet that holds for each round (Sascha 10.11.2026: "the bets over
+ *  7 rounds must not be green in one round") – a sum over several rounds or the whole trip is judged as a whole. */
+export const madeInRound = (w: Wager, value: number | null): boolean => value != null && perRoundBet(w) && reached(w, value);
 /** A bet's target as the cells write it: "3", "−5", "E". */
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 /** What a round brought, under the target (Sascha 10.11.2026: "a 0 instead of the dash"): a count's 0 is "0"; a score
@@ -1232,7 +1235,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // one round: each bet as it went in that round – made green, else its figure; no figure from that round: a dash
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
-    const made = !!r && reached(w, r.value);
+    const made = madeInRound(w, r?.value ?? null);
     return (
       <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}`} title={wagerLabel(w)}>
         <strong>{targetOf(w)}</strong>

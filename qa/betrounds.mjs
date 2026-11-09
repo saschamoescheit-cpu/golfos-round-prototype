@@ -55,7 +55,8 @@ const pool = await H.evaluate(
     const made = {
       kind: 'wager-pool', id: 'pool-usa', name: 'USA-Wetten', from, to, createdAt: now, currency: 'USD', counted: true,
       players: [{ id: 's', name: 'Sascha' }, { id: 'c', name: 'Chris' }, { id: 'e', name: 'Erik' }],
-      wagers: [bet('w1', 'c', 'birdieRun', 2), bet('w2', 's', 'parRun', 3), bet('w3', 'e', 'birdieRun', 2)],
+      // + Chris's score over 7 rounds added up (Sascha 10.11.2026: "over 7 rounds – never green in one round")
+      wagers: [bet('w1', 'c', 'birdieRun', 2), bet('w2', 's', 'parRun', 3), bet('w3', 'e', 'birdieRun', 2), { ...bet('w4', 'c', 'scoreSum', 126), rounds: 7 }],
       progress: {},
     };
     const e = await ws.createPool(made, 's');
@@ -100,6 +101,11 @@ await stand.getByRole('group', { name: 'Runden' }).getByRole('button').nth(1).cl
 await H.waitForTimeout(300);
 const inRound = await cellText('Birdies in Folge', 'Chris');
 ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
+{
+  const sum = stand.locator('tbody tr').filter({ hasText: 'in 7 Runden' }).first();
+  const txt = (await sum.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok((await sum.count()) === 1 && (await sum.locator('.bet-cell.done').count()) === 0 && /\+126/.test(txt), `the score over 7 rounds in one round: its figure, not green (${txt})`);
+}
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betrounds.png` });
 await stand.getByRole('button', { name: 'Gesamt' }).click();
 ok((await stand.getByRole('button', { name: 'Gesamt' }).getAttribute('aria-pressed')) === 'true', 'back to "Gesamt"');
