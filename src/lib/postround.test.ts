@@ -62,6 +62,10 @@ describe('the round check notices', () => {
     const d = detail([shot(at(0, 0)), shot(at(1, 2)), shot(at(0, 220))]);
     expect(shotChecks(d, map())[0]).toMatchObject({ shot: 0, kind: 'same' });
   });
+  it('around the green a shot of 4 m is a shot – out of the bunker, a chip (Sascha 10.11.2026)', () => {
+    const d = detail([shot(at(0, 0)), shot(at(0, 250)), shot(at(10, 370)), shot(at(12, 373))]);
+    expect(shotChecks(d, map()).filter((c) => c.kind === 'same')).toEqual([]);
+  });
   it('a water penalty where the map has no water near', () => {
     const d = detail([shot(at(0, 0), { penalty: true, penaltyKind: 'water', missPos: at(0, 120) }), shot(at(0, 130))]);
     expect(shotChecks(d, map([pond]))[0]?.kind).toBe('dry');
