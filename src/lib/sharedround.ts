@@ -269,8 +269,22 @@ function misplaced(f: Flight, v: { player: string; name?: string }, team: boolea
   return f.players.some((p) => p.id !== v.player && nameIs(p.name, who, team));
 }
 
-/** Who signs a player's card as his marker: with a scorer, the scorer (his own card: his marker as usual). */
-export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer && pid !== f.scorer ? f.scorer : f.markers?.[pid]);
+/** Do the markers make sense (Sascha 10.11.2026: "a marker twice cannot be – a plausibility check"): each player of the
+ *  flight marked by another player of it, nobody marking two. */
+export function saneMarkers(ids: string[], m: Record<string, string> | undefined): boolean {
+  if (!m) return true;
+  const by = ids.map((id) => m[id]);
+  return by.every((x, k) => !!x && x !== ids[k] && ids.includes(x)) && new Set(by).size === by.length;
+}
+/** The flight's markers as they count: its own when they make sense, else paired anew (none: none). */
+export const markersOf = (f: Pick<Flight, 'players' | 'markers'>): Record<string, string> | undefined => {
+  if (!f.markers) return undefined;
+  const ids = f.players.map((p) => p.id);
+  return saneMarkers(ids, f.markers) ? f.markers : defaultMarkers(ids);
+};
+/** Who signs a player's card as his marker: with a scorer, the scorer – he signs every card, his own too (Sascha
+ *  10.11.2026: "one keeps the score of all – then three signatures at the end, not ideal"). */
+export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer ? f.scorer : markersOf(f)?.[pid]);
 
 export function roleOf(f: Flight, player: string, phone: string, team: boolean, marking: boolean): Role {
   if (isSigned(f, player)) return 'view'; // signed by player and marker: nobody changes it any more
@@ -281,7 +295,7 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
   // marking (marksIn): every player marks a partner (Sascha 29.10.2026, testing with Cedric: "Sascha keeps his own
   // score and, as marker, Cedric's; Cedric his own and, as marker, Sascha's")
   if (marking) {
-    const m = f.markers?.[player];
+    const m = markersOf(f)?.[player];
     if (m && m !== player && writerOf(f, m, team) === phone) return 'mark';
   }
   return w == null ? 'free' : 'view';
@@ -291,6 +305,8 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
 /** Signed by the player and by his marker (a player without a marker: by himself) – locked. */
 export function isSigned(f: Flight, pid: string): boolean {
   const s = f.signed?.[pid];
+  // one scorer for all: his signature is the card's
+  if (f.scorer) return !!s?.marker || (!!s?.player && pid === f.scorer);
   return !!s?.player && (!!s.marker || !markerOf(f, pid));
 }
 /** May the card be signed now: every hole with the own score and the marker's count, none differing. */
@@ -313,6 +329,22 @@ export async function signCard(round: Round, pid: string, as: 'player' | 'marker
   const ok = !!ev?.flights[s.flight]?.signed?.[pid]?.[as];
   // signed as the player: his marker is asked to countersign; as the marker: the player hears it is in (07.11.2026)
   if (ok && s.tournament) pushSigned(s.code, s.flight, pid, as);
+  return ok;
+}
+
+/** The scorer signs every card of the flight at once (Sascha 10.11.2026: "three signatures – not ideal"): when all are
+ *  complete. False when one is not, or offline. */
+export async function signAllAsScorer(round: Round): Promise<boolean> {
+  const s = round.shared;
+  if (!s) return false;
+  const at = new Date().toISOString();
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => {
+    if (!f?.scorer || f.players.some((p) => !signable(f, p.id, round.holes.length).ok)) return null;
+    return { ...f, signed: Object.fromEntries(f.players.map((p) => [p.id, { ...f.signed?.[p.id], player: f.signed?.[p.id]?.player ?? at, marker: at }])) };
+  });
+  const f = ev?.flights[s.flight];
+  const ok = !!f && f.players.every((p) => isSigned(f, p.id));
+  if (ok && s.tournament) for (const p of f!.players) if (p.id !== f!.scorer) pushSigned(s.code, s.flight, p.id, 'marker');
   return ok;
 }
 

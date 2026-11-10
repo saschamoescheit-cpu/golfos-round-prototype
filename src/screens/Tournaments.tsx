@@ -1216,7 +1216,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             </span>
           )}
           {f.players.map((p) => {
-            const marker = f.players.find((x) => x.id === markerOf(f, p.id));
+            const marker = f.scorer ? undefined : f.players.find((x) => x.id === markerOf(f, p.id));
             return (
               <div key={p.id} className="tour-flight-player">
                 <span className="grow">

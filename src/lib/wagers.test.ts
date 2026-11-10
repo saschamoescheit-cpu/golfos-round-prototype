@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, inPool, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, inPool, whichDays, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -498,5 +498,32 @@ describe('a round of the pool: "Gilt für" (Sascha 04.11.2026)', () => {
     const x = { id: 'r', day, course: 'Hetzenhof', courseId: 'c1', holes: '1A,2A', holesName: 'A', allDay: true };
     expect(onRound(x, played('1B,2B'))).toBe(true);
     expect(onRound({ ...x, day: '2026-11-05' }, played('1A,2A'))).toBe(false);
+  });
+});
+
+describe('which rounds a bet counts (Sascha 10.11.2026: "the score in 6 rounds from today – yesterday not; other ways too")', () => {
+  const pool = { from: '2026-11-05', to: '2026-11-18' };
+  const r = (day: string) => ({ day, course: 'Cypress' });
+  const any = { attempts: 'any' as const };
+  it('from a day on, up to a day, a span', () => {
+    expect(inPool(r('2026-11-09'), pool, { ...any, from: '2026-11-10' })).toBe(false);
+    expect(inPool(r('2026-11-10'), pool, { ...any, from: '2026-11-10' })).toBe(true);
+    expect(inPool(r('2026-11-16'), pool, { ...any, until: '2026-11-15' })).toBe(false);
+    expect(inPool(r('2026-11-12'), pool, { ...any, from: '2026-11-10', until: '2026-11-15' })).toBe(true);
+  });
+  it('the rounds chosen only – a day with its course, or every round of a day', () => {
+    const w = { ...any, picks: [{ day: '2026-11-10', course: 'Cypress' }, { day: '2026-11-13' }] };
+    expect(inPool(r('2026-11-10'), pool, w)).toBe(true);
+    expect(inPool({ day: '2026-11-10', course: 'Oaks' }, pool, w)).toBe(false);
+    expect(inPool({ day: '2026-11-13', course: 'Orange Lake' }, pool, w)).toBe(true);
+    expect(inPool(r('2026-11-12'), pool, w)).toBe(false);
+  });
+  it('in words', () => {
+    setLang('de');
+    expect(whichDays({ from: '2026-11-10' })).toBe('ab 10.11.');
+    expect(whichDays({ until: '2026-11-15' })).toBe('bis 15.11.');
+    expect(whichDays({ from: '2026-11-10', until: '2026-11-15' })).toBe('10.11.–15.11.');
+    expect(whichDays({ picks: [{ day: '2026-11-13' }, { day: '2026-11-10', course: 'Cypress' }] })).toBe('2 Runden: 10.11. Cypress, 13.11.');
+    expect(whichDays({})).toBeNull();
   });
 });

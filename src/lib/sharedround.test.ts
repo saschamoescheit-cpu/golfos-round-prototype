@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { classOf, defaultMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
+import { classOf, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -524,5 +524,23 @@ describe('scores entered afterwards', () => {
     expect(g.marks?.p2).toBeUndefined();
     expect('ghost' in g.scores).toBe(false);
     expect(g.finishedAt).toBe(f.finishedAt);
+  });
+});
+
+describe('markers make sense, one scorer signs for all (Sascha 10.11.2026)', () => {
+  const players = [{ id: 'c', name: 'Christopher' }, { id: 'd', name: 'Cedric' }, { id: 's', name: 'Stefan' }].map((p) => ({ ...p, playingHandicap: 0 }));
+  it('a marker twice is no plan – paired anew, a ring', () => {
+    expect(saneMarkers(['c', 'd', 's'], { c: 'd', d: 'c', s: 'd' })).toBe(false);
+    expect(saneMarkers(['c', 'd', 's'], { c: 's', d: 'c', s: 'd' })).toBe(true);
+    const m = markersOf({ players, markers: { c: 'd', d: 'c', s: 'd' } })!;
+    expect(new Set(Object.values(m)).size).toBe(3);
+    expect(Object.entries(m).every(([k, v]) => k !== v)).toBe(true);
+  });
+  it('one scorer: he signs every card, his own too – his signature locks it', () => {
+    const f = { id: 'f', name: 'F', players, scores: {}, scorer: 'd', markers: { c: 'd', d: 'c', s: 'd' }, signed: { c: { marker: '2026-11-10' } } } as never;
+    expect(markerOf(f, 'c')).toBe('d');
+    expect(markerOf(f, 'd')).toBe('d');
+    expect(isSigned(f, 'c')).toBe(true);
+    expect(isSigned(f, 's')).toBe(false);
   });
 });

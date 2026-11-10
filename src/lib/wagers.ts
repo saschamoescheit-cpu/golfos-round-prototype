@@ -70,6 +70,16 @@ export const shapeOf = (k: WagerKind): Shape => SHAPE[k] ?? 'free';
  *  opponent: against one player – made it he pays, missed he is paid. */
 export type Payout = 'success' | 'both' | 'opponent';
 
+/** A round a bet counts: its day, and its course (by id, else by name) – none: every round of that day. */
+export interface BetRound {
+  day: string;
+  course?: string;
+  courseId?: string;
+}
+/** Is a played round one of these? */
+export const isPicked = (picks: BetRound[], r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean =>
+  picks.some((p) => p.day === r.day && (!p.course || (p.courseId && r.courseId ? p.courseId === r.courseId : p.course.trim().toLowerCase() === r.course.trim().toLowerCase())));
+
 export interface Wager {
   id: string;
   /** the pool player whose target it is */
@@ -88,6 +98,14 @@ export interface Wager {
   day?: string;
   /** attempts 'round': the round of the trip (PoolRound id) */
   round?: string;
+  /** which rounds count, with attempts 'any' (Sascha 10.11.2026: "the score in 6 rounds from today – yesterday's not in
+   *  it; built so that other ways can be set too"): from this day on, up to this day (YYYY-MM-DD) – and/or only these
+   *  days. Unset – every round of the pool. (A phone from before counts every round.) */
+  from?: string;
+  until?: string;
+  /** the rounds chosen for it (Sascha 10.11.2026: "not limited – rounds chosen or made"): a day, and its course when
+   *  one round of that day only – without a course every round of the day */
+  picks?: BetRound[];
   /** scoreSum: over how many rounds (the first ones played) */
   rounds?: number;
   /** pars: par or better (a birdie keeps the run going) – else exactly par; birdies: an eagle counts too – else exactly
@@ -671,8 +689,14 @@ export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'c
   x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || x.allDay || !r.holeKey || x.holes === r.holeKey);
 /** Does a played round count for a bet of the pool: in the period; with rounds of the trip set, one of them; a bet of
  *  one round only on that one; one of one day only on that day. */
-export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round'>): boolean {
+export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round' | 'from' | 'until' | 'picks'>): boolean {
   if (r.day < pool.from || r.day > pool.to) return false;
+  // a bet over some days only: from, up to, or the days chosen
+  if (w?.attempts === 'any' || !w?.attempts) {
+    if (w?.from && r.day < w.from) return false;
+    if (w?.until && r.day > w.until) return false;
+    if (w?.picks?.length && !isPicked(w.picks, r)) return false;
+  }
   const rounds = pool.rounds ?? [];
   if (w?.attempts === 'round') {
     const x = rounds.find((y) => y.id === w.round);
@@ -1289,6 +1313,20 @@ export function roundLabel(x: PoolRound): string {
   return `${wd ? `${wd} ` : ''}${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.course ? ` · ${x.course}` : ''}${x.holesName && !x.allDay ? ` · ${x.holesName}` : ''}`;
 }
 
+const ddmm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+/** The days a bet of every round counts on, in words: "ab 10.11.", "bis 15.11.", "10.11.–15.11.", "an 3 Tagen: 10.11.,
+ *  12.11., 13.11." – null: every round of the pool. */
+export function whichDays(w: Pick<Wager, 'from' | 'until' | 'picks'>): string | null {
+  if (w.picks?.length) {
+    const ds = [...w.picks].sort((a, b) => a.day.localeCompare(b.day)).map((p) => (p.course ? `${ddmm(p.day)} ${p.course}` : ddmm(p.day))).join(', ');
+    return w.picks.length === 1 ? tr(`only ${ds}`, `nur ${ds}`) : tr(`${w.picks.length} rounds: ${ds}`, `${w.picks.length} Runden: ${ds}`);
+  }
+  if (w.from && w.until) return `${ddmm(w.from)}–${ddmm(w.until)}`;
+  if (w.from) return tr(`from ${ddmm(w.from)}`, `ab ${ddmm(w.from)}`);
+  if (w.until) return tr(`up to ${ddmm(w.until)}`, `bis ${ddmm(w.until)}`);
+  return null;
+}
+
 /** How it is counted and paid, in a line. */
 export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency' | 'prize'> & { rounds?: PoolRound[] }): string {
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
@@ -1313,6 +1351,10 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency
   const bits = [money(w.stake, sym), pay];
   if (one) bits.push(tr(`only ${roundLabel(one)}`, `nur ${roundLabel(one)}`));
   if (w.attempts === 'day' && w.day) bits.push(tr(`only on ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`, `nur am ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`));
+  if (w.attempts === 'any') {
+    const text = whichDays(w);
+    if (text) bits.push(text);
+  }
   if ((w.kind === 'parRun' || w.kind === 'pars') && w.orBetter === false) bits.push(tr('exactly par', 'genau Par'));
   if ((w.kind === 'birdieRun' || w.kind === 'birdies') && w.orBetter === false) bits.push(tr('exactly birdie', 'genau Birdie'));
   if ((w.kind === 'parRun' || w.kind === 'birdieRun') && w.acrossRounds) bits.push(tr('over rounds', 'über Runden'));

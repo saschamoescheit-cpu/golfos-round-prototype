@@ -16,7 +16,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, flipDuel, owings, pairDebts, poolTransfers, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, flipDuel, type BetRound, owings, pairDebts, poolTransfers, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -26,7 +26,7 @@ import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
 import { Avatar } from '../components/Avatar';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, ToggleList, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
@@ -1696,14 +1696,26 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
         {w.payout === 'opponent' && !duel && (
           <Pick<string> label={tr('Against', 'Gegen')} prompt={tr('Choose an opponent', 'Gegner wählen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((p) => p.id !== w.player).map((p) => ({ value: p.id, label: p.name }))} />
         )}
-        {/* with the rounds of the trip: every round or one of them (Sascha 01.11.2026) – without, every round or one day */}
+        {/* which rounds count (Sascha 01.11.2026: every round, or one of the trip's / one day; 10.11.2026: "built so that
+            other ways can be set too" – a span of days, or the days chosen) */}
         {w.kind !== 'free' && (
-          <Pick<'any' | 'day' | 'round'>
-            label={tr('Attempts', 'Versuche')}
-            value={w.attempts}
-            onChange={(v) => set({ attempts: v, ...(v === 'day' && !w.day ? { day: pool.from } : {}), ...(v === 'round' && !w.round ? { round: pool.rounds?.[0]?.id } : {}) })}
+          <Pick<Which>
+            label={tr('Which rounds', 'Welche Runden')}
+            value={whichOf(w)}
+            onChange={(v) =>
+              set({
+                attempts: v === 'range' || v === 'days' ? 'any' : v,
+                from: v === 'range' ? (w.from ?? pool.from) : undefined,
+                until: v === 'range' ? (w.until ?? pool.to) : undefined,
+                picks: v === 'days' ? (w.picks ?? []) : undefined,
+                ...(v === 'day' && !w.day ? { day: pool.from } : {}),
+                ...(v === 'round' && !w.round ? { round: pool.rounds?.[0]?.id } : {}),
+              })
+            }
             options={[
-              { value: 'any', label: duel ? tr('Every round together', 'Jede gemeinsame Runde') : tr('Every round', 'Jede Runde'), text: tr('Every round of the pool counts – the best one decides.', 'Jede Runde des Pools zählt – die beste entscheidet.') },
+              { value: 'any', label: duel ? tr('Every round together', 'Jede gemeinsame Runde') : tr('Every round', 'Jede Runde'), text: tr('Every round of the pool counts.', 'Jede Runde des Pools zählt.') },
+              { value: 'range', label: tr('From – to', 'Von – bis'), text: tr('The rounds from one day up to another – e.g. from today on.', 'Die Runden von einem Tag bis zu einem anderen – z. B. ab heute.') },
+              { value: 'days', label: tr('Rounds chosen', 'Ausgewählte Runden'), text: tr('Only the rounds ticked – of the trip, the tournaments, those played, or one made here.', 'Nur die angehakten Runden – der Reise, der Turniere, schon gespielte oder selbst angelegte.') },
               ...(pool.rounds?.length
                 ? [{ value: 'round' as const, label: tr('Only one round', 'Nur eine Runde'), text: tr('Only the round chosen below counts.', 'Nur die gewählte Runde zählt.') }]
                 : [{ value: 'day' as const, label: duel ? tr('Only one day', 'Nur ein Tag') : tr('Only one day', 'Nur an einem Tag'), text: tr('Only the rounds of the day chosen below count.', 'Nur die Runden des gewählten Tages zählen.') }]),
@@ -1711,10 +1723,70 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
           />
         )}
         {w.kind !== 'free' && w.attempts === 'day' && <DateRow label={tr('Day', 'Tag')} min={pool.from} max={pool.to} value={w.day ?? pool.from} onChange={(d) => set({ day: d })} />}
+        {w.kind !== 'free' && whichOf(w) === 'range' && (
+          <>
+            <DateRow label={tr('From', 'Ab')} min={pool.from} max={w.until ?? pool.to} value={w.from ?? pool.from} onChange={(d) => set({ from: d })} />
+            <DateRow label={tr('Up to', 'Bis')} min={w.from ?? pool.from} max={pool.to} value={w.until ?? pool.to} onChange={(d) => set({ until: d })} />
+          </>
+        )}
+        {w.kind !== 'free' && whichOf(w) === 'days' && (
+          <SheetRow label={tr('Rounds', 'Runden')} value={w.picks?.length ? tr(`${w.picks.length} chosen`, `${w.picks.length} ausgewählt`) : tr('none yet', 'noch keine')}>
+            <PickRounds pool={pool} picks={w.picks ?? []} onChange={(picks) => set({ picks, ...(w.kind === 'scoreSum' && picks.length >= 2 ? { rounds: picks.length } : {}) })} />
+          </SheetRow>
+        )}
         {w.kind !== 'free' && w.attempts === 'round' && !!pool.rounds?.length && (
           <Pick<string> label={tr('The round', 'Die Runde')} value={w.round ?? pool.rounds[0].id} onChange={(v) => set({ round: v })} options={pool.rounds.map((x) => ({ value: x.id, label: roundLabel(x) }))} />
         )}
       </SettingsList>
+    </>
+  );
+}
+
+type Which = 'any' | 'range' | 'days' | 'day' | 'round';
+/** Which rounds a bet counts, as the row shows it. */
+const whichOf = (w: Wager): Which => (w.attempts !== 'any' ? w.attempts : w.picks ? 'days' : w.from || w.until ? 'range' : 'any');
+
+/** The rounds a bet may count, to tick (Sascha 10.11.2026: "rounds chosen or made, not limited"): the trip's, the
+ *  tournaments of the pool's days, the rounds played already – and one made here: a day, every round of it. */
+function PickRounds(props: { pool: WagerPool; picks: BetRound[]; onChange: (p: BetRound[]) => void }) {
+  const { pool, picks } = props;
+  const [day, setDay] = useState(() => {
+    const t = new Date().toISOString().slice(0, 10);
+    return t >= pool.from && t <= pool.to ? t : pool.from;
+  });
+  const key = (x: BetRound) => `${x.day}|${(x.course ?? '').trim().toLowerCase()}`;
+  const seen = new Map<string, BetRound>();
+  const add = (x: BetRound) => {
+    if (x.day < pool.from || x.day > pool.to) return;
+    if (!seen.has(key(x))) seen.set(key(x), x);
+  };
+  for (const r of pool.rounds ?? []) add({ day: r.day, ...(r.course ? { course: r.course } : {}), ...(r.courseId ? { courseId: r.courseId } : {}) });
+  for (const e of loadTours()) if (!e.ev.deletedAt && e.ev.date) add({ day: e.ev.date, course: e.ev.course.name, ...(e.ev.course.id ? { courseId: e.ev.course.id } : {}) });
+  for (const p of Object.values(pool.progress)) for (const r of p.perRound ?? []) add({ day: r.day, course: r.course });
+  for (const x of picks) add(x);
+  const all = [...seen.values()].sort((a, b) => a.day.localeCompare(b.day) || (a.course ?? '').localeCompare(b.course ?? ''));
+  const on = (x: BetRound) => picks.some((p) => key(p) === key(x));
+  return (
+    <>
+      <ToggleList>
+        {all.map((x) => (
+          <ToggleRow
+            key={key(x)}
+            inList
+            label={`${dayText(x.day)} · ${x.course ?? tr('every round of the day', 'jede Runde des Tages')}`}
+            on={on(x)}
+            onChange={(v) => props.onChange(v ? [...picks, x] : picks.filter((p) => key(p) !== key(x)))}
+          />
+        ))}
+      </ToggleList>
+      {/* a round of its own: a day – every round of it counts */}
+      <span className="eyebrow">{tr('Add a round', 'Runde anlegen')}</span>
+      <SettingsList>
+        <DateRow label={tr('Day', 'Tag')} min={pool.from} max={pool.to} value={day} onChange={setDay} />
+      </SettingsList>
+      <button type="button" className="btn-secondary" disabled={picks.some((p) => p.day === day && !p.course)} onClick={() => props.onChange([...picks, { day }])}>
+        {tr('+ Add this day', '+ Diesen Tag hinzufügen')}
+      </button>
     </>
   );
 }

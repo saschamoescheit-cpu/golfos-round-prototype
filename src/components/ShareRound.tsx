@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
 import { shareView, type ShareView } from '../lib/sharedround';
-import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAllAsScorer, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -877,6 +877,50 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
     setBusy(false);
     setMsg(ok ? null : tr('Not signed – check the holes, or no connection.', 'Nicht unterschrieben – Löcher prüfen oder keine Verbindung.'));
   };
+  // one scorer for all (Sascha 10.11.2026: "three signatures at the end – not ideal"): he signs every card at once, the
+  // others only see it
+  if (f.scorer) {
+    const all = f.players;
+    const locked = all.every((p) => isSigned(f, p.id));
+    const open = all.map((p) => ({ p, can: signable(f, p.id, ev!.holes.length) })).filter((x) => !x.can.ok);
+    const scorer = all.find((p) => p.id === f.scorer);
+    const mine = me?.id === f.scorer;
+    return (
+      <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
+        <h2>{tr('Hand the cards in', 'Scorekarten abgeben')}</h2>
+        <div className="sign-row">
+          <span className="grow">
+            <strong>{mine ? tr(`All ${all.length} cards – as scorer`, `Alle ${all.length} Karten – als Schreiber`) : tr(`${scorer?.name ?? '?'} signs for everyone`, `${scorer?.name ?? '?'} unterschreibt für alle`)}</strong>
+            <span className={`small ${locked ? 'good-text' : 'muted'}`}>
+              {locked
+                ? tr('Signed – handed in, locked', 'Unterschrieben – abgegeben, gesperrt')
+                : open.length
+                  ? open.map((x) => `${x.p.name}: ${x.can.ok ? '' : tr(`still open ${x.can.missing.map(label).join(', ')}`, `noch offen ${x.can.missing.map(label).join(', ')}`)}`).join(' · ')
+                  : mine
+                    ? tr('All holes entered – one signature for all', 'Alle Löcher erfasst – eine Unterschrift für alle')
+                    : tr(`Waiting for ${scorer?.name ?? '?'}`, `Wartet auf ${scorer?.name ?? '?'}`)}
+            </span>
+          </span>
+          {mine && !locked && (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy || open.length > 0}
+              onClick={async () => {
+                setBusy(true);
+                const ok = await signAllAsScorer(props.round);
+                setBusy(false);
+                setMsg(ok ? null : tr('Not signed – check the holes, or no connection.', 'Nicht unterschrieben – Löcher prüfen oder keine Verbindung.'));
+              }}
+            >
+              {tr('Sign all', 'Alle unterschreiben')}
+            </button>
+          )}
+        </div>
+        {msg && <span className="small bad-text">{msg}</span>}
+      </section>
+    );
+  }
   return (
     <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
       <h2>{tr('Hand the card in', 'Scorekarte abgeben')}</h2>

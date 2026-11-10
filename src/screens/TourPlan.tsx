@@ -1315,7 +1315,8 @@ function FlightBoard(props: {
               </SettingsList>
             )}
             {ps.map((p) => {
-              const m = byId(scorer && p.id !== scorer.id ? scorer.id : (marks[p.id] ?? ''));
+              // one scorer for all: no marker per player – the scorer line says it (Sascha 10.11.2026)
+              const m = scorer ? undefined : byId(marks[p.id] ?? '');
               const ph = props.playing(p);
               return (
                 <div key={p.id} className={rowClass(p.id, 'tour-flight-player')} style={shift(p.id)} data-drag-id={p.id} role="button" tabIndex={0} aria-label={tr(`Move ${props.label(p)}`, `${props.label(p)} verschieben`)} onClick={tap(p.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setMoving(p.id)} {...grab(p, false)}>
