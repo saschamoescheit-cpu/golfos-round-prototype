@@ -14,6 +14,9 @@ export interface ShotCheck {
 }
 
 const SAME_M = 5; // two shots this close: the same spot
+// around the green a few metres are a shot of their own – out of the bunker, a chip (Sascha 10.11.2026: "shot 3 and 4
+// are not at the same spot" – LW from the bunker, 4 m) – no second ball asked there
+const AROUND_GREEN_M = 50;
 const EDGE_M = 6; // a drop lies this close to the water's edge
 
 const inAny = (p: LngLat, rings: Ring[]) => rings.some((r) => pointInRing(p, r));
@@ -44,7 +47,8 @@ export function shotChecks(d: DetailEntry | null | undefined, data: HoleMapData 
     if (!s.penalty) {
       if (!from || !end) return;
       // the next shot from the same spot: a second ball (provisional / again from the tee) – or one point twice
-      if (n + 1 < d.shots.length && distanceM(from, end) <= SAME_M) {
+      const nearGreen = distanceM(from, data.greenCenter) <= AROUND_GREEN_M || inAny(from, data.bunkers ?? []);
+      if (n + 1 < d.shots.length && distanceM(from, end) <= SAME_M && !nearGreen) {
         out.push({
           shot: n,
           kind: 'same',

@@ -12,7 +12,6 @@ import { stancesAt } from '../lib/terrain';
 import { isLeftHanded } from '../lib/profile';
 import { holeSg } from '../lib/sg';
 import { proximity } from '../lib/approachstats';
-import { Chips } from '../components/ui';
 import { loadRegionalImagery, pickImagery } from '../lib/imagery';
 import { analyse, playerBag } from '../lib/stats';
 import { rollFactor } from '../lib/clubs';
@@ -1228,15 +1227,54 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             </li>
           ))}
           {d.onGreen && (
-            <li>
-              <span className="n">⛳</span>
-              <span>
-                {e.putts ?? '–'} Putt{e.putts === 1 ? '' : 's'}
+            // the putts as a row like the shots (Sascha 10.11.2026: "the putt's rating does not fit yet"): the green
+            // circle with a flag, the strokes gained on the right, how the first one missed right under it
+            <li className="putt-row">
+              <span className="n putt-n" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 21V3l11 4-11 4" />
+                </svg>
+              </span>
+              <span className="shot-row putt-body">
+                <span className="shot-row-top">
+                  <span>
+                    <strong>
+                      {e.putts ?? '–'} Putt{e.putts === 1 ? '' : 's'}
+                    </strong>
+                  </span>
+                  {sgs?.[d.shots.length] && <span className={`shot-sg ${sgs[d.shots.length].sg >= 0 ? 'good-text' : 'bad-text'}`}>{sgFmt(sgs[d.shots.length].sg)}</span>}
+                </span>
                 <span className="muted small" style={{ display: 'block' }}>
                   {placedPutts?.length && pin
                     ? placedPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
                     : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
+                {/* how the first putt missed (Sascha 22.10.2026) – placed putts tell it by themselves; in the row, small */}
+                {(e.putts ?? 0) >= 2 && !placedPutts?.length && (
+                  <span className="putt-miss-chips" role="group" aria-label={tr('First putt missed', 'Erster Putt verfehlt')}>
+                    {(
+                      [
+                        ['length', 'short', tr('short', 'zu kurz')],
+                        ['length', 'long', tr('long', 'zu lang')],
+                        ['line', 'left', tr('left', 'links')],
+                        ['line', 'right', tr('right', 'rechts')],
+                      ] as const
+                    ).map(([key, v, label]) => {
+                      const on = e.firstPuttMiss?.[key] === v;
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          className={`chip small-chip${on ? ' on' : ''}`}
+                          aria-pressed={on}
+                          onClick={() => save(k, { firstPuttMiss: { length: e.firstPuttMiss?.length ?? null, line: e.firstPuttMiss?.line ?? null, [key]: on ? null : v } })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </span>
+                )}
               </span>
               {/* the putts on the green: the pencil here, where the other shots are edited (Sascha 20.10.2026) */}
               {data && (e.putts ?? 0) > 0 ? (
@@ -1253,30 +1291,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             </li>
           )}
         </ol>
-      )}
-      {d?.onGreen && (e.putts ?? 0) >= 2 && !placedPutts?.length && (
-        // how the first putt missed (Sascha 22.10.2026) – placed putts tell it by themselves
-        <div className="putt-miss">
-          <span className="eyebrow">{tr('First putt missed', 'Erster Putt verfehlt')}</span>
-          <Chips<'short' | 'long'>
-            label={tr('First putt length', 'Erster Putt Länge')}
-            value={e.firstPuttMiss?.length ?? null}
-            onChange={(v) => save(k, { firstPuttMiss: { length: v, line: e.firstPuttMiss?.line ?? null } })}
-            options={[
-              { value: 'short', label: tr('Short', 'Zu kurz') },
-              { value: 'long', label: tr('Long', 'Zu lang') },
-            ]}
-          />
-          <Chips<'left' | 'right'>
-            label={tr('First putt line', 'Erster Putt Linie')}
-            value={e.firstPuttMiss?.line ?? null}
-            onChange={(v) => save(k, { firstPuttMiss: { length: e.firstPuttMiss?.length ?? null, line: v } })}
-            options={[
-              { value: 'left', label: tr('Left', 'Links') },
-              { value: 'right', label: tr('Right', 'Rechts') },
-            ]}
-          />
-        </div>
       )}
 
       {d && data && d.shots.length > 0 && (!d.shots[0].pos || !nearTee(d.shots[0].pos, data)) && (
