@@ -26,3 +26,4 @@ Kissimmee Bay Country Club (kissimmeebay): OSM snapshot of 17.10.2026, bundled f
 Falcon's Fire Golf Club (falconsfire): OSM snapshot of 17.10.2026, bundled for offline use in the USA; 1 OSM bunkers without sand on the county aerial left out.
 Legends Golf and Country Club (legendsclermont): OSM snapshot of 17.10.2026, bundled for offline use in the USA.
 Orange Lake Resort – The Legends (orangelakelegends): OSM snapshot of 17.10.2026, bundled for offline use in the USA; 6 OSM bunkers without sand on the county aerial left out.
+StoneGate Cypress (stonegatecypress, 12.11.2026 – played that day with every tee and green set by hand): OSM has the course area only; tees and greens read off the Polk County 2023 aerial (lidar/us_sgc_holes.py), routing from the 2025 scorecard – holes 4–6 confirmed by Sascha from the round; greens us_greens.py (17 of 18, hole 16 by its centre).

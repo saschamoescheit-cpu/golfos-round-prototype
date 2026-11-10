@@ -12,7 +12,7 @@ const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –
 // WebKit under test reports it as "…localhost:5173/… due to access control checks"; nothing is wrong in the app
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|api\.opengolfapi\.org|owsproxy\.lgl-bw\.de|paags\.property-appraiser\.org)\/\S* due to access control/.test(e.message)) errs.push(e.message); }); // a search refused by the busy real services is an outage the app copes with (night 23./24.10.); the county's server answers a tile it lacks without CORS (27.10.) – Esri lies below
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|api\.opengolfapi\.org|owsproxy\.lgl-bw\.de|paags\.property-appraiser\.org|elevation\.nationalmap\.gov)\/\S* due to access control/.test(e.message)) errs.push(e.message); }); // USGS heights cut off by the next page load (12.11.2026) // a search refused by the busy real services is an outage the app copes with (night 23./24.10.); the county's server answers a tile it lacks without CORS (27.10.) – Esri lies below
 const tiles = new Set();
 p.on('request', (r) => { if (r.url().includes('imagery/us.json')) console.log('· list requested', r.url()); const h = new URL(r.url()).host; if (/property-appraiser|arcgisonline/.test(h)) tiles.add(h); });
 let fails = 0;
@@ -95,6 +95,24 @@ await p.waitForTimeout(8000);
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'StoneGate Oaks: on hole 1');
 ok(/Par 5/.test(await p.locator('body').innerText()), 'StoneGate Oaks: hole 1 is a par 5');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stonegateoaks-1.png` });
+// StoneGate Cypress (Sascha 12.11.2026, played that day: "we had to set every tee and green by hand"): bundled now – the
+// map of hole 1 at once, no set-up; found with no course database and no OSM at all
+await p.route(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/, (r) => r.abort());
+await p.goto(url);
+await p.waitForTimeout(1000);
+await p.getByRole('button', { name: 'Neue Runde' }).click();
+await p.fill('#course-search', 'Cypress');
+const cy = p.locator('button.list-item').filter({ hasText: /Cypress/ }).first();
+await cy.waitFor({ timeout: 30000 });
+await cy.click();
+await p.getByText('Runde starten').waitFor({ timeout: 60000 });
+ok(/18 Löcher|Par 72/.test(await p.locator('body').innerText()), 'StoneGate Cypress: 18 holes, par 72, found offline');
+await p.getByRole('button', { name: 'Platzvorschau' }).click();
+await p.waitForTimeout(8000);
+ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === '1' && (await p.getByText('Loch einrichten').count()) === 0, 'StoneGate Cypress: the map of hole 1 at once, nothing to set up');
+ok(/Par 4/.test(await p.locator('body').innerText()), 'StoneGate Cypress: hole 1 is a par 4');
+if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stonegatecypress-1.png` });
+await p.unroute(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/);
 // the four OSM courses are bundled (night 17./18.10.2026): found and loaded with no course database and no OSM at all –
 // in the USA without roaming
 await p.route(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/, (r) => r.abort());
