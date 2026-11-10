@@ -138,6 +138,39 @@ await H.waitForTimeout(1500);
 w1 = shared.get(code).game.wagers.find((w) => w.id === 'w1');
 ok(!!w1?.from && !!w1?.until && !w1.picks, `"Von – bis": from and up to the pool's days (${w1?.from}–${w1?.until})`);
 
+// the challenger changes his own 5+5+10 (Sascha 11.11.2026: "the host changes everything – but Chris set it up and
+// challenged me, so he changes it too"): Chris's phone – his duel opens, whose and against whom fixed, no deleting; his
+// other bet only to see
+{
+  const g = shared.get(code);
+  g.game.players = g.game.players.map((p) => (p.id === 'c' ? { ...p, joined: { name: 'Chris', at: new Date().toISOString(), uid: 'Chris' } } : p));
+  g.members.push('Chris');
+  const chris = await sim.phone('Chris');
+  const C = chris.p;
+  await C.evaluate(async () => {
+    await (await import('/src/lib/wagerstore.ts')).syncPools();
+    sessionStorage.setItem('golfos.module', 'games');
+  });
+  await C.goto('about:blank');
+  await C.goto(url);
+  await C.waitForTimeout(1500);
+  await C.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+  await C.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+  await C.waitForTimeout(1500);
+  ok((await C.locator('div.pool-wager').filter({ hasText: '9 Pars' }).count()) === 1, 'Chris: his other bet only to see');
+  await C.locator('button.pool-wager').filter({ hasText: '5+5+10' }).first().click();
+  const cs = C.locator('.wager-sheet');
+  const txt = (await cs.innerText()).replace(/\s+/g, ' ');
+  ok(!/Wessen Wette/.test(txt) && /Gegen Sascha/.test(txt) && (await cs.getByRole('button', { name: /^Gegen/ }).count()) === 0 && (await cs.getByRole('button', { name: 'Wette löschen' }).count()) === 0, `Chris's 5+5+10: against Sascha fixed, no "Wessen Wette", no deleting (${txt.slice(0, 120)})`);
+  await cs.getByRole('button', { name: /Vorgabe/ }).click();
+  await C.locator('.pick-option').filter({ hasText: '80 %' }).click();
+  await cs.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await C.waitForTimeout(1500);
+  const d = shared.get(code).game.wagers.find((w) => w.id === 'd1');
+  ok(d?.allowance === 80 && d.player === 'c' && d.opponent === 's', `on the server: Chris changed his duel to 80 % (${d?.allowance})`);
+  ok(chris.errs.length === 0, `Chris: no page errors ${chris.errs.slice(0, 2).join(' | ')}`);
+}
+
 // the Bilanz: Erik tapped – "USA-Wetten" tapped: the pool
 await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await H.goto('about:blank');

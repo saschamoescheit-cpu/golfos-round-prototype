@@ -823,6 +823,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   const pool = withDuels(entry.pool);
   // only the host changes the pool (Sascha 01.11.2026: "the invited ones cannot edit the bets – only the host")
   const host = isHost(entry);
+  // a 5+5+10 this phone's player challenged with, not declined – he changes it too (the server lets him: golfos-duels3.sql)
+  const ownDuel = (w: Wager) => shapeOf(w.kind) === 'duel' && !!entry.me && w.player === entry.me && w.challenge?.state !== 'declined';
   if (pool.deletedAt) {
     return (
       <main className="screen">
@@ -959,8 +961,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
                   {duelWaits(w) ? <DuelMark state="open" /> : shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={prizeSym(prizeOf(pool))} /> : <StateBadge state={stateOf(w, pool, today)} provisional={!tally(w, prog) && provisional(shown, prog)} times={tally(w, prog)?.made} />}
                 </>
               );
-              // the host taps a bet to change, decide or delete it; the others only see it
-              return host ? (
+              // the host taps a bet to change, decide or delete it; the challenger his own 5+5+10 (Sascha 11.11.2026: "Chris set
+              // it up and challenged me – he must be able to change it afterwards"); the others only see it
+              return host || ownDuel(w) ? (
                 <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ edit: w })}>
                   {row}
                 </button>
@@ -1057,6 +1060,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           pool={pool}
           me={entry.me}
           wager={sheet.edit}
+          own={!host}
           onClose={() => setSheet(null)}
           onSave={async (w) => {
             if (await change((p) => ({ ...p, wagers: p.wagers.some((x) => x.id === w.id) ? p.wagers.map((x) => (x.id === w.id ? w : x)) : [...p.wagers, w] }))) {
@@ -1870,13 +1874,20 @@ function PickRounds(props: { pool: WagerPool; picks: BetRound[]; /** a score ove
 }
 
 /** "5+5+10": the opponent, the three stakes, gross or net. */
-function DuelFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void }) {
+function DuelFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void; /** the challenger: against whom stays */ fixedOpponent?: boolean }) {
   const { pool, w, set } = props;
   const p = w.parts ?? { front: 5, back: 5, total: 10 };
   return (
     <>
       <SettingsList>
+        {props.fixedOpponent ? (
+          <div className="settings-row">
+            <span>{tr('Against', 'Gegen')}</span>
+            <span className="muted">{pool.players.find((x) => x.id === w.opponent)?.name ?? '?'}</span>
+          </div>
+        ) : (
         <Pick<string> label={tr('Against', 'Gegen')} prompt={tr('Choose an opponent', 'Gegner wählen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((x) => x.id !== w.player).map((x) => ({ value: x.id, label: x.name }))} />
+        )}
         <Pick<'gross' | 'net'>
           label={tr('Score', 'Ergebnis')}
           value={w.net ? 'net' : 'gross'}
@@ -2012,6 +2023,8 @@ export function WagerSheet(props: {
   pool: WagerPool;
   me: string;
   wager: Wager | null;
+  /** the challenger's own duel, not the host: whose and against whom stay, no deleting */
+  own?: boolean;
   onSave: (w: Wager) => void;
   onDelete: (id: string) => void;
   onJudge: (id: string, done: boolean | null) => void;
@@ -2038,14 +2051,18 @@ export function WagerSheet(props: {
             ✕
           </button>
         </div>
+        {!props.own && (
         <Field label={tr('Whose bet', 'Wessen Wette')}>
           <Chips<string> label={tr('Whose bet', 'Wessen Wette')} value={w.player} onChange={(v) => v && set({ player: v, ...(w.opponent === v ? { opponent: undefined } : {}) })} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
         </Field>
+        )}
+        {!props.own && (
         <SettingsList>
           <Pick<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => setW({ ...w, kind: v, target: v === 'custom' ? 2 : startOf(v), ...(v === 'custom' ? CUSTOM_START : {}), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind).map((x) => ({ value: x.kind, label: x.name() }))} />
         </SettingsList>
+        )}
         {shapeOf(w.kind) === 'duel' ? (
-          <DuelFields pool={pool} w={w} set={set} />
+          <DuelFields pool={pool} w={w} set={set} fixedOpponent={props.own} />
         ) : w.kind === 'custom' ? (
           <CustomFields w={w} set={set} />
         ) : w.kind === 'free' ? (
@@ -2082,7 +2099,7 @@ export function WagerSheet(props: {
           </>
         )}
         {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
-        {props.wager && (
+        {props.wager && !props.own && (
           <>
             {!asking ? (
               <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) }]} />
