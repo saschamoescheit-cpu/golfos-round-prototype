@@ -417,8 +417,9 @@ const ntp = specials.find((s) => s.kind === 'nearestPin');
 ok(specials.length === 2 && ev.holes[ntp.hole].par === 3 && ev.holes[ld.hole].par >= 4, `server: the two special prizes on their holes (LD ${ld && ev.holes[ld.hole].label}, NTP ${ntp && ev.holes[ntp.hole].label})`);
 ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Erik' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players[0].hcpIndex === 7, 'server: flight 1 Sascha and Erik, marking each other, the HCP kept');
 ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', 'the tournament page: the flights with their tee times');
-ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
-ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
+// "Einer für alle": each flight has its scorer – no marker per player then, the scorer's line says it (Sascha 10.11.2026)
+ok((await H.getByText(/^Zähler: /).count()) === 0 && (await H.locator('.tour-scorer').count()) === 2, 'the tournament page: each flight its scorer, no "Zähler" per player');
+ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 0, 'the tournament page: Cedric keeps the score of flight 2 – no "Zähler" beside the players');
 // the QR code at once, the one look of every invitation (Sascha 03.11.2026: "identical everywhere, as under Friends")
 const tinv = H.getByRole('region', { name: 'Mitspieler einladen' });
 ok((await tinv.getByRole('button', { name: 'Ben einladen' }).count()) === 1, 'invite: the linked friend Ben with "Einladen" below the QR code');
