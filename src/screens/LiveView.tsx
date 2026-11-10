@@ -11,7 +11,7 @@ import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
 import { dayOf, withDuels } from '../lib/wagers';
 import { leaderText } from '../components/Specials';
-import { LiveBoard } from './Tournaments';
+import { LiveBoard, SeriesBoard } from './Tournaments';
 import { ScoreGrid, StandingCard } from './Games';
 import { Standings } from './Wagers';
 import type { HoleScore } from '../components/LiveCourse';
@@ -282,25 +282,21 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
         ]}
       />
       {tab === 'total' && (
-        <LiveBoard
+        <SeriesBoard
           label={tr('Total standing', 'Gesamtwertung')}
           title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
           live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
-          rows={[...total.rows.filter((r) => !out(r.name)), ...total.rows.filter((r) => out(r.name))].map((r) => {
-            const now = r.parts.find((p) => !p.finished);
-            return {
-              key: r.name,
-              pos: out(r.name) ? 'CUT' : r.pos,
-              name: r.name,
-              value: fmtSum(r.sum),
-              thru: now ? tr(`thru ${now.thru}`, `nach ${now.thru}`) : tr(`${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}`, `${r.rounds} ${r.rounds === 1 ? 'Runde' : 'Runden'}`),
-              // each round's scorecard as a chip (R1 +3 …)
-              cards: r.parts.map((p) => ({ label: `R${p.k + 1} ${fmtSum(p.sort)}${p.finished ? '' : tr(` (thru ${p.thru})`, ` (nach ${p.thru})`)}`, card: () => cardByName(played[p.k] ?? null, r.name) })),
-              chips: true,
-              out: out(r.name),
-            };
-          })}
-          note={total.rows.length ? tr('Tap a round under a player for his scorecard.', 'Runde unter einem Spieler antippen für seine Scorekarte.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}
+          rounds={series.rounds.map((r) => ({ date: r.date, name: r.name }))}
+          rows={[...total.rows.filter((r) => !out(r.name)), ...total.rows.filter((r) => out(r.name))].map((r) => ({
+            key: r.name,
+            pos: out(r.name) ? 'CUT' : r.pos,
+            name: r.name,
+            total: fmtSum(r.sum),
+            // the part's index counts the rounds played – its round of the series
+            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: fmtSum(p.sort), thru: p.thru, finished: p.finished, card: () => cardByName(played[p.k] ?? null, r.name) })),
+            out: out(r.name),
+          }))}
+          note={total.rows.length ? tr('Tap a player for his rounds and scorecards.', 'Spieler antippen für seine Runden und Scorekarten.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}
           cutAfter={cutPlayed ? cut!.after : undefined}
         />
       )}

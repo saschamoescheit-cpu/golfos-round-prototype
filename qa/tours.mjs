@@ -586,15 +586,20 @@ ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() =
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 // live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
-ok(total.length === 4 && /Erik/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
+// one line a player as the tour's leaderboard (Sascha 12.11.2026): place, name, total, the hole (3), R1
+const thrus = await H.locator('[aria-label="Gesamtwertung"] .series-lb-thru').allInnerTexts();
+ok(total.length === 4 && /Erik/.test(total[0]) && thrus.length === 4 && thrus.every((t) => t.trim() === '3') && /R1/.test(await H.locator('[aria-label="Gesamtwertung"] .series-lb-head').innerText()) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up, each "Loch 3" (${total.join(' | ')})`);
 if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screenshot({ path: process.env.SHOTS + '/tours-series-live.png' });
-// "R1 +3" tapped: that round's scorecard opens under the player (Sascha 04.11.2026)
+// a player tapped: his sheet – place, total, the round now, the rounds as one switch, the scorecard (Sascha 12.11.2026)
 {
   const tb = H.locator('[aria-label="Gesamtwertung"]');
-  await tb.locator('.lb-parts .chip').first().click();
-  ok((await tb.locator('.lb-card table.sc').count()) >= 1 && (await tb.locator('.lb-parts .chip[aria-pressed="true"]').count()) === 1, 'the total: R1 of the first tapped – his card of round 1 below');
-  await tb.locator('.lb-parts .chip').first().click();
-  ok((await tb.locator('.lb-card').count()) === 0, 'tapped again: closed');
+  await tb.locator('.series-lb-row').first().click();
+  const sh = H.locator('.series-player-sheet');
+  const st = (await sh.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok((await sh.locator('table.sc').count()) >= 1 && /Erik/.test(st) && /Platz/.test(st) && /Gesamt/.test(st) && /Runde 1 · .* · nach 3/.test(st), `the first tapped: Erik's sheet with his card of round 1 (${st.slice(0, 120)})`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series-player.png' });
+  await sh.getByRole('button', { name: 'Schließen' }).click();
+  ok((await H.locator('.series-player-sheet').count()) === 0, 'closed');
 }
 // the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
 {
