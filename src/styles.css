@@ -2368,3 +2368,5 @@ button.balance-item-row { cursor: pointer; }
 .review-list li.putt-row { align-items: start; }
 .review-list li.putt-row > .n { margin-top: 4px; }
 .review-list li.putt-row > .row-grip { visibility: hidden; }
+/* the link to link friends in a setup – as small and quiet as a hint (night 10./11.11.2026) */
+.friend-chips .link-text { font-size: 14px; color: var(--muted); align-self: flex-start; }
