@@ -6,7 +6,7 @@ import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { newId } from '../lib/storage';
 import { changePool, isLive, loadPools } from '../lib/wagerstore';
-import { balances, dayOf } from '../lib/wagers';
+import { balances, dayOf, withDuels } from '../lib/wagers';
 import { isMoney, paidWord, prizeOf, prizeSym } from '../lib/prize';
 import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
@@ -136,7 +136,10 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const pick = (f: BalanceFilter) => setFilter((lastFilter = filter === f ? null : f));
   const [busy, setBusy] = useState(false);
   const today = dayOf(new Date());
-  const pools = loadPools().filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me));
+  // the 5+5+10s judged from the cards, as in the pool (Sascha 12.11.2026) – not the progress kept from before
+  const pools = loadPools()
+    .filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me))
+    .map((e) => ({ ...e, pool: withDuels(e.pool) }));
   const done = props.games.filter((g) => g.finishedAt && g.signedAt);
   const toSign = props.games.filter((g) => g.finishedAt && !g.signedAt);
   const unconfirmed = toSign.length;

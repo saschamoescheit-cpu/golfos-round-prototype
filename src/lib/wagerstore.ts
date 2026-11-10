@@ -6,7 +6,7 @@ import { newCode } from './sharedgame';
 import { tr } from './i18n';
 import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, owings, settleDebts, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -254,7 +254,8 @@ export function tellSettlements(list: PoolEntry[], now = Date.now()): string[] {
     if (!e.me || e.pool.deletedAt || isLive(e, today)) continue;
     const end = e.pool.finishedAt ? Date.parse(e.pool.finishedAt) : Date.parse(`${e.pool.to}T23:59:59`);
     if (!(now - end < 10 * 864e5) || now - (told[e.code] ?? 0) < 6 * 3600e3) continue;
-    pushSettle(e.code, openPoolTransfers(e.pool, balances(e.pool, today, true), settleDebts(e.pool, owings(e.pool, today, true))), prizeSym(prizeOf(e.pool)));
+    const jp = withDuels(e.pool); // the 5+5+10s from the cards, as the pool shows them
+    pushSettle(e.code, openPoolTransfers(jp, balances(jp, today, true), settleDebts(jp, owings(jp, today, true))), prizeSym(prizeOf(jp)));
     told[e.code] = now;
     sent.push(e.code);
   }
@@ -767,7 +768,7 @@ export function myPoolBalances(today = dayOf(new Date())): { code: string; name:
     .filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me))
     .sort((a, b) => b.pool.from.localeCompare(a.pool.from))
     .map((e) => {
-      const bal = balances(e.pool, today, true);
+      const bal = balances(withDuels(e.pool), today, true);
       return {
         code: e.code,
         name: e.pool.name,
