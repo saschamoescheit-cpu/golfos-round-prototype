@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { SwapGlyph } from '../components/Glyph';
 import { tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -247,7 +248,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
               GOLF<span>OS</span>
             </span>
             <span className="module-tag">Agility</span>
-            <span aria-hidden="true">⇄</span>
+            <SwapGlyph />
           </button>
           <TopTools />
         </div>

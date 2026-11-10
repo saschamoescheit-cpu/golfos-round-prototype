@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { SwapGlyph } from '../components/Glyph';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course, Round } from '../types';
@@ -544,7 +545,7 @@ function GamesTabs(props: {
               GOLF<span>OS</span>
             </span>
             <span className="module-tag">{props.kind === 'tours' ? 'Tournaments' : 'Games & Bets'}</span>
-            <span aria-hidden="true">⇄</span>
+            <SwapGlyph />
           </button>
           <TopTools />
         </div>

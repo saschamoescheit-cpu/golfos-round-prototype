@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckGlyph, CrossGlyph, PenGlyph } from '../components/Glyph';
 import { tr } from '../lib/i18n';
 import { fullName, loadProfile } from '../lib/profile';
 import { loadReview, reviewOn, setMark, type Verdict } from './review';
@@ -25,9 +26,9 @@ export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => v
   };
   const saveNote = () => mark && setMark(props.itemKey, { ...mark, note: note.trim() || undefined, at: new Date().toISOString() });
   const opts: { v: Verdict; label: string }[] = [
-    { v: 'ok', label: tr('✓ Keep', '✓ Passt') },
-    { v: 'edit', label: tr('✎ Change', '✎ Ändern') },
-    { v: 'cut', label: tr('✕ Cut', '✕ Streichen') },
+    { v: 'ok', label: tr('Keep', 'Passt') },
+    { v: 'edit', label: tr('Change', 'Ändern') },
+    { v: 'cut', label: tr('Cut', 'Streichen') },
   ];
   return (
     <div className={`tr-reviewbar${props.compact ? ' compact' : ''}${mark ? ` ${mark.verdict}` : ''}`} role="group" aria-label={tr('Review', 'Prüfung')}>
@@ -35,7 +36,7 @@ export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => v
       <div className="chip-set">
         {opts.map((o) => (
           <button key={o.v} type="button" className={`chip${mark?.verdict === o.v ? ' on' : ''}`} aria-pressed={mark?.verdict === o.v} onClick={() => pick(o.v)}>
-            {o.label}
+            {o.v === 'ok' ? <CheckGlyph /> : o.v === 'edit' ? <PenGlyph /> : <CrossGlyph />} {o.label}
           </button>
         ))}
       </div>

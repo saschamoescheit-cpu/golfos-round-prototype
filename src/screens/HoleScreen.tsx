@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { PenGlyph } from '../components/Glyph';
 import { ownDetailsOn, setOwnDetails } from '../lib/owndetails';
 import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
@@ -2604,7 +2605,9 @@ export function HoleScreen(props: {
           <span>Par {hole.par || '?'}</span>
           <span>Hcp {hole.strokeIndex || '?'}</span>
           {received > 0 && <span style={{ color: 'var(--brand-text)' }}>+{received}</span>}
-          <span aria-hidden="true" style={{ color: 'var(--brand-text)' }}>✎</span>
+          <span aria-hidden="true" style={{ color: 'var(--brand-text)', display: 'inline-flex' }}>
+            <PenGlyph />
+          </span>
         </button>
       </div>
 
@@ -2649,7 +2652,7 @@ export function HoleScreen(props: {
                   </span>
                   <span className="muted">{lengths[k] != null ? `${fmtU(lengths[k]!)} ${unit}` : ''}</span>
                   <button type="button" className="icon-btn edit-btn" aria-label={tr(`Edit shot ${k + 1}`, `Schlag ${k + 1} bearbeiten`)} onClick={() => setSheet({ kind: 'shot', index: k, pos: sh.pos })}>
-                    ✎
+                    <PenGlyph />
                   </button>
                 </li>
               ))}

@@ -2353,3 +2353,6 @@ button.balance-item-row { cursor: pointer; }
 
 /* an empty list with the action that fills it (night 10./11.11.2026) */
 .empty-action { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+
+/* a small symbol in text (components/Glyph.tsx) – sits on the text's line */
+.glyph { display: inline-block; vertical-align: -0.125em; flex: none; }

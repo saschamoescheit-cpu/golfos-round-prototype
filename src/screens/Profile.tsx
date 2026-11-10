@@ -1,4 +1,5 @@
 import { paypalName } from '../lib/wagers';
+import { PenGlyph } from '../components/Glyph';
 import { loadFriends } from '../lib/friends';
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
@@ -132,7 +133,9 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
         <div className="profile-photo">
           <button type="button" className="profile-photo-btn" aria-label={tr('Change your photo', 'Profilbild ändern')} onClick={() => photoInput.current?.click()}>
             <Avatar name={p.firstName || '?'} me size={72} />
-            <span className="profile-photo-edit" aria-hidden="true">✎</span>
+            <span className="profile-photo-edit" aria-hidden="true">
+              <PenGlyph />
+            </span>
           </button>
           {session ? (
             <span className="profile-account">

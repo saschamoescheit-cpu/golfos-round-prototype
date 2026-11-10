@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { CheckGlyph, CrossGlyph, PenGlyph, StarGlyph, SwapGlyph } from '../components/Glyph';
 import type { Round } from '../types';
 import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile, fullName } from '../lib/profile';
@@ -392,7 +393,7 @@ function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: Rea
             GOLF<span>OS</span>
           </span>
           <span className="module-tag">Training</span>
-          <span aria-hidden="true">⇄</span>
+          <SwapGlyph />
         </button>
         <TopTools />
       </div>
@@ -636,7 +637,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
       </section>
       <button type="button" className="list-item tr-review-entry" onClick={() => props.nav.push({ name: 'review' })}>
         <span className="tr-cat-icon small" aria-hidden="true">
-          ✎
+          <PenGlyph />
         </span>
         <span className="grow">
           <span className="title">{tr('Review the content', 'Inhalte prüfen')}</span>
@@ -704,7 +705,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
       )}
       {favs.length >= 2 && (
         <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(tr('My favourites', 'Meine Favoriten'), favs.slice(0, 8).map((id) => ({ drill: id, minutes: drillById(id)!.minutes }))))}>
-          ★ {tr(`Practise my ${Math.min(8, favs.length)} favourites`, `Meine ${Math.min(8, favs.length)} Favoriten üben`)}
+          <StarGlyph /> {tr(`Practise my ${Math.min(8, favs.length)} favourites`, `Meine ${Math.min(8, favs.length)} Favoriten üben`)}
         </button>
       )}
       <section className="tr-block">
@@ -1318,8 +1319,12 @@ function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => voi
             <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
             <span className="grow">
               <span className="title">
-                {review && marks[drillKey(d.id)] ? `${SIGN[marks[drillKey(d.id)].verdict]} ` : ''}
-                {favs.includes(d.id) ? '★ ' : ''}
+                {review && marks[drillKey(d.id)] ? <>{SIGN[marks[drillKey(d.id)].verdict]} </> : null}
+                {favs.includes(d.id) ? (
+                  <>
+                    <StarGlyph />{' '}
+                  </>
+                ) : null}
                 {t(d.name)}
               </span>
               <span className="muted small tr-two-lines">{t(d.goal)}</span>
@@ -1726,7 +1731,8 @@ function DrillView(props: { id: string; nav: Nav }) {
 
 // ---------- review mode (Sascha 16.10.2026: go through the module with Chris and shorten it) ----------
 
-const SIGN: Record<Verdict, string> = { ok: '✓', edit: '✎', cut: '✕' };
+// the review's mark as a symbol (SVG – night 10./11.11.2026)
+const SIGN: Record<Verdict, JSX.Element> = { ok: <CheckGlyph />, edit: <PenGlyph />, cut: <CrossGlyph /> };
 const KIND_NAME: Record<ReviewKind, () => string> = {
   fact: () => tr('Numbers', 'Zahlen'),
   drill: () => tr('Drills', 'Übungen'),
@@ -1811,7 +1817,9 @@ function ReviewView(props: { nav: Nav }) {
         </div>
         <div className="tile">
           <span className="tile-num">{count('edit')}</span>
-          <span className="muted small">✎ {tr('change', 'ändern')}</span>
+          <span className="muted small">
+            <PenGlyph /> {tr('change', 'ändern')}
+          </span>
         </div>
         <div className="tile">
           <span className="tile-num">{count('cut')}</span>

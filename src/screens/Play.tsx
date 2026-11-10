@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SwapGlyph } from '../components/Glyph';
 import { goTour } from '../lib/nav';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
@@ -336,7 +337,7 @@ export function RoundsTopBar(props: { onModules: () => void }) {
           GOLF<span>OS</span>
         </span>
         <span className="module-tag">Rounds</span>
-        <span aria-hidden="true">⇄</span>
+        <SwapGlyph />
       </button>
       <TopTools />
     </div>
