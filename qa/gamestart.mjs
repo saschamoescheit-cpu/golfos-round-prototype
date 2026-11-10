@@ -136,7 +136,9 @@ await p.getByRole('button', { name: 'Spiele' }).first().click();
 await p.waitForTimeout(400);
 const frow = p.locator('ul.list .list-item').first();
 const lines = await frow.evaluate((el) => [...el.querySelectorAll('.grow > span, .game-row-result > *')].map((x) => Math.round(x.getBoundingClientRect().height)));
-ok(lines.every((h) => h <= 26), `list: a finished game's row – every line one line high (${lines.join(', ')} px)`);
+// no text cut off (Sascha 10.11.2026): a long line wraps – at most two lines, nothing hidden
+const cut = await frow.evaluate((el) => [...el.querySelectorAll('.grow > span, .game-row-result > *')].some((x) => x.scrollWidth > x.clientWidth + 1));
+ok(lines.every((h) => h <= 56) && !cut, `list: a finished game's row – nothing cut off, at most two lines a line (${lines.join(', ')} px)`);
 ok((await p.locator('.tile').filter({ hasText: 'Löcher' }).locator('.tile-num').innerText()).trim() === '2', 'tile "Löcher": the 2 holes played');
 
 // 5 · the module choice: one result to confirm, with the dot
