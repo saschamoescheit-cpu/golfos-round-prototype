@@ -49,7 +49,7 @@ await C.waitForTimeout(1500);
 await C.getByRole('navigation', { name: 'Menü' }).getByRole('button', { name: 'Spielen' }).click().catch(() => {});
 const card = C.locator('section.play-card').filter({ hasText: 'Orlando Tag 1' });
 await card.waitFor({ timeout: 15000 }).catch(() => {});
-ok((await card.count()) === 1 && /beendet/.test(await card.innerText()) && (await card.getByRole('button', { name: 'Wieder teilnehmen' }).count()) === 1, `Rounds: "Orlando Tag 1 · beendet" – "Wieder teilnehmen" (${(await card.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
+ok((await card.count()) === 1 && /beendet/.test(await card.innerText()) && (await card.getByRole('button', { name: 'Wieder teilnehmen' }).count()) === 1 && (await card.getByRole('button', { name: 'Ergebnis ansehen' }).count()) === 1, `Rounds: "Orlando Tag 1 · beendet" – "Wieder teilnehmen" (${(await card.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
 await card.getByRole('button', { name: 'Wieder teilnehmen' }).click();
 await C.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
 const r2 = await sim.round(C);

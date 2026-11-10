@@ -7,7 +7,7 @@ import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
-import { canRejoin, flightOfName, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
+import { canRejoin, flightOfName, isSigned, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
 import { dayText } from '../components/ShareRound';
 import { loadProfile, shownName } from '../lib/profile';
 
@@ -196,14 +196,25 @@ export function PlayTab(props: {
         const f = flightOfName(ev, shownName(loadProfile()));
         // his flight ended (by mistake, or another phone of it) – back in with a tap (07.11.2026)
         const again = !!f?.finishedAt;
+        // handed in – every card signed (Sascha 10.11.2026: "a tournament over – does 'Wieder teilnehmen' still make
+        // sense?"): its result, no taking part again
+        const handedIn = again && !!f && f.players.length > 0 && f.players.every((p) => isSigned(f, p.id));
         return (
           <section key={code} className="card play-card" aria-label={tr(`Tournament ${ev.name}`, `Turnier ${ev.name}`)}>
             <span className="eyebrow">{tr('Tournament today', 'Turnier heute')}</span>
             <div className="play-course">{ev.name}</div>
             <span className="muted small">{[ev.course.name, f ? tr(`your flight${f.teeTime ? ` · ${f.teeTime}` : ''}`, `Dein Flight${f.teeTime ? ` · ${f.teeTime}` : ''}`) : null, again ? tr('ended', 'beendet') : null].filter(Boolean).join(' · ')}</span>
-            <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={() => setJoin(code)}>
-              {again ? tr('Take part again', 'Wieder teilnehmen') : tr('Take part', 'Teilnehmen')}
-            </button>
+            {again && (
+              <button type="button" className="btn-primary" onClick={() => goTour(code)}>
+                {tr('See the result', 'Ergebnis ansehen')}
+              </button>
+            )}
+            {/* ended by mistake, the cards not handed in yet: back in */}
+            {!handedIn && (
+              <button type="button" className={open || again ? 'btn-secondary' : 'btn-primary'} onClick={() => setJoin(code)}>
+                {again ? tr('Take part again', 'Wieder teilnehmen') : tr('Take part', 'Teilnehmen')}
+              </button>
+            )}
           </section>
         );
       })}
