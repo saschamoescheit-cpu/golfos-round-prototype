@@ -64,7 +64,7 @@ ok((await sheet.count()) === 0, 'the sheet closes');
 // 3 · the total with yesterday's scores
 await H.waitForTimeout(1500);
 const rows = (await H.locator('[aria-label="Gesamtwertung"] .lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(rows.length === 2 && /Erik/.test(rows[0]) && /Sascha/.test(rows[1]) && /\+2/.test(rows[1]) && /R1/.test(rows[1]), `the total counts Celebration: Erik first, Sascha +2 (${rows.join(' | ')})`);
+ok(rows.length === 2 && /Erik/.test(rows[0]) && /Sascha/.test(rows[1]) && /\+2/.test(rows[1]) && /R1/.test(await H.locator('[aria-label="Gesamtwertung"] .series-lb-head').innerText()), `the total counts Celebration: Erik first, Sascha +2 (${rows.join(' | ')})`);
 ok((await H.locator('li .list-item').filter({ hasText: 'Celebration' }).count()) === 1, 'Celebration in the series\' list of rounds');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/seriesadopt.png', fullPage: true });
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);

@@ -2383,3 +2383,21 @@ button.balance-item-row { cursor: pointer; }
 .step-pick-now strong { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .step-pick-now strong .step-pick-tick { display: inline-block; vertical-align: -2px; margin-right: 6px; }
 .step-pick-now .small { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a series’ total built like the tour’s leaderboard (Sascha 12.11.2026): one line a player – place, name, total, hole, the round now */
+.series-lb-head, .series-lb-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 52px 48px 48px; align-items: center; gap: 8px; }
+.series-lb-head { padding: 0 12px; color: var(--muted); font: 600 12px var(--body); text-transform: uppercase; letter-spacing: 0.5px; }
+.series-lb-head span:nth-child(n + 3), .series-lb-row > span:nth-child(n + 3) { text-align: right; }
+.lb-rows.series-lb li { display: block; padding: 0; }
+.series-lb-row { width: 100%; min-height: 52px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; padding: 8px 12px; border-radius: 12px; cursor: pointer; }
+.series-lb-row:disabled { cursor: default; opacity: 1; }
+.series-lb-row .lb-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.series-lb-thru, .series-lb-now { font: 600 15px var(--body); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.lb-rows.series-lb li:not(:first-child) .lb-rank { background: var(--line-strong); color: var(--text); }
+.lb-rows.series-lb li.lb-out .series-lb-row { color: var(--text-2); }
+.series-player-sheet { display: flex; flex-direction: column; gap: 12px; }
+.series-player-sheet .sc-block, .series-player-sheet table { max-width: 100%; }
+.series-player-facts { display: flex; gap: 22px; }
+.series-player-facts > span { display: flex; flex-direction: column; gap: 2px; }
+.series-player-facts strong { font: 700 20px var(--display); font-variant-numeric: tabular-nums; }
+.series-round-tabs { gap: 8px; flex-wrap: wrap; }
+.series-round-tabs .chip { min-height: 40px; padding: 0 14px; font-weight: 700; }

@@ -457,7 +457,7 @@ await H.waitForTimeout(2500);
 // the live leaderboard (Sascha 03.11.2026): its name, "LIVE" while played, each player "nach 3"
 const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
+ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && !/Aktualisiert|30 Sekunden/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
 // "Am Turniertag" one of the most important hints (Sascha 07.11.2026): green as "Tipp für die nächste Runde" – the
 // green card, the heading as a heading, the text bold
@@ -586,15 +586,20 @@ ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() =
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 // live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
-ok(total.length === 4 && /Erik/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
+// one line a player as the tour's leaderboard (Sascha 12.11.2026): place, name, total, the hole (3), R1
+const thrus = await H.locator('[aria-label="Gesamtwertung"] .series-lb-thru').allInnerTexts();
+ok(total.length === 4 && /Erik/.test(total[0]) && thrus.length === 4 && thrus.every((t) => t.trim() === '3') && /R1/.test(await H.locator('[aria-label="Gesamtwertung"] .series-lb-head').innerText()) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up, each "Loch 3" (${total.join(' | ')})`);
 if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screenshot({ path: process.env.SHOTS + '/tours-series-live.png' });
-// "R1 +3" tapped: that round's scorecard opens under the player (Sascha 04.11.2026)
+// a player tapped: his sheet – place, total, the round now, the rounds as one switch, the scorecard (Sascha 12.11.2026)
 {
   const tb = H.locator('[aria-label="Gesamtwertung"]');
-  await tb.locator('.lb-parts .chip').first().click();
-  ok((await tb.locator('.lb-card table.sc').count()) >= 1 && (await tb.locator('.lb-parts .chip[aria-pressed="true"]').count()) === 1, 'the total: R1 of the first tapped – his card of round 1 below');
-  await tb.locator('.lb-parts .chip').first().click();
-  ok((await tb.locator('.lb-card').count()) === 0, 'tapped again: closed');
+  await tb.locator('.series-lb-row').first().click();
+  const sh = H.locator('.series-player-sheet');
+  const st = (await sh.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok((await sh.locator('table.sc').count()) >= 1 && /Erik/.test(st) && /Platz/.test(st) && /Gesamt/.test(st) && /Runde 1/.test(await sh.locator('.series-round-tabs .chip.on').innerText()) && /nach 3/.test(st), `the first tapped: Erik's sheet with his card of round 1 (${st.slice(0, 120)})`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series-player.png' });
+  await sh.getByRole('button', { name: 'Schließen' }).click();
+  ok((await H.locator('.series-player-sheet').count()) === 0, 'closed');
 }
 // the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
 {
