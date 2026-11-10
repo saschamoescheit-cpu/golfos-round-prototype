@@ -4,7 +4,7 @@ import { cleanCode, showCode } from '../lib/sharedgame';
 import { shareView, type ShareView } from '../lib/sharedround';
 import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAllAsScorer, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
-import { loadCachedCourse, newId } from '../lib/storage';
+import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
@@ -356,7 +356,10 @@ export function JoinRoundSheet(props: {
     }
     setBusy(null);
     const f2 = ev2.flights[f.id] ?? f;
-    props.onJoined(roundFromEvent(ev2, f2.id, pid, code, newId(), who()));
+    // taking part again (Sascha 10.11.2026: Erik's round after "Wieder teilnehmen" had no shots of the watch and no
+    // track – a new round had begun): this phone's round of the flight for this player goes on, with all it holds
+    const prev = f.finishedAt ? loadRounds().find((r) => !r.preview && r.shared?.code === code && r.shared.flight === f2.id && r.players.find((p) => p.isMe)?.id === pid) : undefined;
+    props.onJoined(prev ? { ...prev, finishedAt: null } : roundFromEvent(ev2, f2.id, pid, code, newId(), who()));
   };
   // the own name in the flight: in at once – no "who are you?" (Sascha 30.10.2026: "not many taps"); let in just now
   // and not there yet: the host's phone adds it in a moment, looked for a little while

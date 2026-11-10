@@ -32,6 +32,15 @@ ok(r1?.players.find((p) => p.isMe)?.name === 'Cedric', 'Cedric joins: he is Cedr
 await C.waitForTimeout(4000);
 ok(Object.values(ownRow().game.flight.phones ?? {}).some((x) => x.player === cid), "the flight: Cedric's phone holds Cedric");
 
+// a shot of the watch on his round (Sascha 10.11.2026: Erik's watch shots gone after "Wieder teilnehmen")
+await C.evaluate((id) => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  const k = rs.findIndex((r) => r.id === id);
+  rs[k] = { ...rs[k], manualShots: [{ hole: 0, pos: [9.69, 48.78], t: Date.now(), acc: 5, watch: 'w-kept' }] };
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
+}, r1.id);
+await C.reload();
+await C.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
 // his round ends (the hole menu → "Runde beenden"), the flight finished
 await C.locator('.hole-bar-handle').click();
 await C.locator('.hole-drawer').getByRole('button', { name: /(Runde|Spiel) beenden/ }).click();
@@ -54,6 +63,7 @@ await card.getByRole('button', { name: 'Wieder teilnehmen' }).click();
 await C.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
 const r2 = await sim.round(C);
 ok(r2?.players.find((p) => p.isMe)?.name === 'Cedric' && !r2.finishedAt, `in again as Cedric – no "who are you?" (${r2?.players.find((p) => p.isMe)?.name})`);
+ok(r2?.id === r1.id && (r2.manualShots ?? []).some((x) => x.watch === 'w-kept'), `taking part again: his round goes on – the same round, the watch's shot kept (${r2?.id === r1.id ? 'same' : 'new'} round)`);
 await C.waitForTimeout(4000);
 ok(!ownRow().game.flight.finishedAt, 'the flight open again on the server');
 
