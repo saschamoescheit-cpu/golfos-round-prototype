@@ -157,7 +157,7 @@ function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
       <span className="grow">
         <span className="title">{series.name}</span>
         <span className="muted small one-line">
-          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')} · {first && last ? `${dm(first)}–${dm(last)}` : ''} · {[...new Set(series.rounds.map((r) => r.course.name))].join(', ')}
+          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')}{first && last ? ` · ${dm(first)}–${dm(last)}` : ''}
         </span>
       </span>
       <span className="game-row-result">
@@ -259,9 +259,11 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
   const shownCodes = new Set(shown.map((e) => e.code));
   const shownAll = filter ? series.filter((s) => s.series.rounds.some((r) => shownCodes.has(r.code))) : series;
   // a tournament over several rounds is a tournament (Sascha 04.11.2026) – with the single ones, not the series
-  const shownSeries = shownAll.filter((x) => !x.series.multi);
-  const shownMulti = shownAll.filter((x) => x.series.multi);
-  const shownSingle = shown.filter(single);
+  // a tile tapped (Sascha 12.11.2026: "geplant should list the 5 rounds left – it shows only the series"): every round it
+  // counts, each on its own – the series' rounds too; without a tile the overview with the series as ever
+  const shownSeries = filter ? [] : shownAll.filter((x) => !x.series.multi);
+  const shownMulti = filter ? [] : shownAll.filter((x) => x.series.multi);
+  const shownSingle = filter ? shown : shown.filter(single);
   return (
     <>
       <h1 className="tab-title">{tr('Tournaments', 'Turniere')}</h1>
