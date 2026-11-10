@@ -190,7 +190,8 @@ export function addWatchShot(round: Round, s: WatchShot, hole: number, fallback:
  */
 export function warmUpSwing(round: Round, s: Pick<WatchShot, 't' | 'manual' | 'acc'>, at: { pos: LngLat | null; tees: (LngLat | null | undefined)[]; teeTime?: number | null }): 'early' | 'away' | null {
   if (s.manual) return null;
-  if ((round.manualShots ?? []).length) return null;
+  // the round begun: a shot of it – by hand, from the watch, or a crack the phone heard
+  if ((round.manualShots ?? []).length || (round.soundShots ?? []).length) return null;
   const me = round.players.find((p) => p.isMe) ?? round.players[0];
   if (me && (round.entries[me.id] ?? []).some((e) => e && (e.strokes != null || e.pickedUp))) return null;
   if (at.teeTime != null && s.t < at.teeTime - 10 * 60000) return 'early';

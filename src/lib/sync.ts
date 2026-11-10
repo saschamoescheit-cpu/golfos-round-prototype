@@ -2,6 +2,7 @@ import { loadProfile, saveProfile } from './profile';
 import { tr } from './i18n';
 import { AUTH_BACK, isNative, openSignIn } from './native';
 import { takeRefused } from './storageguard';
+import { decodeTrack, encodeTrack, unionTrack } from './trackcodec';
 
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
@@ -232,6 +233,8 @@ function apply(store: LocalStore, kind: string, id: string, json: string | null)
   if (!p) return;
   if (json == null) store.remove(p.prefix + id);
   else store.set(p.prefix + id, json);
+  // a track from another device: the one this device holds in memory takes it in (lib/track.ts)
+  if (kind === 'track' && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('golfos:track-pulled', { detail: id }));
 }
 
 export interface SyncResult {
@@ -298,6 +301,16 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
     const json = JSON.stringify(r.data);
     if (l != null && hashOf(l.json) === hashOf(json)) {
       meta[key] = { hash: hashOf(l.json), at: r.updated_at }; // the same on both sides
+      continue;
+    }
+    // a round's GPS track on two devices (Sascha 10.11.2026: the second device's ended at the break, the shots from
+    // hole 10 on were not found): both copies put together – every fix of both – and the whole one sent back
+    if (r.kind === 'track' && l != null) {
+      const merged = encodeTrack(unionTrack(decodeTrack(l.json), decodeTrack(json)));
+      apply(store, r.kind, r.id, merged);
+      if (hashOf(merged) !== hashOf(json)) push.push({ kind: r.kind, id: r.id, data: JSON.parse(merged), updated_at: at, deleted: false });
+      else meta[key] = { hash: hashOf(merged), at: r.updated_at };
+      pulled++;
       continue;
     }
     const conflict = l != null && m != null && m.hash !== hashOf(l.json) && r.updated_at !== m.at;

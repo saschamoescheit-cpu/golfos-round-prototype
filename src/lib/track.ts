@@ -3,7 +3,7 @@ import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { BAG, lieAt, onGreenAt, suggestKind } from './shots';
 import { expectedStrokes } from './sg';
 import { nearestOnSegment } from './terrain';
-import { decodeTrack, encodeTrack, type Row } from './trackcodec';
+import { decodeTrack, encodeTrack, unionTrack, type Row } from './trackcodec';
 
 // Shot detection from the GPS track (features 004/007). A golfer walks to the ball, stands there while
 // choosing the club and hitting, then walks on towards the green. "Stand still, then move on towards the
@@ -502,6 +502,24 @@ export function recordFix(roundId: string, fix: TrackPoint): void {
 
 let dirty = false;
 let savedAt = 0;
+// a round's track pulled from another device (Sascha 10.11.2026: the review on the iPad kept the half track it had
+// read before): the one in memory takes in its fixes – both put together – and whoever shows it reads it anew
+if (typeof window !== 'undefined')
+  window.addEventListener('golfos:track-pulled', (e) => {
+    const id = (e as CustomEvent<string>).detail;
+    if (!mem || mem.id !== id) return;
+    let stored: Row[] = [];
+    try {
+      stored = decodeTrack(localStorage.getItem(KEY + id));
+    } catch {
+      return;
+    }
+    const raw = unionTrack(mem.raw, stored).slice(-MAX_POINTS);
+    if (raw.length === mem.raw.length) return;
+    if (raw.length > stored.length) dirty = true;
+    mem = { id, raw, pts: raw.map(([t, lon, lat, acc, o]): TrackPoint => (o ? { t, p: [lon, lat], acc, open: true } : { t, p: [lon, lat], acc })) };
+    window.dispatchEvent(new CustomEvent('golfos:track-changed', { detail: id }));
+  });
 /** Writes the track kept in memory to storage (before a backup, when the app is hidden). */
 export function flushTrack(): void {
   if (!mem || !dirty) return;

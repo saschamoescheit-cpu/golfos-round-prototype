@@ -60,7 +60,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // a hole played from another tee (the check asked – 04.11.2026): that tee for this hole
   const holeTees = round.holes.map((_, i) => round.entries[me.id][i]?.tee ?? '').join('|');
   const maps = useMemo(() => round.holes.map((h, i) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.entries[me.id][i]?.tee ?? round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee, holeTees]); // eslint-disable-line react-hooks/exhaustive-deps
-  const track = useMemo(() => loadTrack(round.id), [round.id]);
+  // read anew when the whole track comes from another device (Sascha 10.11.2026: the review on the iPad had half of it)
+  const [trackTick, setTrackTick] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => (e as CustomEvent<string>).detail === round.id && setTrackTick((n) => n + 1);
+    window.addEventListener('golfos:track-changed', on);
+    return () => window.removeEventListener('golfos:track-changed', on);
+  }, [round.id]);
+  const track = useMemo(() => loadTrack(round.id), [round.id, trackTick]); // eslint-disable-line react-hooks/exhaustive-deps
   // where the pin was on the course ("Where is the pin today?" or the dragged flag) – else the middle of the green
   const coursePins = useMemo(() => loadLive(round.id).plans, [round.id]);
   // the pin the player set with his putts on the course wins, then the one from the hole map

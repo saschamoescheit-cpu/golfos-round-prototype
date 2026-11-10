@@ -49,3 +49,14 @@ export function decodeTrack(raw: string | null): Row[] {
     return e[4] ? [t, x / E, y / E, e[3], 1] : [t, x / E, y / E, e[3]];
   });
 }
+
+/** Two copies of a round's track put together (Sascha 10.11.2026: from hole 10 on the shots were not found – the
+ *  track on the second device ended at the break): every fix of both, by time, a time once. Nothing is lost. */
+export function unionTrack(a: Row[], b: Row[]): Row[] {
+  if (!a.length) return b;
+  if (!b.length) return a;
+  const all = [...a, ...b].sort((x, y) => x[0] - y[0]);
+  const out: Row[] = [];
+  for (const r of all) if (!out.length || out[out.length - 1][0] !== r[0]) out.push(r);
+  return out;
+}

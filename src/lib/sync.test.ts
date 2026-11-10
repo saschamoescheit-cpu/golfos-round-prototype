@@ -394,3 +394,23 @@ describe('a round the full device would not take', () => {
     expect(srv.rows.size).toBe(0);
   });
 });
+describe('a round\'s GPS track on two devices (Sascha 10.11.2026: from hole 10 on no shots found – the iPad had half the track)', () => {
+  it('both copies put together – every fix of both – and the whole one on both devices', async () => {
+    const { encodeTrack, decodeTrack } = await import('./trackcodec');
+    const fix = (s: number): [number, number, number, number] => [1_794_240_000_000 + s * 1000, -81.33 + s * 1e-5, 28.31, 4];
+    const front = Array.from({ length: 50 }, (_, s) => fix(s));
+    const back = Array.from({ length: 50 }, (_, s) => fix(100 + s));
+    const srv = server();
+    const ipad = device({ 'golfos.track.v1.r1': encodeTrack(front) });
+    const phone = device({ 'golfos.track.v1.r1': encodeTrack([...front.slice(0, 10), ...back]) });
+    await syncOnce(ipad, srv, clock);
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    for (const d of [phone, ipad]) {
+      const rows = decodeTrack(d.get('golfos.track.v1.r1'));
+      expect(rows.length).toBe(100);
+      expect(rows.every((r, k) => k === 0 || r[0] > rows[k - 1][0])).toBe(true);
+    }
+    expect(await syncOnce(ipad, srv, clock)).toMatchObject({ pushed: 0, pulled: 0 });
+  });
+});

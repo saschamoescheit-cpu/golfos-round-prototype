@@ -84,6 +84,10 @@ describe('warming up on the range (Sascha 09.11.2026 at Kissimmee Bay: 11:27 and
     // starting on another hole's tee
     expect(warmUpSwing(me, swing('a', t('12:05'), at(300, 395)), { pos: at(300, 395), tees, teeTime: null })).toBeNull();
   });
+  it('a crack the phone heard counts as the round begun – the next swing on the fairway is a shot', () => {
+    const heard = { ...me, soundShots: [{ hole: 0, pos: at(0, 2), t: t('12:09'), level: 0.5, acc: 4 }] } as unknown as Round;
+    expect(warmUpSwing(heard, swing('a', t('12:12'), at(-150, 0)), { pos: at(-150, 0), tees, teeTime })).toBeNull();
+  });
   it('once the round has a shot or a score, a shot by hand on the watch, or no map: counted as ever', () => {
     const shot = addWatchShot(me, swing('w', t('12:09'), at(0, 2)), 0, null);
     expect(warmUpSwing(shot, swing('a', t('12:20'), at(-150, 0)), { pos: at(-150, 0), tees, teeTime })).toBeNull();
