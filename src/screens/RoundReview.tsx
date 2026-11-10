@@ -1295,7 +1295,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 <span />
               )}
               {/* as wide as a shot's grip – the strokes gained one under the other */}
-              <span className="row-grip" aria-hidden="true" />
+              <span className="row-grip-space" aria-hidden="true" />
             </li>
           )}
         </ol>
