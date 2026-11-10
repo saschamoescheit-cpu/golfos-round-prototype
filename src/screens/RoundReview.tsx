@@ -1128,7 +1128,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       {!d || d.shots.length === 0 ? (
-        <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
+        <>
+          <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
+          {data && (
+            <button type="button" className="link-text" onClick={() => setPuttEdit(true)}>
+              {tr('Set the flag and the putts ›', 'Fahne und Putts setzen ›')}
+            </button>
+          )}
+        </>
       ) : (
         <ol className="shot-list review-list" ref={listRef}>
           {d.shots.map((s, n) => {
@@ -1233,7 +1240,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <PenaltyGrip onPointerDown={(ev) => startPenDrag(ev, `open-${j}`, null)} />
             </li>
           ))}
-          {d.onGreen && (
+          {/* always – also without a ball seen on the green and without putts (Sascha 11.11.2026: "forgot flag and putts on
+              the round – could not set them afterwards") */}
+          {(
             // the putts as a row like the shots (Sascha 10.11.2026: "the putt's rating does not fit yet"): the green
             // circle with a flag, the strokes gained on the right, how the first one missed right under it
             <li className="putt-row">
@@ -1245,14 +1254,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <span className="shot-row putt-body">
                 <span className="shot-row-top">
                   <span>
-                    <strong>
-                      {e.putts ?? '–'} Putt{e.putts === 1 ? '' : 's'}
-                    </strong>
+                    <strong>{e.putts == null ? tr('Putts', 'Putts') : `${e.putts} Putt${e.putts === 1 ? '' : 's'}`}</strong>
                   </span>
                   {sgs?.[d.shots.length] && <span className={`shot-sg ${sgs[d.shots.length].sg >= 0 ? 'good-text' : 'bad-text'}`}>{sgFmt(sgs[d.shots.length].sg)}</span>}
                 </span>
                 <span className="muted small" style={{ display: 'block' }}>
-                  {placedPutts?.length && pin
+                  {e.putts == null
+                    ? tr('Not entered – set flag and putts with the pencil', 'Nicht eingetragen – Fahne und Putts mit dem Stift setzen')
+                    : placedPutts?.length && pin
                     ? placedPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
                     : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
@@ -1284,8 +1293,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 )}
               </span>
               {/* the putts on the green: the pencil here, where the other shots are edited (Sascha 20.10.2026) */}
-              {data && (e.putts ?? 0) > 0 ? (
-                <button type="button" className="icon-btn row-edit" aria-label={placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={() => setPuttEdit(true)}>
+              {data ? (
+                <button type="button" className="icon-btn row-edit" aria-label={placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the flag and the putts on the green', 'Fahne und Putts auf dem Grün setzen')} onClick={() => setPuttEdit(true)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M4 20h4L19 9l-4-4L4 16z" />
                     <path d="M13.5 6.5l4 4" />
@@ -1306,26 +1315,26 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           {tr('Tee shot missing – add it at the tee', 'Abschlag fehlt – am Abschlag ergänzen')}
         </button>
       )}
-      {puttEdit && data && (e.putts ?? 0) > 0 && (
+      {puttEdit && data && (
         <PuttEditor
-          title={tr(`Hole ${hole.label} · ${e.putts} ${e.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${e.putts} Putt${e.putts === 1 ? '' : 's'}`)}
+          title={tr(`Hole ${hole.label} · flag and putts`, `Loch ${hole.label} · Fahne und Putts`)}
           green={data.green}
           greenCenter={data.greenCenter}
           bunkers={data.bunkers}
           from={approachFrom(data)}
           pin={pin ?? data.greenCenter}
-          putts={e.putts!}
+          putts={e.putts ?? 2}
           balls={placedPutts}
           ballOnGreen={d?.onGreen ?? null}
           walk={greenWalk(track, data.green, data.greenCenter)}
+          countable
           onCancel={() => setPuttEdit(false)}
           onSave={(v) => {
             setPuttEdit(false);
+            // the number of putts set here too (Sascha 11.11.2026: forgotten on the round) – 0: holed from off the green
             const base: DetailEntry = d ?? { ...emptyDetail(), pin: v.pin };
-            const detail = { ...base, onGreen: v.balls[0], pin: v.pin };
-            const derived = deriveFromShots(detail, e.putts, hole.par, data);
-            if (e.strokes != null) delete derived.strokes;
-            save(k, { puttsAt: v, detail, ...derived });
+            const detail = { ...base, onGreen: v.balls[0] ?? null, pin: v.pin, holedOut: v.putts === 0 };
+            saveDetail(k, detail, v.putts, { puttsAt: { pin: v.pin, balls: v.balls } });
           }}
         />
       )}

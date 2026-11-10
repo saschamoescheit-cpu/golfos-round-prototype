@@ -28,7 +28,10 @@ export function PuttEditor(props: {
   ballOnGreen: LngLat | null; // GPS position when the player stood on the green
   /** the player's GPS walk on this green and where he stood still (greenwalk.ts) */
   walk?: { path: LngLat[]; stops: LngLat[] } | null;
-  onSave: (v: { pin: LngLat; balls: LngLat[] }) => void;
+  /** the number of putts to set here too (the round check, Sascha 11.11.2026: "forgot the putts on the round – could
+   * not place flag and putts afterwards"); its − / + adds or takes the last ball */
+  countable?: boolean;
+  onSave: (v: { pin: LngLat; balls: LngLat[]; putts: number }) => void;
   onCancel: () => void;
 }) {
   const c = props.greenCenter;
@@ -36,6 +39,7 @@ export function PuttEditor(props: {
   const [pin, setPin] = useState<LngLat>(props.pin);
   const [balls, setBalls] = useState<LngLat[]>(() => {
     if (props.balls && props.balls.length === props.putts) return props.balls;
+    if (props.putts <= 0) return [];
     // first putt: where the player stood on the green, else short of the pin on the way in; each next one closer
     const back = bearingDeg(props.pin, props.from);
     // the first spot he stood still on the green (GPS walk) is most likely the first putt
@@ -109,7 +113,9 @@ export function PuttEditor(props: {
 
   // flag and balls on the screen (px) – a finger near one takes it, only farther away it moves the green
   // (Sascha 21.10.2026: "sometimes the whole green moves although I want to move the flag")
-  const GRAB_PX = 36;
+  // (Sascha 11.11.2026: "sometimes I could not move the putts and the flag"): the flag is taken by its cloth too, a
+  // ball by its length beside it – where a finger takes them – not only by the hole and the ball's centre
+  const GRAB_PX = 40;
   const nearest = (cx: number, cy: number): number | 'pin' | null => {
     const el = svg.current;
     if (!el) return null;
@@ -117,16 +123,20 @@ export function PuttEditor(props: {
     const px = ([x, y]: [number, number]) => [box.left + ((x - (view.cx - vh)) / (vh * 2)) * box.width, box.top + ((y - (view.cy - vh)) / (vh * 2)) * box.height];
     let best: number | 'pin' | null = null;
     let bestD = GRAB_PX;
-    const take = (what: number | 'pin', p: LngLat) => {
-      const [x, y] = px(toXY(p));
-      const d = Math.hypot(x - cx, y - cy);
-      if (d < bestD) {
-        bestD = d;
-        best = what;
+    // every spot the marker is drawn at (metres of the view from its point; r = a marker's unit)
+    const take = (what: number | 'pin', p: LngLat, spots: [number, number][]) => {
+      const [x0, y0] = toXY(p);
+      for (const [ox, oy] of spots) {
+        const [x, y] = px([x0 + ox, y0 + oy]);
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < bestD) {
+          bestD = d;
+          best = what;
+        }
       }
     };
-    balls.forEach((b, k) => take(k, b));
-    take('pin', pin); // the flag wins a tie: it is what is moved most
+    balls.forEach((b, k) => take(k, b, [[0, 0], [r * 3.2, -r * 0.2], [r * 5.6, -r * 0.2]]));
+    take('pin', pin, [[0, 0], [0, -r * 2], [r * 1.3, -r * 3.2]]); // the flag wins a tie: it is what is moved most
     return best;
   };
   const down = (ev: React.PointerEvent) => {
@@ -199,6 +209,12 @@ export function PuttEditor(props: {
     }
   };
   const fmt = (m: number) => (m < 0.95 ? `${Math.round(m * 100)} cm` : `${dec(m.toFixed(1))} m`);
+  // a putt added: the first one short of the flag on the way in, each next one between the last ball and the hole
+  const nextBall = (b: LngLat[]): LngLat => {
+    if (!b.length) return move(pin, bearingDeg(pin, props.from), 6);
+    const last = b[b.length - 1];
+    return move(pin, bearingDeg(pin, last) + 25, Math.max(0.3, distanceM(last, pin) * 0.3));
+  };
   // where the flag stands on the green (Sascha 21.10.2026): from the nearer edge, and from the front or to the back
   // along the playing line – whichever is nearer
   const pinSpot = (() => {
@@ -237,7 +253,7 @@ export function PuttEditor(props: {
             ✕
           </button>
           <strong>{props.title}</strong>
-          <SaveButton label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls })} />
+          <SaveButton label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls, putts: balls.length })} />
         </div>
         {/* no explanation, no zoom buttons (Sascha 17.10.2026) – two fingers zoom and move the green */}
         {SHOW_ZOOM_BUTTONS && (
@@ -279,7 +295,10 @@ export function PuttEditor(props: {
           onPointerMove={pointer}
           onPointerUp={lift}
           onPointerCancel={lift}
-          onLostPointerCapture={lift}
+          // only the green's own loss ends a finger (Sascha 11.11.2026: "sometimes I could not move the putts and the
+          // flag"): on the iPhone a finger belongs to the ball or flag it touched first – taken over by the green above,
+          // the ball "loses" it and that bubbled up here and ended the drag before it began
+          onLostPointerCapture={(ev) => ev.target === ev.currentTarget && lift(ev)}
           onWheel={(e) => zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15)}
           role="img"
           aria-label={tr('Green with flag and balls', 'Grün mit Fahne und Bällen')}
@@ -331,6 +350,22 @@ export function PuttEditor(props: {
           })}
         </svg>
         </div>
+        {props.countable && (
+          <div className="stepper-row putt-count">
+            <span className="stepper-label">{tr('Putts', 'Putts')}</span>
+            <div className="stepper" role="group" aria-label={tr('Putts', 'Putts')}>
+              <button type="button" aria-label={tr('Putts minus one', 'Putts minus eins')} disabled={balls.length === 0} onClick={() => setBalls((b) => b.slice(0, -1))}>
+                −
+              </button>
+              <span className="stepper-value" aria-live="polite">
+                {balls.length}
+              </span>
+              <button type="button" aria-label={tr('Putts plus one', 'Putts plus eins')} disabled={balls.length >= 6} onClick={() => setBalls((b) => [...b, nextBall(b)])}>
+                +
+              </button>
+            </div>
+          </div>
+        )}
         {pinSpot && (
           <p className="putt-pinspot small" style={{ margin: 0 }}>
             {tr('Flag: ', 'Fahne: ')}
