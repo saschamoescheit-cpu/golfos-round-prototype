@@ -1,6 +1,6 @@
 import { tr } from './i18n';
 import { formDef, standingOf, transfers, type Game } from './gameforms';
-import { balances, openPoolTransfers, owings, poolTransfers, settleDebts, type Payment, type WagerPool } from './wagers';
+import { balances, openPoolTransfers, owings, poolTransfers, settleDebts, withDuels, type Payment, type WagerPool } from './wagers';
 import { isNone, prizeOf, prizeSym, whoOf, type Prize } from './prize';
 
 // The balance against each player, and what is paid (Sascha 03.11.2026: "in the balance the details – which games, how
@@ -124,7 +124,9 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
     }
   }
   for (const e of pools) {
-    const pool = e.pool;
+    // the 5+5+10s judged from the cards, as the pool shows them (Sascha 12.11.2026: "Chris 70 – the 10 I paid": the kept
+    // progress still had the gross 20 from before the duel was set to net 75 %)
+    const pool = withDuels(e.pool);
     if (pool.deletedAt) continue;
     const prize = prizeOf(pool);
     const bal = balances(pool, today, true);
