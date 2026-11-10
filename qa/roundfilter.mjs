@@ -170,6 +170,16 @@ await p.reload();
 await p.waitForTimeout(1200);
 await tab('Spielen');
 await p.waitForTimeout(300);
+// the paused round's "Beenden" asks as on the hole (night 10./11.11.2026: one dialog, one look): Zurück and the red
+// Löschen as icons, then "Speichern & beenden"
+await p.getByRole('button', { name: 'Runde beenden' }).first().click();
+await p.waitForTimeout(300);
+{
+  const or = p.getByRole('group', { name: 'Oder' });
+  ok((await or.locator('.sc-action').count()) === 2 && (await or.locator('.sc-action.danger').count()) === 1 && (await p.getByRole('button', { name: 'Speichern & beenden' }).count()) === 1, 'Spielen: "Beenden" asks as on the hole – Zurück, Löschen (red), "Speichern & beenden"');
+  await or.getByRole('button', { name: 'Zurück' }).click();
+  await p.waitForTimeout(300);
+}
 await p.getByRole('button', { name: 'Modul wechseln' }).first().click();
 await p.waitForTimeout(600);
 const card = (await p.locator('.module-card').filter({ hasText: 'Rounds' }).innerText()).replace(/\s+/g, ' ');

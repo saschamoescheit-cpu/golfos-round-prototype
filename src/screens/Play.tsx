@@ -156,16 +156,23 @@ export function PlayTab(props: {
                     )
                   : tr('Finish and save the round?', 'Runde beenden und speichern?')}
               </span>
-              <div className="play-actions">
-                <button type="button" className="btn-secondary" onClick={() => setConfirm(null)}>
-                  {tr('Back', 'Zurück')}
+              <div className="sc-actions" role="group" aria-label={tr('Or', 'Oder')}>
+                <button type="button" className="sc-action" aria-label={tr('Back', 'Zurück')} onClick={() => setConfirm(null)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 14 4 9l5-5" />
+                    <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                  </svg>
+                  <span>{tr('Back', 'Zurück')}</span>
                 </button>
-                <button type="button" className="btn-primary" onClick={() => props.onEnd(open)}>
-                  {tr('Save & finish', 'Speichern & beenden')}
+                <button type="button" className="sc-action danger" aria-label={tr('Delete round', 'Runde löschen')} onClick={() => props.onAbort(open)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                  </svg>
+                  <span>{tr('Delete', 'Löschen')}</span>
                 </button>
               </div>
-              <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(open)}>
-                {tr('Delete round instead', 'Runde stattdessen löschen')}
+              <button type="button" className="btn-primary" onClick={() => props.onEnd(open)}>
+                {tr('Save & finish', 'Speichern & beenden')}
               </button>
             </div>
           )}
