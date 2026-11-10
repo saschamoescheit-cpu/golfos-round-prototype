@@ -2327,7 +2327,7 @@ button.tile:disabled { opacity: 1; }
 .step-pick .icon-btn:disabled { opacity: 0.35; }
 .step-pick-now { min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 16px; background: transparent; color: var(--text); text-align: center; overflow-wrap: break-word; hyphens: auto; }
 .step-pick-now strong { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
-.step-pick-tick { flex: none; color: var(--accent); }
+.step-pick-tick { flex: none; color: var(--brand-text); }
 
 /* a game or pool in a player's sheet of the balance – tapped, it opens (Sascha 10.11.2026) */
 .balance-items li > .balance-item-row { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
@@ -2356,3 +2356,15 @@ button.balance-item-row { cursor: pointer; }
 
 /* a small symbol in text (components/Glyph.tsx) – sits on the text's line */
 .glyph { display: inline-block; vertical-align: -0.125em; flex: none; }
+
+/* the way the settlement is worked out (night 10./11.11.2026 – seen on the phone): each debt a block, its bets under it */
+.settle-way { display: flex; flex-direction: column; gap: 10px; }
+.settle-debts, .settle-through { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.settle-debts li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.settle-debts li .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.settle-why { display: block; }
+.settle-through li { padding: 0 2px; }
+/* the putts' row: the circle at the top as on the shots, the right columns as wide as a shot's */
+.review-list li.putt-row { align-items: start; }
+.review-list li.putt-row > .n { margin-top: 4px; }
+.review-list li.putt-row > .row-grip { visibility: hidden; }

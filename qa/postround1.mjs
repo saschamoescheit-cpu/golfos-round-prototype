@@ -145,6 +145,7 @@ if (await len.count()) {
   await p.waitForTimeout(300);
   ok((await mine(3)).firstPuttMiss?.length === 'short' && (await mine(3)).firstPuttMiss?.line === 'left', 'and "links" beside it');
   const row = p.locator('.review-list li.putt-row');
+  if (process.env.SHOTS) await p.locator('.review-list').screenshot({ path: `${process.env.SHOTS}/puttrow.png` });
   ok((await row.locator('.n svg').count()) === 1 && !/⛳/.test(await row.innerText()), "the putts' row: the green circle with a flag, no emoji");
 } else ok(false, 'the first putt choice is there');
 
