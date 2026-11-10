@@ -1231,6 +1231,14 @@ export function standingRounds(pool: Pick<WagerPool, 'progress'> & Partial<Pick<
   }
   return [...seen.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
 }
+/** A round's own among the standing's rounds (Sascha 12.11.2026: "the current round at once, not the total"): its course
+ *  on its day, else its day's last – not counted yet: the latest round; none: null (the total). */
+export function roundNowOf(rs: { key: string; day: string; course: string }[], round: { day: string; course?: string }): string | null {
+  const c = (round.course ?? '').trim().toLowerCase();
+  const day = rs.filter((r) => r.day === round.day);
+  const same = (x: string) => !!c && (x.trim().toLowerCase().includes(c) || c.includes(x.trim().toLowerCase()));
+  return (day.find((r) => same(r.course)) ?? day[day.length - 1] ?? rs[rs.length - 1])?.key ?? null;
+}
 /** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
 const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : '', w.rounds ?? '', w.parts ? `${w.parts.front}+${w.parts.back}+${w.parts.total}` : ''].join('|');
 const rowName = (w: Wager) => {
@@ -1245,15 +1253,21 @@ const rowName = (w: Wager) => {
  *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
  *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
-export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean }) {
+export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean; /** in a round's leaderboard: this round shown first, not the total (Sascha 12.11.2026) – else the latest */ round?: { day: string; course?: string } }) {
   const { pool } = props;
   // "Gesamt" (null) or one round (Sascha 08.11.2026: "a bet holds for one round – an overview over all rounds for a
   // total, and then per round")
   // opened from a round (Sascha 11.11.2026: "it jumps to the total – it should be the round, Erik's in Kissimmee")
+  // this round of the round's leaderboard among the pool's – its course on its day, else its day; not counted yet: the latest
+  const roundNow = (): string | null => (props.round ? roundNowOf(standingRounds(pool), props.round) : null);
+  const [picked, setPicked] = useState(false);
   const [shown, setShown] = useState<string | null>(() => {
     try {
       const d = sessionStorage.getItem('golfos.openPoolDay');
-      return d ? (standingRounds(pool).find((r) => r.day === d)?.key ?? null) : null;
+      if (d) return standingRounds(pool).find((r) => r.day === d)?.key ?? null;
+      // in a round's leaderboard (Sascha 12.11.2026: "the current round at once, not the total"): this round – its
+      // course on its day, else its day – and before it counts anywhere, the latest
+      return props.round ? roundNow() : null;
     } catch {
       return null;
     }
@@ -1267,6 +1281,11 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     }
   }, []);
   const roundsShown = standingRounds(pool);
+  // the round coming into the standing once its first scores count – followed until a round is picked by hand
+  const now = picked ? null : roundNow();
+  useEffect(() => {
+    if (now && now !== shown) setShown(now);
+  }, [now]); // eslint-disable-line react-hooks/exhaustive-deps
   // a round played to its end (Sascha 10.11.2026: "a round played – make it recognisable"): its chip with a tick
   const ids = new Set(pool.wagers.map((w) => w.id));
   const played = new Set(Object.entries(pool.progress ?? {}).flatMap(([id, p]) => (ids.has(id) ? (p?.perRound ?? []).filter((r) => r.value != null && !r.open).map((r) => `${r.day}|${r.course}`) : [])));
@@ -1365,7 +1384,10 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         <StepPick<string>
           label={tr('Rounds', 'Runden')}
           value={one?.key ?? ''}
-          onChange={(v) => setShown(v || null)}
+          onChange={(v) => {
+            setPicked(true);
+            setShown(v || null);
+          }}
           options={[
             { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden') },
             // no tick – only rounds played or in play are there (Sascha 11.11.2026); "läuft" for one in play

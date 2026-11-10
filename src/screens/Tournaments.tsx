@@ -1236,7 +1236,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             name: r.name,
             ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
             value: played && r.thru ? r.value : '–',
-            thru: r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+            thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
             // tapped: his scorecard opens below (Sascha 04.11.2026)
             ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}
