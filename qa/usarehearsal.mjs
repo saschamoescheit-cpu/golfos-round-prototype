@@ -273,7 +273,9 @@ const H = P('Sascha');
 await H.locator('.pool-settle').waitFor({ timeout: 10000 });
 const settle = (await H.locator('.pool-settle').innerText()).replace(/\s+/g, ' ');
 // with the duel: Chris −20 −15, Erik −20 +15, Cedric −20 – all to Sascha
-ok(/Chris zahlt an Sascha 35 \$/.test(settle) && /Erik zahlt an Sascha 5 \$/.test(settle) && /Cedric zahlt an Sascha 20 \$/.test(settle), `the settlement with the duel: "${settle.slice(0, 260)}"`);
+// set off only between the same two (Sascha 11.11.2026): Chris pays Erik the duel's 15 himself
+const pays = settle.slice(Math.max(0, settle.search(/wer zahlt wem/i)));
+ok(/Chris zahlt an Sascha 20 \$/.test(pays) && /Chris zahlt an Erik 15 \$/.test(pays) && /Erik zahlt an Sascha 20 \$/.test(pays) && /Cedric zahlt an Sascha 20 \$/.test(pays), `the settlement with the duel: "${pays.slice(0, 240)}"`);
 const standing = (await H.locator('.pool-standings').innerText().catch(() => '')).replace(/\s+/g, ' ');
 // each round on its own (Sascha 09.11.2026): Sascha made in 1 of 1 – Chris's round still on, nothing missed yet
 ok(/Pars in Folge 5 1\/1 4 0\/[01]/.test(standing) && /5\+5\+10 brutto/.test(standing), `the standing at the top – Sascha 1 of 1, Chris not yet, the duel's row: "${standing.slice(0, 200)}"`);

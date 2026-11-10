@@ -353,7 +353,10 @@ await choose('Entschieden', 'Geschafft');
 await H.waitForTimeout(1200);
 const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
-ok(/Sascha zahlt an Chris 100 \$/.test(settle) && /Cedric zahlt an Chris 100 \$/.test(settle) && /Erik zahlt an Chris 20 \$/.test(settle), `settlement in dollars: ${settle.slice(0, 140)}`);
+// set off only between the same two (Sascha 11.11.2026): Chris gets 80 from each, Erik 20 from each – Erik and Chris
+// set off against each other: 60
+const pays = settle.slice(Math.max(0, settle.search(/wer zahlt wem/i)));
+ok(/Sascha zahlt an Chris 80 \$/.test(pays) && /Sascha zahlt an Erik 20 \$/.test(pays) && /Cedric zahlt an Chris 80 \$/.test(pays) && /Cedric zahlt an Erik 20 \$/.test(pays) && /Erik zahlt an Chris 60 \$/.test(pays), `settlement in dollars: ${pays.slice(0, 240)}`);
 ok(/5 von 7 Wetten entschieden/.test(settle), '5 of 7 bets decided (the −5s open)');
 // Sascha 02.11.2026: "every bet from the round analysis in the matrix – below only the free bets, with a heading"
 const freeBets = H.locator('.pool-standings').getByRole('group', { name: 'Freie Wetten' });
