@@ -68,6 +68,9 @@ export interface Flight {
   keeper?: Record<string, string>;
   /** a tournament: the card signed – by the player and by his marker (when) */
   signed?: Record<string, { player?: string; marker?: string }>;
+  /** a player who gave up (Sascha 12.11.2026: "a player had to stop after 8 holes"): the hole index from which on he
+   *  plays no more – his card is complete up to there, Stableford counts his points, stroke play ranks him without */
+  retired?: Record<string, number>;
   /** the host entered a player's scores afterwards ("Scores eintragen", when) – they count as a signed card for the
    *  bets (Sascha 08.11.2026: "count fully") */
   entered?: Record<string, string>;
@@ -313,7 +316,9 @@ export function signable(f: Flight, pid: string, holes: number): { ok: true } | 
   const own = f.scores[pid] ?? [];
   const mark = f.marks?.[pid] ?? [];
   const marked = !f.scorer && !!f.markers?.[pid]; // with a scorer there is one count only
-  const missing = Array.from({ length: holes }, (_, i) => i).filter((i) => own[i] == null || (marked && mark[i] == null));
+  // gave up: the holes from there on are not missing (Sascha 12.11.2026)
+  const stop = Math.min(holes, f.retired?.[pid] ?? holes);
+  const missing = Array.from({ length: stop }, (_, i) => i).filter((i) => own[i] == null || (marked && mark[i] == null));
   const differ = differences(f, pid);
   return missing.length || differ.length ? { ok: false, missing, differ } : { ok: true };
 }
@@ -329,6 +334,21 @@ export async function signCard(round: Round, pid: string, as: 'player' | 'marker
   // signed as the player: his marker is asked to countersign; as the marker: the player hears it is in (07.11.2026)
   if (ok && s.tournament) pushSigned(s.code, s.flight, pid, as);
   return ok;
+}
+
+/** A player gave up from a hole on – or, from null, plays on (Sascha 12.11.2026: "a player had to stop after 8 holes").
+ *  Written into the flight, so the leaderboard, the signing and the other phones know. False when offline. */
+export async function setRetired(round: Round, pid: string, from: number | null): Promise<boolean> {
+  const s = round.shared;
+  if (!s) return true;
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => {
+    if (!f || !f.players.some((p) => p.id === pid) || (f.retired?.[pid] ?? null) === from) return null;
+    const retired = { ...(f.retired ?? {}) };
+    if (from == null) delete retired[pid];
+    else retired[pid] = from;
+    return { ...f, retired };
+  });
+  return (ev?.flights[s.flight]?.retired?.[pid] ?? null) === from;
 }
 
 /** The scorer signs once (Sascha 10.11.2026: "three signatures – not ideal"; 11.11.2026: "but not for all"): his own
@@ -639,6 +659,8 @@ export interface Standing {
   countback: boolean;
   /** the card signed by player and marker */
   signed: boolean;
+  /** gave up during the round – "Aufg. nach 8" (Sascha 12.11.2026) */
+  retired?: boolean;
 }
 /** the names of the net classes, A to J (Sascha 03.11.2026: "there can be more than four – freely configurable") */
 export const CLASS_NAMES = 'ABCDEFGHIJ'.split('');
@@ -655,13 +677,13 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const fmt = ev.format ?? DEFAULT_FORMAT;
   const players: Player[] = [];
   const entries: Round['entries'] = {};
-  const meta: Record<string, { flight: string; cls: string; signed: boolean }> = {};
+  const meta: Record<string, { flight: string; cls: string; signed: boolean; retired: boolean }> = {};
   for (const f of liveFlights(ev)) {
     for (const p of f.players) {
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
       entries[id] = ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, p.id, i)));
-      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, netClasses(ev)), signed: isSigned(f, p.id) };
+      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, netClasses(ev)), signed: isSigned(f, p.id), retired: f.retired?.[p.id] != null };
     }
   }
   const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
@@ -684,16 +706,18 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
               return vs.length ? (hb ? Math.max(...vs) : Math.min(...vs)) : null;
             });
             const id = members[0].p.id;
-            meta[id] = { ...meta[id], signed: members.every((m) => meta[m.p.id].signed) };
+            meta[id] = { ...meta[id], signed: members.every((m) => meta[m.p.id].signed), retired: members.every((m) => meta[m.p.id].retired) };
             return [{ p: { ...members[0].p, name: members.map((m) => m.p.name).join(' & ') }, per }];
           }),
         );
   const all = sides.map(({ p, per }) => {
     const xs = per.filter((v): v is number => v != null);
-    return { p, per, sort: xs.length ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per) };
+    // gave up: Stableford keeps his points; stroke play ranks him below everyone, without a total (Sascha 12.11.2026)
+    const out = !!meta[p.id]?.retired;
+    return { p, per, sort: xs.length && !(out && !hb) ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per), out };
   });
   const better = (a: number, b: number) => (hb ? b - a : a - b);
-  const everyoneIn = all.length > 0 && all.every((x) => x.thru === n);
+  const everyoneIn = all.length > 0 && all.every((x) => x.thru === n || x.out);
   const cmp = (a: (typeof all)[number], b: (typeof all)[number]): number => {
     if (a.sort == null || b.sort == null) return a.sort == null ? (b.sort == null ? 0 : 1) : -1;
     if (a.sort !== b.sort) return better(a.sort, b.sort);
@@ -712,10 +736,11 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
       name: x.p.name,
       flight: meta[x.p.id].flight,
       cls: meta[x.p.id].cls,
-      value: x.sort == null ? '–' : unit(x.sort),
+      value: x.out && !hb ? tr('WD', 'Aufg.') : x.sort == null ? '–' : unit(x.sort),
       sort: x.sort,
       thru: x.thru,
-      finished: x.thru === n,
+      finished: x.thru === n || x.out,
+      ...(x.out ? { retired: true } : {}),
       pos: x.sort == null ? '–' : `${tied ? 'T' : ''}${first + 1}`,
       countback: everyoneIn && sameScore && !tied,
       signed: meta[x.p.id].signed,

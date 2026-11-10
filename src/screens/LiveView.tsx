@@ -177,7 +177,7 @@ function EventBoard(props: { ev: RoundEvent; label?: string }) {
           name: r.name,
           ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
           value: r.thru ? r.value : '–',
-          thru: r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+          thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
           // tapped: his scorecard opens below him (Sascha 08.11.2026 – for spectators too)
           ...(r.thru ? { cards: [{ label: '', card: () => eventCard(ev, r.key) }] } : {}),
         }))}

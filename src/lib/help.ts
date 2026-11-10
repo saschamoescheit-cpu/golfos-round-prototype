@@ -210,6 +210,16 @@ export const FAQ: FaqTopic[] = [
         video: 'map',
       },
       {
+        // Sascha 12.11.2026, on the course: a player had to stop after 8 holes
+        q: () => tr('A player has to stop – what then?', 'Ein Spieler muss abbrechen – was nun?'),
+        a: () =>
+          tr(
+            'In the score entry tap his name → "Give up". From the next hole on (or this one, without a score yet) he is not scored any more; his holes up to there stay and can be signed. The leaderboard shows "WD after 8": Stableford counts his points, stroke play ranks him below without a total. "Plays on" in his line takes it back.',
+            'In der Score-Erfassung auf seinen Namen tippen → „Aufgeben“. Ab dem nächsten Loch (oder diesem, wenn es noch keinen Score hat) wird er nicht mehr erfasst; seine Löcher bis dahin bleiben und lassen sich unterschreiben. Das Leaderboard zeigt „Aufg. nach 8“: Stableford zählt seine Punkte, im Zählspiel steht er ohne Wertung unten. „Spielt weiter“ in seiner Zeile nimmt es zurück.',
+          ),
+        video: 'score',
+      },
+      {
         // Sascha 29.10.2026: a scramble team on two phones, a tournament over several flights
         q: () => tr('Can my flight play on their phones too?', 'Kann mein Flight auf seinen Handys mitspielen?'),
         a: () =>

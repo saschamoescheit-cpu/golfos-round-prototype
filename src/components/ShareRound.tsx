@@ -754,7 +754,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
                 </span>
               </span>
               <span className="lb-value">{r.value}</span>
-              <span className="lb-thru muted small">{r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
+              <span className="lb-thru muted small">{r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
             </li>
           );
         })}

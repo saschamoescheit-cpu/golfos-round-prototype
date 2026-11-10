@@ -185,6 +185,8 @@ export interface TestEvent {
 
 export interface Round {
   id: string;
+  /** players who gave up (Sascha 12.11.2026): the hole index from which on each plays no more */
+  retired?: Record<string, number>;
   createdAt: string; // ISO
   finishedAt: string | null;
   courseId: string;

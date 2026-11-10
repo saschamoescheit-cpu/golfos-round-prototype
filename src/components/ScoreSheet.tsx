@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { ToggleRow } from './Settings';
 import { cellOf, sameScore } from '../lib/sharedround';
@@ -149,8 +150,21 @@ export function ScoreSheet(props: {
   /** a game on the map (Sascha 08.11.2026: "the game's details belong into the score entry"): what its form needs on the
    *  hole – wolf partner, bingo bango bongo, hammer, press … – below the scores */
   extras?: ReactNode;
+  /** the hole's index in the round – with retired/onRetire */
+  holeIndex?: number;
+  /** players who gave up: the hole index from which on each plays no more (Sascha 12.11.2026) */
+  retired?: Record<string, number>;
+  /** a player's name tapped: he gives up from a hole on – null: he plays on */
+  onRetire?: (playerId: string, from: number | null) => void;
 }) {
   const h = props.hole;
+  const [ask, setAsk] = useState<string | null>(null);
+  const at = props.holeIndex ?? 0;
+  const gone = (pid: string) => props.retired?.[pid] != null && at >= props.retired[pid];
+  const asked = ask ? props.players.find((p) => p.id === ask) : undefined;
+  const askedEntry = ask ? props.entries[ask] : undefined;
+  // with a score on this hole already: from the next one on; else from this one
+  const askFrom = askedEntry && (askedEntry.strokes != null || askedEntry.pickedUp) ? at + 1 : at;
   return (
     <section className="score-panel" role="dialog" aria-label={tr('Score on this hole', 'Score an diesem Loch')}>
       <div className="sheet-head">
@@ -198,6 +212,22 @@ export function ScoreSheet(props: {
         const penaltySub =
           (e.penalties ?? 0) > 0 ? tr(`incl. ${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'}`, `inkl. ${e.penalties} ${e.penalties === 1 ? 'Strafschlag' : 'Strafschläge'}`) : tr('incl. penalty strokes', 'inkl. Strafschläge');
         const sh = props.shared?.[p.id];
+        // gave up (Sascha 12.11.2026): no score from here on – "Spielt weiter" takes it back
+        if (gone(p.id))
+          return (
+            <div key={p.id} className="score-player retired">
+              <div className="score-player-head">
+                <strong>{p.name}</strong>
+                <span className="muted small">{tr(`gave up after ${props.retired![p.id]} holes`, `aufgegeben nach ${props.retired![p.id]} Loch`)}</span>
+                <span className="spacer" />
+                {props.onRetire && sh?.keptBy == null && (
+                  <button type="button" className="chip" onClick={() => props.onRetire!(p.id, null)}>
+                    {tr('Plays on', 'Spielt weiter')}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
         // the own analysis: the facts follow from it, nothing goes to the scorer's count
         const analyse = (patch: Partial<HoleEntry>) => {
           const n = { ...e, ...patch };
@@ -272,7 +302,17 @@ export function ScoreSheet(props: {
         return (
           <div key={p.id} className="score-player">
             <div className="score-player-head">
-              <strong>{p.name}</strong>
+              {/* the name tapped: his sheet – giving up (Sascha 12.11.2026: "a player had to stop after 8 holes") */}
+              {props.onRetire && !props.team ? (
+                <button type="button" className="score-player-name" aria-label={tr(`${p.name} – give up`, `${p.name} – aufgeben`)} onClick={() => setAsk(p.id)}>
+                  <strong>{p.name}</strong>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ) : (
+                <strong>{p.name}</strong>
+              )}
               {toPar != null && (
                 <span className="muted small">
                   {tr('round', 'Runde')} {formatToPar(toPar)}
@@ -345,6 +385,48 @@ export function ScoreSheet(props: {
         <div className="score-extras" role="group" aria-label={tr('The game on this hole', 'Das Spiel an diesem Loch')}>
           {props.extras}
         </div>
+      )}
+      {asked && props.onRetire && createPortal(
+        <div className="sheet-backdrop" onClick={() => setAsk(null)}>
+          <section className="sheet retire-sheet" role="dialog" aria-label={asked.name} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{asked.name}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setAsk(null)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            <span>
+              {askFrom > at
+                ? tr(`Gives up after this hole: from the next one on ${asked.name} is not scored any more.`, `Gibt nach diesem Loch auf: ab dem nächsten Loch wird ${asked.name} nicht mehr erfasst.`)
+                : tr(`Gives up: from hole ${h.label} on ${asked.name} is not scored any more.`, `Gibt auf: ab Loch ${h.label} wird ${asked.name} nicht mehr erfasst.`)}
+            </span>
+            <span className="muted small">
+              {tr(
+                'His holes up to there stay and can be signed; Stableford counts his points, in stroke play he stands below without a total. "Plays on" takes it back.',
+                'Seine Löcher bis dahin bleiben und lassen sich unterschreiben; Stableford zählt seine Punkte, im Zählspiel steht er ohne Wertung unten. „Spielt weiter“ nimmt es zurück.',
+              )}
+            </span>
+            <div className="sc-actions" role="group" aria-label={asked.name}>
+              <button
+                type="button"
+                className="sc-action danger"
+                aria-label={tr(`${asked.name} gives up`, `${asked.name} gibt auf`)}
+                onClick={() => {
+                  props.onRetire!(asked.id, askFrom);
+                  setAsk(null);
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+                </svg>
+                <span>{tr('Give up', 'Aufgeben')}</span>
+              </button>
+            </div>
+          </section>
+        </div>,
+        document.body,
       )}
     </section>
   );

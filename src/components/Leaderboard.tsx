@@ -102,7 +102,7 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void; /**
             {pools.map((e) => (
               <div key={e.code} className="board-pool">
                 {pools.length > 1 && <span className="eyebrow">{e.pool.name}</span>}
-                <Standings pool={withDuels(e.pool)} today={day} me={e.me} />
+                <Standings pool={withDuels(e.pool)} today={day} me={e.me} round={{ day, course: props.round.courseName }} />
               </div>
             ))}
           </>

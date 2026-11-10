@@ -440,6 +440,24 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     expect(isSigned(signed, 'me')).toBe(true);
     expect(isSigned({ ...f, signed: { me: { player: 'x' } } }, 'me')).toBe(false);
   });
+  it('a player gives up after 2 of 3 holes (Sascha 12.11.2026): his card signable up to there, the board "WD after 2"', () => {
+    let { ev } = host(withScorer());
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    for (const pid of ['me', 'c']) for (let i = 0; i < 3; i++) chris = set(chris, pid, i, { strokes: 4 });
+    for (let i = 0; i < 2; i++) chris = set(chris, 'e', i, { strokes: 5 });
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    const f = ev.flights.f1;
+    expect(signable(f, 'e', 3)).toEqual({ ok: false, missing: [2], differ: [] });
+    const out = { ...f, retired: { e: 2 } };
+    expect(signable(out, 'e', 3)).toEqual({ ok: true });
+    const st = eventStandings({ ...ev, format: { ...(ev.format ?? {}), scoring: 'stroke' } as RoundEvent['format'], flights: { ...ev.flights, f1: out } }).rows;
+    const erik = st.find((r) => r.key === 'f1/e')!;
+    expect(erik.retired).toBe(true);
+    expect(erik.finished).toBe(true);
+    expect(erik.thru).toBe(2);
+    expect(erik.sort).toBeNull();
+    expect(st[st.length - 1].key).toBe('f1/e'); // stroke play: below everyone
+  });
 });
 
 describe("a player's own analysis beside the scorer's card (Sascha 02.11.2026)", () => {

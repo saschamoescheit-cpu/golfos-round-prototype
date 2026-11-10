@@ -42,7 +42,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
+import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
@@ -1982,6 +1982,20 @@ export function HoleScreen(props: {
               ),
             }}
             onChange={update}
+            holeIndex={i}
+            // gave up (Sascha 12.11.2026): kept on this round and in the flight – the leaderboard and the signing know
+            retired={{ ...(round.retired ?? {}), ...(round.shared ? (shareEvent?.flights[round.shared.flight]?.retired ?? {}) : {}) }}
+            onRetire={
+              round.preview
+                ? undefined
+                : (pid, from) => {
+                    const retired = { ...(round.retired ?? {}) };
+                    if (from == null) delete retired[pid];
+                    else retired[pid] = from;
+                    props.onChange({ ...round, retired });
+                    if (round.shared) void setRetired(round, pid, from).then(() => setShareEvent(cachedEvent(round.shared!.code)));
+                  }
+            }
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => {
               setScoreSheet(false);
