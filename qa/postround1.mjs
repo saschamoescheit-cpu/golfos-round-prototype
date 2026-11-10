@@ -135,11 +135,17 @@ await p.waitForTimeout(600);
 ok((await p.locator('.shot-sg').count()) >= 2, `strokes gained per shot (${(await p.locator('.shot-sg').allInnerTexts()).join(' ')})`);
 
 // 6 · how the first putt missed (putts not placed)
-const len = p.getByRole('group', { name: 'Erster Putt Länge' });
+// in the putts' row like a shot (Sascha 10.11.2026): small chips, the putts' strokes gained on the right
+const len = p.getByRole('group', { name: 'Erster Putt verfehlt' });
 if (await len.count()) {
-  await len.getByRole('button', { name: 'Zu kurz' }).click();
+  await len.getByRole('button', { name: 'zu kurz' }).click();
   await p.waitForTimeout(300);
   ok((await mine(3)).firstPuttMiss?.length === 'short', 'first putt "zu kurz" kept');
+  await len.getByRole('button', { name: 'links' }).click();
+  await p.waitForTimeout(300);
+  ok((await mine(3)).firstPuttMiss?.length === 'short' && (await mine(3)).firstPuttMiss?.line === 'left', 'and "links" beside it');
+  const row = p.locator('.review-list li.putt-row');
+  ok((await row.locator('.n svg').count()) === 1 && !/⛳/.test(await row.innerText()), "the putts' row: the green circle with a flag, no emoji");
 } else ok(false, 'the first putt choice is there');
 
 // 7 · the last hole while holes are still open: no signing yet

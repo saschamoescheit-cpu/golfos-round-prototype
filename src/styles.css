@@ -2342,3 +2342,11 @@ button.balance-item-row { cursor: pointer; }
 /* the 5+5+10 bar on the hole, tapped: the bets of the round (Sascha 10.11.2026) */
 .duel-bar-open { width: 100%; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .duel-bar-open:disabled { cursor: default; }
+
+/* the putts as a row like the shots (Sascha 10.11.2026): the green circle, its pencil as quiet as the bin, how the
+   first one missed as small chips in the row */
+.review-list .putt-n { display: inline-grid; place-items: center; }
+.review-list .putt-body { cursor: default; }
+.review-list .icon-btn.row-edit { background: transparent; color: var(--muted); border-color: var(--line); }
+.putt-miss-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip.small-chip { min-height: 30px; padding: 0 12px; font-size: 13px; }
