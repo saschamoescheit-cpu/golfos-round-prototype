@@ -4,14 +4,16 @@
 
 export interface NavTarget {
   pool?: string;
+  /** the pool's standing on that day's round (Sascha 11.11.2026: "jump to the round – Erik's in Kissimmee") */
+  day?: string;
   tour?: string;
 }
 
 export const NAV_EVENT = 'golfos:go';
 
-/** Opens a pool of bets (its code) in Games & Bets. */
-export function goPool(code: string): void {
-  window.dispatchEvent(new CustomEvent<NavTarget>(NAV_EVENT, { detail: { pool: code } }));
+/** Opens a pool of bets (its code) in Games & Bets – with a day, its standing on that day's round. */
+export function goPool(code: string, day?: string): void {
+  window.dispatchEvent(new CustomEvent<NavTarget>(NAV_EVENT, { detail: { pool: code, ...(day ? { day } : {}) } }));
 }
 
 /** Opens a tournament or a series (its code) in Tournaments. */

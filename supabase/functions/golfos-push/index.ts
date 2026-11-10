@@ -533,6 +533,25 @@ export function teeTimeFor(user: string, flights: TeeFlight[]): { time: string; 
 }
 /** Remind now: the tournament's day on the phone's clock, more than 30 and at most 60 minutes before the tee time –
  *  the timer runs every 15 minutes, so it comes about 45 minutes ahead. The minutes left, or null. */
+/** The time zone of a course from its place (Sascha 11.11.2026, Florida: "the first flight starts in 50 min" – German
+ *  time; the tee time is the course's, not a phone's, and a phone's zone may be an old one from home). Open-Meteo answers
+ *  it for the coordinates; null without a place or an answer. */
+const zones = new Map<string, string | null>();
+export async function courseZone(c: { lat?: number; lon?: number } | undefined, get: (url: string) => Promise<{ timezone?: string }> = async (u) => (await fetch(u)).json()): Promise<string | null> {
+  if (!c || typeof c.lat !== 'number' || typeof c.lon !== 'number') return null;
+  const k = `${c.lat.toFixed(2)},${c.lon.toFixed(2)}`;
+  if (zones.has(k)) return zones.get(k)!;
+  let tz: string | null = null;
+  try {
+    const j = await get(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m&timezone=auto&forecast_days=1`);
+    tz = typeof j?.timezone === 'string' && /^[A-Za-z_]+\/[A-Za-z_\/-]+$/.test(j.timezone) ? j.timezone : null;
+  } catch {
+    tz = null;
+  }
+  zones.set(k, tz);
+  return tz;
+}
+
 export function teeDue(date: string, time: string, tz: string | null | undefined, now: Date): number | null {
   const d = localDay(tz, now);
   if (d.date !== date) return null;
@@ -818,7 +837,7 @@ async function tick(now = new Date()): Promise<{ rounds: number; storms: number;
   // the tee time of a tournament planned in Games: about 45 minutes before, once per account and tournament
   let tees = 0;
   const days = [-1, 0, 1].map((k) => new Date(now.getTime() + k * 864e5).toISOString().slice(0, 10));
-  const planned = await d.get<{ code: string; owner: string; members: string[]; game: { name?: string; date?: string; deletedAt?: string | null; course?: { name?: string } } }[]>(
+  const planned = await d.get<{ code: string; owner: string; members: string[]; game: { name?: string; date?: string; deletedAt?: string | null; course?: { name?: string; lat?: number; lon?: number } } }[]>(
     `golfos_shared_games?select=code,owner,members,game&event_code=is.null&game->>planned=eq.true&game->>date=in.(${days.join(',')})`,
   );
   for (const ev of planned) {
@@ -827,9 +846,11 @@ async function tick(now = new Date()): Promise<{ rounds: number; storms: number;
     const flights = rows.map((r) => r.game?.flight).filter((x): x is TeeFlight => !!x);
     const byUser = new Map<string, Sub[]>();
     for (const s of await subsOf([...new Set([ev.owner, ...(ev.members ?? [])])])) if (s.kinds?.games !== false) byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]);
+    // the tee time in the course's own time zone – a phone's only when the course's is not known
+    const courseTz = await courseZone(ev.game.course);
     for (const [user, mine] of byUser) {
       const tee = teeTimeFor(user, flights);
-      const left = tee && teeDue(ev.game.date, tee.time, mine[0].tz, now);
+      const left = tee && teeDue(ev.game.date, tee.time, courseTz ?? mine[0].tz, now);
       if (!tee || left == null) continue;
       const key = `tee:${ev.code}`;
       const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${user}&key=eq.${encodeURIComponent(key)}`);

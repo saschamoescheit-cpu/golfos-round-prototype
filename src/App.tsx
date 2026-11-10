@@ -350,9 +350,12 @@ export function App() {
   }, []);
 
   // a pool of bets or a tournament named anywhere, tapped (Sascha 10.11.2026: click paths across the app) – as a push
-  const openPool = (code: string) => {
+  const openPool = (code: string, day?: string) => {
     try {
       sessionStorage.setItem('golfos.openPool', code);
+      // the standing opens on that day's round (Sascha 11.11.2026)
+      if (day) sessionStorage.setItem('golfos.openPoolDay', day);
+      else sessionStorage.removeItem('golfos.openPoolDay');
     } catch {
       /* Games opens on its start page */
     }
@@ -373,7 +376,7 @@ export function App() {
   useEffect(() => {
     const on = (e: Event) => {
       const t = (e as CustomEvent<NavTarget>).detail;
-      if (t?.pool) openPool(t.pool);
+      if (t?.pool) openPool(t.pool, t.day);
       else if (t?.tour) openTour(t.tour);
     };
     window.addEventListener(NAV_EVENT, on);

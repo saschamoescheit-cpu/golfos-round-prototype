@@ -67,7 +67,7 @@ export function RoundSettleCards() {
         const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(Math.abs(v), sym)}`;
         return (
           <section key={`${e.code}|${day}`} className="card round-settle" aria-label={tr('Round settled', 'Runde abgerechnet')}>
-            <button type="button" className="eyebrow link-eyebrow" aria-label={tr(`Open ${e.pool.name}`, `${e.pool.name} öffnen`)} onClick={() => goPool(e.code)}>
+            <button type="button" className="eyebrow link-eyebrow" aria-label={tr(`Open ${e.pool.name}`, `${e.pool.name} öffnen`)} onClick={() => goPool(e.code, day)}>
               {`${e.pool.name} · ${tr('round', 'Runde')} ${day.slice(8, 10)}.${day.slice(5, 7)}.`} ›
             </button>
             <div className="round-settle-rows">

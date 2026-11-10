@@ -36,10 +36,12 @@ const code = await H.evaluate(
       rounds: days.map((d, k) => ({ id: `r${k}`, day: d, course: courses[k] })),
       wagers: [
         { id: 'w4', player: 'c', kind: 'scoreSum', target: 30, rounds: 3, stake: 50, payout: 'opponent', opponent: 's', attempts: 'any' },
+        { id: 'w6', player: 'c', kind: 'pars', target: 9, stake: 20, payout: 'success', attempts: 'any' },
         // left out of Celebration (day 0) – its progress still has it, as reported before
         { id: 'w5', player: 'c', kind: 'birdies', target: 1, stake: 20, payout: 'success', attempts: 'any', picks: [{ day: days[2], course: courses[2] }, { day: days[3], course: courses[3] }] },
       ],
-      progress: { w5: { best: 2, done: false, rounds: 2, at, perRound: [{ day: days[0], course: courses[0], value: 2 }, { day: days[2], course: courses[2], value: 0 }] } },
+      // a bet with Kissimmee (day 2) reported – the standing has that round to jump to
+      progress: { w6: { best: 1, done: false, rounds: 1, at, perRound: [{ day: days[2], course: courses[2], value: 1 }] }, w5: { best: 2, done: false, rounds: 2, at, perRound: [{ day: days[0], course: courses[0], value: 2 }, { day: days[2], course: courses[2], value: 0 }] } },
     };
     return (await ws.createPool(pool, 's'))?.code ?? null;
   },
@@ -90,6 +92,13 @@ const w4 = shared.get(code).game.wagers.find((w) => w.id === 'w4');
 ok(w4?.picks?.length === 3 && w4.rounds === 3, `on the server: 3 rounds chosen, over 3 rounds (${w4?.picks?.length} · ${w4?.rounds})`);
 const line = (await H.locator('.pool-wager').filter({ hasText: 'in 3 Runden' }).first().innerText()).replace(/\s+/g, ' ');
 ok(/3 von 9 Runden/.test(line) && !/Orange Lake/.test(line), `its line: "3 von 9 Runden", no courses (${line.slice(0, 120)})`);
+// "Runde abgerechnet" → the pool: its standing on that round (Sascha 11.11.2026: "it jumps to the total – it should be the round")
+await H.locator('.topbar button.icon-btn').first().click();
+await H.waitForTimeout(800);
+await H.evaluate(async ({ c, d }) => (await import('/src/lib/nav.ts')).goPool(c, d), { c: code, d: day(-4) });
+await H.waitForTimeout(1500);
+const now = (await H.locator('.pool-standings .step-pick-now strong').innerText().catch(() => '')).trim();
+ok(/Kissimmee/.test(now), `opened from a round: the standing on that round (${now})`);
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

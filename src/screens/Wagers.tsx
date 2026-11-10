@@ -1245,7 +1245,23 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   const { pool } = props;
   // "Gesamt" (null) or one round (Sascha 08.11.2026: "a bet holds for one round – an overview over all rounds for a
   // total, and then per round")
-  const [shown, setShown] = useState<string | null>(null);
+  // opened from a round (Sascha 11.11.2026: "it jumps to the total – it should be the round, Erik's in Kissimmee")
+  const [shown, setShown] = useState<string | null>(() => {
+    try {
+      const d = sessionStorage.getItem('golfos.openPoolDay');
+      return d ? (standingRounds(pool).find((r) => r.day === d)?.key ?? null) : null;
+    } catch {
+      return null;
+    }
+  });
+  // taken once shown (read above, not there: the first look may run twice)
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('golfos.openPoolDay');
+    } catch {
+      /* nothing kept */
+    }
+  }, []);
   const roundsShown = standingRounds(pool);
   // a round played to its end (Sascha 10.11.2026: "a round played – make it recognisable"): its chip with a tick
   const ids = new Set(pool.wagers.map((w) => w.id));
