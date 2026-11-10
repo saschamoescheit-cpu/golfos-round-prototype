@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { RoundSettleCards } from '../components/RoundSettle';
 import { tr } from '../lib/i18n';
 import { loadFriends, type Friend } from '../lib/friends';
@@ -207,7 +207,31 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
 /** The people you play with – Rounds and Games offer them when setting up. */
 /** Friends not yet in the flight, as chips to add with one tap (round and game setup). */
 export function FriendChips(props: { taken: string[]; onAdd: (f: Friend) => void }) {
-  const free = loadFriends().filter((f) => f.name.trim() && !props.taken.some((n) => n.trim().toLowerCase() === f.name.trim().toLowerCase()));
+  const [linking, setLinking] = useState(false);
+  const all = loadFriends();
+  const free = all.filter((f) => f.name.trim() && !props.taken.some((n) => n.trim().toLowerCase() === f.name.trim().toLowerCase()));
+  // no friends yet (night 10./11.11.2026: "nothing shows how to add one"): link them right here – the setup stays
+  if (!all.length)
+    return (
+      <div className="friend-chips">
+        <button type="button" className="link-text muted small" onClick={() => setLinking(true)}>
+          {tr('Link golf friends – one tap next time', 'Golffreunde verknüpfen – nächstes Mal mit einem Tipp')} ›
+        </button>
+        {linking && (
+          <div className="sheet-backdrop" onClick={() => setLinking(false)}>
+            <section className="sheet" role="dialog" aria-label={tr('Friends', 'Freunde')} onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-head">
+                <strong />
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setLinking(false)}>
+                  ✕
+                </button>
+              </div>
+              <Friends onSignIn={() => setLinking(false)} />
+            </section>
+          </div>
+        )}
+      </div>
+    );
   if (!free.length) return null;
   return (
     <div className="friend-chips">

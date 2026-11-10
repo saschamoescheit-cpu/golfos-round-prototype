@@ -39,6 +39,16 @@ const pick = async () => {
 // preview: pull up the drawer, end the preview there
 await pick();
 ok(await p.getByRole('button', { name: 'Birdiebook', exact: true }).isVisible(), 'setup: "Birdiebook" and "Platzvorschau"');
+// no friends yet: a link to link them, right in the setup (night 10./11.11.2026)
+{
+  const link = p.getByRole('button', { name: /Golffreunde verknüpfen/ });
+  ok((await link.count()) === 1, 'setup without friends: "Golffreunde verknüpfen ›"');
+  await link.click();
+  await p.waitForTimeout(400);
+  ok((await p.getByRole('dialog', { name: 'Freunde' }).count()) === 1, 'it opens the friends in a sheet – the setup stays');
+  await p.getByRole('dialog', { name: 'Freunde' }).getByRole('button', { name: 'Schließen' }).first().click();
+  await p.waitForTimeout(300);
+}
 // one bar of icons, not a column of text buttons (DESIGN – night 10./11.11.2026)
 ok((await p.getByRole('group', { name: 'Vor der Runde' }).locator('.sc-action svg').count()) === 3, 'setup: Birdiebook, Platzvorschau, Runde planen as one bar of icons');
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
