@@ -18,7 +18,7 @@ import { SpecialsAtHole } from '../components/Specials';
 import { betLinked } from '../lib/betlinked';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { ensureCourseMap } from '../lib/courses';
 import { IMAGERY, loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
@@ -42,7 +42,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareView, takeOver } from '../lib/sharedround';
+import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareLine, sharedLines, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
@@ -969,6 +969,21 @@ export function HoleScreen(props: {
     return () => window.removeEventListener('golfos:event-changed', on);
   }, [shareCode]);
   const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
+  // holes set up by hand on another phone of the event (Sascha 12.11.2026: "only one has to set them"): taken where this
+  // phone has none of its own – its own stay
+  useEffect(() => {
+    if (!shareEvent || shareEvent.course?.id !== round.courseId) return;
+    const got = sharedLines(shareEvent, round.shared?.flight);
+    const mine = loadHoleLines(round.courseId);
+    let took = false;
+    for (const [key, line] of Object.entries(got)) {
+      const [loop, n] = [key.slice(0, key.lastIndexOf('#')), Number(key.slice(key.lastIndexOf('#') + 1))];
+      if (mine[key] || !loop || !Number.isFinite(n) || !Array.isArray(line) || line.length < 2) continue;
+      saveHoleLine(round.courseId, loop, n, line);
+      took = true;
+    }
+    if (took) setGeoVersion((v) => v + 1);
+  }, [shareEvent, round.courseId]); // eslint-disable-line react-hooks/exhaustive-deps
   /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
   const myScoreElsewhere = views[me.id]?.role === 'view' || props.game?.keptBy?.[me.id] != null;
   // a scorer keeps the card (Sascha 07.11.2026): this phone may still enter its own details – set per player in the
@@ -1500,6 +1515,8 @@ export function HoleScreen(props: {
         }
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
+          // the flight's other phones take it (Sascha 12.11.2026, Cypress: "each of us had to set tees and greens")
+          if (round.shared) void shareLine(round, hole.loop, hole.number, line);
           setGeoVersion((v) => v + 1);
           setSetupOpen(false);
           setView('map');

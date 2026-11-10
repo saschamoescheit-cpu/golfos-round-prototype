@@ -17,6 +17,7 @@ import sonantem from './courses/sonantem.json';
 import sonantemeast from './courses/sonantemeast.json';
 import southerndunes from './courses/southerndunes.json';
 import stonegateoaks from './courses/stonegateoaks.json';
+import stonegatecypress from './courses/stonegatecypress.json';
 import kissimmeebay from './courses/kissimmeebay.json';
 import falconsfire from './courses/falconsfire.json';
 import legendsclermont from './courses/legendsclermont.json';
@@ -39,6 +40,7 @@ export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'sonantem:east': unpackGeometry(sonantemeast as unknown as CourseGeometry),
   'southerndunes:fl': unpackGeometry(southerndunes as unknown as CourseGeometry),
   'osm:relation/4039063': unpackGeometry(stonegateoaks as unknown as CourseGeometry),
+  'osm:relation/4039062': unpackGeometry(stonegatecypress as unknown as CourseGeometry),
   'osm:relation/4039579': unpackGeometry(kissimmeebay as unknown as CourseGeometry),
   'osm:way/311994625': unpackGeometry(falconsfire as unknown as CourseGeometry),
   'osm:relation/4040123': unpackGeometry(legendsclermont as unknown as CourseGeometry),

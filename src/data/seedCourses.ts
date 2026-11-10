@@ -413,6 +413,35 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"handicap": "10", "par": "4", "ref": "18"},
     ],
   },
+  'osm:relation/4039062': {
+    name: 'StoneGate Golf Club – Cypress',
+    lat: 28.1330,
+    lon: -81.4700,
+    // Poinciana, Florida (USA trip, 12.11.2026 – Sascha: "on Cypress we had to set every tee and green by hand"). OSM has
+    // only the course area and no course map is published: tees and greens read off the Polk County 2023 aerial, the
+    // routing worked out from the official 2025 scorecard (GolfOS/lidar/us_sgc_holes.py; greens us_greens.py). Holes 1–3
+    // and 7–18 sure; 4–6 confirmed by Sascha from the round played.
+    holeTags: [
+      {"handicap": "7", "par": "4", "ref": "1"},
+      {"handicap": "3", "par": "4", "ref": "2"},
+      {"handicap": "15", "par": "3", "ref": "3"},
+      {"handicap": "13", "par": "5", "ref": "4"},
+      {"handicap": "11", "par": "4", "ref": "5"},
+      {"handicap": "9", "par": "5", "ref": "6"},
+      {"handicap": "1", "par": "4", "ref": "7"},
+      {"handicap": "17", "par": "3", "ref": "8"},
+      {"handicap": "5", "par": "4", "ref": "9"},
+      {"handicap": "4", "par": "4", "ref": "10"},
+      {"handicap": "12", "par": "4", "ref": "11"},
+      {"handicap": "18", "par": "3", "ref": "12"},
+      {"handicap": "2", "par": "4", "ref": "13"},
+      {"handicap": "8", "par": "5", "ref": "14"},
+      {"handicap": "10", "par": "4", "ref": "15"},
+      {"handicap": "16", "par": "3", "ref": "16"},
+      {"handicap": "6", "par": "4", "ref": "17"},
+      {"handicap": "14", "par": "5", "ref": "18"},
+    ],
+  },
   'osm:relation/4039063': {
     name: 'StoneGate Golf Club – Oaks',
     lat: 28.1277,
