@@ -13,7 +13,7 @@ export const howText = (h: PayHow): string => (h === 'paypal' ? 'PayPal' : h ===
 /** "Wer zahlt wem" with what was paid (Sascha 03.11.2026: "everyone sees whether he paid his debts or received
  *  them"): each open transfer with "Bezahlt" for the payer, "Erhalten" for the receiver; below, the payments – paid,
  *  received, or paid and waiting for the receiver. For the pools; the games can mount it the same way.
- *  `anyone`: this phone marks for every player (the host – one phone for all). */
+ *  standIn: a player without the app the host's phone marks for – otherwise each only his own (12.11.2026). */
 export function PaidMarks(props: {
   open: Transfer[];
   payments: Payment[];
@@ -22,7 +22,9 @@ export function PaidMarks(props: {
   /** what is played for: "zahlt an" / "schuldet", "Bezahlt" / "Eingelöst" (03.11.2026) */
   prize?: Prize;
   me?: string;
-  anyone?: boolean;
+  /** a player this phone marks for besides its own – one without the app (the host's phone); everyone else only sees the
+   *  others' payments, synchronised (Sascha 12.11.2026: "only the bets that concern me directly") */
+  standIn?: (id: string) => boolean;
   onMark: (t: Transfer, as: 'paid' | 'received', how?: PayHow) => void;
   onConfirm: (id: string, how?: PayHow) => void;
   /** a player's PayPal.me name – the payer pays him by PayPal right from here (Sascha 10.11.2026) */
@@ -31,7 +33,7 @@ export function PaidMarks(props: {
   currency?: 'EUR' | 'USD';
   onUndo: (id: string) => void;
 }) {
-  const mine = (id: string) => !!props.anyone || id === props.me;
+  const mine = (id: string) => id === props.me || !!props.standIn?.(id);
   const prize = props.prize ?? MONEY_EUR;
   // "Erhalten": how it came – PayPal, cash, transfer (Sascha 10.11.2026: "the receiver chooses how he got it")
   const [asking, setAsking] = useState<null | { t?: Transfer; id?: string; amount: number; from: string }>(null);
@@ -46,8 +48,8 @@ export function PaidMarks(props: {
       {props.open.length ? (
         <ul className="pool-pays">
           {props.open.map((t) => {
-            // the receiver confirms, the payer says he paid; the host marks it paid for anyone
-            const as = t.to === props.me ? 'received' : t.from === props.me || props.anyone ? 'paid' : null;
+            // the receiver confirms, the payer says he paid – each his own; the others' only shown
+            const as = mine(t.to) ? 'received' : mine(t.from) ? 'paid' : null;
             return (
               <li key={`${t.from}-${t.to}`}>
                 <span className="grow">
