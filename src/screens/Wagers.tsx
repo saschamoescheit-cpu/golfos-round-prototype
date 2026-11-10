@@ -473,7 +473,16 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
                   </SettingsList>
                 </>
               )}
-              {r.tour && <span className="muted small">{tr('From a tournament planned – its day comes from there.', 'Aus einem geplanten Turnier – der Tag kommt von dort.')}</span>}
+              {r.tour && (
+                <span className="muted small">
+                  {tr('From a ', 'Aus einem ')}
+                  {/* the tournament, a tap away (night 10./11.11.2026: click paths) */}
+                  <button type="button" className="link-text" onClick={() => goTour(r.tour!)}>
+                    {tr('tournament planned', 'geplanten Turnier')}
+                  </button>
+                  {tr(' – its day comes from there.', ' – der Tag kommt von dort.')}
+                </span>
+              )}
               <ActionBar
                 label={tr('This round', 'Diese Runde')}
                 actions={[{ label: tr('Remove the round', 'Runde entfernen'), icon: 'delete', danger: true, onClick: () => { props.onChange(props.rounds.filter((x) => x.id !== r.id)); setEditing(null); } }]}

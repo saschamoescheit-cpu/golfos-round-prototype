@@ -605,7 +605,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           { label: tr('Plan round', 'Runde planen'), icon: 'plan', disabled: !option, onClick: () => begin(true, true) },
         ]}
       />
-      {planned > 0 && <span className="muted small">{planned === holes.length ? tr(`All ${planned} holes planned`, `Alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span>}
+      {planned > 0 && <span className="muted small plan-count">{planned === holes.length ? tr(`All ${planned} holes planned`, `Alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span>}
       <div className="sticky-cta">
         <button type="button" className="btn-primary" onClick={() => begin()} disabled={!option || !fits || starting}>
           {starting ? tr('Starting …', 'Startet …') : tr('Start round', 'Runde starten')}

@@ -206,3 +206,13 @@ describe("the watch's live place (Sascha 10.11.2026: Erik's dot on the road – 
     expect(watchPlaceWins({ pos: at(0, 0), accuracy: 5, t: now - 20000 }, { pos: at(55, 0), accuracy: 6 }, now)).toBe(false);
   });
 });
+
+describe('a swing without a place of its own (night 10./11.11.2026: from hole 10 on nothing was recorded)', () => {
+  it('takes the round\'s last place before it, however old – its accuracy says how far off it may be', async () => {
+    const { lastFixBefore } = await import('./track');
+    const track = [{ t: 1000, p: at(0, 0), acc: 4 }, { t: 61000, p: at(0, 100), acc: 5 }];
+    expect(lastFixBefore(track, 121000)).toEqual({ pos: at(0, 100), accuracy: 60 });
+    expect(lastFixBefore(track, 62000)?.accuracy).toBe(5);
+    expect(lastFixBefore([], 1000)).toBeNull();
+  });
+});

@@ -75,6 +75,7 @@ const row = settle.getByRole('button', { name: /Rechenweg/ });
 ok(/3 Schulden → 1 Zahlung/.test(await row.innerText()), `"Rechenweg": ${(await row.innerText()).replace(/\s+/g, ' ')}`);
 await row.click();
 const way = H.getByRole('dialog', { name: 'Rechenweg' });
+if (process.env.SHOTS) await way.screenshot({ path: `${process.env.SHOTS}/settleway.png` });
 const txt = (await way.innerText()).replace(/\s+/g, ' ');
 ok(/Chris schuldet Erik/.test(txt) && /Sascha schuldet Chris/.test(txt) && /Sascha schuldet Erik/.test(txt), 'who owes whom: Chris → Erik, Sascha → Chris, Sascha → Erik');
 ok(/Erik: Birdies auf 18/.test(txt) || /Erik: .*Birdie/.test(txt), `each debt says its bet (${txt.slice(0, 160)})`);
