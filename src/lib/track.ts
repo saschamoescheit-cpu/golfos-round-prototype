@@ -444,6 +444,14 @@ export function fixAt(track: TrackPoint[], t: number): { pos: LngLat; accuracy: 
   return best ? { pos: best.p, accuracy: best.acc } : null;
 }
 
+/** The last place of the track before a moment, however old – a shot of the watch without a place of its own is not
+ *  dropped (night 10./11.11.2026: Sascha, from hole 10 on nothing recorded): its accuracy says how far off it may be. */
+export function lastFixBefore(track: TrackPoint[], t: number): { pos: LngLat; accuracy: number } | null {
+  let best: TrackPoint | null = null;
+  for (const p of track) if (p.t <= t + 15000 && (!best || p.t > best.t)) best = p;
+  return best ? { pos: best.p, accuracy: Math.max(best.acc, Math.min(60, Math.round((t - best.t) / 1000))) } : null;
+}
+
 /** The watch's own track (Sascha 09.11.2026: "the phone may lie in the cart – the watch must have GPS to record the
  *  shots and the GPS track"): its fixes take the place of the phone's over the same time – the player's way, not the
  *  cart's. A batch again (the watch app hands everything kept so far) changes nothing. While the watch sends, the phone

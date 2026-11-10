@@ -10,7 +10,7 @@ import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTota
 import { playerBag } from '../lib/stats';
 import { SideBetSheet } from './Duels';
 import { dayOf as poolDay } from '../lib/wagers';
-import { addWatchFixes, autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
+import { addWatchFixes, autoShot, clubForLength, fixAt, lastFixBefore, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { DuelBar } from '../components/DuelBar';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
@@ -1330,7 +1330,9 @@ export function HoleScreen(props: {
         }
         if (it.kind !== 'shot' || it.shot.round !== r.id) return;
         const s = it.shot;
-        const fb = fixAt(loadTrack(r.id), s.t);
+        // no fix of the watch's and none of the phone's at its moment: the last place of the round – a swing is never
+        // dropped for want of a place (night 10./11.11.2026); placed roughly, it waits under "Schläge prüfen"
+        const fb = fixAt(loadTrack(r.id), s.t) ?? lastFixBefore(loadTrack(r.id), s.t) ?? (lastFix.current ? { pos: lastFix.current.pos, accuracy: Math.max(30, lastFix.current.accuracy) } : null);
         const pos: LngLat | null = s.lng != null && s.lat != null ? [s.lng, s.lat] : (fb?.pos ?? null);
         const meP = r.players.find((p) => p.isMe) ?? r.players[0];
         const open = (k: number) => {
