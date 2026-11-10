@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addWatchShot, endWatchIfIdle, warmUpSwing, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
+import { addWatchShot, endWatchIfIdle, warmUpSwing, watchPlaceWins, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
 import type { HoleMapData } from './geo';
 import type { LngLat, Round } from '../types';
 
@@ -193,5 +193,16 @@ describe('nothing running: the watch told again', () => {
   it("a game's round sent to the watch is not taken for gone (it is not in Rounds' list)", () => {
     localStorage.setItem('golfos.watch.round', 'g-round');
     expect(endWatchRoundIfGone([{ id: 'r9', finishedAt: null }, { id: 'g-round', finishedAt: null }])).toBe(false);
+  });
+});
+
+describe("the watch's live place (Sascha 10.11.2026: Erik's dot on the road – the phone in the cart)", () => {
+  const now = 1_000_000;
+  it('the phone 55 m away in the cart: the watch is the player', () => {
+    expect(watchPlaceWins({ pos: at(0, 0), accuracy: 5, t: now - 3000 }, { pos: at(55, 0), accuracy: 6 }, now)).toBe(true);
+  });
+  it('phone and watch together, or the watch quiet for 15 s: the phone as ever', () => {
+    expect(watchPlaceWins({ pos: at(0, 0), accuracy: 5, t: now - 3000 }, { pos: at(8, 0), accuracy: 6 }, now)).toBe(false);
+    expect(watchPlaceWins({ pos: at(0, 0), accuracy: 5, t: now - 20000 }, { pos: at(55, 0), accuracy: 6 }, now)).toBe(false);
   });
 });

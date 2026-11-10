@@ -96,8 +96,13 @@ final class RoundModel: NSObject, ObservableObject {
     private var trackBuf: [[Double]] = []
     private var trackLast: [Double]?
     private var trackSent = Date()
+    /// the place last sent live to the iPhone (its map and distances follow the player, not the cart – 10.11.2026)
+    private var posSent = Date.distantPast
     /// the GPS speed of the last seconds: [ms, m/s] – a swing while the cart drives is a bump, not a shot (Sascha 10.11.2026)
     private var speeds: [(t: Double, v: Double)] = []
+    /// the good fixes of the last half minute – a shot's place is their mean while the player stood at the ball
+    /// (Sascha 10.11.2026: "some shots Erik had to move a bit – can we get it more exact?")
+    private var recent: [CLLocation] = []
 
     // MARK: start
 
@@ -263,6 +268,26 @@ final class RoundModel: NSObject, ObservableObject {
         return Geo.distance([alng, alat], [blng, blat]) <= 12
     }
 
+    /// where the player stood at a moment: the fixes of the 20 s up to it while standing (slower than 0.8 m/s), weighted
+    /// by their accuracy – nil with fewer than two
+    private func standingPlace(at t: Double) -> (lng: Double, lat: Double, acc: Double)? {
+        let still = recent.filter {
+            let ms = $0.timestamp.timeIntervalSince1970 * 1000
+            return ms >= t - 20_000 && ms <= t + 1_000 && $0.horizontalAccuracy > 0 && $0.horizontalAccuracy <= 20 && ($0.speed < 0 || $0.speed < 0.8)
+        }
+        guard still.count >= 2 else { return nil }
+        var sw = 0.0, sx = 0.0, sy = 0.0, sa = 0.0
+        for p in still {
+            let w = 1 / (p.horizontalAccuracy * p.horizontalAccuracy)
+            sw += w
+            sx += w * p.coordinate.longitude
+            sy += w * p.coordinate.latitude
+            sa += p.horizontalAccuracy
+        }
+        let acc = max(2, (sa / Double(still.count)) / Double(still.count).squareRoot())
+        return (sx / sw, sy / sw, (acc * 10).rounded() / 10)
+    }
+
     /// the fastest the watch moved from 6 s before a moment to it, m/s – nil when the GPS gave no speed then
     private func speed(before t: Double) -> Double? {
         let around = speeds.filter { $0.t >= t - 6000 && $0.t <= t + 1000 }
@@ -335,7 +360,12 @@ final class RoundModel: NSObject, ObservableObject {
         var lng: Double?
         var lat: Double?
         var acc: Double?
-        if let p = location, abs(p.timestamp.timeIntervalSince1970 * 1000 - t) < 30_000 {
+        if !manual, let s = standingPlace(at: t) {
+            // stood at the ball: the mean of those fixes – a single fix strays 5–10 m
+            lng = s.lng
+            lat = s.lat
+            acc = s.acc
+        } else if let p = location, abs(p.timestamp.timeIntervalSince1970 * 1000 - t) < 30_000 {
             lng = p.coordinate.longitude
             lat = p.coordinate.latitude
             acc = (p.horizontalAccuracy * 10).rounded() / 10
@@ -358,6 +388,17 @@ final class RoundModel: NSObject, ObservableObject {
         shots.removeAll { $0.id == last.id }
         send(["remove": last.id])
         persist()
+    }
+
+    /// the watch's place to the iPhone, live – every 5 s at most, only while it is reachable (no queue: an old place
+    /// is of no use); a good fix only
+    private func sendPos(_ p: CLLocation) {
+        guard let r = round, p.horizontalAccuracy >= 0, p.horizontalAccuracy <= 20 else { return }
+        guard Date().timeIntervalSince(posSent) >= 5 else { return }
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated, WCSession.default.isReachable else { return }
+        posSent = Date()
+        let row: [Double] = [(p.timestamp.timeIntervalSince1970 * 1000).rounded(), p.coordinate.longitude, p.coordinate.latitude, p.horizontalAccuracy.rounded()]
+        WCSession.default.sendMessage(["pos": row, "round": r.id], replyHandler: nil, errorHandler: nil)
     }
 
     private func send(_ info: [String: Any]) {
@@ -561,6 +602,9 @@ extension RoundModel: CLLocationManagerDelegate {
             }
             let keep = Date().timeIntervalSince1970 * 1000 - 30_000
             self.speeds.removeAll { $0.t < keep }
+            self.sendPos(p)
+            self.recent.append(contentsOf: good)
+            self.recent.removeAll { $0.timestamp.timeIntervalSince1970 * 1000 < keep }
         }
     }
 

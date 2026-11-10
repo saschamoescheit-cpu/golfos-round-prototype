@@ -382,8 +382,9 @@ export function GamesApp(props: {
                 .catch(() => null);
           }}
           onBack={() => {
-            // back to the balance when opened there (Sascha 04.11.2026)
-            const back = view.back === 'balance' ? 'balance' : 'bets';
+            // back where it was opened (Sascha 04.11.2026: the balance; night 10./11.11.2026: Spielen too – a challenge,
+            // a duel set up there); else the bets
+            const back: GamesTab = view.back === 'balance' || view.back === 'play' ? view.back : 'bets';
             setView({ name: 'tab', tab: back });
             props.onTabChange?.(back);
           }}

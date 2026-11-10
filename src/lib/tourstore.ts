@@ -120,6 +120,8 @@ export const tourState = (e: TourEntry, today: string): 'planned' | 'today' | 'p
   e.ev.deletedAt ? 'deleted' : e.ev.date > today ? 'planned' : e.ev.date === today ? 'today' : 'played';
 
 /** For the module card on the start page (03.11.2026): the names of today's tournaments and how many are planned after today. */
+/** The codes of today's tournaments (the start page's card opens the one of today – night 10./11.11.2026). */
+export const toursTodayCodes = (now = new Date()): string[] => loadTours().filter((e) => tourState(e, dayOf(now)) === 'today').map((e) => e.code);
 export function toursSoon(now = new Date()): { today: string[]; planned: number } {
   const today = dayOf(now);
   const live = loadTours();

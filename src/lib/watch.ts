@@ -35,7 +35,9 @@ export type WatchItem =
   | { kind: 'remove'; id: string }
   | { kind: 'hole'; hole: number; t: number; round?: string }
   // the watch's own GPS track, a batch: [ms, lng, lat, accuracy] per fix (Sascha 09.11.2026)
-  | { kind: 'track'; round: string; pts: number[][] };
+  | { kind: 'track'; round: string; pts: number[][] }
+  // the watch's place, live every 5 s (10.11.2026): [ms, lng, lat, accuracy] – the map follows the player, not the cart
+  | { kind: 'pos'; round: string; p: number[] };
 
 /** A hole changed on the watch – for this round, and in the last minute? (Sascha 08.11.2026: Erik's new round jumped to
  *  the hole the watch still showed of the round he had deleted) */
@@ -198,6 +200,14 @@ export function warmUpSwing(round: Round, s: Pick<WatchShot, 't' | 'manual' | 'a
   const tees = at.tees.filter((x): x is LngLat => !!x);
   if (at.pos && tees.length && tees.every((t) => distanceM(t, at.pos!) > 60 + Math.min(s.acc ?? 10, 30))) return 'away';
   return null;
+}
+
+/** Is the watch's live place the player's (Sascha 10.11.2026: Erik's dot on the road – the phone in the cart): fresh
+ *  (15 s), and the phone's own place clearly elsewhere – farther apart than both their accuracies and 15 m. */
+export function watchPlaceWins(watch: { pos: LngLat; accuracy: number; t: number } | null, phone: { pos: LngLat; accuracy: number } | null, now = Date.now()): boolean {
+  if (!watch || now - watch.t > 15000) return false;
+  if (!phone) return true;
+  return distanceM(watch.pos, phone.pos) > Math.max(15, watch.accuracy + phone.accuracy);
 }
 
 /** A shot taken back on the watch: gone from the round too. */

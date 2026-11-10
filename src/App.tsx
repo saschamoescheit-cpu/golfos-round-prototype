@@ -32,7 +32,7 @@ import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
 import { reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
-import { startTourPush, toursSoon } from './lib/tourstore';
+import { startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
 
 /** A practice session of the Training module is paused (read without loading the module). */
@@ -456,6 +456,16 @@ export function App() {
         mobilityOpen={mobilityPaused()}
         mobilityToday={mobilityToday()}
         onPick={(m) => {
+          // the card's line says what is to do – a tap goes there (night 10./11.11.2026: "click paths"): the rounds to
+          // sign (a round open is paused here – it waits on Spielen), today's one tournament
+          if (m === 'rounds' && toCheck > 0) setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' });
+          if (m === 'tournaments') {
+            const today = toursTodayCodes();
+            if (today.length === 1) {
+              openTour(today[0]);
+              return;
+            }
+          }
           if (m === 'games') setGamesTab(undefined);
           if (m === 'tournaments') setToursTab(undefined);
           if (m === 'training') setTrainingTab(undefined);
@@ -559,7 +569,14 @@ export function App() {
             />
           )}
           {tab !== 'play' && <RoundsTopBar onModules={() => setModule(null)} />}
-          {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} onNew={() => setScreen({ name: 'pickCourse' })} />}
+          {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => {
+            // the rounds to sign: a tap opens the check straight away (night 10./11.11.2026: four taps were one too many)
+            if (screen.filter === 'sign' && !round.signedAt) {
+              const r = { ...round, capture: 'full' as const };
+              persist(r);
+              setScreen({ name: 'review', round: r, back: { name: 'tab', tab: 'rounds', filter: 'sign' } });
+            } else setScreen({ name: 'scorecard', round, back: ROUNDS });
+          }} onContinue={(round) => setScreen({ name: 'hole', round })} onNew={() => setScreen({ name: 'pickCourse' })} />}
           {tab === 'record' && (
             <RecordTab
               rounds={rounds}

@@ -39,7 +39,7 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
-import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchReady, watchRound } from '../lib/watch';
+import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -278,6 +278,8 @@ export function HoleScreen(props: {
   const reopened = useRef(true);
   const visibleAt = useRef(Date.now());
   const lastFix = useRef<{ pos: LngLat; accuracy: number; t: number; still?: boolean } | null>(null);
+  // the watch's live place (10.11.2026): shown instead of the phone's while the phone lies elsewhere (in the cart)
+  const watchFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -322,7 +324,7 @@ export function HoleScreen(props: {
         const was = shownFix.current;
         lastFix.current = fix;
         // only a real change is drawn – every fix goes into the track
-        if ((!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still)) showFix(fix);
+        if (!watchPlaceWins(watchFix.current, fix) && (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still)) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
         // only a fresh fix: right after unlocking, iOS may first hand out the old position (where the phone was put away)
         const open = reopened.current && p.coords.accuracy <= 30 && p.timestamp >= visibleAt.current - 2000;
@@ -1315,6 +1317,14 @@ export function HoleScreen(props: {
             latestRound.current = next;
             onChangeNow.current(next);
           }
+          return;
+        }
+        // the watch's place, live: the player's when the phone lies elsewhere
+        if (it.kind === 'pos') {
+          if (it.round !== r.id || it.p.length < 4 || r.preview) return;
+          const w = { pos: [it.p[1], it.p[2]] as LngLat, accuracy: it.p[3], t: Date.now() };
+          watchFix.current = w;
+          if (watchPlaceWins(w, lastFix.current)) showFix({ ...w, still: false });
           return;
         }
         if (it.kind !== 'shot' || it.shot.round !== r.id) return;

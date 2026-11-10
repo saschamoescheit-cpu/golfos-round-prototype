@@ -165,6 +165,11 @@ public class WatchLinkPlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
             keepSample(json)
             return
         }
+        // the watch's place, live (10.11.2026): to the page at once, not kept – an old place is of no use
+        if let p = info["pos"] as? [Double], p.count >= 4 {
+            notifyListeners("watch", data: ["kind": "pos", "round": (info["round"] as? String) ?? "", "p": p])
+            return
+        }
         var item: [String: Any]?
         if let json = info["shot"] as? String, let data = json.data(using: .utf8),
            let shot = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
