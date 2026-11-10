@@ -520,6 +520,19 @@ await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', {
   const before = await open.count();
   const first = (await open.first().innerText()).replace(/\s+/g, ' ');
   ok(before > 0 && (await open.first().locator('.paid-mark').count()) === 1, `payments: the host marks a transfer (${first})`);
+  // only one's own (Sascha 12.11.2026: "only the bets that concern me directly – the others synchronised"): a transfer
+  // between two others, both with the app, has no button on the host's phone
+  const others = open.filter({ hasNotText: 'Sascha' });
+  const lone = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1'))[0]?.pool.players.filter((p) => !p.joined).map((p) => p.name) ?? []);
+  let marks = 0;
+  let between = 0;
+  for (let k = 0; k < (await others.count()); k++) {
+    const t = await others.nth(k).innerText();
+    if (lone.some((n) => t.includes(n))) continue; // a player without the app: the host's phone marks for him
+    between++;
+    marks += await others.nth(k).locator('.paid-mark').count();
+  }
+  ok(marks === 0, `payments: others' transfers only shown, no button (${between} between others)`);
   await open.first().locator('.paid-mark').click();
   await H.waitForTimeout(1500);
   const ps = shared.get(code).game.payments ?? [];

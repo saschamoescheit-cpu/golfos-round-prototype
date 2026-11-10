@@ -989,7 +989,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           sym={prizeSym(prizeOf(pool))}
           prize={prizeOf(pool)}
           me={entry.me}
-          anyone={host}
+          // only one's own payments (Sascha 12.11.2026) – the host's phone also for a player without the app
+          standIn={(id) => host && !pool.players.find((x) => x.id === id)?.joined}
           onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
           onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
           paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
