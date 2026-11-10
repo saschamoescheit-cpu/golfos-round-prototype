@@ -1,6 +1,6 @@
-// QA (Sascha 10.11.2026: "pay by PayPal right from the app – or cash, or transfer; who receives it says how"): Erik's
-// PayPal.me name from his profile reaches his player in the pool; Sascha owes him 20 $ – "PayPal" opens
-// paypal.me/ErikH/20.00USD; Erik confirms "Erhalten" and chooses "Bar" – the payment says how it came.
+// QA (Sascha 10.11.2026: "pay by PayPal right from the app – or cash, or transfer"; 11.11.2026: "PayPal we do not need
+// for now, nor the details – paid and received is enough"): no PayPal in the settlement (nor in the profile – PAY_DETAILS off); Sascha owes
+// Erik 20 $ – Erik taps "Erhalten" and it is in, no question how it came.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/paypal.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer } from './sharesim.mjs';
@@ -63,20 +63,15 @@ const openPool = async (P) => {
   await P.waitForTimeout(1500);
 };
 await openPool(H);
-if (process.env.DBG) console.log((await H.locator('.pool-settle').innerText().catch(() => 'no settle')).replace(/s+/g, ' ').slice(0, 400));
-const link = H.locator('.pool-pays a.paypal-pay');
-ok((await link.count()) === 1 && (await link.getAttribute('href')) === 'https://paypal.me/ErikH/20.00USD', `Sascha owes Erik 20 $: "PayPal" opens ${await link.getAttribute('href').catch(() => '?')}`);
-
+if (process.env.DBG) console.log((await H.locator('.pool-settle').innerText().catch(() => 'no settle')).replace(/\s+/g, ' ').slice(0, 400));
+ok((await H.locator('.pool-pays a.paypal-pay').count()) === 0 && (await H.locator('.pool-pays li').filter({ hasText: 'Sascha zahlt an Erik' }).count()) === 1, 'Sascha owes Erik 20 $ – no PayPal beside it');
 await openPool(E);
 await E.locator('.pool-pays').getByRole('button', { name: /erhalten/ }).first().click();
-const how = E.getByRole('dialog', { name: 'Wie erhalten?' });
-const options = (await how.locator('.pick-option strong').allInnerTexts()).join('|');
-ok(options === 'PayPal|Bar|Überweisung', `"Erhalten": how – ${options}`);
-await how.locator('.pick-option').filter({ hasText: 'Bar' }).click();
 await E.waitForTimeout(2000);
+ok((await E.getByRole('dialog', { name: 'Wie erhalten?' }).count()) === 0, '"Erhalten": no question how it came');
 const pay = shared.get(code).game.payments?.[0];
-ok(pay?.how === 'cash' && !!pay.receivedAt && pay.amount === 20, `the payment: received, cash (${JSON.stringify(pay)})`);
-ok(/erhalten .* · bar/.test((await E.locator('.paid-list').innerText().catch(() => '')).replace(/\s+/g, ' ')), 'the list says how it came: "· bar"');
+ok(!!pay?.receivedAt && pay.amount === 20 && !pay.how, "the payment: received, nothing about how (" + JSON.stringify(pay) + ")");
+ok(!/ · bar| · PayPal| · Überweisung/.test((await E.locator('.paid-list').innerText().catch(() => '')).replace(/\s+/g, ' ')), 'the list: only "erhalten"');
 ok([host, erik].every((x) => x.errs.length === 0), `no page errors ${[host, erik].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

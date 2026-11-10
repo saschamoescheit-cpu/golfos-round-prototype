@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { money } from '../lib/gameforms';
-import { paypalLink, type PayHow, type Payment } from '../lib/wagers';
+import { PAY_DETAILS, paypalLink, type PayHow, type Payment } from '../lib/wagers';
 import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize';
 
 type Transfer = { from: string; to: string; amount: number };
@@ -56,7 +56,7 @@ export function PaidMarks(props: {
                 </span>
                 <strong>{money(t.amount, props.sym)}</strong>
                 {/* the payer: straight to PayPal with the amount, when the receiver has his PayPal.me name */}
-                {t.from === props.me && isMoney(prize) && props.paypalOf?.(t.to) && (
+                {PAY_DETAILS && t.from === props.me && isMoney(prize) && props.paypalOf?.(t.to) && (
                   <a className="chip paypal-pay" href={paypalLink(props.paypalOf(t.to)!, t.amount, props.currency ?? 'EUR')} target="_blank" rel="noopener noreferrer" aria-label={tr(`Pay ${money(t.amount, props.sym)} to ${props.name(t.to)} by PayPal`, `${money(t.amount, props.sym)} an ${props.name(t.to)} per PayPal zahlen`)}>
                     PayPal
                   </a>
@@ -66,7 +66,7 @@ export function PaidMarks(props: {
                     type="button"
                     className="chip paid-mark"
                     aria-label={as === 'received' ? tr(`Received ${money(t.amount, props.sym)} from ${props.name(t.from)}`, `${money(t.amount, props.sym)} von ${props.name(t.from)} erhalten`) : tr(`${props.name(t.from)} paid ${money(t.amount, props.sym)} to ${props.name(t.to)}`, `${props.name(t.from)} hat ${money(t.amount, props.sym)} an ${props.name(t.to)} bezahlt`)}
-                    onClick={() => (as === 'received' && isMoney(prize) ? setAsking({ t, amount: t.amount, from: t.from }) : props.onMark(t, as))}
+                    onClick={() => (as === 'received' && isMoney(prize) && PAY_DETAILS ? setAsking({ t, amount: t.amount, from: t.from }) : props.onMark(t, as))}
                   >
                     {as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize)}
                   </button>
@@ -92,13 +92,13 @@ export function PaidMarks(props: {
                   {tr(`${props.name(p.from)} to ${props.name(p.to)}`, `${props.name(p.from)} an ${props.name(p.to)}`)}
                   <span className="muted small paid-state">
                     {p.receivedAt
-                      ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}${p.how ? ` · ${howText(p.how)}` : ''}`
+                      ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}${PAY_DETAILS && p.how ? ` · ${howText(p.how)}` : ''}`
                       : `${paidWord(prize).toLowerCase()} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
                   </span>
                 </span>
                 <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>
                 {!p.receivedAt && mine(p.to) && (
-                  <button type="button" className="chip paid-mark" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
+                  <button type="button" className="chip paid-mark" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) && PAY_DETAILS ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
                     {tr('Received', 'Erhalten')}
                   </button>
                 )}

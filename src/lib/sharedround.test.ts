@@ -527,7 +527,7 @@ describe('scores entered afterwards', () => {
   });
 });
 
-describe('markers make sense, one scorer signs for all (Sascha 10.11.2026)', () => {
+describe('markers make sense; one scorer countersigns, each player signs his own (Sascha 10./11.11.2026)', () => {
   const players = [{ id: 'c', name: 'Christopher' }, { id: 'd', name: 'Cedric' }, { id: 's', name: 'Stefan' }].map((p) => ({ ...p, playingHandicap: 0 }));
   it('a marker twice is no plan – paired anew, a ring', () => {
     expect(saneMarkers(['c', 'd', 's'], { c: 'd', d: 'c', s: 'd' })).toBe(false);
@@ -536,11 +536,16 @@ describe('markers make sense, one scorer signs for all (Sascha 10.11.2026)', () 
     expect(new Set(Object.values(m)).size).toBe(3);
     expect(Object.entries(m).every(([k, v]) => k !== v)).toBe(true);
   });
-  it('one scorer: he signs every card, his own too – his signature locks it', () => {
-    const f = { id: 'f', name: 'F', players, scores: {}, scorer: 'd', markers: { c: 'd', d: 'c', s: 'd' }, signed: { c: { marker: '2026-11-10' } } } as never;
+  it('one scorer: he countersigns the others, not his own – a card is in only with the player signing it himself', () => {
+    const f = { id: 'f', name: 'F', players, scores: {}, scorer: 'd', signed: { c: { marker: '2026-11-10' }, s: { marker: '2026-11-10', player: '2026-11-10' }, d: { player: '2026-11-10' } } } as never;
     expect(markerOf(f, 'c')).toBe('d');
-    expect(markerOf(f, 'd')).toBe('d');
-    expect(isSigned(f, 'c')).toBe(true);
-    expect(isSigned(f, 's')).toBe(false);
+    expect(markerOf(f, 'd')).toBeUndefined(); // no markers: the scorer's own card by himself
+    expect(isSigned(f, 'c')).toBe(false); // the scorer's signature alone is not the card's
+    expect(isSigned(f, 's')).toBe(true);
+    expect(isSigned(f, 'd')).toBe(true);
+    const m = { ...(f as object), markers: { c: 's', d: 'c', s: 'd' } } as never;
+    expect(markerOf(m, 'd')).toBeUndefined(); // markers left in the plan beside a scorer do not count
+    expect(markerOf(m, 'c')).toBe('d');
+    expect(isSigned(m, 'd')).toBe(true);
   });
 });

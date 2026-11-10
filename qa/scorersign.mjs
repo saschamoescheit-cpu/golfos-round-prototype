@@ -1,7 +1,9 @@
 // QA (Sascha 10.11.2026, USA: "one keeps the score of all – then three signatures at the end, not ideal"; "with one
-// scorer the marker hint is not needed"): a tournament on the Hetzenhof short course, Sascha keeps the score of Sascha
-// and Cedric. The flight shows no "Zähler" per player; at the end Sascha signs once – "Alle unterschreiben" – and both
-// cards are handed in; Cedric's phone says "Sascha unterschreibt für alle" without a button of its own.
+// scorer the marker hint is not needed"; 11.11.2026: "Erik must not sign for all three – Cedric and Stefan get a push,
+// see their card and sign on their own device; the round is over when every card is signed"): a tournament on the
+// Hetzenhof short course, Sascha keeps the score of Sascha and Cedric. The flight shows no "Zähler" per player; at the end
+// Sascha signs once – his card and Cedric's count – and has no button to sign for Cedric; Cedric gets a push, his phone
+// says "Dein Schreiber hat unterschrieben – jetzt du" and he signs his own: then both cards are in.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/scorersign.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer } from './sharesim.mjs';
@@ -42,17 +44,29 @@ const openCard = async (p) => {
 };
 const hs = await openCard(H);
 const htext = (await hs.innerText()).replace(/\s+/g, ' ');
-ok(/Alle 2 Karten – als Schreiber/.test(htext) && (await hs.getByRole('button', { name: 'Alle unterschreiben' }).count()) === 1 && (await hs.getByRole('button', { name: 'Unterschreiben', exact: true }).count()) === 0, `Sascha: one row, one button "Alle unterschreiben" (${htext.slice(0, 140)})`);
+ok(/Als Schreiber unterschreiben/.test(htext) && /Deine Karte und die Zählung von Cedric/.test(htext) && (await hs.getByRole('button', { name: 'Unterschreiben', exact: true }).count()) === 1, `Sascha: one row "Als Schreiber unterschreiben", one button (${htext.slice(0, 160)})`);
 const gs = await openCard(G);
 const gtext = (await gs.innerText()).replace(/\s+/g, ' ');
-ok(/Sascha unterschreibt für alle/.test(gtext) && (await gs.getByRole('button').filter({ hasText: /nterschreiben/ }).count()) === 0, `Cedric: "Sascha unterschreibt für alle", no button (${gtext.slice(0, 120)})`);
-await hs.getByRole('button', { name: 'Alle unterschreiben' }).click();
+ok(/Deine Karte/.test(gtext) && !/für alle/.test(gtext), `Cedric: his own card to sign (${gtext.slice(0, 120)})`);
+const pushes0 = sim.pushes.length;
+await hs.getByRole('button', { name: 'Unterschreiben', exact: true }).click();
 await H.waitForTimeout(4000);
-const f = Object.values(sim.event().flights)[0];
-ok(f.players.every((p) => f.signed?.[p.id]?.marker), `server: both cards signed by the scorer (${JSON.stringify(f.signed ?? {}).slice(0, 120)})`);
-ok(/abgegeben, gesperrt/.test(await hs.innerText()), 'Sascha: "Unterschrieben – abgegeben, gesperrt"');
+let f = Object.values(sim.event().flights)[0];
+const [sa, ce] = f.players;
+ok(!!f.signed?.[sa.id]?.player && !!f.signed?.[ce.id]?.marker && !f.signed?.[ce.id]?.player, `server: Sascha's own card signed, Cedric's confirmed by the scorer – not signed for him (${JSON.stringify(f.signed ?? {}).slice(0, 140)})`);
+ok(sim.pushes.slice(pushes0).some((x) => x.action === 'signed' && x.player === ce.id && x.as === 'marker'), 'Cedric gets a push to sign his card');
+const h2 = (await hs.innerText()).replace(/\s+/g, ' ');
+ok(/Cedric: unterschreibt auf seinem Handy/.test(h2) && (await hs.getByRole('button').filter({ hasText: /nterschreiben/ }).count()) === 0 && !/abgegeben, gesperrt/.test(h2), `Sascha: "Cedric: unterschreibt auf seinem Handy", no button for him, not handed in yet (${h2.slice(0, 140)})`);
 await G.waitForTimeout(12000);
-ok(/abgegeben, gesperrt/.test(await G.locator('.sign-card').innerText().catch(() => '')), 'Cedric: handed in too');
+const g2 = (await gs.innerText()).replace(/\s+/g, ' ');
+ok(/Dein Schreiber hat unterschrieben – jetzt du/.test(g2), `Cedric: "Dein Schreiber hat unterschrieben – jetzt du" (${g2.slice(0, 120)})`);
+await gs.getByRole('button', { name: 'Unterschreiben', exact: true }).click();
+await G.waitForTimeout(4000);
+f = Object.values(sim.event().flights)[0];
+ok(!!f.signed?.[ce.id]?.player && !!f.signed?.[ce.id]?.marker, 'server: Cedric signed his own card on his phone');
+ok(/abgegeben, gesperrt/.test(await gs.innerText()), 'Cedric: handed in, locked');
+await H.waitForTimeout(12000);
+ok(/Alle unterschrieben – abgegeben, gesperrt/.test(await H.locator('.sign-card').innerText().catch(() => '')), 'Sascha: "Alle unterschrieben – abgegeben, gesperrt"');
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

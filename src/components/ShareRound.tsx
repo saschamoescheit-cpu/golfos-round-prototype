@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
 import { shareView, type ShareView } from '../lib/sharedround';
-import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAllAsScorer, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -888,43 +888,44 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
     setBusy(false);
     setMsg(ok ? null : tr('Not signed – check the holes, or no connection.', 'Nicht unterschrieben – Löcher prüfen oder keine Verbindung.'));
   };
-  // one scorer for all (Sascha 10.11.2026: "three signatures at the end – not ideal"): he signs every card at once, the
-  // others only see it
-  if (f.scorer) {
-    const all = f.players;
-    const locked = all.every((p) => isSigned(f, p.id));
-    const open = all.map((p) => ({ p, can: signable(f, p.id, ev!.holes.length) })).filter((x) => !x.can.ok);
-    const scorer = all.find((p) => p.id === f.scorer);
-    const mine = me?.id === f.scorer;
+  // one scorer for all (Sascha 10.11.2026: "three signatures at the end – not ideal"; 11.11.2026: "Erik must not sign for
+  // all three – Cedric and Stefan get a push, see their card and sign on their own device"): the scorer signs once – his
+  // own card and the others' count – then every player signs his own on his phone; the others' phones show the usual row
+  if (f.scorer && me?.id === f.scorer) {
+    const others = f.players.filter((p) => p.id !== f.scorer);
+    const open = f.players.map((p) => ({ p, can: signable(f, p.id, ev!.holes.length) })).filter((x) => !x.can.ok);
+    const mineDone = !!f.signed?.[f.scorer]?.player && others.every((p) => !!f.signed?.[p.id]?.marker);
+    const locked = f.players.every((p) => isSigned(f, p.id));
+    const names = others.map((p) => p.name).join(', ');
     return (
       <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
         <h2>{tr('Hand the cards in', 'Scorekarten abgeben')}</h2>
         <div className="sign-row">
           <span className="grow">
-            <strong>{mine ? tr(`All ${all.length} cards – as scorer`, `Alle ${all.length} Karten – als Schreiber`) : tr(`${scorer?.name ?? '?'} signs for everyone`, `${scorer?.name ?? '?'} unterschreibt für alle`)}</strong>
+            <strong>{tr('Sign as scorer', 'Als Schreiber unterschreiben')}</strong>
             <span className={`small ${locked ? 'good-text' : 'muted'}`}>
               {locked
-                ? tr('Signed – handed in, locked', 'Unterschrieben – abgegeben, gesperrt')
-                : open.length
-                  ? open.map((x) => `${x.p.name}: ${x.can.ok ? '' : tr(`still open ${x.can.missing.map(label).join(', ')}`, `noch offen ${x.can.missing.map(label).join(', ')}`)}`).join(' · ')
-                  : mine
-                    ? tr('All holes entered – one signature for all', 'Alle Löcher erfasst – eine Unterschrift für alle')
-                    : tr(`Waiting for ${scorer?.name ?? '?'}`, `Wartet auf ${scorer?.name ?? '?'}`)}
+                ? tr('All signed – handed in, locked', 'Alle unterschrieben – abgegeben, gesperrt')
+                : mineDone
+                  ? others.map((p) => (isSigned(f, p.id) ? tr(`${p.name}: signed`, `${p.name}: unterschrieben`) : tr(`${p.name}: signs on his phone`, `${p.name}: unterschreibt auf seinem Handy`))).join(' · ')
+                  : open.length
+                    ? open.map((x) => `${x.p.name}: ${x.can.ok ? '' : tr(`still open ${x.can.missing.map(label).join(', ')}`, `noch offen ${x.can.missing.map(label).join(', ')}`)}`).join(' · ')
+                    : tr(`Your card and the count of ${names} – then each signs his own on his phone`, `Deine Karte und die Zählung von ${names} – danach unterschreibt jeder seine eigene auf seinem Handy`)}
             </span>
           </span>
-          {mine && !locked && (
+          {!mineDone && (
             <button
               type="button"
               className="btn-primary"
               disabled={busy || open.length > 0}
               onClick={async () => {
                 setBusy(true);
-                const ok = await signAllAsScorer(props.round);
+                const ok = await signAsScorer(props.round);
                 setBusy(false);
                 setMsg(ok ? null : tr('Not signed – check the holes, or no connection.', 'Nicht unterschrieben – Löcher prüfen oder keine Verbindung.'));
               }}
             >
-              {tr('Sign all', 'Alle unterschreiben')}
+              {tr('Sign', 'Unterschreiben')}
             </button>
           )}
         </div>
@@ -958,10 +959,14 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
                   ? // "everyone his own" (no marker – Sascha 09.11.2026, audit): signed by him alone
                     !markerOf(f, c.pid)
                     ? tr('Signed – handed in, locked', 'Unterschrieben – abgegeben, gesperrt')
-                    : tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
+                    : f.scorer
+                      ? tr('Signed by you and the scorer – handed in, locked', 'Von dir und dem Schreiber unterschrieben – abgegeben, gesperrt')
+                      : tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
                   : done
                     ? c.as === 'player'
-                      ? tr('Signed by you – the marker signs next', 'Von dir unterschrieben – jetzt unterschreibt der Zähler')
+                      ? f.scorer
+                        ? tr('Signed by you – your scorer confirms next', 'Von dir unterschrieben – jetzt bestätigt dein Schreiber')
+                        : tr('Signed by you – the marker signs next', 'Von dir unterschrieben – jetzt unterschreibt der Zähler')
                       : tr(`Signed by you – ${c.name} signs his own next`, `Von dir unterschrieben – jetzt unterschreibt ${c.name} selbst`)
                     : can.ok
                       ? tr('All holes agree – ready to sign', 'Alle Löcher stimmen überein – bereit zum Unterschreiben')

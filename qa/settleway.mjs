@@ -41,12 +41,15 @@ const code = await H.evaluate(
         { id: 'w1', player: 'e', kind: 'birdies', target: 1, stake: 20, payout: 'success', attempts: 'any' },
         // Chris against Sascha only: made – 20 $ from Sascha
         { id: 'w2', player: 'c', kind: 'pars', target: 9, stake: 20, payout: 'opponent', opponent: 's', attempts: 'any' },
+        // Sascha against Chris only: made – 20 $ from Chris (set off against w2: ±0 between the two)
+        { id: 'w3', player: 's', kind: 'birdies', target: 3, stake: 20, payout: 'opponent', opponent: 'c', attempts: 'any' },
         // a 5+5+10 of Chris against Sascha, set gross (not played yet)
         { id: 'd1', player: 'c', opponent: 's', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: to, parts: { front: 5, back: 5, total: 10 }, challenge: { state: 'accepted', at } },
       ],
       progress: {
         w1: { best: 1, done: true, rounds: 1, at, manual: { done: true, by: 'Sascha' } },
         w2: { best: 9, done: true, rounds: 1, at, manual: { done: true, by: 'Sascha' } },
+        w3: { best: 3, done: true, rounds: 1, at, manual: { done: true, by: 'Sascha' } },
       },
     };
     return (await ws.createPool(pool, 's'))?.code ?? null;
@@ -69,17 +72,25 @@ const openPool = async () => {
 await openPool();
 const pays = async () => (await H.locator('.pool-pays li').allInnerTexts().catch(() => [])).map((x) => x.replace(/\s+/g, ' ').trim());
 const settle = H.locator('.pool-settle');
+// set off only between the same two (Sascha 11.11.2026: "±0 only when Chris gets 20 from Sascha and Sascha 20 from
+// Chris") – nothing passed on past a third
 let p = await pays();
-ok(p.length === 1 && /Sascha zahlt an Erik/.test(p[0]) && /40/.test(p[0]), `set off: Sascha pays Erik 40 $ – Chris nothing (${p.join(' | ')})`);
+ok(p.length === 2 && p.some((x) => /Sascha zahlt an Erik/.test(x) && /20/.test(x)) && p.some((x) => /Chris zahlt an Erik/.test(x) && /20/.test(x)), `set off: Sascha and Chris each pay Erik 20 $, nothing between them (${p.join(' | ')})`);
 const row = settle.getByRole('button', { name: /Rechenweg/ });
-ok(/3 Schulden → 1 Zahlung/.test(await row.innerText()), `"Rechenweg": ${(await row.innerText()).replace(/\s+/g, ' ')}`);
+ok(/4 Schulden → 2 Zahlungen/.test(await row.innerText()), `"Rechenweg": ${(await row.innerText()).replace(/\s+/g, ' ')}`);
+// the ledger: from whom Erik's bet brought its money (Sascha 11.11.2026: "Erik's 80 – from whom")
+const erikLine = (await settle.locator('.pool-standing > li').filter({ hasText: /^Erik/ }).first().innerText()).replace(/\s+/g, ' ');
+ok(/von Sascha, Chris – je 20 \$/.test(erikLine), `the ledger: Erik's bet "von Sascha, Chris – je 20 $" (${erikLine.slice(0, 120)})`);
 await row.click();
 const way = H.getByRole('dialog', { name: 'Rechenweg' });
 if (process.env.SHOTS) await way.screenshot({ path: `${process.env.SHOTS}/settleway.png` });
-const txt = (await way.innerText()).replace(/\s+/g, ' ');
-ok(/Chris schuldet Erik/.test(txt) && /Sascha schuldet Chris/.test(txt) && /Sascha schuldet Erik/.test(txt), 'who owes whom: Chris → Erik, Sascha → Chris, Sascha → Erik');
-ok(/Erik: Birdies auf 18/.test(txt) || /Erik: .*Birdie/.test(txt), `each debt says its bet (${txt.slice(0, 160)})`);
-ok(/Chris bekommt 20 \$ von Sascha und schuldet 20 \$ an Erik – unterm Strich ±0 \$/.test(txt), 'set off: "Chris bekommt 20 $ von Sascha und schuldet 20 $ an Erik – unterm Strich ±0 $"');
+// grouped per person (Sascha 11.11.2026: "under Sascha: Sascha owes Erik 20 and Chris X")
+const block = async (who) => (await way.locator('.settle-debts > li').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).first().innerText()).replace(/\s+/g, ' ');
+const sascha = await block('Sascha');
+ok(/schuldet Erik 20 \$/.test(sascha) && /schuldet Chris 20 \$/.test(sascha) && /bekommt 20 \$ von Chris/.test(sascha) && /mit Chris verrechnet: unterm Strich ±0/.test(sascha) && /zahlt 20 \$/.test(sascha), `Sascha's block: owes Erik and Chris, gets from Chris, ±0 with Chris, pays 20 $ (${sascha})`);
+ok(/Erik: .*Birdie/.test(sascha), 'each debt says its bet');
+const chris = await block('Chris');
+ok(/schuldet Erik 20 \$/.test(chris) && /zahlt 20 \$/.test(chris), `Chris's block: owes Erik 20 $ (${chris})`);
 await way.getByRole('button', { name: 'Schließen' }).click();
 
 // "Abrechnung: Einzeln" in the pool's settings
@@ -91,8 +102,8 @@ await edit.getByRole('button', { name: 'Speichern', exact: true }).click();
 await H.waitForTimeout(1500);
 ok(shared.get(code).game.settle === 'single', 'the setting on the server: settle "single"');
 p = await pays();
-ok(p.length === 3 && p.some((x) => /Sascha zahlt an Chris/.test(x)) && p.some((x) => /Sascha zahlt an Erik/.test(x) && /20/.test(x)) && p.some((x) => /Chris zahlt an Erik/.test(x)), `one by one: three payments (${p.join(' | ')})`);
-ok(/3 Zahlungen/.test(await settle.getByRole('button', { name: /Rechenweg/ }).innerText()), '"Rechenweg": 3 Zahlungen');
+ok(p.length === 4 && p.some((x) => /Sascha zahlt an Chris/.test(x)) && p.some((x) => /Chris zahlt an Sascha/.test(x)) && p.some((x) => /Sascha zahlt an Erik/.test(x) && /20/.test(x)) && p.some((x) => /Chris zahlt an Erik/.test(x)), `one by one: four payments, Sascha and Chris both ways (${p.join(' | ')})`);
+ok(/4 Zahlungen/.test(await settle.getByRole('button', { name: /Rechenweg/ }).innerText()), '"Rechenweg": 4 Zahlungen');
 
 // the 5+5+10 net with 75 %, set afterwards by the host
 await H.locator('.pool-wager').filter({ hasText: '5+5+10' }).first().click();
@@ -108,7 +119,7 @@ ok((await H.locator('.pool-wager').filter({ hasText: '5+5+10 netto 75 %' }).coun
 
 // which rounds a bet counts (Sascha 10.11.2026: "from today on – and other ways too; rounds chosen or made"): Erik's bet
 // – "Welche Runden" → "Ausgewählte Runden", a day added – then "Von – bis"
-await H.locator('.pool-wager').filter({ hasText: 'Birdies' }).first().click();
+await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().click();
 await H.locator('.wager-sheet').getByRole('button', { name: /Welche Runden/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Ausgewählte Runden' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: /^Runden/ }).click();
@@ -118,8 +129,8 @@ await H.locator('.wager-sheet').getByRole('button', { name: 'Speichern', exact: 
 await H.waitForTimeout(1500);
 let w1 = shared.get(code).game.wagers.find((w) => w.id === 'w1');
 ok(w1?.picks?.length === 1 && !w1.picks[0].course, `a day added: the bet counts its rounds only (${JSON.stringify(w1?.picks)})`);
-ok((await H.locator('.pool-wager').filter({ hasText: 'Birdies' }).first().innerText()).includes('nur '), 'its line says "nur <Tag>"');
-await H.locator('.pool-wager').filter({ hasText: 'Birdies' }).first().click();
+ok((await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().innerText()).includes('nur '), 'its line says "nur <Tag>"');
+await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().click();
 await H.locator('.wager-sheet').getByRole('button', { name: /Welche Runden/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Von – bis' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: 'Speichern', exact: true }).click();

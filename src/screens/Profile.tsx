@@ -1,4 +1,4 @@
-import { paypalName } from '../lib/wagers';
+import { PAY_DETAILS, paypalName } from '../lib/wagers';
 import { PenGlyph } from '../components/Glyph';
 import { loadFriends } from '../lib/friends';
 import { useEffect, useRef, useState } from 'react';
@@ -220,6 +220,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           </div>
         </div>
         {/* paid by PayPal right from the settlement (Sascha 10.11.2026) – the name behind paypal.me/ */}
+        {PAY_DETAILS && (
         <div className="field">
           <label htmlFor="pf-paypal">{tr('PayPal.me name', 'PayPal.me-Name')}</label>
           <input
@@ -232,6 +233,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             onChange={(e) => set({ paypal: paypalName(e.target.value) })}
           />
         </div>
+        )}
         <div className="field">
           <label>{tr('Home club', 'Heimatclub')}</label>
           {/* searched like when starting a round (Sascha 15.10.2026) */}

@@ -282,9 +282,10 @@ export const markersOf = (f: Pick<Flight, 'players' | 'markers'>): Record<string
   const ids = f.players.map((p) => p.id);
   return saneMarkers(ids, f.markers) ? f.markers : defaultMarkers(ids);
 };
-/** Who signs a player's card as his marker: with a scorer, the scorer – he signs every card, his own too (Sascha
- *  10.11.2026: "one keeps the score of all – then three signatures at the end, not ideal"). */
-export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer ? f.scorer : markersOf(f)?.[pid]);
+/** Who countersigns a player's card: with a scorer, the scorer – the others' cards; his own he signs alone (with a
+ *  scorer there are no markers – 10.11.2026). Each player signs his own card on his own phone (Sascha 11.11.2026: "Erik
+ *  must not sign for all three – Cedric and Stefan get a push, see their card and sign on their own device"). */
+export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer ? (pid !== f.scorer ? f.scorer : undefined) : markersOf(f)?.[pid]);
 
 export function roleOf(f: Flight, player: string, phone: string, team: boolean, marking: boolean): Role {
   if (isSigned(f, player)) return 'view'; // signed by player and marker: nobody changes it any more
@@ -305,8 +306,6 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
 /** Signed by the player and by his marker (a player without a marker: by himself) – locked. */
 export function isSigned(f: Flight, pid: string): boolean {
   const s = f.signed?.[pid];
-  // one scorer for all: his signature is the card's
-  if (f.scorer) return !!s?.marker || (!!s?.player && pid === f.scorer);
   return !!s?.player && (!!s.marker || !markerOf(f, pid));
 }
 /** May the card be signed now: every hole with the own score and the marker's count, none differing. */
@@ -332,19 +331,25 @@ export async function signCard(round: Round, pid: string, as: 'player' | 'marker
   return ok;
 }
 
-/** The scorer signs every card of the flight at once (Sascha 10.11.2026: "three signatures – not ideal"): when all are
- *  complete. False when one is not, or offline. */
-export async function signAllAsScorer(round: Round): Promise<boolean> {
+/** The scorer signs once (Sascha 10.11.2026: "three signatures – not ideal"; 11.11.2026: "but not for all"): his own
+ *  card as its player and every other card as its scorer – the players then sign their own on their phones (a push
+ *  asks them). When all cards are complete; false when one is not, or offline. */
+export async function signAsScorer(round: Round): Promise<boolean> {
   const s = round.shared;
   if (!s) return false;
   const at = new Date().toISOString();
   const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => {
     if (!f?.scorer || f.players.some((p) => !signable(f, p.id, round.holes.length).ok)) return null;
-    return { ...f, signed: Object.fromEntries(f.players.map((p) => [p.id, { ...f.signed?.[p.id], player: f.signed?.[p.id]?.player ?? at, marker: at }])) };
+    const sc = f.scorer;
+    return { ...f, signed: Object.fromEntries(f.players.map((p) => [p.id, p.id === sc ? { ...f.signed?.[p.id], player: f.signed?.[p.id]?.player ?? at } : { ...f.signed?.[p.id], marker: f.signed?.[p.id]?.marker ?? at }])) };
   });
   const f = ev?.flights[s.flight];
-  const ok = !!f && f.players.every((p) => isSigned(f, p.id));
-  if (ok && s.tournament) for (const p of f!.players) if (p.id !== f!.scorer) pushSigned(s.code, s.flight, p.id, 'marker');
+  const ok = !!f && !!f.scorer && !!f.signed?.[f.scorer]?.player && f.players.every((p) => p.id === f.scorer || !!f.signed?.[p.id]?.marker);
+  if (ok && s.tournament)
+    for (const p of f!.players) {
+      if (p.id !== f!.scorer) pushSigned(s.code, s.flight, p.id, 'marker');
+      else if (markerOf(f!, p.id)) pushSigned(s.code, s.flight, p.id, 'player');
+    }
   return ok;
 }
 

@@ -442,6 +442,9 @@ export interface Payment {
   how?: PayHow;
 }
 export type PayHow = 'paypal' | 'cash' | 'transfer';
+/** PayPal and how a payment came – off for now (Sascha 11.11.2026: "PayPal we do not need for now, nor the details:
+ *  paid and received is enough; how it was paid does not matter – maybe later"). The data stays. */
+export const PAY_DETAILS = false;
 /** A PayPal.me name as typed: the link's last part, only its letters and digits. */
 export const paypalName = (s: string): string => s.trim().replace(/^.*paypal\.me\//i, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
 /** The link to pay one by PayPal: his name, the amount and the currency (paypal.me/SaschaM/40USD). */
@@ -465,8 +468,9 @@ export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'pr
   const p = prizeOf(pool);
   if (isNone(p)) return [];
   const who = whoOf(p);
-  // one by one: each two their own debts (Sascha 10.11.2026)
-  if (who === 'each' && pool.settle === 'single' && debts) return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round(d.amount * 100) / 100 }));
+  // between each two only (Sascha 11.11.2026: "±0 only when Chris gets 20 from Sascha and Sascha 20 from Chris" – nothing
+  // passed on past a third): set off or one by one, as settleDebts made them
+  if (who === 'each' && debts) return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round(d.amount * 100) / 100 }));
   if (who === 'each') return transfers(bal);
   const ids = pool.players.map((x) => x.id);
   const v = (id: string) => Math.round((bal[id] ?? 0) * 100) / 100;
@@ -483,10 +487,11 @@ export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'pr
 export function openPoolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize' | 'payments' | 'settle'>, bal: Record<string, number>, debts?: Debt[]): { from: string; to: string; amount: number }[] {
   const p = prizeOf(pool);
   if (isNone(p)) return [];
-  if (whoOf(p) === 'each' && pool.settle === 'single' && debts) {
-    // each pair's debt less what went between them (either way)
+  if (whoOf(p) === 'each' && debts) {
+    // each debt less what went its way – set off, also less what came back the other way
     const paid = (a: string, b: string) => (pool.payments ?? []).filter((x) => x.from === a && x.to === b).reduce((s, x) => s + x.amount, 0);
-    return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round((d.amount - paid(d.from, d.to) + paid(d.to, d.from)) * 100) / 100 })).filter((t) => t.amount > 0.004);
+    const back = pool.settle === 'single' ? () => 0 : paid;
+    return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round((d.amount - paid(d.from, d.to) + back(d.to, d.from)) * 100) / 100 })).filter((t) => t.amount > 0.004);
   }
   if (whoOf(p) === 'each') return transfers(afterPayments(bal, pool.payments));
   return poolTransfers(pool, bal)
@@ -1020,7 +1025,14 @@ export function duelLiveText(d: DuelDay): string {
 /** A bet's standing: a duel challenged from the cards (nothing while it waits for its answer), else as reported. */
 export function progressOf(pool: WagerPool, w: Wager): Progress | undefined {
   if (fromCards(w)) return duelWaits(w) ? undefined : judgeDuelCards(w, pool);
-  return pool.progress[w.id];
+  return countedOnly(pool, w, pool.progress[w.id]);
+}
+/** A bet's rounds as they count now (Sascha 11.11.2026: "Celebration is in the total though I left it out of these
+ *  bets"): a round reported before the bet's rounds were narrowed – by another phone, or an older app – left out. */
+export function countedOnly(pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w: Wager, p: Progress | undefined): Progress | undefined {
+  if (!p?.perRound?.length) return p;
+  const keep = p.perRound.filter((r) => inPool({ day: r.day, course: r.course }, pool, w));
+  return keep.length === p.perRound.length ? p : { ...p, perRound: keep };
 }
 /** The pool as shown: each duel's standing from the cards – judged the same on every phone –, a duel not accepted (yet)
  *  not among its bets (it waits under the challenges). */
@@ -1160,7 +1172,7 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
     }
     // each round on its own (Sascha 09.11.2026): made – the stake from each (or from the opponent) per round; missed –
     // paid per round only when the bet is "both ways" or against one
-    const t = tally(w, pool.progress[w.id], !withProvisional);
+    const t = tally(w, progressOf(pool, w), !withProvisional);
     if (t) {
       const times = t.made - (w.payout === 'success' ? 0 : t.missed);
       if (!times || !(w.stake > 0)) continue;
@@ -1201,6 +1213,22 @@ export function pairDebts(owed: Owed[]): Debt[] {
     .filter((x) => Math.abs(x.v) >= 0.005)
     .map((x) => (x.v > 0 ? { from: x.a, to: x.b, amount: x.v, why: x.why } : { from: x.b, to: x.a, amount: -x.v, why: x.why }));
 }
+
+/** The debts one by one: each way between two its own sum, nothing set off (a debt each way). */
+export function dirDebts(owed: Owed[]): Debt[] {
+  const by = new Map<string, Debt>();
+  for (const o of owed) {
+    const k = `${o.from}|${o.to}`;
+    const x = by.get(k) ?? { from: o.from, to: o.to, amount: 0, why: [] };
+    x.amount += o.amount;
+    x.why.push(o);
+    by.set(k, x);
+  }
+  return [...by.values()].filter((x) => x.amount >= 0.005);
+}
+/** The debts the pool pays (Sascha 11.11.2026): "Verrechnet" – between each two, set off against each other; "Einzeln" –
+ *  each way on its own. Never passed on past a third. */
+export const settleDebts = (pool: Pick<WagerPool, 'settle'>, owed: Owed[]): Debt[] => (pool.settle === 'single' ? dirDebts(owed) : pairDebts(owed));
 
 /** The stakes when what is played for changes between money and not money (audit 09.11.2026: 20 $ became "20 ×
  *  Getränk"): 20 in money, 1 of a thing or a point; a 5+5+10's parts 5/5/10 or 1/1/2 – a part set to none stays none. */
@@ -1330,10 +1358,15 @@ export function roundLabel(x: PoolRound): string {
 const ddmm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 /** The days a bet of every round counts on, in words: "ab 10.11.", "bis 15.11.", "10.11.–15.11.", "an 3 Tagen: 10.11.,
  *  12.11., 13.11." – null: every round of the pool. */
-export function whichDays(w: Pick<Wager, 'from' | 'until' | 'picks'>): string | null {
+export function whichDays(w: Pick<Wager, 'from' | 'until' | 'picks'>, total?: number): string | null {
   if (w.picks?.length) {
-    const ds = [...w.picks].sort((a, b) => a.day.localeCompare(b.day)).map((p) => (p.course ? `${ddmm(p.day)} ${p.course}` : ddmm(p.day))).join(', ');
-    return w.picks.length === 1 ? tr(`only ${ds}`, `nur ${ds}`) : tr(`${w.picks.length} rounds: ${ds}`, `${w.picks.length} Runden: ${ds}`);
+    const n = w.picks.length;
+    if (n === 1) {
+      const p = w.picks[0];
+      return tr(`only ${ddmm(p.day)}${p.course ? ` ${p.course}` : ''}`, `nur ${ddmm(p.day)}${p.course ? ` ${p.course}` : ''}`);
+    }
+    // the count, not every round in words (Sascha 11.11.2026: "the rounds' details are not needed – 6 of 7 rounds")
+    return total && total >= n ? tr(`${n} of ${total} rounds`, `${n} von ${total} Runden`) : tr(`${n} rounds`, `${n} Runden`);
   }
   if (w.from && w.until) return `${ddmm(w.from)}–${ddmm(w.until)}`;
   if (w.from) return tr(`from ${ddmm(w.from)}`, `ab ${ddmm(w.from)}`);
@@ -1341,8 +1374,23 @@ export function whichDays(w: Pick<Wager, 'from' | 'until' | 'picks'>): string | 
   return null;
 }
 
-/** How it is counted and paid, in a line. */
-export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency' | 'prize'> & { rounds?: PoolRound[] }): string {
+/** The rounds a bet can be set to count (the list of "Ausgewählte Runden"): the trip's, the extra ones (the tournaments,
+ *  those chosen) and those played – in the pool's days, each day and course once. */
+export function roundChoices(pool: Pick<WagerPool, 'from' | 'to' | 'progress'> & { rounds?: PoolRound[] }, extra: BetRound[] = []): BetRound[] {
+  const key = (x: BetRound) => `${x.day}|${(x.course ?? '').trim().toLowerCase()}`;
+  const seen = new Map<string, BetRound>();
+  const add = (x: BetRound) => {
+    if (x.day < pool.from || x.day > pool.to) return;
+    if (!seen.has(key(x))) seen.set(key(x), x);
+  };
+  for (const r of pool.rounds ?? []) add({ day: r.day, ...(r.course ? { course: r.course } : {}), ...(r.courseId ? { courseId: r.courseId } : {}) });
+  for (const x of extra) add(x);
+  for (const p of Object.values(pool.progress)) for (const r of p.perRound ?? []) add({ day: r.day, course: r.course });
+  return [...seen.values()].sort((a, b) => a.day.localeCompare(b.day) || (a.course ?? '').localeCompare(b.course ?? ''));
+}
+
+/** How it is counted and paid, in a line; `choices`: how many rounds there are to choose ("6 von 9 Runden"). */
+export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency' | 'prize'> & { rounds?: PoolRound[] }, choices?: number): string {
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const sym = prizeSym(prizeOf(pool));
   const one = w.attempts === 'round' ? pool.rounds?.find((x) => x.id === w.round) : undefined;
@@ -1366,7 +1414,7 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency
   if (one) bits.push(tr(`only ${roundLabel(one)}`, `nur ${roundLabel(one)}`));
   if (w.attempts === 'day' && w.day) bits.push(tr(`only on ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`, `nur am ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`));
   if (w.attempts === 'any') {
-    const text = whichDays(w);
+    const text = whichDays(w, choices);
     if (text) bits.push(text);
   }
   if ((w.kind === 'parRun' || w.kind === 'pars') && w.orBetter === false) bits.push(tr('exactly par', 'genau Par'));

@@ -322,8 +322,17 @@ export function tourResultNote(o: { name: string; code: string; rows: ResultRow[
 
 /** 3 · a card of the tournament: the player signed – his marker is asked to countersign; the marker signed – the
  *  player hears his card is in. */
-export const signNote = (as: 'player' | 'marker', who: string, lang?: string | null): Note =>
-  as === 'player'
+export const signNote = (as: 'player' | 'marker', who: string, lang?: string | null, waits = false): Note =>
+  // his card confirmed by the scorer, his own signature still missing (Sascha 11.11.2026: "Cedric and Stefan get a push,
+  // see their card and sign on their own device")
+  as === 'marker' && waits
+    ? {
+        title: T(lang, 'Please sign your card', 'Bitte Scorekarte unterschreiben'),
+        body: T(lang, `${who || 'Your scorer'} confirmed your card – check it and sign it.`, `${who || 'Dein Schreiber'} hat deine Karte bestätigt – prüfe sie und unterschreibe.`),
+        tag: 'golfos-sign-own',
+        url: './#sign',
+      }
+    : as === 'player'
     ? {
         title: T(lang, 'Please countersign', 'Bitte gegenzeichnen'),
         body: T(lang, `${who || 'Your player'} signed his card – check it and countersign as his marker.`, `${who || 'Dein Spieler'} hat seine Karte signiert – prüfe sie und zeichne als Zähler gegen.`),
@@ -1067,7 +1076,7 @@ export async function handle(req: Request): Promise<Response> {
       let n = 0;
       for (const s of await subsOf(uids)) {
         if (s.kinds?.rounds === false || (await wasSent(s.user_id, key))) continue;
-        if (await send(s, signNote(as, who, s.lang), 12 * 3600, 'high')) n++;
+        if (await send(s, signNote(as, who, s.lang, as === 'marker' && !s0.player), 12 * 3600, 'high')) n++;
       }
       if (uids.length) await d.insertIgnore('golfos_push_sent', uids.map((u) => ({ user_id: u, key })));
       return json({ ok: true, sent: n });

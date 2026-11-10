@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, inPool, whichDays, perRoundOf, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, inPool, countedOnly, tally, settleDebts, owings, whichDays, perRoundOf, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -523,7 +523,10 @@ describe('which rounds a bet counts (Sascha 10.11.2026: "the score in 6 rounds f
     expect(whichDays({ from: '2026-11-10' })).toBe('ab 10.11.');
     expect(whichDays({ until: '2026-11-15' })).toBe('bis 15.11.');
     expect(whichDays({ from: '2026-11-10', until: '2026-11-15' })).toBe('10.11.–15.11.');
-    expect(whichDays({ picks: [{ day: '2026-11-13' }, { day: '2026-11-10', course: 'Cypress' }] })).toBe('2 Runden: 10.11. Cypress, 13.11.');
+    // the count, not the rounds in words (Sascha 11.11.2026: "6 of 7 rounds")
+    expect(whichDays({ picks: [{ day: '2026-11-13' }, { day: '2026-11-10', course: 'Cypress' }] })).toBe('2 Runden');
+    expect(whichDays({ picks: [{ day: '2026-11-13' }, { day: '2026-11-10', course: 'Cypress' }] }, 7)).toBe('2 von 7 Runden');
+    expect(whichDays({ picks: [{ day: '2026-11-10', course: 'Cypress' }] }, 7)).toBe('nur 10.11. Cypress');
     expect(whichDays({})).toBeNull();
   });
 });
@@ -538,5 +541,42 @@ describe('the greens of a round without putts (Sascha 10.11.2026: the scorer ent
   it('with putts: counted as ever', () => {
     const r = round(par(0), { putts: PARS.map(() => 2) });
     expect(perRoundOf(bet({ kind: 'greens', target: 13 }), [r])[0].value).toBe(18);
+  });
+});
+
+describe('a round left out of a bet (Sascha 11.11.2026: "Celebration is in the total though I left it out")', () => {
+  const w = { id: 'w', player: 'c', kind: 'birdies', target: 1, stake: 20, payout: 'success', attempts: 'any', picks: [{ day: '2026-11-10', course: 'Cypress' }] } as Wager;
+  const pool = { from: '2026-11-05', to: '2026-11-18' };
+  const p = { best: 2, done: false, rounds: 2, perRound: [{ day: '2026-11-07', course: 'Celebration Golf Club', value: 2 }, { day: '2026-11-10', course: 'Cypress', value: 0 }] } as never;
+  it('counts only the rounds the bet counts – reported before it was narrowed or not', () => {
+    expect(countedOnly(pool, w, p)?.perRound?.map((r) => r.course)).toEqual(['Cypress']);
+    expect(tally(w, countedOnly(pool, w, p))).toEqual({ made: 0, missed: 1, played: 1 });
+    expect(tally(w, p)).toEqual({ made: 1, missed: 1, played: 2 });
+  });
+});
+
+describe('set off only between the same two (Sascha 11.11.2026)', () => {
+  const players = [{ id: 's', name: 'Sascha' }, { id: 'c', name: 'Chris' }, { id: 'e', name: 'Erik' }];
+  const at = '2026-11-10T10:00:00Z';
+  const done = { best: 1, done: true, rounds: 1, at, manual: { done: true, by: 'Sascha' } };
+  const pool = {
+    kind: 'wager-pool', id: 'p', name: 'P', from: '2026-11-05', to: '2026-11-18', createdAt: at, currency: 'USD', players,
+    wagers: [
+      { id: 'w1', player: 'e', kind: 'birdies', target: 1, stake: 20, payout: 'success', attempts: 'any' },
+      { id: 'w2', player: 'c', kind: 'pars', target: 9, stake: 20, payout: 'opponent', opponent: 's', attempts: 'any' },
+    ],
+    progress: { w1: done, w2: done },
+  } as unknown as WagerPool;
+  it('nothing passed on past a third: Sascha pays Chris and Erik, Chris pays Erik', () => {
+    const t = poolTransfers(pool, balances(pool, '2026-11-11', true), settleDebts(pool, owings(pool, '2026-11-11', true))).map((x) => `${x.from}${x.to}${x.amount}`).sort();
+    expect(t).toEqual(['ce20', 'sc20', 'se20']);
+  });
+  it('a debt each way between two: set off ±0 – one by one both paid', () => {
+    const both = { ...pool, wagers: [...pool.wagers, { id: 'w3', player: 's', kind: 'birdies', target: 3, stake: 20, payout: 'opponent', opponent: 'c', attempts: 'any' }], progress: { ...pool.progress, w3: done } } as WagerPool;
+    const owed = owings(both, '2026-11-11', true);
+    const bal = balances(both, '2026-11-11', true);
+    expect(poolTransfers(both, bal, settleDebts(both, owed)).map((x) => `${x.from}${x.to}`).sort()).toEqual(['ce', 'se']);
+    const single = { ...both, settle: 'single' } as WagerPool;
+    expect(poolTransfers(single, bal, settleDebts(single, owed)).map((x) => `${x.from}${x.to}`).sort()).toEqual(['cs', 'ce', 'sc', 'se'].sort());
   });
 });
