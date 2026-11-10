@@ -613,10 +613,19 @@ if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screensho
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(800);
 ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
-// a tile's filter keeps the categories (Sascha 03.11.2026: "after a tile the overview did not come back")
+// no list of the courses under it (Sascha 12.11.2026): "Serie · 10.11.–11.11."
+{
+  const sub = (await H.locator('.tour-series-row .muted.small.one-line').first().innerText()).trim();
+  ok(/^Serie · \d\d\.\d\d\.–\d\d\.\d\d\.$/.test(sub), `the series' line: kind and days only (${sub})`);
+}
+// a tile lists its rounds one by one – the series' too (Sascha 12.11.2026: "geplant should list the rounds left, it shows only the series")
 await H.locator('.tile').filter({ hasText: 'geplant' }).click();
 await H.waitForTimeout(300);
-ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.tour-cat-head').filter({ hasText: /Turnierserien/i }).count()) === 1, 'tile "geplant": the series still shown, in its category');
+{
+  const rows = (await H.locator('.tour-cat .list-item').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-tile-planned.png' });
+  ok((await H.locator('.tour-series-row').count()) === 0 && rows.length >= 2 && rows.some((t) => /USA Tag 2/.test(t)), `tile "geplant": its rounds one by one, no series row (${rows.join(' | ').slice(0, 160)})`);
+}
 await H.locator('.tile').filter({ hasText: 'geplant' }).click();
 await H.waitForTimeout(300);
 ok((await H.locator('.tour-series-row').count()) === 1, 'tile "geplant" again: the whole overview');
