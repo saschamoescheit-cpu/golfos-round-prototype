@@ -318,3 +318,59 @@ export function ToggleRow(props: { label: string; text?: string; on: boolean; on
   );
   return props.inList ? row : <ToggleList>{row}</ToggleList>;
 }
+
+/** One of a few views to switch – the total and each round (Sascha 10.11.2026: "Gesamt and every round as a tab gets
+ *  unclear – one solution everywhere"): the one shown in the middle, the arrows step to the one before and after, a tap
+ *  on it lists them all. */
+export interface StepChoice<T> extends Choice<T> {
+  /** over – a tick beside it (a round played) */
+  done?: boolean;
+}
+export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; value: T; onChange: (v: T) => void }) {
+  const [open, setOpen] = useState(false);
+  const k = Math.max(0, props.options.findIndex((o) => o.value === props.value));
+  const cur = props.options[k];
+  if (!cur) return null;
+  const tick = (
+    <svg className="step-pick-tick" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={tr('played', 'gespielt')}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+  const arrow = (d: string) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+  return (
+    <div className="step-pick" role="group" aria-label={props.label}>
+      <button type="button" className="icon-btn" aria-label={tr('Previous', 'Vorherige')} disabled={k === 0} onClick={() => props.onChange(props.options[k - 1].value)}>
+        {arrow('M15 5l-7 7 7 7')}
+      </button>
+      <button type="button" className="step-pick-now" aria-haspopup="dialog" aria-label={`${props.label}: ${cur.name}`} onClick={() => setOpen(true)}>
+        <strong>
+          {cur.done && tick}
+          {cur.name}
+        </strong>
+        <span className="muted small">
+          {cur.text ? `${cur.text} · ` : ''}
+          {tr(`${k + 1} of ${props.options.length}`, `${k + 1} von ${props.options.length}`)}
+        </span>
+      </button>
+      <button type="button" className="icon-btn" aria-label={tr('Next', 'Nächste')} disabled={k === props.options.length - 1} onClick={() => props.onChange(props.options[k + 1].value)}>
+        {arrow('M9 5l7 7-7 7')}
+      </button>
+      {open && (
+        <PickSheet
+          title={props.label}
+          options={props.options.map((o) => ({ value: o.value, name: o.done ? `✓ ${o.name}` : o.name, ...(o.text ? { text: o.text } : {}) }))}
+          current={props.value}
+          onPick={(v) => {
+            props.onChange(v);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

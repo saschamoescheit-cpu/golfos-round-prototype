@@ -10,7 +10,7 @@
   background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; min-height: 150px;
 }
 .tr-cat strong { font: 600 17px var(--display); }
-.tr-cat .muted { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tr-cat .muted { overflow-wrap: break-word; hyphens: auto; }
 .tr-count { margin-top: auto; color: var(--brand-text); font-weight: 600; }
 .tr-cat-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tr-cat-icon.small { width: 38px; height: 38px; border-radius: 10px; }
@@ -20,7 +20,7 @@
 
 .tr-advice { display: flex; flex-direction: column; gap: 8px; }
 /* advice rows: plain list rows like Rounds (the green frame means "in play") */
-.tr-two-lines { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.tr-two-lines { white-space: normal; overflow-wrap: break-word; hyphens: auto; }
 
 .tr-hscroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
 .tr-hscroll > * { scroll-snap-align: start; flex: 0 0 auto; }
@@ -129,7 +129,7 @@
 .tr-now-head { display: flex; gap: 12px; align-items: center; }
 .tr-now-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tr-now-name { font: 700 21px/1.2 var(--display); }
-.tr-bar-name span:first-child { font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52vw; }
+.tr-bar-name span:first-child { font-weight: 700; color: var(--text); max-width: 52vw; overflow-wrap: break-word; hyphens: auto; }
 .tr-session .drawer-row[aria-current='true'] { background: var(--brand-soft); }
 .tr-session .drawer-row > span:first-child { flex: 1; padding-right: 8px; }
 

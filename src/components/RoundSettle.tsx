@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { goPool } from '../lib/nav';
 import { tr } from '../lib/i18n';
 import { dayOf, roundLedger, withDuels, type WagerPool } from '../lib/wagers';
 import { loadPools, type PoolEntry } from '../lib/wagerstore';
@@ -66,7 +67,9 @@ export function RoundSettleCards() {
         const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(Math.abs(v), sym)}`;
         return (
           <section key={`${e.code}|${day}`} className="card round-settle" aria-label={tr('Round settled', 'Runde abgerechnet')}>
-            <span className="eyebrow">{`${e.pool.name} · ${tr('round', 'Runde')} ${day.slice(8, 10)}.${day.slice(5, 7)}.`}</span>
+            <button type="button" className="eyebrow link-eyebrow" aria-label={tr(`Open ${e.pool.name}`, `${e.pool.name} öffnen`)} onClick={() => goPool(e.code)}>
+              {`${e.pool.name} · ${tr('round', 'Runde')} ${day.slice(8, 10)}.${day.slice(5, 7)}.`} ›
+            </button>
             <div className="round-settle-rows">
               {rows.map((p) => (
                 <span key={p.id} className="round-settle-row">

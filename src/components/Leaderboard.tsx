@@ -40,7 +40,7 @@ export function LeaderboardCard(props: { round: Round }) {
 /** The pools of bets of a round's day with bets in them – the "Wetten" tab of its leaderboard. */
 const poolsOfDay = (day: string): PoolEntry[] => duelPoolsOn(day).filter((e) => e.pool.wagers.length > 0);
 
-export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
+export function LeaderboardSheet(props: { round: Round; onClose: () => void; /** opened on this tab – the 5+5+10 bar tapped: the bets (Sascha 10.11.2026) */ tab?: 'board' | 'bets' }) {
   // the bets of the day beside the leaderboard (Sascha 10.11.2026: "a side bet – in the live leaderboard on the round the
   // overview of the bets too"): a tab "Wetten" when a pool of the day has bets
   const day = dayOf(props.round.createdAt);
@@ -52,7 +52,7 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
     window.addEventListener('golfos:sidegames-changed', on);
     return () => window.removeEventListener('golfos:sidegames-changed', on);
   }, [props.round.id]);
-  const [tab, setTab] = useState<'board' | 'bets'>('board');
+  const [tab, setTab] = useState<'board' | 'bets'>(props.tab ?? 'board');
   const anyBets = pools.length > 0 || sides.length > 0;
   useEffect(() => {
     if (tab !== 'bets') return;

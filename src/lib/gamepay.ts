@@ -1,6 +1,6 @@
 import { tr } from './i18n';
 import { formDef, standingOf, transfers, type Game } from './gameforms';
-import { balances, openPoolTransfers, poolTransfers, type Payment, type WagerPool } from './wagers';
+import { balances, openPoolTransfers, owings, pairDebts, poolTransfers, type Payment, type WagerPool } from './wagers';
 import { isNone, prizeOf, prizeSym, whoOf, type Prize } from './prize';
 
 // The balance against each player, and what is paid (Sascha 03.11.2026: "in the balance the details – which games, how
@@ -128,8 +128,9 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
     if (pool.deletedAt) continue;
     const prize = prizeOf(pool);
     const bal = balances(pool, today, true);
-    const all = poolTransfers(pool, bal);
-    const open = openPoolTransfers(pool, bal);
+    const debts = pairDebts(owings(pool, today, true));
+    const all = poolTransfers(pool, bal, debts);
+    const open = openPoolTransfers(pool, bal, debts);
     for (const o of pool.players.filter((x) => x.id !== e.me)) {
       const between = (ts: { from: string; to: string; amount: number }[]) => ts.reduce((s, t) => s + (t.from === o.id && t.to === e.me ? t.amount : t.from === e.me && t.to === o.id ? -t.amount : 0), 0);
       const pays = (pool.payments ?? []).filter((x) => (x.from === e.me && x.to === o.id) || (x.from === o.id && x.to === e.me));

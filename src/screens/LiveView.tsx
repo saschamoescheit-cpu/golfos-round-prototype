@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { StepPick } from '../components/Settings';
 import { tr } from '../lib/i18n';
 import { fetchLive, type LiveView } from '../lib/live';
 import { setMoneySym } from '../lib/gameforms';
@@ -251,14 +252,14 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
     const row = eventStandings(e).rows.find((r) => r.name.trim().toLowerCase() === name.trim().toLowerCase());
     return row ? eventCard(e, row.key) : null;
   };
+  // the rounds as one switch – as the bets' standing (Sascha 10.11.2026: "one solution everywhere instead of tabs")
   const roundChips = (
-    <div className="chip-set live-round-chips" role="group" aria-label={tr('Round', 'Runde')}>
-      {series.rounds.map((r, i) => (
-        <button key={r.code} type="button" className={`chip${i === k ? ' on' : ''}`} aria-pressed={i === k} onClick={() => setPick(i)}>
-          {tr(`R${i + 1}`, `R${i + 1}`)} · {dm(r.date)}
-        </button>
-      ))}
-    </div>
+    <StepPick<number>
+      label={tr('Round', 'Runde')}
+      value={k}
+      onChange={setPick}
+      options={series.rounds.map((r, i) => ({ value: i, name: `${tr(`Round ${i + 1}`, `Runde ${i + 1}`)} · ${dm(r.date)}`, ...(r.name ? { text: r.name } : {}), done: !!evs[i] && roundDone(evs[i]!) }))}
+    />
   );
   const ev = evs[k];
   return (

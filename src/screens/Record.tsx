@@ -116,7 +116,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
 
           <BestsCard rounds={finished} onOpen={props.onOpenRound} />
           <TrendCard rounds={finished.slice(0, 20)} />
-          <PlayedHcpStats rounds={finished} />
+          <PlayedHcpStats rounds={finished} onOpen={props.onOpenRound} />
         </>
       )}
     </>

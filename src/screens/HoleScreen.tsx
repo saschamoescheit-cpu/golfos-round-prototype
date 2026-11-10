@@ -663,6 +663,7 @@ export function HoleScreen(props: {
     }
   };
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
+  const [boardTab, setBoardTab] = useState<'board' | 'bets'>('board'); // its tab to open on
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
   const [sideBetOpen, setSideBetOpen] = useState(false); // 5+5+10 as a side bet (Sascha 10.11.2026)
@@ -1962,7 +1963,7 @@ export function HoleScreen(props: {
             }}
           />
         )}
-        {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
+        {boardOpen && <LeaderboardSheet round={round} tab={boardTab} onClose={() => { setBoardOpen(false); setBoardTab('board'); }} />}
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
         {sideBetOpen && (
           <SideBetSheet
@@ -2059,7 +2060,7 @@ export function HoleScreen(props: {
           {detectedBanner}
           {offlineHint}
           {/* today's 5+5+10 duels, live – also against a player in another flight (Sascha 09.11.2026) */}
-          {!greenFocus && !round.preview && <DuelBar />}
+          {!greenFocus && !round.preview && <DuelBar onOpen={() => { setBoardTab('bets'); setBoardOpen(true); }} />}
           {props.game && !greenFocus && (
             <button type="button" className={`game-bar${props.game.teams ? ' with-teams' : ''}`} onClick={props.game.onOpen} aria-label={tr(`${props.game.name} – standing and input`, `${props.game.name} – Stand und Eingabe`)}>
               <span className="game-bar-head">

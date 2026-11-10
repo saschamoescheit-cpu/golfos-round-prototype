@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { goTour } from '../lib/nav';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
@@ -230,10 +231,15 @@ export function PlayTab(props: {
               const f = flightOfName(ev, shownName(loadProfile()));
               return (
                 <li key={code}>
-                  <strong>{ev.name}</strong>
-                  <span className="muted small">
-                    {[dayText(ev.date!), ev.course.name, f ? tr(`your flight${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight${f.teeTime ? ` ${f.teeTime}` : ''}`) : null].filter(Boolean).join(' · ')}
-                  </span>
+                  <button type="button" className="planned-tour-open" aria-label={tr(`Open ${ev.name}`, `${ev.name} öffnen`)} onClick={() => goTour(code)}>
+                    <span className="grow">
+                      <strong>{ev.name}</strong>
+                      <span className="muted small">
+                        {[dayText(ev.date!), ev.course.name, f ? tr(`your flight${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight${f.teeTime ? ` ${f.teeTime}` : ''}`) : null].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span className="muted" aria-hidden="true">›</span>
+                  </button>
                 </li>
               );
             })}

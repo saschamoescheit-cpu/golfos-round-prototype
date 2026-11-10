@@ -44,8 +44,8 @@ export function duelLine(x: Pick<Live, 'p' | 'sym'>, today = dayOf(new Date())):
   return duelLiveText(d);
 }
 
-/** The bar on the hole – nothing without a duel today. */
-export function DuelBar() {
+/** The bar on the hole – nothing without a duel today; tapped, the bets of the round (Sascha 10.11.2026: click paths). */
+export function DuelBar(props: { onOpen?: () => void }) {
   const [pools, setPools] = useState(loadPools);
   useEffect(() => {
     const on = () => setPools(loadPools());
@@ -65,10 +65,11 @@ export function DuelBar() {
   if (!live.length) return null;
   return (
     <div className="game-bar duel-bar" role="status" aria-label={tr('5+5+10 today', '5+5+10 heute')}>
-      <span className="game-bar-head">
+      <button type="button" className="game-bar-head duel-bar-open" disabled={!props.onOpen} aria-label={tr('5+5+10 – the bets of the round', '5+5+10 – die Wetten der Runde')} onClick={props.onOpen}>
         <strong>5+5+10</strong>
         <span className="grow">{live.map((x) => `${tr('vs', 'gg.')} ${x.vs} ${duelLine(x)}`).join(' · ')}</span>
-      </span>
+        {props.onOpen && <span aria-hidden="true">›</span>}
+      </button>
     </div>
   );
 }

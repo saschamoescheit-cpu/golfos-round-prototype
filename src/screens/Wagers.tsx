@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { goTour } from '../lib/nav';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { loadCachedCourse, newId } from '../lib/storage';
@@ -8,14 +9,14 @@ import { loadProfile, shownName } from '../lib/profile';
 import { joinGame, joinLink } from '../lib/sharedgame';
 import { loadSession } from '../lib/sync';
 import { money } from '../lib/gameforms';
-import { isMoney, isNone, prizeOf, prizeStakes, prizeSym, type Prize } from '../lib/prize';
+import { isMoney, isNone, prizeOf, prizeStakes, prizeSym, whoOf, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, flipDuel, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, flipDuel, owings, pairDebts, poolTransfers, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -25,7 +26,7 @@ import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
 import { Avatar } from '../components/Avatar';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
@@ -271,6 +272,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   const [prize, setPrize] = useState<Prize | null>(null);
   // "Jeder seinen eigenen" by default (Sascha 02.11.2026: "the switch off by default")
   const [poolEntry, setPoolEntry] = useState<ScoreEntry>('own');
+  const [settle, setSettle] = useState<'net' | 'single'>('net');
   const counted = poolEntry !== 'own';
   const [rounds, setRounds] = useState<PoolRound[]>([]);
   const [busy, setBusy] = useState(false);
@@ -329,6 +331,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
           <PrizeRow value={prize} onChange={setPrize} />
+          {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
         </SettingsList>
       </section>
       {msg && (
@@ -349,7 +352,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
             .map((p) => ({ ...p, name: p.name.trim() }))
             .filter((p, k) => k === 0 || p.name)
             .map((p, k) => ({ id: p.id, name: p.name, ...(p.hcp.trim() ? { hcp: p.hcp.trim() } : {}), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
-          const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(poolEntry === 'one' ? { oneScorer: true } : {}), ...(rounds.length ? { rounds } : {}) };
+          const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(poolEntry === 'one' ? { oneScorer: true } : {}), ...(settle === 'single' ? { settle } : {}), ...(rounds.length ? { rounds } : {}) };
           const e = await createPool(pool, players[0].id);
           setBusy(false);
           if (e) props.onCreated(e.code);
@@ -748,8 +751,8 @@ export function PersonMark(props: { state: PersonState; size?: number }) {
 /** A pool player's state: the host, on his phone, invited, not invited. */
 const personOf = (p: PoolPlayer, owner?: string): PersonState => (owner && p.joined?.uid === owner ? 'host' : p.joined ? 'in' : p.invited ? 'sent' : 'out');
 
-function StateBadge(props: { state: WagerState; provisional?: boolean; /** each round on its own: in how many it was made */ times?: number }) {
-  if (props.state === 'done') return <span className="badge ok">{props.times && props.times > 1 ? tr(`Made ${props.times}×`, `${props.times}× geschafft`) : tr('Made', 'Geschafft')}</span>;
+function StateBadge(props: { state: WagerState; provisional?: boolean; /** each round on its own: in how many it was made – said always, 1× too (Sascha 10.11.2026) */ times?: number }) {
+  if (props.state === 'done') return <span className="badge ok">{props.times ? tr(`Made ${props.times}×`, `${props.times}× geschafft`) : tr('Made', 'Geschafft')}</span>;
   if (props.state === 'missed') return <span className="badge bad">{tr('Missed', 'Verloren')}</span>;
   // made in a round not signed yet (Sascha 02.11.2026: "a result even when the marker has not signed")
   if (props.provisional) return <span className="badge warn">{tr('Made · provisional', 'Geschafft · vorläufig')}</span>;
@@ -842,8 +845,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
     return !!r;
   };
   const bal = balances(pool, today, true);
+  // each two's debts, their bets set off – the way the settlement is worked out, and "Einzeln" pays them as they are
+  const debts = pairDebts(owings(pool, today, true));
   // what is still to give, once the payments are off – counted per bet, or the loser for all / for the winner
-  const pays = openPoolTransfers(pool, bal);
+  const pays = openPoolTransfers(pool, bal, debts);
   // the payments (Sascha 03.11.2026): the payer says he paid, the receiver that he got it
   const pay = (fn: (ps: Payment[]) => Payment[]) => void change((p) => ({ ...p, payments: fn(p.payments ?? []) }));
   const now = () => new Date().toISOString();
@@ -963,7 +968,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           </section>
         );
       })}
-      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} settled={settled} pending={pending} me={entry.me} name={name}>
+      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} debts={debts} settled={settled} pending={pending} me={entry.me} name={name}>
         {!isNone(prizeOf(pool)) && <PaidMarks
           open={pays}
           payments={pool.payments ?? []}
@@ -1020,7 +1025,14 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           round – the bets run over all rounds of the series"): it is played in Rounds and counts for the bets anyway */}
       {entry.me && !pool.finishedAt && tourToday && !poolRoundOf(props.code) && props.onTour ? (
         <>
-          <span className="muted small pool-tour-hint">{tr(`Today: ${tourToday.ev.name} – it counts for the bets.`, `Heute: ${tourToday.ev.name} – zählt für die Wetten.`)}</span>
+          <span className="muted small pool-tour-hint">
+            {tr('Today: ', 'Heute: ')}
+            {/* the tournament's page (Sascha 10.11.2026: click paths) */}
+            <button type="button" className="link-text" onClick={() => goTour(tourToday.code)}>
+              {tourToday.ev.name}
+            </button>
+            {tr(' – it counts for the bets.', ' – zählt für die Wetten.')}
+          </span>
           <button type="button" className="btn-primary" onClick={props.onTour}>
             {tr('To the tournament', 'Zum Turnier')}
           </button>
@@ -1094,7 +1106,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               // what is played for changed between money and not money (audit 09.11.2026: 20 $ became "20 × Getränk"): the
               // stakes start again – 20 in money, 1 of a thing or a point; the 5+5+10's parts alike (5/5/10 or 1/1/2)
               const restaked = restake(wagers, isMoney(prizeOf(p)), isMoney(x.prize));
-              return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
+              return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, settle: x.settle, players };
             });
             if (ok) {
               setSheet(null);
@@ -1319,21 +1331,15 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       </div>
       {/* the total, then each round – as the series' rounds (Sascha 08.11.2026) */}
       {rows.length > 0 && roundsShown.length > 0 && (
-        <div className="chip-set bet-rounds" role="group" aria-label={tr('Rounds', 'Runden')}>
-          <button type="button" className={`chip${!one ? ' on' : ''}`} aria-pressed={!one} onClick={() => setShown(null)}>
-            {tr('Total', 'Gesamt')}
-          </button>
-          {roundsShown.map((r) => (
-            <button key={r.key} type="button" className={`chip${one?.key === r.key ? ' on' : ''}`} aria-pressed={one?.key === r.key} onClick={() => setShown(r.key)}>
-              {played.has(r.key) && (
-                <svg className="chip-tick" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={tr('played', 'gespielt')}>
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-              )}
-              {`${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`}
-            </button>
-          ))}
-        </div>
+        <StepPick<string>
+          label={tr('Rounds', 'Runden')}
+          value={one?.key ?? ''}
+          onChange={(v) => setShown(v || null)}
+          options={[
+            { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden') },
+            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, done: played.has(r.key), text: played.has(r.key) ? tr('played', 'gespielt') : tr('not played yet', 'noch nicht gespielt') })),
+          ]}
+        />
       )}
       {rows.length > 0 && (
         <div className="matrix-wrap">
@@ -1387,7 +1393,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
 
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
-function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; debts: Debt[]; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
   const { pool, bal } = props;
   const sym = prizeSym(prizeOf(pool));
   const n = pool.wagers.length;
@@ -1438,9 +1444,103 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           );
         })}
       </ul>
+      {/* how "Wer zahlt wem" comes about (Sascha 10.11.2026: "the app may set off – the way must be shown and traceable") */}
+      {props.debts.length > 0 && setsOff(prizeOf(pool)) && (
+        <SettingsList>
+          <SheetRow label={tr('How it is worked out', 'Rechenweg')} value={wayText(pool, bal, props.debts)}>
+            <SettleWay pool={pool} debts={props.debts} name={props.name} sym={sym} />
+          </SheetRow>
+        </SettingsList>
+      )}
       {/* "Wer zahlt wem" with what was paid – PaidMarks */}
       {props.children}
     </section>
+  );
+}
+
+/** Does the pool settle in money owed between players – "Abrechnung" and "Rechenweg" mean something (not a meal the
+ *  loser pays, not for the honour). */
+const setsOff = (p: Prize | null): boolean => !p || (!isNone(p) && whoOf(p) === 'each');
+
+/** "4 Schulden → 2 Zahlungen" – or, one by one, "4 Zahlungen". */
+function wayText(pool: WagerPool, bal: Record<string, number>, debts: Debt[]): string {
+  const pay = (n: number) => tr(`${n} ${n === 1 ? 'payment' : 'payments'}`, `${n} ${n === 1 ? 'Zahlung' : 'Zahlungen'}`);
+  if (pool.settle === 'single') return pay(debts.length);
+  return `${tr(`${debts.length} ${debts.length === 1 ? 'debt' : 'debts'}`, `${debts.length} ${debts.length === 1 ? 'Schuld' : 'Schulden'}`)} → ${pay(poolTransfers(pool, bal, debts).length)}`;
+}
+
+/** "Abrechnung" of the pool (Sascha 10.11.2026: "set off – or settled one by one; as the other settings"). */
+function SettleRow(props: { value: 'net' | 'single'; onChange: (v: 'net' | 'single') => void }) {
+  return (
+    <ChoiceRow<'net' | 'single'>
+      label={tr('Settlement', 'Abrechnung')}
+      value={props.value}
+      onChange={props.onChange}
+      options={[
+        { value: 'net', name: tr('Set off', 'Verrechnet'), text: tr('The debts set off against each other – as few payments as possible; the way it is worked out is shown.', 'Die Schulden gegeneinander verrechnet – so wenig Zahlungen wie möglich; der Rechenweg wird gezeigt.') },
+        { value: 'single', name: tr('One by one', 'Einzeln'), text: tr('Everyone pays straight to whom he owes – more payments, each on its own.', 'Jeder zahlt direkt an den, dem er etwas schuldet – mehr Zahlungen, jede für sich.') },
+      ]}
+    />
+  );
+}
+
+/** The way the settlement is worked out: who owes whom for which bets – and, set off, what goes past whom. */
+function SettleWay(props: { pool: WagerPool; debts: Debt[]; name: (id?: string) => string; sym: string }) {
+  const { pool, debts, name, sym } = props;
+  const m = (v: number) => money(Math.round(v * 100) / 100, sym);
+  // a bet in words: whose it is, unless it is a duel between these two
+  const why = (o: Debt['why'][number]) => (shapeOf(o.w.kind) === 'duel' ? wagerLabel(o.w) : `${name(o.w.player)}: ${wagerLabel(o.w)}`);
+  // a player who gets from one and owes another: set off, the money goes past him
+  const through = pool.players
+    .map((p) => {
+      const ins = debts.filter((d) => d.to === p.id);
+      const outs = debts.filter((d) => d.from === p.id);
+      return { p, ins, outs, net: ins.reduce((s, d) => s + d.amount, 0) - outs.reduce((s, d) => s + d.amount, 0) };
+    })
+    .filter((x) => x.ins.length && x.outs.length);
+  const signed = (v: number) => (v > 0.004 ? `+${m(v)}` : v < -0.004 ? `−${m(-v)}` : `±${m(0)}`);
+  return (
+    <div className="settle-way">
+      <span className="eyebrow">{tr('Who owes whom', 'Wer wem was schuldet')}</span>
+      <ul className="settle-debts">
+        {debts.map((d) => (
+          <li key={`${d.from}|${d.to}`}>
+            <span className="grow">
+              <strong>{tr(`${name(d.from)} owes ${name(d.to)}`, `${name(d.from)} schuldet ${name(d.to)}`)}</strong>
+              {d.why.map((o, k) => (
+                <span key={k} className="muted small settle-why">
+                  {why(o)} · {o.from === d.from ? m(o.amount) : `−${m(o.amount)}`}
+                </span>
+              ))}
+            </span>
+            <strong>{m(d.amount)}</strong>
+          </li>
+        ))}
+      </ul>
+      {pool.settle === 'single' ? (
+        <span className="muted small">{tr('One by one: each of these debts is a payment of its own – what was paid already is off.', 'Einzeln: Jede dieser Schulden ist eine eigene Zahlung – bereits Bezahltes ist abgezogen.')}</span>
+      ) : (
+        <>
+          {through.length > 0 && (
+            <>
+              <span className="eyebrow">{tr('Set off', 'Verrechnet')}</span>
+              <ul className="settle-through">
+                {through.map((x) => {
+                  const from = x.ins.map((d) => `${m(d.amount)} ${tr('from', 'von')} ${name(d.from)}`).join(', ');
+                  const to = x.outs.map((d) => `${m(d.amount)} ${tr('to', 'an')} ${name(d.to)}`).join(', ');
+                  return (
+                    <li key={x.p.id} className="small">
+                      {tr(`${x.p.name} gets ${from} and owes ${to} – all in all ${signed(x.net)}: the money goes straight on.`, `${x.p.name} bekommt ${from} und schuldet ${to} – unterm Strich ${signed(x.net)}: das Geld geht direkt weiter.`)}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+          <span className="muted small">{tr('"Who pays whom": everyone pays or gets only what is left for him, with as few payments as possible – what was paid already is off.', '„Wer zahlt wem“: Jeder zahlt oder bekommt nur seinen Saldo, mit so wenig Zahlungen wie möglich – bereits Bezahltes ist abgezogen.')}</span>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1636,6 +1736,16 @@ function DuelFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wag
             { value: 'net', label: tr('Net', 'Netto'), text: tr('Strokes on the hardest holes', 'Vorgabeschläge an den schwersten Löchern') },
           ]}
         />
+        {/* the share of the handicap, changed afterwards too (Sascha 10.11.2026: Chris's 5+5+10 was set gross – it was
+            played net with 75 %) – every phone judges it anew from the cards */}
+        {w.net && (
+          <Pick<number>
+            label={tr('Handicap share', 'Vorgabe')}
+            value={w.allowance ?? 100}
+            onChange={(v) => set({ allowance: v })}
+            options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, label: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
+          />
+        )}
       </SettingsList>
       <DuelStakes parts={p} sym={prizeSym(prizeOf(pool))} onChange={(parts) => set({ parts })} />
     </>
@@ -2167,7 +2277,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
 /** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
  *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
 
-function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean }) => void; onDelete: () => void; onClose: () => void }) {
+function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean; settle: 'net' | 'single' }) => void; onDelete: () => void; onClose: () => void }) {
   const { pool } = props;
   const [name, setName] = useState(pool.name);
   const [from, setFrom] = useState(pool.from);
@@ -2176,6 +2286,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
   const [prize, setPrize] = useState<Prize>(prizeOf(pool));
   const [rounds, setRounds] = useState<PoolRound[]>(pool.rounds ?? []);
   const [poolEntry, setPoolEntry] = useState<ScoreEntry>(entryOf({ counted: poolCounted(pool), oneScorer: pool.oneScorer }));
+  const [settle, setSettle] = useState<'net' | 'single'>(pool.settle ?? 'net');
   const counted = poolEntry !== 'own';
   const [del, setDel] = useState(false);
   // a player taken out – one who joined or has bets after asking: his bets go with him
@@ -2241,9 +2352,10 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
             <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
             <SettingsList>
               <PrizeRow value={prize} onChange={setPrize} />
+              {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
             </SettingsList>
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
             </button>
           </>

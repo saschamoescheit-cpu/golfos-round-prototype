@@ -314,7 +314,7 @@ ok((await G.locator('.topbar h1').innerText()).includes('USA 2026'), 'Chris: in 
 ok((await G.locator('.pool-made').count()) === 0 && (await G.getByRole('button', { name: 'OK', exact: true }).count()) === 0, 'Chris: no "made it" box to dismiss');
 const gChris = G.locator('.pool-player').filter({ has: G.locator('h2', { hasText: /^Chris$/ }) });
 const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen ' }).locator('.badge').allInnerTexts(); // the 5+5+10 rows show money
-ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
+ok(badges.filter((x) => /^(1× g|G)eschafft$/.test(x)).length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
 ok((await gChris.innerText()).includes('der Zähler hat 1 Loch anders gezählt – seine Zahlen zählen'), "Chris: Erik counted hole 4 with 2 putts – the bets count the marker's figures and say so");
 // each round on its own (Sascha 09.11.2026): "in 0 von 1 Runden geschafft · Bestwert −2"
 ok(/in 0 von \d Runden? geschafft · Bestwert −2/.test(await gChris.innerText()), 'Chris: the score bet shows his rounds and the best −2 (target −5)');
@@ -347,7 +347,7 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-t
 await H.locator('.list-item').filter({ hasText: 'USA 2026' }).click();
 await H.waitForTimeout(2000);
 const hChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
-ok((await hChris.locator('.badge').allInnerTexts()).filter((x) => x === 'Geschafft').length === 4, "Sascha sees Chris's 4 bets made");
+ok((await hChris.locator('.badge').allInnerTexts()).filter((x) => /^(1× g|G)eschafft$/.test(x)).length === 4, "Sascha sees Chris's 4 bets made");
 await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).click();
 await choose('Entschieden', 'Geschafft');
 await H.waitForTimeout(1200);

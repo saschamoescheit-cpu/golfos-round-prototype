@@ -78,7 +78,7 @@ export function PlayedHcpCard(props: { round: Round; onChange: (r: Round) => voi
 }
 
 /** Stats: the handicap played in the last rounds and the index they add up to by the WHS table. */
-export function PlayedHcpStats(props: { rounds: Round[] }) {
+export function PlayedHcpStats(props: { rounds: Round[]; /** a round tapped: its scorecard (Sascha 10.11.2026: click paths) */ onOpen?: (r: Round) => void }) {
   const played = props.rounds.flatMap((r) => {
     const p = playedHandicap(r);
     return p ? [{ r, p }] : [];
@@ -92,7 +92,14 @@ export function PlayedHcpStats(props: { rounds: Round[] }) {
       <div className="played-hcp">
         <span className="num">{fmt(played[0].p.differential)}</span>
         <span className="muted small">
-          {tr('last round', 'letzte Runde')} · {played[0].r.courseName}
+          {tr('last round', 'letzte Runde')} ·{' '}
+          {props.onOpen ? (
+            <button type="button" className="link-text" onClick={() => props.onOpen!(played[0].r)}>
+              {played[0].r.courseName}
+            </button>
+          ) : (
+            played[0].r.courseName
+          )}
         </span>
       </div>
       {idx ? (
@@ -117,7 +124,15 @@ export function PlayedHcpStats(props: { rounds: Round[] }) {
             {played.slice(0, 5).map(({ r, p }) => (
               <tr key={r.id}>
                 <td className="muted">{date(r)}</td>
-                <td>{r.courseName}</td>
+                <td>
+                  {props.onOpen ? (
+                    <button type="button" className="link-text" onClick={() => props.onOpen!(r)}>
+                      {r.courseName}
+                    </button>
+                  ) : (
+                    r.courseName
+                  )}
+                </td>
                 <td style={{ textAlign: 'right' }}>
                   <strong>{fmt(p.differential)}</strong>
                 </td>

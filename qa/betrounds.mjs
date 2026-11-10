@@ -94,11 +94,18 @@ const erik = await cellText('Birdies in Folge', 'Erik');
 ok(/^2 0(\/0)?$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
 
 // the rounds: "Gesamt" and yesterday's round
-const chips = await stand.getByRole('group', { name: 'Runden' }).getByRole('button').allInnerTexts();
+// one switch instead of a row of tabs (Sascha 10.11.2026): "Gesamt" in the middle, the arrow to the next round, a tap on
+// it lists them all
+const sw = stand.getByRole('group', { name: 'Runden' });
 const label = `${yesterday.slice(8, 10)}.${yesterday.slice(5, 7)}.`;
-ok(chips[0] === 'Gesamt' && chips.length === 2 && chips[1].startsWith(label), `the chips: ${chips.join(' | ')}`);
-await stand.getByRole('group', { name: 'Runden' }).getByRole('button').nth(1).click();
+const now = async () => (await sw.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ').trim();
+ok(/^Gesamt .*1 von 2$/.test(await now()) && (await sw.getByRole('button', { name: 'Vorherige' }).isDisabled()), `the switch: ${await now()}`);
+await sw.locator('.step-pick-now').click();
+const listed = await H.getByRole('dialog', { name: 'Runden' }).locator('.pick-option strong').allInnerTexts();
+ok(listed.length === 2 && listed[0] === 'Gesamt' && listed[1].includes(label), `a tap lists them all: ${listed.join(' | ')}`);
+await H.getByRole('dialog', { name: 'Runden' }).locator('.pick-option').nth(1).click();
 await H.waitForTimeout(300);
+ok((await now()).includes(label) && (await sw.getByRole('button', { name: 'Nächste' }).isDisabled()), `yesterday's round chosen: ${await now()}`);
 const inRound = await cellText('Birdies in Folge', 'Chris');
 ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
 {
@@ -107,8 +114,8 @@ ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1
   ok((await sum.count()) === 1 && (await sum.locator('.bet-cell.done').count()) === 0 && /\+18/.test(txt), `the score over 7 rounds in one round: its share +126 / 7 = +18 on top, not green while not played (${txt})`);
 }
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betrounds.png` });
-await stand.getByRole('button', { name: 'Gesamt' }).click();
-ok((await stand.getByRole('button', { name: 'Gesamt' }).getAttribute('aria-pressed')) === 'true', 'back to "Gesamt"');
+await sw.getByRole('button', { name: 'Vorherige' }).click();
+ok(/^Gesamt/.test(await now()), 'the arrow back: "Gesamt"');
 
 // a round of the series today (Sascha 09.11.2026: "'Runde starten' only makes sense for a single round"): the pool's
 // button leads to the tournament in Rounds – "Turnier heute", "Teilnehmen" – instead of a round of its own

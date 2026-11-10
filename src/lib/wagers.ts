@@ -380,6 +380,9 @@ export interface WagerPool {
   oneScorer?: boolean;
   /** what was paid of the settlement (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them") */
   payments?: Payment[];
+  /** "Abrechnung" (Sascha 10.11.2026: "set off – or settled one by one, a setting of the pool"): 'single' – each two
+   *  settle their own debts between them; unset – set off, the fewest payments */
+  settle?: 'net' | 'single';
   /** each player's cards of the pool's days, for the duels (Sascha 09.11.2026: "5+5+10 across flights – the scores from
    *  the own round"): his phone keeps them, the other flight's phone compares */
   cards?: Record<string, DuelCard[]>;
@@ -436,10 +439,12 @@ export function afterPayments(bal: Record<string, number>, payments: Payment[] |
 /** Who gives what to whom in a pool (Sascha 03.11.2026: "does the loser pay the meal for all the others, or only for
  *  the winner?"): counted per bet – the fewest transfers that settle the balances; the loser (last, several when level)
  *  one each to all the others or to the winner; without a stake nothing. */
-export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize'>, bal: Record<string, number>): { from: string; to: string; amount: number }[] {
+export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize' | 'settle'>, bal: Record<string, number>, debts?: Debt[]): { from: string; to: string; amount: number }[] {
   const p = prizeOf(pool);
   if (isNone(p)) return [];
   const who = whoOf(p);
+  // one by one: each two their own debts (Sascha 10.11.2026)
+  if (who === 'each' && pool.settle === 'single' && debts) return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round(d.amount * 100) / 100 }));
   if (who === 'each') return transfers(bal);
   const ids = pool.players.map((x) => x.id);
   const v = (id: string) => Math.round((bal[id] ?? 0) * 100) / 100;
@@ -453,9 +458,14 @@ export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'pr
 
 /** What is still to give after the payments: counted per bet as ever (the balances once paid); the loser's ones each
  *  less what he gave that one. */
-export function openPoolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize' | 'payments'>, bal: Record<string, number>): { from: string; to: string; amount: number }[] {
+export function openPoolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize' | 'payments' | 'settle'>, bal: Record<string, number>, debts?: Debt[]): { from: string; to: string; amount: number }[] {
   const p = prizeOf(pool);
   if (isNone(p)) return [];
+  if (whoOf(p) === 'each' && pool.settle === 'single' && debts) {
+    // each pair's debt less what went between them (either way)
+    const paid = (a: string, b: string) => (pool.payments ?? []).filter((x) => x.from === a && x.to === b).reduce((s, x) => s + x.amount, 0);
+    return debts.map((d) => ({ from: d.from, to: d.to, amount: Math.round((d.amount - paid(d.from, d.to) + paid(d.to, d.from)) * 100) / 100 })).filter((t) => t.amount > 0.004);
+  }
   if (whoOf(p) === 'each') return transfers(afterPayments(bal, pool.payments));
   return poolTransfers(pool, bal)
     .map((t) => ({ ...t, amount: t.amount - (pool.payments ?? []).filter((x) => x.from === t.from && x.to === t.to).reduce((s, x) => s + x.amount, 0) }))
@@ -1077,14 +1087,37 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
     if (line) line.amount += amount;
     else list.push({ w, amount, provisional: prov });
   };
+  for (const o of owings(pool, today, withProvisional)) {
+    add(o.to, o.w, o.amount, o.provisional);
+    add(o.from, o.w, -o.amount, o.provisional);
+  }
+  return out;
+}
+
+/** One debt of a bet: who owes whom how much (always > 0). */
+export interface Owed {
+  w: Wager;
+  from: string;
+  to: string;
+  amount: number;
+  provisional: boolean;
+}
+
+/** Every debt the bets decided, each from the one who pays to the one who gets it – the ledger and the way the
+ *  settlement is worked out are made of them (Sascha 10.11.2026: "the app may set off – the way it calculated must
+ *  still be shown and traceable"). */
+export function owings(pool: WagerPool, today?: string, withProvisional = false): Owed[] {
+  const out: Owed[] = [];
+  // the player gets v from o (v < 0: he pays o)
+  const add = (player: string, o: string, w: Wager, v: number, prov: boolean) => {
+    if (!v) return;
+    out.push(v > 0 ? { w, from: o, to: player, amount: v, provisional: prov } : { w, from: player, to: o, amount: -v, provisional: prov });
+  };
   for (const w of pool.wagers) {
     if (shapeOf(w.kind) === 'duel') {
       // "5+5+10": what the rounds played so far settled, between the two
       const v = progressOf(pool, w)?.amount ?? 0;
-      if (w.opponent && w.opponent !== w.player && v) {
-        add(w.player, w, v, false);
-        add(w.opponent, w, -v, false);
-      }
+      if (w.opponent && w.opponent !== w.player && v) add(w.player, w.opponent, w, v, false);
       continue;
     }
     // each round on its own (Sascha 09.11.2026): made – the stake from each (or from the opponent) per round; missed –
@@ -1094,10 +1127,7 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
       const times = t.made - (w.payout === 'success' ? 0 : t.missed);
       if (!times || !(w.stake > 0)) continue;
       const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
-      for (const o of against) {
-        add(w.player, w, times * w.stake, false);
-        add(o, w, -times * w.stake, false);
-      }
+      for (const o of against) add(w.player, o, w, times * w.stake, false);
       continue;
     }
     const prov = withProvisional && provisional(w, pool.progress[w.id]);
@@ -1106,12 +1136,32 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
     const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
     if (st === 'missed' && w.payout === 'success') continue;
     const sign = st === 'done' ? 1 : -1;
-    for (const o of others) {
-      add(w.player, w, sign * w.stake, prov);
-      add(o, w, -sign * w.stake, prov);
-    }
+    for (const o of others) add(w.player, o, w, sign * w.stake, prov);
   }
   return out;
+}
+
+/** A debt between two players, their bets against each other set off – and the bets it is made of. */
+export interface Debt {
+  from: string;
+  to: string;
+  amount: number;
+  why: Owed[];
+}
+/** The debts between each two players, set off against each other: who owes whom, how much, and for which bets. */
+export function pairDebts(owed: Owed[]): Debt[] {
+  const by = new Map<string, { a: string; b: string; v: number; why: Owed[] }>(); // v > 0: a owes b
+  for (const o of owed) {
+    const [a, b] = o.from < o.to ? [o.from, o.to] : [o.to, o.from];
+    const k = `${a}|${b}`;
+    const x = by.get(k) ?? { a, b, v: 0, why: [] };
+    x.v += o.from === a ? o.amount : -o.amount;
+    x.why.push(o);
+    by.set(k, x);
+  }
+  return [...by.values()]
+    .filter((x) => Math.abs(x.v) >= 0.005)
+    .map((x) => (x.v > 0 ? { from: x.a, to: x.b, amount: x.v, why: x.why } : { from: x.b, to: x.a, amount: -x.v, why: x.why }));
 }
 
 /** The stakes when what is played for changes between money and not money (audit 09.11.2026: 20 $ became "20 ×
@@ -1219,7 +1269,7 @@ export function wagerLabel(w: Wager): string {
       return `${fmtPar(n)} ${w.net ? tr('net', 'netto') : tr('gross', 'brutto')} ${tr(`in ${w.rounds ?? 6} rounds`, `in ${w.rounds ?? 6} Runden`)}`;
     case 'nassau': {
       const p = w.parts ?? { front: 0, back: 0, total: 0 };
-      return `${p.front}+${p.back}+${p.total} ${w.net ? tr('net', 'netto') : tr('gross', 'brutto')}`;
+      return `${p.front}+${p.back}+${p.total} ${w.net ? tr('net', 'netto') + (w.allowance != null && w.allowance !== 100 ? ` ${w.allowance} %` : '') : tr('gross', 'brutto')}`;
     }
     case 'custom':
       return customLabel(w);

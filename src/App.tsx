@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { NAV_EVENT, type NavTarget } from './lib/nav';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt, finishRound } from './lib/scoring';
@@ -348,6 +349,36 @@ export function App() {
     };
   }, []);
 
+  // a pool of bets or a tournament named anywhere, tapped (Sascha 10.11.2026: click paths across the app) – as a push
+  const openPool = (code: string) => {
+    try {
+      sessionStorage.setItem('golfos.openPool', code);
+    } catch {
+      /* Games opens on its start page */
+    }
+    setGamesTab(undefined);
+    setModule('games');
+    window.dispatchEvent(new CustomEvent('golfos:open-pool', { detail: code }));
+  };
+  const openTour = (code: string) => {
+    try {
+      sessionStorage.setItem('golfos.openTour', code);
+    } catch {
+      /* Tournaments opens on its list */
+    }
+    setToursTab('tours');
+    setModule('tournaments');
+    window.dispatchEvent(new Event('golfos:open-tour'));
+  };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const t = (e as CustomEvent<NavTarget>).detail;
+      if (t?.pool) openPool(t.pool);
+      else if (t?.tour) openTour(t.tour);
+    };
+    window.addEventListener(NAV_EVENT, on);
+    return () => window.removeEventListener(NAV_EVENT, on);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // a tapped push notification (final list, Sascha 23.10.2026): the round to check, the rounds to sign, or Games
   useEffect(() => {
     const go = () => {
@@ -355,14 +386,7 @@ export function App() {
       if (!t) return;
       // a bet made in a pool (Sascha 01.11.2026): Games opens that pool
       if (t.pool) {
-        try {
-          sessionStorage.setItem('golfos.openPool', t.pool);
-        } catch {
-          /* Games opens on its start page */
-        }
-        setGamesTab(undefined);
-        setModule('games');
-        window.dispatchEvent(new CustomEvent('golfos:open-pool', { detail: t.pool }));
+        openPool(t.pool);
         return;
       }
       if (t.games) {
@@ -372,14 +396,7 @@ export function App() {
       }
       // a tournament changed, its result, a special prize (07.11.2026): Tournaments opens it
       if (t.tour) {
-        try {
-          sessionStorage.setItem('golfos.openTour', t.tour);
-        } catch {
-          /* Tournaments opens on its list */
-        }
-        setToursTab('tours');
-        setModule('tournaments');
-        window.dispatchEvent(new Event('golfos:open-tour'));
+        openTour(t.tour);
         return;
       }
       // a training day of the physio's routine (Agility, 1.11.2026): its drills tab with the plan on top

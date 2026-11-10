@@ -221,6 +221,15 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   // paid by him, not confirmed by me yet – and paid by me, not confirmed by him
   const toConfirm = ps.flatMap((p) => p.items.flatMap((i) => waiting(i).filter((x) => x.from === i.him).map((x) => ({ p, i, x }))));
   const person = ps.find((p) => p.key === open) ?? null;
+  // a game or pool of the sheet tapped: there – the sheet closes (Sascha 10.11.2026: click paths everywhere)
+  const openItem = (x: Item): (() => void) | undefined => {
+    const g = x.kind === 'game' ? done.find((y) => y.id === x.ref) : undefined;
+    const to = x.kind === 'game' ? (g && props.onOpenGame ? () => props.onOpenGame!(g) : undefined) : props.onOpenPool ? () => props.onOpenPool!(x.ref) : undefined;
+    return to && (() => {
+      setOpen(null);
+      to();
+    });
+  };
   const settleAll = async (p: Person, as: 'paid' | 'received') => {
     setBusy(true);
     for (const i of p.items.filter((x) => (as === 'paid' ? x.open < -0.004 : x.open > 0.004 || waiting(x).some((w) => w.from === x.him)))) await settle(i, as, p.name);
@@ -369,7 +378,15 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                   <span className="grow">
                     {tr(`${p.name} marked ${money(x.amount, i.sym)} paid`, `${p.name} hat ${money(x.amount, i.sym)} als bezahlt markiert`)}
                     <span className="muted small paid-state">
-                      {i.title} · {tr('got it?', 'erhalten?')}
+                      {/* the game or pool it is for, tapped: there (Sascha 10.11.2026) */}
+                      {openItem(i) ? (
+                        <button type="button" className="link-text" onClick={openItem(i)}>
+                          {i.title}
+                        </button>
+                      ) : (
+                        i.title
+                      )}{' '}
+                      · {tr('got it?', 'erhalten?')}
                     </span>
                   </span>
                   <button type="button" className="chip paid-mark" disabled={busy} onClick={async () => {
@@ -457,7 +474,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       {/* each pool of bets on its own (Sascha 03.11.2026: "two pools, not under one heading") */}
       {!filter && pools.map(poolCard)}
 
-      {person && <PersonSheet p={person} busy={busy} onClose={() => setOpen(null)} onSettle={(as) => void settleAll(person, as)} onUndo={async (i, x) => {
+      {person && <PersonSheet p={person} busy={busy} onClose={() => setOpen(null)} onOpen={openItem} onSettle={(as) => void settleAll(person, as)} onUndo={async (i, x) => {
         setBusy(true);
         await record(i, (ps2) => (i.kind === 'game' ? ps2.map((y) => (y.id === x.id ? { ...y, undoneAt: now() } : y)) : ps2.filter((y) => y.id !== x.id)));
         setBusy(false);
@@ -468,7 +485,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
 }
 
 /** A player tapped: each game and pool between us with what it came to and what is open, the payments, settling. */
-function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onSettle: (as: 'paid' | 'received') => void; onUndo: (i: Item, x: GamePayment) => void; word: (p: Person, as: 'paid' | 'received') => string }) {
+function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /** a game or pool tapped: there (Sascha 10.11.2026) */ onOpen?: (i: Item) => (() => void) | undefined; onSettle: (as: 'paid' | 'received') => void; onUndo: (i: Item, x: GamePayment) => void; word: (p: Person, as: 'paid' | 'received') => string }) {
   const { p } = props;
   const left = sums(p.items, (i) => i.open);
   const iOwe = Object.values(left).some((v) => v < -0.004);
@@ -490,8 +507,12 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
           {p.items.map((i) => {
             const [head, ...rest] = i.title.split(' · ');
             const done = Math.abs(i.open) < 0.005;
+            // a pool or game tapped: straight there (Sascha 10.11.2026: "tapping USA-Wetten should jump there")
+            const go = props.onOpen?.(i);
+            const Row = go ? 'button' : 'div';
             return (
               <li key={`${i.kind}:${i.ref}`}>
+                <Row {...(go ? { type: 'button' as const, onClick: go, 'aria-label': tr(`Open ${head}`, `${head} öffnen`) } : {})} className="balance-item-row">
                 <span className="grow">
                   <strong>{head}</strong>
                   <span className="muted small">{[dm(i.day), ...(rest.length ? rest : [i.kind === 'pool' ? tr('Bets', 'Wetten') : tr('Game', 'Spiel')])].join(' · ')}</span>
@@ -508,6 +529,12 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
                     </span>
                   )}
                 </span>
+                {go && (
+                  <span className="muted" aria-hidden="true">
+                    ›
+                  </span>
+                )}
+                </Row>
               </li>
             );
           })}
@@ -526,7 +553,17 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
                 <li key={x.id}>
                   <span className="grow">
                     <strong>{x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`)}</strong>
-                    <span className="muted small">{[x.paidAt ? dm(x.paidAt.slice(0, 10)) : x.receivedAt ? dm(x.receivedAt.slice(0, 10)) : null, i.title.split(' · ')[0]].filter(Boolean).join(' · ')}</span>
+                    <span className="muted small">
+                      {[x.paidAt ? dm(x.paidAt.slice(0, 10)) : x.receivedAt ? dm(x.receivedAt.slice(0, 10)) : null].filter(Boolean).join('')}
+                      {(x.paidAt || x.receivedAt) && ' · '}
+                      {props.onOpen?.(i) ? (
+                        <button type="button" className="link-text" onClick={props.onOpen(i)}>
+                          {i.title.split(' · ')[0]}
+                        </button>
+                      ) : (
+                        i.title.split(' · ')[0]
+                      )}
+                    </span>
                     {x.receivedAt ? (
                       <span className="small good-text">{x.from === i.me ? tr(`Confirmed by ${p.name}`, `Von ${p.name} bestätigt`) : tr('Received', 'Erhalten')}</span>
                     ) : (
