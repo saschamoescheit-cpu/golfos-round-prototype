@@ -1195,9 +1195,9 @@ export function sumSoFar(w: Wager, p: Progress | undefined): { sum: number; play
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 /** What a round brought, under the target (Sascha 10.11.2026: "a 0 instead of the dash"): a count's 0 is "0"; a score
  *  not played yet stays a dash (its 0 would read as par). */
-export function valueOf(w: Wager, n: number | null): string {
+export function valueOf(w: Wager, n: number | null, unknown = false): string {
   const shape = shapeOf(w.kind);
-  if (n == null) return shape === 'score' || shape === 'sum' ? '–' : '0';
+  if (n == null) return unknown || shape === 'score' || shape === 'sum' ? '–' : '0';
   return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
 }
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
@@ -1303,7 +1303,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     return (
       <span key={w.id} className={`bet-cell ${verdict === 'made' ? 'done' : verdict === 'missed' ? 'miss' : 'open'}`} title={wagerLabel(w)}>
         <strong>{share != null ? parText(share) : targetOf(w)}</strong>
-        <small className="bet-made">{valueOf(w, r?.value ?? null)}</small>
+        <small className="bet-made" title={r?.unknown ? tr('not entered (putts missing)', 'nicht erfasst (Putts fehlen)') : undefined}>{valueOf(w, r?.value ?? null, !!r?.unknown)}</small>
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );

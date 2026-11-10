@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, inPool, whichDays, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, inPool, whichDays, perRoundOf, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -71,7 +71,7 @@ describe('the bets judged from the rounds', () => {
     expect(judge(bet({ kind: 'birdies', target: 3 }), pool, [round(s)]).done).toBe(true);
     const putts = PARS.map((_, i) => (i < 11 ? 2 : 1)); // par with 2 putts: green hit; with 1 putt: green missed, chipped close
     expect(judge(bet({ kind: 'greens', target: 11 }), pool, [round(par(), { putts })]).best).toBe(11);
-    expect(judge(bet({ kind: 'greens', target: 11 }), pool, [round(par())]).best).toBe(0); // no putts: unknown
+    expect(judge(bet({ kind: 'greens', target: 11 }), pool, [round(par())]).best).toBeNull(); // no putts: unknown – no figure (10.11.2026)
   });
   it('the score to par: only complete rounds, gross or net, per nine when chosen', () => {
     const s = par();
@@ -525,5 +525,18 @@ describe('which rounds a bet counts (Sascha 10.11.2026: "the score in 6 rounds f
     expect(whichDays({ from: '2026-11-10', until: '2026-11-15' })).toBe('10.11.–15.11.');
     expect(whichDays({ picks: [{ day: '2026-11-13' }, { day: '2026-11-10', course: 'Cypress' }] })).toBe('2 Runden: 10.11. Cypress, 13.11.');
     expect(whichDays({})).toBeNull();
+  });
+});
+
+describe('the greens of a round without putts (Sascha 10.11.2026: the scorer entered the strokes only – greens 0)', () => {
+  it('no putts entered: no figure, "unknown" – not 0, not missed', () => {
+    const r = round(par(0));
+    const [x] = perRoundOf(bet({ kind: 'greens', target: 13 }), [r]);
+    expect(x.value).toBeNull();
+    expect(x.unknown).toBe(true);
+  });
+  it('with putts: counted as ever', () => {
+    const r = round(par(0), { putts: PARS.map(() => 2) });
+    expect(perRoundOf(bet({ kind: 'greens', target: 13 }), [r])[0].value).toBe(18);
   });
 });

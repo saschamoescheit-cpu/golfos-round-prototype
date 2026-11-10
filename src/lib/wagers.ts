@@ -316,6 +316,8 @@ export interface RoundResult {
   counted: boolean;
   /** still being played – a figure that can only grow counts as made already, missed only once it is over */
   open?: boolean;
+  /** played, but what the bet counts was not entered (the putts, for the greens) – shown "–", neither made nor missed */
+  unknown?: boolean;
 }
 
 /** A bet in each round on its own: the round's figure – the best of it when one round shows twice (two phones). */
@@ -324,8 +326,10 @@ export function perRoundOf(w: Wager, inTime: PlayedRound[]): RoundResult[] {
   for (const r of inTime) {
     const value = bestOf(w, [r]).best;
     const counted = !w.counted || r.counted;
+    // played, but what the bet counts not entered (the putts for the greens): "–", not 0
+    const unknown = value == null && needsDetails(w) && r.entries.some((e) => e?.strokes != null);
     const same = out.find((x) => x.day === r.day && x.course === r.course);
-    if (!same) out.push({ day: r.day, course: r.course, value, counted, ...(r.open ? { open: true } : {}) });
+    if (!same) out.push({ day: r.day, course: r.course, value, counted, ...(r.open ? { open: true } : {}), ...(unknown ? { unknown: true } : {}) });
     else {
       if (value != null && (same.value == null || (lower(w) ? value < same.value : value > same.value))) Object.assign(same, { value, counted });
       if (!r.open) delete same.open; // over on one of the phones
@@ -644,12 +648,14 @@ function holeHits(w: Wager, e: HoleEntry | undefined, par: number): boolean | nu
       return s <= par - 2;
     case 'holeInOne':
       return s === 1;
+    // not entered – the putts, the tee shot – is not known, not a miss (Sascha 10.11.2026: the greens of the flight whose
+    // scorer entered only the strokes showed 0)
     case 'greens':
-      return greenInRegulation(e!, par) === true;
+      return greenInRegulation(e!, par);
     case 'fairways':
-      return e!.fairway === 'hit';
+      return e!.fairway == null ? null : e!.fairway === 'hit';
     case 'oneputts':
-      return e!.putts === 1;
+      return e!.putts == null ? null : e!.putts === 1;
     case 'updowns':
       return e!.upAndDown === true;
     default:
@@ -758,10 +764,18 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
       });
     }
   } else if (shape === 'count' && w.scope === 'trip') {
-    const total = rs.reduce((n, r) => n + r.pars.filter((par, i) => holeHits(w, r.entries[i], par)).length, 0);
+    const known = rs.filter((r) => r.pars.some((par, i) => holeHits(w, r.entries[i], par) != null));
+    if (!known.length && rs.length) return { best: null };
+    const total = known.reduce((n, r) => n + r.pars.filter((par, i) => holeHits(w, r.entries[i], par)).length, 0);
     return { best: total };
   } else if (shape === 'count') {
-    for (const r of rs) for (const p of parts(r, holes)) take(p.pars.filter((par, i) => holeHits(w, p.entries[i], par)).length, r);
+    // a part with nothing known (no putts entered): no figure – not 0
+    for (const r of rs)
+      for (const p of parts(r, holes)) {
+        const hits = p.pars.map((par, i) => holeHits(w, p.entries[i], par));
+        if (hits.every((h) => h == null)) continue;
+        take(hits.filter(Boolean).length, r);
+      }
   } else if (shape === 'most') {
     for (const r of rs) {
       if (holes === 18 && r.pars.length < 18) continue;
