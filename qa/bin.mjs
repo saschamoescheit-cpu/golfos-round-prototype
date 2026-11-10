@@ -39,6 +39,8 @@ const pick = async () => {
 // preview: pull up the drawer, end the preview there
 await pick();
 ok(await p.getByRole('button', { name: 'Birdiebook', exact: true }).isVisible(), 'setup: "Birdiebook" and "Platzvorschau"');
+// one bar of icons, not a column of text buttons (DESIGN – night 10./11.11.2026)
+ok((await p.getByRole('group', { name: 'Vor der Runde' }).locator('.sc-action svg').count()) === 3, 'setup: Birdiebook, Platzvorschau, Runde planen as one bar of icons');
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(3000);
 // the preview opens with the map, the caddie closed (Sascha 21.10.2026) – its hole notes one tap away

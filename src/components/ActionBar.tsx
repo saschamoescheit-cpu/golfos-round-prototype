@@ -51,6 +51,22 @@ export const ACTION_ICONS = {
   ),
   // the bin of the scorecard
   delete: svg(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />),
+  // the birdie book: an open book
+  book: svg(<path d="M12 6c-2-1.3-4.7-1.8-8-1.5v13c3.3-.3 6 .2 8 1.5 2-1.3 4.7-1.8 8-1.5v-13c-3.3-.3-6 .2-8 1.5zM12 6v13" />),
+  // the course preview: the eye
+  preview: svg(
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>,
+  ),
+  // planning the round: the flag with its target
+  plan: svg(
+    <>
+      <path d="M6 21V4l10 3.5L6 11" />
+      <circle cx="17" cy="17" r="3" />
+    </>,
+  ),
 };
 
 export interface Action {

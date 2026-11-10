@@ -1,3 +1,4 @@
+import { SaveButton } from '../components/ui';
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { loadProfile, shownName } from '../lib/profile';
@@ -202,9 +203,12 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
           <section className="sheet" role="dialog" aria-label={tr('Opponents', 'Gegner')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{tr('Against whom', 'Gegen wen')}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setWhoOpen(false)}>
-                ✕
-              </button>
+              <span className="sheet-head-acts">
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setWhoOpen(false)} />
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setWhoOpen(false)}>
+                  ✕
+                </button>
+              </span>
             </div>
             {others.length > 0 && <span className="eyebrow">{pool!.name}</span>}
             {others.length > 0 && (
@@ -237,9 +241,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
                 {tr('Add', 'Hinzufügen')}
               </button>
             </div>
-            <button type="button" className="btn-primary" onClick={() => setWhoOpen(false)}>
-              {tr('Done', 'Fertig')}
-            </button>
+
           </section>
         </div>
       )}

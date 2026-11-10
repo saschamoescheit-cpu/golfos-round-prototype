@@ -20,7 +20,7 @@ import { holesFor, specialName, type Special, type SpecialKind } from '../lib/sp
 import { deal, defaultDraw, drawOrder, FLIGHT_SIZES, GAPS, madeCut, teeSlots, type DrawMode, type Results, type TourDraw } from '../lib/tourdraw';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
-import { TopBar } from '../components/ui';
+import { SaveButton, TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, ToggleRow } from '../components/Settings';
 
@@ -935,9 +935,12 @@ function Specials(props: { d: TourDraft; holes: RoundHole[]; onChange: (s: Speci
           <section className="sheet" role="dialog" aria-label={specialName(open)} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{specialName(open)}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(null)}>
-                ✕
-              </button>
+              <span className="sheet-head-acts">
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(null)} />
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(null)}>
+                  ✕
+                </button>
+              </span>
             </div>
             <div className="pick-list">
               {holesFor(open, holes).map((i) => {
@@ -969,9 +972,6 @@ function Specials(props: { d: TourDraft; holes: RoundHole[]; onChange: (s: Speci
                 'Am Turniertag tragen die Spieler am Loch in Rounds ein – Nearest to the Pin den Abstand zur Fahne, Long Drive die Weite vom Abschlag (nur ein Ball im Fairway zählt).',
               )}
             </span>
-            <button type="button" className="btn-primary" onClick={() => setOpen(null)}>
-              {tr('Done', 'Fertig')}
-            </button>
           </section>
         </div>
       )}

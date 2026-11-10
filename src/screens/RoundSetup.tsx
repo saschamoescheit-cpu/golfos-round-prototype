@@ -8,6 +8,7 @@ import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, loadGeometry, newId } from '../lib/storage';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
+import { ActionBar } from '../components/ActionBar';
 import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { inUsa } from '../lib/weather';
 import { dec, tr } from '../lib/i18n';
@@ -594,17 +595,17 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       )}
 
       <span className="spacer" />
-      <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
-        {tr('Birdie book', 'Birdiebook')}
-      </button>
-      <button type="button" className="btn-secondary" onClick={() => begin(true)} disabled={!option}>
-        {tr('Course preview', 'Platzvorschau')}
-      </button>
-      {/* plan the round: targets and clubs per hole, used by the caddie in the live round (Sascha 16.10.2026) */}
-      <button type="button" className="btn-secondary" onClick={() => begin(true, true)} disabled={!option}>
-        {tr('Plan round', 'Runde planen')}
-        {planned > 0 ? <span className="muted small"> · {planned === holes.length ? tr(`all ${planned} holes planned`, `alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span> : null}
-      </button>
+      {/* before the round, one bar of icons (DESIGN: no column of text buttons – night 10./11.11.2026); plan the round:
+          targets and clubs per hole, used by the caddie in the live round (Sascha 16.10.2026) */}
+      <ActionBar
+        label={tr('Before the round', 'Vor der Runde')}
+        actions={[
+          { label: tr('Birdie book', 'Birdiebook'), icon: 'book', disabled: !option, onClick: () => props.onBook(holes, tee, playingHandicap(me)) },
+          { label: tr('Course preview', 'Platzvorschau'), icon: 'preview', disabled: !option, onClick: () => begin(true) },
+          { label: tr('Plan round', 'Runde planen'), icon: 'plan', disabled: !option, onClick: () => begin(true, true) },
+        ]}
+      />
+      {planned > 0 && <span className="muted small">{planned === holes.length ? tr(`All ${planned} holes planned`, `Alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span>}
       <div className="sticky-cta">
         <button type="button" className="btn-primary" onClick={() => begin()} disabled={!option || !fits || starting}>
           {starting ? tr('Starting …', 'Startet …') : tr('Start round', 'Runde starten')}

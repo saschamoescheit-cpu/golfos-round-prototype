@@ -1,3 +1,4 @@
+import { SaveButton } from './ui';
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { ownKey } from '../lib/owndetails';
@@ -18,9 +19,12 @@ export function OwnDetailsRow(props: { names: string[]; value: string[]; onChang
           <section className="sheet" role="dialog" aria-label={tr('Own details', 'Eigene Detailerfassung')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{tr('Own details', 'Eigene Detailerfassung')}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
-                ✕
-              </button>
+              <span className="sheet-head-acts">
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(false)} />
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
+                  ✕
+                </button>
+              </span>
             </div>
             <span className="muted small">
               {tr("Who also enters his own putts, tee shot and sand on his phone – for his own analysis; the scorer's count stays the score.", 'Wer zusätzlich auf seinem Handy Putts, Abschlag und Sand für die eigene Auswertung erfasst – die Zählung des Schreibers bleibt der Score.')}
@@ -36,9 +40,6 @@ export function OwnDetailsRow(props: { names: string[]; value: string[]; onChang
                 />
               ))}
             </ToggleList>
-            <button type="button" className="btn-primary" onClick={() => setOpen(false)}>
-              {tr('Done', 'Fertig')}
-            </button>
           </section>
         </div>
       )}
