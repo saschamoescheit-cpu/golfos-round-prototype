@@ -2399,3 +2399,5 @@ button.balance-item-row { cursor: pointer; }
 .series-player-facts { display: flex; gap: 22px; }
 .series-player-facts > span { display: flex; flex-direction: column; gap: 2px; }
 .series-player-facts strong { font: 700 20px var(--display); font-variant-numeric: tabular-nums; }
+.series-round-tabs { gap: 8px; flex-wrap: wrap; }
+.series-round-tabs .chip { min-height: 40px; padding: 0 14px; font-weight: 700; }

@@ -457,7 +457,7 @@ await H.waitForTimeout(2500);
 // the live leaderboard (Sascha 03.11.2026): its name, "LIVE" while played, each player "nach 3"
 const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
+ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && !/Aktualisiert|30 Sekunden/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
 // "Am Turniertag" one of the most important hints (Sascha 07.11.2026): green as "Tipp für die nächste Runde" – the
 // green card, the heading as a heading, the text bold
@@ -596,7 +596,7 @@ if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screensho
   await tb.locator('.series-lb-row').first().click();
   const sh = H.locator('.series-player-sheet');
   const st = (await sh.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok((await sh.locator('table.sc').count()) >= 1 && /Erik/.test(st) && /Platz/.test(st) && /Gesamt/.test(st) && /Runde 1 · .* · nach 3/.test(st), `the first tapped: Erik's sheet with his card of round 1 (${st.slice(0, 120)})`);
+  ok((await sh.locator('table.sc').count()) >= 1 && /Erik/.test(st) && /Platz/.test(st) && /Gesamt/.test(st) && /Runde 1/.test(await sh.locator('.series-round-tabs .chip.on').innerText()) && /nach 3/.test(st), `the first tapped: Erik's sheet with his card of round 1 (${st.slice(0, 120)})`);
   if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series-player.png' });
   await sh.getByRole('button', { name: 'Schließen' }).click();
   ok((await H.locator('.series-player-sheet').count()) === 0, 'closed');

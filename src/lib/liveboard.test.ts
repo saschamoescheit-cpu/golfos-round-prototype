@@ -43,6 +43,7 @@ describe('the live leaderboard: 30 minutes before the first tee time', () => {
     const ev = plan('2026-11-12', ['13:00']);
     expect(liveNote([ev], null, at('2026-11-12T09:00:00'))).toMatch(/^Live from today, 12:30 – 30 minutes before the first tee time/);
     expect(liveNote([ev], null, at('2026-11-10T09:00:00'))).toMatch(/^Live from .*12.*, 12:30/);
-    expect(liveNote([ev], at('2026-11-12T12:41:00'), at('2026-11-12T12:41:30'))).toBe('Updated 12:41 – every 30 seconds.');
+    // live: no line – the LIVE mark (Sascha 12.11.2026)
+    expect(liveNote([ev], at('2026-11-12T12:41:00'), at('2026-11-12T12:41:30'))).toBeUndefined();
   });
 });

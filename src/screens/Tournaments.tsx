@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { seriesStandings } from '../lib/seriesstandings';
 import { KeyHint } from '../components/KeyHint';
-import { StepPick } from '../components/Settings';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
@@ -654,16 +653,19 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
                 </span>
               )}
             </div>
-            <StepPick<number>
-              label={tr('Round', 'Runde')}
-              value={shown.k}
-              onChange={setPick}
-              options={row.parts.map((p) => ({
-                value: p.k,
-                name: `${tr(`Round ${p.k + 1}`, `Runde ${p.k + 1}`)} · ${p.text}${p.finished ? '' : tr(` · thru ${p.thru}`, ` · nach ${p.thru}`)}`,
-                text: [dm(props.rounds[p.k]?.date ?? ''), props.rounds[p.k]?.name].filter(Boolean).join(' '),
-              }))}
-            />
+            {/* the rounds side by side, the latest first – the one shown in full (Sascha 12.11.2026: "the filter as in the
+                PGA app": "Round 4 | R3 | R2 | R1") */}
+            <div className="chip-set series-round-tabs" role="group" aria-label={tr('Round', 'Runde')}>
+              {[...row.parts].reverse().map((p) => (
+                <button key={p.k} type="button" className={`chip${p.k === shown.k ? ' on' : ''}`} aria-pressed={p.k === shown.k} aria-label={tr(`Round ${p.k + 1}`, `Runde ${p.k + 1}`)} onClick={() => setPick(p.k)}>
+                  {p.k === shown.k ? tr(`Round ${p.k + 1}`, `Runde ${p.k + 1}`) : `R${p.k + 1}`}
+                </button>
+              ))}
+            </div>
+            <span className="muted small">
+              {[dm(props.rounds[shown.k]?.date ?? ''), props.rounds[shown.k]?.name].filter(Boolean).join(' ')} · {shown.text}
+              {shown.finished ? '' : tr(` · thru ${shown.thru}`, ` · nach ${shown.thru}`)}
+            </span>
             {card ? <ScoreTable round={card} /> : <span className="muted small">{tr('No scorecard for this round.', 'Keine Scorekarte zu dieser Runde.')}</span>}
           </section>
         </div>
@@ -691,16 +693,17 @@ export { seriesStandings, type SeriesPart } from '../lib/seriesstandings';
 
 /** The line under a leaderboard: live now – when it was read; else when the next round goes live (30 minutes before its
  *  first tee time); nothing once all is played. */
-export function liveNote(evs: RoundEvent[], at: Date | null, now: Date = new Date()): string | undefined {
-  if (evs.some((e) => boardLive(e, now))) return at ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`) : tr('Live – every 30 seconds.', 'Live – alle 30 Sekunden.');
+export function liveNote(evs: RoundEvent[], _at: Date | null, now: Date = new Date()): string | undefined {
+  // live: the LIVE mark says it – no line "updated … every 30 seconds" (Sascha 12.11.2026: "remove it")
+  if (evs.some((e) => boardLive(e, now))) return undefined;
   const next = evs
     .map((e) => liveFrom(e))
     .filter((d): d is Date => !!d && d.getTime() > now.getTime())
     .sort((a, b) => a.getTime() - b.getTime())[0];
   if (!next) return undefined;
   const day = dayOf(next) === dayOf(now) ? tr('today', 'heute') : longDate(dayOf(next));
-  if (next.getHours() === 0 && next.getMinutes() === 0) return tr(`Live from ${day} – then every 30 seconds.`, `Live ab ${day} – dann alle 30 Sekunden.`);
-  return tr(`Live from ${day}, ${clock(next)} – 30 minutes before the first tee time, then every 30 seconds.`, `Live ab ${day}, ${clock(next)} – 30 Min. vor der ersten Startzeit, dann alle 30 Sekunden.`);
+  if (next.getHours() === 0 && next.getMinutes() === 0) return tr(`Live from ${day}.`, `Live ab ${day}.`);
+  return tr(`Live from ${day}, ${clock(next)} – 30 minutes before the first tee time.`, `Live ab ${day}, ${clock(next)} – 30 Min. vor der ersten Startzeit.`);
 }
 
 /** A series' rounds as this phone has kept them,without the server: a round from its day on its last read copy (with
@@ -1242,9 +1245,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
               ? liveNote([live ?? ev], at)
               : !played
                 ? tr('Live as soon as the first score is in.', 'Live, sobald der erste Score eingetragen ist.')
-                : !done && at
-                  ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`)
-                  : undefined
+                : undefined
           }
         />
       )}
