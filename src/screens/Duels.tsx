@@ -28,6 +28,9 @@ const DUEL_STAKES = [0, 1, 2, 5, 10, 20, 50];
  *  friends, or one made here –, who keeps the score, the stakes, gross or net with its share; "Herausfordern" at the end. */
 export function DuelSetup(props: { onDone: (code: string) => void; /** from a round: its day, its tournament, its players */ preset?: { day?: string; on?: Wager['on']; players?: { name: string; hcp?: string }[] } }) {
   const today = dayOf(new Date());
+  // a round played already, added afterwards (Sascha 11.11.2026: "Chris played 5+5+10 against Moritz, Erik, Cedric and
+  // Stefan – not set up on the phone; he adds it for his statistics"): back to the first day of a running pool of bets
+  const earliest = loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt && e.pool.from < today && e.pool.to >= today).reduce((m, e) => (e.pool.from < m ? e.pool.from : m), today);
   const [day, setDay] = useState(props.preset?.day ?? today);
   const pools = duelPoolsOn(day);
   const [code, setCode] = useState('');
@@ -131,7 +134,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
       <section className="setup-part">
         <span className="eyebrow">{tr('Day', 'Tag')}</span>
         <SettingsList>
-          <DateRow label={tr('Round of', 'Runde am')} value={day} min={today} onChange={(d) => { setDay(d); setOnCode(''); }} />
+          <DateRow label={tr('Round of', 'Runde am')} value={day} min={earliest} onChange={(d) => { setDay(d); setOnCode(''); }} />
           {tours.length > 0 && (
             <ChoiceRow<string>
               label={tr('Round', 'Runde')}
@@ -145,6 +148,11 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             />
           )}
         </SettingsList>
+        {day < today && (
+          <span className="small muted">
+            {tr('Played already – once accepted, the result comes from both scorecards of that day.', 'Schon gespielt – sobald angenommen, kommt das Ergebnis aus euren Scorekarten des Tages.')}
+          </span>
+        )}
       </section>
       {/* Wer – one duel per opponent; across flights, anyone */}
       <section className="setup-part">
