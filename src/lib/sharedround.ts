@@ -1,4 +1,4 @@
-import type { CellDetail, CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
+import type { CellDetail, CourseSummary, HoleEntry, LngLat, Player, Round, RoundHole, SharedCell } from '../types';
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
 import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, teamsOf, type Board } from './games';
@@ -71,6 +71,9 @@ export interface Flight {
   /** a player who gave up (Sascha 12.11.2026: "a player had to stop after 8 holes"): the hole index from which on he
    *  plays no more – his card is complete up to there, Stableford counts his points, stroke play ranks him without */
   retired?: Record<string, number>;
+  /** the holes set up by hand on a phone of the flight – tee → green, "loop#number" (Sascha 12.11.2026, Cypress: "we had
+   *  to set every tee and green by hand" – each of us): the other phones of the event take them */
+  lines?: Record<string, LngLat[]>;
   /** the host entered a player's scores afterwards ("Scores eintragen", when) – they count as a signed card for the
    *  bets (Sascha 08.11.2026: "count fully") */
   entered?: Record<string, string>;
@@ -334,6 +337,22 @@ export async function signCard(round: Round, pid: string, as: 'player' | 'marker
   // signed as the player: his marker is asked to countersign; as the marker: the player hears it is in (07.11.2026)
   if (ok && s.tournament) pushSigned(s.code, s.flight, pid, as);
   return ok;
+}
+
+/** A hole set up by hand (tee → green) told to the flight – the other phones take it (Sascha 12.11.2026: "only one
+ *  has to set it"). False when offline: the phone keeps it anyway. */
+export async function shareLine(round: Round, loop: string, number: number, line: LngLat[]): Promise<boolean> {
+  const s = round.shared;
+  if (!s || line.length < 2) return false;
+  const key = `${loop}#${number}`;
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => (!f || JSON.stringify(f.lines?.[key]) === JSON.stringify(line) ? null : { ...f, lines: { ...(f.lines ?? {}), [key]: line } }));
+  return JSON.stringify(ev?.flights[s.flight]?.lines?.[key]) === JSON.stringify(line);
+}
+/** The holes set up by hand on the event's phones, every flight's – "loop#number" → tee … green; the own flight wins. */
+export function sharedLines(ev: RoundEvent | null | undefined, own?: string): Record<string, LngLat[]> {
+  if (!ev) return {};
+  const fs = Object.values(ev.flights).sort((a, b) => (a.id === own ? 1 : 0) - (b.id === own ? 1 : 0));
+  return Object.assign({}, ...fs.map((f) => f.lines ?? {}));
 }
 
 /** A player gave up from a hole on – or, from null, plays on (Sascha 12.11.2026: "a player had to stop after 8 holes").
