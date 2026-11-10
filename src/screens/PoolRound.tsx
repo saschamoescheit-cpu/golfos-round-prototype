@@ -105,7 +105,14 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
   return (
     <main className="screen">
       <TopBar title={tr('Start the round', 'Runde starten')} onBack={props.onBack} />
-      <span className="muted small">{tr(`For the bets "${pool.name}" – the bets are judged live from this round.`, `Für die Wetten „${pool.name}“ – die Wetten werden live aus dieser Runde ausgewertet.`)}</span>
+      {/* the pool named: a tap leads back to it (night 10./11.11.2026: click paths) */}
+      <span className="muted small">
+        {tr('For the bets ', 'Für die Wetten ')}
+        <button type="button" className="link-text" onClick={props.onBack}>
+          „{pool.name}“
+        </button>
+        {tr(' – the bets are judged live from this round.', ' – die Wetten werden live aus dieser Runde ausgewertet.')}
+      </span>
       <section className="setup-part">
         <span className="eyebrow">{tr('Course', 'Platz')}</span>
         <div className="settings-list">
