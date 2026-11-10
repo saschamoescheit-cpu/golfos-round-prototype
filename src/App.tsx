@@ -50,7 +50,7 @@ type Screen =
   | { name: 'setup'; course: Course; from?: { holes: RoundHole[]; tee: string | null } } // from: the loops and tee chosen before (back from the preview or the birdie book)
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean; justSigned?: boolean }
-  | { name: 'courseStats'; courseName: string }
+  | { name: 'courseStats'; courseName: string; back?: Screen }
   | { name: 'bag'; part: 'bag' | 'caddie'; back?: Screen }
   // the scorecard's way back, kept through the check (Sascha 06.11.2026: "back goes one level back, not to the front")
   | { name: 'review'; round: Round; back?: Screen }
@@ -430,6 +430,10 @@ export function App() {
       onBag={() => (module === 'rounds' ? setScreen({ name: 'bag', part: 'bag' }) : setBagFrom({ part: 'bag' }))}
       onCaddie={() => (module === 'rounds' ? setScreen({ name: 'bag', part: 'caddie' }) : setBagFrom({ part: 'caddie' }))}
       onChanged={() => setRounds(loadRounds())}
+      onFriends={() => {
+        setModule(null);
+        setHomeTab('friends');
+      }}
     />
   );
   // open tasks (Sascha 15.10.2026: the yellow dot also on the start page and in Games): shots to check, carries to take over
@@ -555,15 +559,17 @@ export function App() {
             />
           )}
           {tab !== 'play' && <RoundsTopBar onModules={() => setModule(null)} />}
-          {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
+          {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} onNew={() => setScreen({ name: 'pickCourse' })} />}
           {tab === 'record' && (
             <RecordTab
               rounds={rounds}
               onOpenRound={(round) => setScreen({ name: 'scorecard', round, back: { name: 'tab', tab: 'record' } })}
               onProfile={() => setScreen({ name: 'tab', tab: 'profile', back: { name: 'tab', tab: 'record' } })}
+              onToSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })}
+              onNew={() => setScreen({ name: 'pickCourse' })}
             />
           )}
-          {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} onToSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })} />}
+          {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} onToSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })} onNew={() => setScreen({ name: 'pickCourse' })} />}
           {tab === 'profile' && (screen.back ? <ProfileTab {...profile.props} onBack={() => setScreen(screen.back!)} /> : profile)}
           <TabBar
             tab={tab}
@@ -613,7 +619,7 @@ export function App() {
         <CourseStats
           rounds={rounds}
           courseName={screen.courseName}
-          onBack={() => setScreen({ name: 'tab', tab: 'stats' })}
+          onBack={() => setScreen(screen.back ?? { name: 'tab', tab: 'stats' })}
           onOpen={(round) => setScreen({ name: 'scorecard', round, back: { name: 'courseStats', courseName: screen.courseName } })}
         />
         {subMenu('stats')}
@@ -693,6 +699,7 @@ export function App() {
         <>
         <Scorecard
           round={screen.round}
+          onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName, back: screen })}
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
           justFinished={screen.justFinished}
           finishing={screen.finishing}

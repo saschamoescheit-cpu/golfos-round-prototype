@@ -182,7 +182,7 @@ ok((await G.locator('.map-hole-no').innerText()).includes('2') && (await G.locat
 // Sascha's battery is empty: Ben takes the card over and goes on
 await G.locator('.map-score').click();
 await G.waitForTimeout(300);
-await G.getByRole('button', { name: 'Scorecard übernehmen' }).click();
+await G.getByRole('button', { name: 'Scorekarte übernehmen' }).click();
 await G.waitForTimeout(2500);
 ok((await G.locator('.score-player.kept-elsewhere').count()) === 0 && (await G.locator('.score-player').first().getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'Ben: took the card over – the steppers are his now');
 const plusG = G.locator('.score-player').first().getByRole('button', { name: /Schläge plus eins/ });

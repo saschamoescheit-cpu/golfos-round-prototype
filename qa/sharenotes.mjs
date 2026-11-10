@@ -100,7 +100,7 @@ const plus = async (p, name, n) => {
   const note = G.locator('.share-note');
   await note.waitFor({ timeout: 20000 }).catch(() => {});
   const text = (await note.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok(/Das Handy von Sascha meldet sich seit 12 Min\. nicht – Scorecard übernehmen\?/.test(text), `Cedric's map: "${text}"`);
+  ok(/Das Handy von Sascha meldet sich seit 12 Min\. nicht – Scorekarte übernehmen\?/.test(text), `Cedric's map: "${text}"`);
   if (process.env.SHOTS) await G.screenshot({ path: process.env.SHOTS + '/note-quiet.png' });
   await note.getByRole('button', { name: 'Übernehmen' }).click();
   await G.waitForTimeout(2500);

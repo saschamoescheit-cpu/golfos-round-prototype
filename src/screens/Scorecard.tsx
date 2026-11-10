@@ -1,4 +1,5 @@
 import { Avatar } from '../components/Avatar';
+import { goTour } from '../lib/nav';
 import { loadProfile } from '../lib/profile';
 import { useEffect, useState } from 'react';
 import type { Round } from '../types';
@@ -42,6 +43,8 @@ export function Scorecard(props: {
   finishing?: boolean; // reached past the last hole: save or delete (a look during the round shows only the score)
   justSigned?: boolean; // signed with the last step of the check: the round report on top (Sascha 22.10.2026)
   onOpenTraining?: () => void;
+  /** the course tapped (a finished round): its statistics */
+  onOpenCourse?: (courseName: string) => void;
 }) {
   const { round } = props;
   // on several phones: the players this phone counts as their marker (its entries of them are its counts)
@@ -191,7 +194,13 @@ export function Scorecard(props: {
           name column, where it cut the name off) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
+        {finished && props.onOpenCourse ? (
+          <button type="button" className="link-text" style={{ font: '600 19px var(--display)', textDecoration: 'none' }} aria-label={tr(`${round.courseName} – statistics`, `${round.courseName} – Statistik`)} onClick={() => props.onOpenCourse!(round.courseName)}>
+            {round.courseName} <span className="muted" aria-hidden="true">›</span>
+          </button>
+        ) : (
+          <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
+        )}
         <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
           {round.tee && (
@@ -256,7 +265,7 @@ export function Scorecard(props: {
 
       {/* the board of all phones as last exchanged – own scores ranked, a marker's differing count flagged; a
           tournament all flights (Sascha 29.10.2026: "a scorecard with both players and their scores") */}
-      {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} refresh />}
+      {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} refresh onOpenTour={finished ? () => goTour(round.shared!.code) : undefined} />}
       {round.shared && <SignCard round={round} onHole={setEditHole} onChange={props.onChange} />}
       {round.players.length > 1 && !round.shared && <LeaderboardCard round={round} />}
       {round.shared && marked.length > 0 && (

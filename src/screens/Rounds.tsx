@@ -34,7 +34,7 @@ export const roundsToSign = (rounds: Round[]): Round[] => rounds.filter((r) => !
 /** 'check' is the old name of 'sign' (links from before 18.10.2026). */
 export type RoundsFilter = 'check' | 'sign' | 'paused' | 'played' | 'signed' | 'bin' | null;
 
-export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void; filter?: RoundsFilter }) {
+export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void; filter?: RoundsFilter; /** no round yet: start one */ onNew?: () => void }) {
   // played = every finished round with a result – kept, checked or signed (Sascha 18.10.2026); empty ones nowhere
   const finished = props.rounds.filter((r) => r.finishedAt && hasScore(r)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const paused = props.rounds.filter((r) => !r.finishedAt && !r.preview).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -179,7 +179,14 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
       )}
 
       {filter === 'paused' || filter === 'bin' ? null : finished.length === 0 ? (
-        <p className="muted">{tr('Your finished rounds show up here.', 'Hier erscheinen deine beendeten Runden.')}</p>
+        <div className="empty-action">
+          <p className="muted">{tr('Your finished rounds show up here.', 'Hier erscheinen deine beendeten Runden.')}</p>
+          {props.onNew && !props.rounds.length && (
+            <button type="button" className="btn-primary" onClick={props.onNew}>
+              {tr('New round', 'Neue Runde')}
+            </button>
+          )}
+        </div>
       ) : (
         <ul className="list">
           {shown.map((r) => {

@@ -33,7 +33,7 @@ type Range = 5 | 10 | 0;
 
 type Section = 'overview' | 'tee' | 'green' | 'putting' | 'clubs' | 'courses';
 
-export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void; onToSign?: () => void }) {
+export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void; onToSign?: () => void; /** no round yet: start one */ onNew?: () => void }) {
   const [range, setRange] = useState<Range>(5);
   const [section, setSection] = useState<Section>('overview');
   // the range's launch monitor shots beside the course's (Sascha 26.10.2026: optional) – off at first, remembered
@@ -133,7 +133,14 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
         ]}
       />
       {a.holes === 0 ? (
-        <p className="muted">{tr('Finish a round to see your stats.', 'Beende eine Runde, um deine Statistik zu sehen.')}</p>
+        <div className="empty-action">
+          <p className="muted">{tr('Finish a round to see your stats.', 'Beende eine Runde, um deine Statistik zu sehen.')}</p>
+          {props.onNew && !props.rounds.length && (
+            <button type="button" className="btn-primary" onClick={props.onNew}>
+              {tr('New round', 'Neue Runde')}
+            </button>
+          )}
+        </div>
       ) : (
         <>
           <div className="chip-row section-chips" role="group" aria-label={tr('Topic', 'Thema')}>

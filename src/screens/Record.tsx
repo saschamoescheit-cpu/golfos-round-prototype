@@ -16,7 +16,7 @@ import { Avatar } from '../components/Avatar';
 // dark enough for white numbers in both themes – numbers are white everywhere in the app (Sascha 21.10.2026)
 export const RESULT_COLOURS = { eaglePlus: '#3d7012', birdie: '#5a8c1c', par: '#7d8c96', bogey: '#5f6e78', doublePlus: '#46535d' } as const;
 
-export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void }) {
+export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void; /** the rounds to sign */ onToSign?: () => void; /** no round yet: start one */ onNew?: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);
   const c = useMemo(() => career(finished), [finished]);
   const nine = finished.length > 0 && finished.filter((r) => r.holes.length <= 9).length * 2 > finished.length;
@@ -47,7 +47,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
       <section className="card record-hero">
         <button type="button" className="record-who" onClick={props.onProfile}>
           {/* the same picture as everywhere: the profile photo (Google or chosen), else the initial */}
-          <Avatar name={name || '⛳'} me size={52} />
+          <Avatar name={name || tr('Me', 'Ich')} me size={52} />
           <span className="grow">
             <strong>{name || tr('Your profile', 'Dein Profil')}</strong>
             <span className="muted small">{profile.homeClub.trim() || tr('Add name, handicap and home club ›', 'Name, Handicap und Heimatclub eintragen ›')}</span>
@@ -70,11 +70,22 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
       </section>
 
       {c.holes === 0 ? (
-        <p className="muted">
-          {unsignedRounds(props.rounds).length
-            ? tr('Sign your finished rounds (scorecard → Sign) – your golf overview starts with the first signed one.', 'Signiere deine beendeten Runden (Scorekarte → Signieren) – dein Golf-Überblick beginnt mit der ersten signierten.')
-            : tr('Finish a round – your golf overview starts here.', 'Beende eine Runde – hier beginnt dein Golf-Überblick.')}
-        </p>
+        unsignedRounds(props.rounds).length ? (
+          // a tap: the rounds to sign – as in Statistik
+          <button type="button" className="notice notice-link" onClick={props.onToSign} disabled={!props.onToSign}>
+            <span className="grow">{tr('Sign your finished rounds – your golf overview starts with the first signed one.', 'Signiere deine beendeten Runden – dein Golf-Überblick beginnt mit der ersten signierten.')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        ) : (
+          <div className="empty-action">
+            <p className="muted">{tr('Finish a round – your golf overview starts here.', 'Beende eine Runde – hier beginnt dein Golf-Überblick.')}</p>
+            {props.onNew && (
+              <button type="button" className="btn-primary" onClick={props.onNew}>
+                {tr('New round', 'Neue Runde')}
+              </button>
+            )}
+          </div>
+        )
       ) : (
         <>
           <section className="card stats-card">

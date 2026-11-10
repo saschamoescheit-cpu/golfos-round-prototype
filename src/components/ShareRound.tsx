@@ -654,7 +654,7 @@ export function JoinRoundSheet(props: {
 
 /** The live leaderboard of all flights of a tournament (updated with every exchange); a player whose own score and his
  *  marker's differ is flagged with the holes. */
-export function EventBoardCard(props: { code: string; myFlight: string; /** away from the hole map: read the event now and then */ refresh?: boolean }) {
+export function EventBoardCard(props: { code: string; myFlight: string; /** away from the hole map: read the event now and then */ refresh?: boolean; /** a tournament's name tapped: its page (a finished round's scorecard) */ onOpenTour?: () => void }) {
   const [ev, setEv] = useState(() => cachedEvent(props.code));
   // a tournament (Sascha's concept 30.10.2026): gross or net, one class or all
   const [gross, setGross] = useState(false);
@@ -699,7 +699,15 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   const status = ev.tournament && flights > 1 ? flightStatus(ev) : [];
   return (
     <section className="card stats-card leaderboard event-board">
-      <h2>{ev.name}</h2>
+      <h2>
+        {ev.tournament && props.onOpenTour ? (
+          <button type="button" className="link-text" style={{ textDecoration: 'none' }} onClick={props.onOpenTour}>
+            {ev.name} <span className="muted" aria-hidden="true">›</span>
+          </button>
+        ) : (
+          ev.name
+        )}
+      </h2>
       <span className="muted small">
         {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
       </span>

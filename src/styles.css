@@ -706,7 +706,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .caddie-review h3 { margin: 0; font: 600 16px var(--display); }
 .caddie-review-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .caddie-review-vote { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-.caddie-review-vote button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); }
+.caddie-review-vote button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); display: inline-flex; align-items: center; gap: 6px; }
 .caddie-review-vote button[aria-pressed='true'] { border-color: var(--brand-text); color: var(--brand-text); }
 .caddie-review textarea { width: 100%; min-height: 56px; resize: vertical; font: 400 15px var(--body); padding: 8px 12px; }
 .warn-text { color: var(--bad); }
@@ -2350,3 +2350,6 @@ button.balance-item-row { cursor: pointer; }
 .review-list .icon-btn.row-edit { background: transparent; color: var(--muted); border-color: var(--line); }
 .putt-miss-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chip.small-chip { min-height: 30px; padding: 0 12px; font-size: 13px; }
+
+/* an empty list with the action that fills it (night 10./11.11.2026) */
+.empty-action { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }

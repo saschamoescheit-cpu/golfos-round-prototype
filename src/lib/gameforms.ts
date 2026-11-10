@@ -759,7 +759,7 @@ export const FORMS: FormDef[] = [
       }
       return {
         rows: g.players
-          .map((p) => ({ id: p.id, name: p.name, points: p.id === holder ? -100 : -count[p.id], value: p.id === holder ? tr('🐍 holds the snake', '🐍 hat die Schlange') : tr(`${count[p.id]}× three-putt`, `${count[p.id]}× Dreiputt`) }))
+          .map((p) => ({ id: p.id, name: p.name, points: p.id === holder ? -100 : -count[p.id], value: p.id === holder ? tr('holds the snake', 'hat die Schlange') : tr(`${count[p.id]}× three-putt`, `${count[p.id]}× Dreiputt`) }))
           .sort((a, b) => b.points - a.points),
         status: holder ? tr(`Snake: ${name(g, holder)} · length ${length}`, `Schlange: ${name(g, holder)} · Länge ${length}`) : tr('No snake yet', 'Noch keine Schlange'),
         money,
@@ -951,7 +951,7 @@ export const FORMS: FormDef[] = [
       }
       return {
         rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: won[p.id], value: tr(`${won[p.id]} rabbit(s)`, `${won[p.id]} Hase(n)`) }))),
-        status: holder ? tr(`🐇 ${name(g, holder)} holds the rabbit`, `🐇 ${name(g, holder)} hat den Hasen`) : tr('🐇 The rabbit is free', '🐇 Der Hase ist frei'),
+        status: holder ? tr(`${name(g, holder)} holds the rabbit`, `${name(g, holder)} hat den Hasen`) : tr('The rabbit is free', 'Der Hase ist frei'),
         money,
       };
     },

@@ -1352,7 +1352,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               {c.warning && <div className="small bad-text">{c.warning}</div>}
               <div className="caddie-review-vote" role="group" aria-label={tr('Your view', 'Deine Einschätzung')}>
                 <button type="button" aria-pressed={c.verdict === 'ok'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, c.verdict === 'ok' ? undefined : 'ok') }); setNoteFor(null); }}>
-                  {tr('👍 Fits', '👍 Passt')}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                  {tr('Fits', 'Passt')}
                 </button>
                 {putt ? (
                   // the putt line: how the ball really broke – the data to calibrate green slope and speed
@@ -1363,7 +1364,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   ))
                 ) : (
                   <button type="button" aria-pressed={c.verdict === 'other'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, 'other') }); setNoteFor(n); }}>
-                    {tr('✋ I’d play it differently', '✋ Würde ich anders spielen')}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+                    {tr('I’d play it differently', 'Würde ich anders spielen')}
                   </button>
                 )}
               </div>

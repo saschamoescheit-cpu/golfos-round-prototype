@@ -1011,7 +1011,7 @@ export function HoleScreen(props: {
   const takeTheCard = async (team: string) => {
     if (!(await takeOver(round, team))) return setTestMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
     await exchangeNow.current();
-    setTestMsg(tr('You keep the card now.', 'Du führst jetzt die Scorecard.'));
+    setTestMsg(tr('You keep the card now.', 'Du führst jetzt die Scorekarte.'));
   };
   const [testMsg, setTestMsg] = useState<string | null>(null);
   // on several phones, on the map (Sascha 30.10.2026, the night run): a count that differs as soon as it does – not
@@ -1048,7 +1048,7 @@ export function HoleScreen(props: {
     else if (!toldQuiet.current) {
       toldQuiet.current = true;
       setShareNote({
-        text: tr(`${quiet.name}'s phone has been quiet for ${quiet.minutes} min – take the card over?`, `Das Handy von ${quiet.name} meldet sich seit ${quiet.minutes} Min. nicht – Scorecard übernehmen?`),
+        text: tr(`${quiet.name}'s phone has been quiet for ${quiet.minutes} min – take the card over?`, `Das Handy von ${quiet.name} meldet sich seit ${quiet.minutes} Min. nicht – Scorekarte übernehmen?`),
         act: { label: tr('Take over', 'Übernehmen'), run: () => void takeTheCard(me.id) },
       });
     }
@@ -2643,7 +2643,7 @@ export function HoleScreen(props: {
                   </button>
                 </li>
               ))}
-              {detail.holedOut && <li><span className="n">⛳</span><span>{tr('Holed out', 'Eingelocht')}</span><span /><span /></li>}
+              {detail.holedOut && <li><span className="n putt-n"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 21V3l11 4-11 4" /></svg></span><span>{tr('Holed out', 'Eingelocht')}</span><span /><span /></li>}
             </ol>
           )}
           <div className="nav-bottom" style={{ gridTemplateColumns: hasShots ? '1fr 1fr' : '1fr' }}>

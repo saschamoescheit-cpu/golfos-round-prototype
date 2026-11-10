@@ -1,4 +1,5 @@
 import { paypalName } from '../lib/wagers';
+import { loadFriends } from '../lib/friends';
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, Segmented, TopBar } from '../components/ui';
@@ -25,7 +26,7 @@ import { shareWatchSamples, watchSamples } from '../lib/watch';
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
 
-export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void; onBack?: () => void }) {
+export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void; onBack?: () => void; /** the friends – from every module (night 10./11.11.2026: they were only on the start page) */ onFriends?: () => void }) {
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
@@ -250,6 +251,15 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           {review > 0 && <span className="badge-dot">{tr(`${review} new`, `${review} neu`)}</span>}
           <span aria-hidden="true">›</span>
         </button>
+        {props.onFriends && (
+          <button type="button" className="list-item" onClick={props.onFriends}>
+            <span className="grow">
+              <span className="title">{tr('Friends', 'Freunde')}</span>
+              <span className="muted small">{loadFriends().length ? tr(`${loadFriends().length} linked`, `${loadFriends().length} verknüpft`) : tr('Link your golf friends – invite them in one tap', 'Golffreunde verknüpfen – mit einem Tipp einladen')}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        )}
         {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
         <div className="field">
           <label>{tr('Standard tee', 'Standard-Tee')}</label>

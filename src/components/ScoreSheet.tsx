@@ -225,7 +225,7 @@ export function ScoreSheet(props: {
               </span>
               {sh.takeOver && (
                 <button type="button" className="btn-secondary" onClick={sh.takeOver}>
-                  {tr('Take the card over', 'Scorecard übernehmen')}
+                  {tr('Take the card over', 'Scorekarte übernehmen')}
                 </button>
               )}
               {sh.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
