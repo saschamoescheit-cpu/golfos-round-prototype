@@ -122,7 +122,7 @@ await pause();
 await tab('Spiele');
 const prow = p.locator('.paused-row').first();
 // deleted by swiping as every row (Sascha 11.11.2026, design round 2) – no bin icon in the row
-ok((await prow.count()) === 1 && (await prow.locator('.swipe-bin').count()) === 1 && (await prow.locator('.paused-delete').count()) === 0, 'list: the paused game deleted by swiping, as a paused round – no bin icon');
+ok((await prow.count()) === 1 && (await prow.locator('xpath=ancestor::div[contains(@class,"swipe")][1]').count()) === 1 && (await prow.locator('.paused-delete').count()) === 0, 'list: the paused game deleted by swiping, as a paused round – no bin icon');
 ok(/Pausiert · Loch 3A/.test(await prow.innerText()), 'list: "Pausiert · Loch 3A"');
 ok((await p.locator('.tile').filter({ hasText: 'pausiert' }).locator('.tile-num').innerText()).trim() === '1', 'tile "pausiert": 1');
 

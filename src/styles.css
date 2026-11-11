@@ -2425,8 +2425,8 @@ button.balance-item-row { cursor: pointer; }
 /* a list in a sheet is never squeezed – the sheet scrolls (Sascha 11.11.2026: "the list cannot be scrolled") */
 .sheet > .drawer-list, .sheet > .settings-list, .sheet > .pick-rounds { flex-shrink: 0; }
 /* the rounds to choose, each in one line */
-.pick-rounds .drawer-row .switch-label { flex: 1; min-width: 0; }
-.pick-rounds .drawer-row .switch-label > span:first-child { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+.pick-rounds .drawer-row .switch-label, .pick-rounds .tick-row .switch-label { flex: 1; min-width: 0; }
+.pick-rounds .drawer-row .switch-label > span:first-child, .pick-rounds .tick-row .switch-label > span:first-child { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
 /* the round switch in two lines at most: the round in one, cut with "…" when long (Sascha 11.11.2026) */
 .step-pick-now strong { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .step-pick-now strong .step-pick-tick { display: inline-block; vertical-align: -2px; margin-right: 6px; }
@@ -2481,6 +2481,9 @@ button.balance-item-row { cursor: pointer; }
 .skip-ask { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .skip-ask-btns { display: flex; gap: 8px; justify-content: flex-end; }
 .skip-list .list-item { display: flex; align-items: center; gap: 10px; }
+/* the course name whole beside a button as wide as its word (Sascha 11.11.2026: the name broke word by word under it) */
+.skip-list .list-item .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.skip-list .list-item > .btn-secondary { width: auto; flex: none; min-height: 44px; padding: 0 16px; }
 /* the floating actions bottom right (Sascha 12.11.2026): "+" for something new, the page's pencil – above the menu bar */
 .fab-stack {
   position: fixed; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 10px;

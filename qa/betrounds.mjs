@@ -99,7 +99,7 @@ ok(/^2 0(\/0)?$/.test(erik), `Erik: nothing entered for him – a dash (${erik})
 const sw = stand.getByRole('group', { name: 'Runden' });
 const label = `${yesterday.slice(8, 10)}.${yesterday.slice(5, 7)}.`;
 const now = async () => (await sw.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ').trim();
-ok(/^Gesamt .*1 von 2$/.test(await now()) && (await sw.getByRole('button', { name: 'Vorherige' }).isDisabled()), `the switch: ${await now()}`);
+ok(/^Gesamt\s+alle Runden$/.test(await now()) /* "Gesamt" not counted as a round (Sascha 11.11.2026) */ && (await sw.getByRole('button', { name: 'Vorherige' }).isDisabled()), `the switch: ${await now()}`);
 await sw.locator('.step-pick-now').click();
 const listed = await H.getByRole('dialog', { name: 'Runden' }).locator('.pick-option strong').allInnerTexts();
 ok(listed.length === 2 && listed[0] === 'Gesamt' && listed[1].includes(label), `a tap lists them all: ${listed.join(' | ')}`);

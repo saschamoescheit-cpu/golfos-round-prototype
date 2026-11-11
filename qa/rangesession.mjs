@@ -76,7 +76,7 @@ const sheet = p.getByRole('dialog', { name: 'Launch-Monitor-Daten' });
 const prev = (await sheet.innerText()).replace(/\s+/g, ' ');
 ok(/Garmin · 23 Schläge/.test(prev) && /gemessen am 15\.11\.2025/.test(prev), `preview: Garmin, 23 shots, "gemessen am 15.11.2025"`);
 const add4i = sheet.getByRole('checkbox', { name: /Eisen 4 zum Bag hinzufügen/ });
-ok(had4i || (await add4i.getAttribute('data-on')) === 'true', had4i ? 'iron 4 already in the bag – nothing to add' : 'iron 4 not in the bag: "Eisen 4 zum Bag hinzufügen" – on');
+ok(had4i || (await add4i.getAttribute('aria-checked')) === 'true', had4i ? 'iron 4 already in the bag – nothing to add' : 'iron 4 not in the bag: "Eisen 4 zum Bag hinzufügen" – on');
 const carry7 = Number((/7i \d+× (\d+) m/.exec(prev) ?? [])[1]);
 await shot('01-vorschau');
 await sheet.getByRole('button', { name: 'Übernehmen' }).click();

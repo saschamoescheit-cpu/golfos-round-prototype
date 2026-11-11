@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { SaveButton } from './ui';
 
@@ -36,8 +37,10 @@ export interface Choice<T> {
 }
 
 /** The sheet of choices behind a row (as "Modus" or "Wer erfasst" in the round setup): the chosen one ticked. */
+/** Rendered beside the screen (a portal) – opened from inside another sheet or the score panel it lies on top of it
+ *  (11.11.2026: the An/Aus rows open it everywhere). */
 export function PickSheet<T>(props: { title: string; options: Choice<T>[]; current: T; onPick: (v: T) => void; onClose: () => void; children?: ReactNode }) {
-  return (
+  return createPortal(
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
@@ -63,7 +66,8 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
         </div>
         {props.children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

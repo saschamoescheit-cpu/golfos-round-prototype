@@ -1,5 +1,5 @@
-// QA (Sascha 07.11.2026: "why is the hint at Tournaments grey and not green?"): every hint on the start page's module
-// cards is green as the others ("Wetten laufen: …", "Heute: …") – "6 Turniere geplant" too, in the dark look and in the sun mode.
+// QA (Sascha 07.11.2026: "why is the hint at Tournaments grey and not green?"): every hint on the module cards of the
+// module sheet is green as the others (since 11.11.2026 the start page's cards only say what each module is – grey) ("Wetten laufen: …", "Heute: …") – "6 Turniere geplant" too, in the dark look and in the sun mode.
 // Usage: node qa/starthints.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
@@ -30,10 +30,17 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(1200);
+// the start page: a quiet line what the module is (design round 2, 11.11.2026)
+ok((await p.locator('.home-hero .module-card').filter({ hasText: 'Tournaments' }).locator('.module-desc').innerText()).trim() === 'Turniere und Serien planen', 'start page: "Turniere und Serien planen" – what the module is');
+// the module sheet: what is to do, green
+await p.locator('.home-hero .module-card').filter({ hasText: 'Rounds' }).click();
+await p.waitForTimeout(800);
+await p.locator('.module-switch').first().click();
+await p.getByRole('dialog', { name: 'Modul wechseln' }).waitFor();
 for (const theme of ['dark', 'sun']) {
   await p.evaluate((t) => (t === 'sun' ? (document.documentElement.dataset.theme = 'sun') : delete document.documentElement.dataset.theme), theme);
   await p.waitForTimeout(200);
-  const card = p.locator('.module-card').filter({ hasText: 'Tournaments' });
+  const card = p.getByRole('dialog', { name: 'Modul wechseln' }).locator('.module-card').filter({ hasText: 'Tournaments' });
   const hint = card.locator('.small');
   const text = (await hint.innerText().catch(() => '')).trim();
   const look = await hint.evaluate((el) => {

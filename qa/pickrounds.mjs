@@ -70,7 +70,7 @@ ok(/0 von 3 ausgewählt – noch 3/.test(await row.innerText()), `the row: "${(a
 await row.click();
 const dlg = H.getByRole('dialog', { name: 'Runden' });
 ok(/3 Runden auswählen – noch 3/.test(await dlg.innerText()), 'the sheet: "3 Runden auswählen – noch 3"');
-const rows = dlg.locator('.pick-rounds .drawer-row');
+const rows = dlg.locator('.pick-rounds .tick-row'); // ticked since 11.11.2026 (no sliders)
 ok((await rows.count()) === 9, `nine rounds to choose (${await rows.count()})`);
 const heights = await rows.evaluateAll((es) => es.map((e) => e.querySelector('.switch-label > span').getBoundingClientRect().height));
 ok(heights.every((h) => h < 26), `every round in one line (${heights.map((h) => Math.round(h)).join(',')} px)`);
