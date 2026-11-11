@@ -311,8 +311,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How do I check the shots?', 'Wie prüfe ich die Schläge?'),
         a: () =>
           tr(
-            'Per hole: drag a shot on the map to its place, tap it for club and lie, then "Hole fits ✓". After the last hole the app shows only the holes still open.',
-            'Je Loch: einen Schlag auf der Karte an seine Stelle ziehen, antippen für Schläger und Lage, dann „Loch passt ✓“. Nach dem letzten Loch zeigt die App nur noch die offenen.',
+            'Per hole: drag a shot on the map to its place, tap it for club and lie, then "Hole fits ✓". Its sheet says how far it still was to the flag and how long the shot was; a shot without its place: "Set on the map", then tap where it was played from. After the last hole the app shows only the holes still open.',
+            'Je Loch: einen Schlag auf der Karte an seine Stelle ziehen, antippen für Schläger und Lage, dann „Loch passt ✓“. Oben in seiner Maske steht, wie weit es noch zur Fahne war und wie lang der Schlag war; fehlt der Ort: „Auf der Karte setzen“, dann auf die Stelle tippen, von wo gespielt wurde. Nach dem letzten Loch zeigt die App nur noch die offenen.',
           ),
         video: 'review',
       },

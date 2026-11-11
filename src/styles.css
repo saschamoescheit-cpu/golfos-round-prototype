@@ -2408,3 +2408,6 @@ button.balance-item-row { cursor: pointer; }
 .retire-sheet { display: flex; flex-direction: column; gap: 12px; }
 /* whose the big figures are, on top (Sascha 12.11.2026) */
 .sc-hero-name { font-size: 17px; }
+/* a shot's place and how far it still was to the flag, on top of its sheet (Sascha 12.11.2026) */
+.shot-where { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.shot-where .chip { white-space: nowrap; flex: none; }
