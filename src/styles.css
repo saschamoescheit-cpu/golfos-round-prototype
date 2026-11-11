@@ -2142,6 +2142,14 @@ button.tile:disabled { opacity: 1; }
 /* the payments of the settlement (03.11.2026): "Bezahlt" / "Erhalten" at the transfer */
 .pool-pays li { align-items: center; }
 .pool-pays li .grow { flex: 1; min-width: 0; }
+/* each payment with what it is made of (Sascha 11.11.2026, design round 2) */
+.pool-pays li.pays-with-why { flex-wrap: wrap; }
+.pool-pays li.pays-with-why + li { border-top: 1px solid var(--line); padding-top: 8px; }
+.pays-why { flex: 1 1 100%; display: flex; flex-direction: column; gap: 2px; padding: 0 0 4px 10px; margin-left: 2px; border-left: 2px solid var(--line); }
+.pays-why > div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+.pays-why > div > span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pays-why > div.off > span:last-child { color: var(--bad); }
+.pays-why > div.sum { color: var(--text); font-weight: 700; border-top: 1px dashed var(--line); padding-top: 2px; }
 .paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }

@@ -5,6 +5,8 @@ import { PAY_DETAILS, paypalLink, type PayHow, type Payment } from '../lib/wager
 import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize';
 
 type Transfer = { from: string; to: string; amount: number };
+/** one line of what a payment is made of: a bet (+), what the other owes back and is set off (−), what was paid already */
+export type WhyLine = { label: string; amount: number; off?: boolean };
 
 const day = (iso?: string) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '');
 /** how a payment came, in words */
@@ -32,6 +34,11 @@ export function PaidMarks(props: {
   /** the money's currency, for the PayPal link */
   currency?: 'EUR' | 'USD';
   onUndo: (id: string) => void;
+  /** what each payment is made of, right below it (Sascha 11.11.2026, design round 2: "der Rechenweg muss von der Logik
+   *  her anders" – no separate "Rechenweg", each payment says where it comes from and what is set off) */
+  why?: (t: Transfer) => WhyLine[] | null;
+  /** pairs set off to nothing – said once below the payments, so a ±0 is traceable too */
+  even?: string[];
 }) {
   const mine = (id: string) => id === props.me || !!props.standIn?.(id);
   const prize = props.prize ?? MONEY_EUR;
@@ -51,7 +58,7 @@ export function PaidMarks(props: {
             // the receiver confirms, the payer says he paid – each his own; the others' only shown
             const as = mine(t.to) ? 'received' : mine(t.from) ? 'paid' : null;
             return (
-              <li key={`${t.from}-${t.to}`}>
+              <li key={`${t.from}-${t.to}`} className={props.why ? 'pays-with-why' : undefined}>
                 <span className="grow">
                   {/* "Cedric zahlt an Sascha" (Sascha 03.11.2026), not an arrow */}
                   {oweText(props.name(t.from), props.name(t.to), props.prize ?? MONEY_EUR)}
@@ -73,6 +80,27 @@ export function PaidMarks(props: {
                     {as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize)}
                   </button>
                 )}
+                {(() => {
+                  const lines = props.why?.(t);
+                  if (!lines?.length) return null;
+                  const off = lines.some((l) => l.off);
+                  return (
+                    <div className="pays-why">
+                      {lines.map((l, k) => (
+                        <div key={k} className={l.off ? 'off' : undefined}>
+                          <span>{l.label}</span>
+                          <span>{`${l.amount < 0 ? '−' : ''}${money(Math.abs(Math.round(l.amount * 100) / 100), props.sym)}`}</span>
+                        </div>
+                      ))}
+                      {lines.length > 1 && (
+                        <div className="sum">
+                          <span>{off ? tr('set off', 'verrechnet') : tr('together', 'zusammen')}</span>
+                          <span>{money(t.amount, props.sym)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </li>
             );
           })}
@@ -82,6 +110,11 @@ export function PaidMarks(props: {
           {props.payments.length
             ? isMoney(prize) ? tr('All paid.', 'Alles bezahlt.') : tr('All redeemed.', 'Alles eingelöst.')
             : tr('Nothing to pay yet – once bets are decided, it says here who pays whom.', 'Noch nichts zu zahlen – sobald Wetten entschieden sind, steht hier, wer wem wie viel zahlt.')}
+        </span>
+      )}
+      {!!props.even?.length && (
+        <span className="muted small pays-even">
+          {props.even.join(' · ')}
         </span>
       )}
       {props.payments.length > 0 && (

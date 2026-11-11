@@ -1,7 +1,7 @@
 // QA (Sascha 10.11.2026, USA: "Chris has 0 – why do I owe Erik 40? The app may set off, but the way it calculated must
 // be shown and traceable; set off or one by one as a setting of the pool"; "Chris's 5+5+10 was net with 75 %"; "tapping
 // USA-Wetten in the Bilanz should jump there"). Erik made a bet (20 $ from each), Chris won 20 $ from Sascha:
-//  · set off: Sascha pays Erik 40 $, Chris nothing – "Rechenweg" says "3 Schulden → 1 Zahlung", who owes whom for which
+//  · set off: each payment says below it which bets it pays and what is set off (no "Rechenweg" since 11.11.2026); which
 //    bet, and "Chris bekommt 20 $ von Sascha und schuldet 20 $ an Erik – unterm Strich ±0 $";
 //  · "Abrechnung: Einzeln" in the pool's settings: Sascha pays Chris 20 $ and Erik 20 $, Chris pays Erik 20 $;
 //  · the host sets the 5+5+10 net with 75 % afterwards: "5+5+10 netto 75 %";
@@ -76,22 +76,19 @@ const settle = H.locator('.pool-settle');
 // Chris") – nothing passed on past a third
 let p = await pays();
 ok(p.length === 2 && p.some((x) => /Sascha zahlt an Erik/.test(x) && /20/.test(x)) && p.some((x) => /Chris zahlt an Erik/.test(x) && /20/.test(x)), `set off: Sascha and Chris each pay Erik 20 $, nothing between them (${p.join(' | ')})`);
-const row = settle.getByRole('button', { name: /Rechenweg/ });
-ok(/4 Schulden → 2 Zahlungen/.test(await row.innerText()), `"Rechenweg": ${(await row.innerText()).replace(/\s+/g, ' ')}`);
+// each payment says what it is made of, right below it – no separate "Rechenweg" (Sascha 11.11.2026, design round 2)
+ok((await settle.getByRole('button', { name: /Rechenweg/ }).count()) === 0, 'no separate "Rechenweg" any more');
+const whyOf = async (who) => (await H.locator('.pool-pays li').filter({ hasText: who }).first().locator('.pays-why').innerText().catch(() => '')).replace(/\s+/g, ' ');
+const sw = await whyOf('Sascha zahlt an Erik');
+ok(/Erik: .*Birdie/.test(sw) && /20 \$/.test(sw), `Sascha → Erik: which bet it pays (${sw})`);
+const even = (await H.locator('.pays-even').innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/(Sascha und Chris|Chris und Sascha): je 20 \$ – gegeneinander verrechnet, keine Zahlung/.test(even), `the ±0 between Sascha and Chris said once (${even})`);
 // the ledger: from whom Erik's bet brought its money (Sascha 11.11.2026: "Erik's 80 – from whom")
 const erikLine = (await settle.locator('.pool-standing > li').filter({ hasText: /^Erik/ }).first().innerText()).replace(/\s+/g, ' ');
 ok(/von Sascha, Chris – je 20 \$/.test(erikLine), `the ledger: Erik's bet "von Sascha, Chris – je 20 $" (${erikLine.slice(0, 120)})`);
-await row.click();
-const way = H.getByRole('dialog', { name: 'Rechenweg' });
-if (process.env.SHOTS) await way.screenshot({ path: `${process.env.SHOTS}/settleway.png` });
-// grouped per person (Sascha 11.11.2026: "under Sascha: Sascha owes Erik 20 and Chris X")
-const block = async (who) => (await way.locator('.settle-debts > li').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).first().innerText()).replace(/\s+/g, ' ');
-const sascha = await block('Sascha');
-ok(/schuldet Erik 20 \$/.test(sascha) && /schuldet Chris 20 \$/.test(sascha) && /bekommt 20 \$ von Chris/.test(sascha) && /mit Chris verrechnet: unterm Strich ±0/.test(sascha) && /zahlt 20 \$/.test(sascha), `Sascha's block: owes Erik and Chris, gets from Chris, ±0 with Chris, pays 20 $ (${sascha})`);
-ok(/Erik: .*Birdie/.test(sascha), 'each debt says its bet');
-const chris = await block('Chris');
-ok(/schuldet Erik 20 \$/.test(chris) && /zahlt 20 \$/.test(chris), `Chris's block: owes Erik 20 $ (${chris})`);
-await way.getByRole('button', { name: 'Schließen' }).click();
+if (process.env.SHOTS) await settle.screenshot({ path: `${process.env.SHOTS}/settleway.png` });
+const cw = await whyOf('Chris zahlt an Erik');
+ok(/Erik: .*Birdie/.test(cw) && /20 \$/.test(cw), `Chris → Erik: which bet it pays (${cw})`);
 
 // "Abrechnung: Einzeln" in the pool's settings
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
@@ -103,7 +100,8 @@ await H.waitForTimeout(1500);
 ok(shared.get(code).game.settle === 'single', 'the setting on the server: settle "single"');
 p = await pays();
 ok(p.length === 4 && p.some((x) => /Sascha zahlt an Chris/.test(x)) && p.some((x) => /Chris zahlt an Sascha/.test(x)) && p.some((x) => /Sascha zahlt an Erik/.test(x) && /20/.test(x)) && p.some((x) => /Chris zahlt an Erik/.test(x)), `one by one: four payments, Sascha and Chris both ways (${p.join(' | ')})`);
-ok(/4 Zahlungen/.test(await settle.getByRole('button', { name: /Rechenweg/ }).innerText()), '"Rechenweg": 4 Zahlungen');
+const sc = await whyOf('Sascha zahlt an Chris');
+ok(sc.length > 0 && !/verrechnet/.test(sc), `one by one: Sascha → Chris says its bet, nothing set off (${sc})`);
 
 // the 5+5+10 net with 75 %, set afterwards by the host
 await H.locator('.pool-wager').filter({ hasText: '5+5+10' }).first().click();
