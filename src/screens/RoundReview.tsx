@@ -143,10 +143,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
+  // a shot's place set on the map from its sheet (Sascha 12.11.2026: "set a point, then the distance to the flag")
+  const [placingShot, setPlacingShot] = useState<number | null>(null);
   // "tap the map where it went in": the map into view (after a drag far down the list it may be above the screen)
   useEffect(() => {
-    if (placingMiss != null) document.querySelector('.review-map')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [placingMiss]);
+    if (placingMiss != null || placingShot != null) document.querySelector('.review-map')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [placingMiss, placingShot]);
   // "add a shot": the next tap on the map places a new shot there (Sascha 17.10.2026: "it says add a shot, but I
   // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
   const [adding, setAdding] = useState(false);
@@ -449,6 +451,16 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     // a tap on (next to) a grey circle sets the shot exactly where the player stood
     const snap = freeStops.reduce<LngLat | null>((b, s) => (distanceM(s, tap) < 15 && (!b || distanceM(s, tap) < distanceM(b, tap)) ? s : b), null);
     const pos = snap ?? tap;
+    if (placingShot != null && d?.shots[placingShot]) {
+      const n = placingShot;
+      const shots = d.shots.slice();
+      // set where it was played from – the lie read off the map where none was set by hand yet
+      shots[n] = { ...shots[n], pos, ...(shots[n].pos ? {} : { lie: lieFor(pos, n, data) }), review: false };
+      setPlacingShot(null);
+      saveDetail(k, withClubs({ ...d, shots }));
+      setEdit(n); // back in its sheet: now with the distance to the flag
+      return;
+    }
     if (placingMiss != null && d) {
       const n = placingMiss;
       const shots = d.shots.slice();
@@ -1007,6 +1019,18 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
+      {placingShot != null && d?.shots[placingShot] && (
+        <div className="notice">
+          {tr(`Tap the map where shot ${placingShot + 1} was played from.`, `Tippe auf die Karte, wo Schlag ${placingShot + 1} gespielt wurde.`)}{' '}
+          <button type="button" className="btn-ghost" onClick={() => {
+            const n = placingShot;
+            setPlacingShot(null);
+            setEdit(n);
+          }}>
+            {tr('Cancel', 'Abbrechen')}
+          </button>
+        </div>
+      )}
       {placingMiss != null && d?.shots[placingMiss] && (
         <div className="notice">
           {d.shots[placingMiss].penaltyKind === 'ob'
@@ -1467,6 +1491,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           penalty={editing.penalty}
           kind={editing.kind}
           toPinM={editing.pos && pin ? distanceM(editing.pos, pin) : null}
+          where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null }}
+          onPlace={data ? () => {
+            const n = edit!;
+            setEdit(null);
+            setPlacingShot(n);
+          } : undefined}
           editing
           bag={bag}
           onCancel={() => setEdit(null)}
