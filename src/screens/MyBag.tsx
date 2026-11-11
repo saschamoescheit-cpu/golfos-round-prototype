@@ -165,9 +165,10 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   return (
     <main className="screen">
       <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} />
-      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app"); while editing the round green
-          tick at the same place saves (11.11.2026: "Speicher-Buttons sollten auch schweben") */}
-      <FloatActions pen={!editing ? { label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) } : null} save={editing ? { label: tr('Save your bag', 'Bag speichern'), onClick: () => setEditing(false) } : null} />
+      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app"); while editing every change is
+          saved at once (11.11.2026: "wenn nachträglich was bearbeitet wird, … brauchen keine Speicherbuttons mehr") – the
+          round green tick at the same place only ends the editing: "Fertig" */}
+      <FloatActions pen={!editing ? { label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) } : null} save={editing ? { label: tr('Done', 'Fertig'), onClick: () => setEditing(false) } : null} />
       {!editing && (
         <Segmented<Tab>
           label={tr('Distances', 'Distanzen')}

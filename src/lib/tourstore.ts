@@ -194,17 +194,26 @@ export async function createTour(ev: PlannedEvent): Promise<string | null> {
 
 /** The host changes the tournament: name, day, players, flights, markers – or deletes it (only marked) and brings it
  *  back. True when the server took it; the tournament kept as the server has it now. */
-export async function changeTour(code: string, ev: PlannedEvent): Promise<boolean> {
+export async function changeTour(code: string, ev: PlannedEvent, o: { /** saved by itself while being changed: the players hear it once, when the host is done (tellTourChanged) */ quiet?: boolean } = {}): Promise<boolean> {
   const before = loadTours().find((e) => e.code === code)?.ev;
   const written = await updatePlannedEvent(code, ev);
   if (written) keepTour(code, isPlanned(written) ? written : ev);
   // the players hear what changed for them (Sascha 07.11.2026) – the flight, the tee time, the marker; the day, the
   // course, called off
-  if (written && before) {
+  if (written && before && !o.quiet) {
     const c = tourChanges(before, isPlanned(written) ? written : ev);
     if (c.general || Object.keys(c.changes).length) pushTourChanged(code, c.changes, c.general);
   }
   return !!written;
+}
+
+/** A tournament saved quietly while it was changed (Sascha 11.11.2026: changes saved by itself): what changed since
+ *  `before` – as it was when the change began – told to its players once. */
+export function tellTourChanged(code: string, before: PlannedEvent): void {
+  const now = loadTours().find((e) => e.code === code)?.ev;
+  if (!now) return;
+  const c = tourChanges(before, now);
+  if (c.general || Object.keys(c.changes).length) pushTourChanged(code, c.changes, c.general);
 }
 
 let resultsHeard = false;

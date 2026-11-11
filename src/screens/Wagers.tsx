@@ -362,28 +362,34 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
           {msg}
         </span>
       )}
-      <button
-        type="button"
-        className="btn-primary"
-        disabled={busy || !ok}
-        onClick={async () => {
-          setBusy(true);
-          if (!prize) return;
-          const account = shownName(loadProfile()) || names[0].name.trim();
-          const uid = myAccount();
-          const players = names
-            .map((p) => ({ ...p, name: p.name.trim() }))
-            .filter((p, k) => k === 0 || p.name)
-            .map((p, k) => ({ id: p.id, name: p.name, ...(p.hcp.trim() ? { hcp: p.hcp.trim() } : {}), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
-          const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(poolEntry === 'one' ? { oneScorer: true } : {}), ...(settle === 'single' ? { settle } : {}), ...(rounds.length ? { rounds } : {}) };
-          const e = await createPool(pool, players[0].id);
-          setBusy(false);
-          if (e) props.onCreated(e.code);
-          else setMsg(NO_NET());
+      {busy && (
+        <span className="muted small" role="status">
+          {tr('Creating …', 'Erzeuge …')}
+        </span>
+      )}
+      {/* set up new: saved with the round green tick bottom right (Sascha 11.11.2026: "Wenn was erstmalig neu angelegt
+          wird, brauchen wir unten rechts einen schwebenden Speicherbutton") */}
+      <FloatActions
+        save={{
+          label: tr('Create the pool', 'Pool anlegen'),
+          disabled: busy || !ok,
+          onClick: async () => {
+            if (!prize) return;
+            setBusy(true);
+            const account = shownName(loadProfile()) || names[0].name.trim();
+            const uid = myAccount();
+            const players = names
+              .map((p) => ({ ...p, name: p.name.trim() }))
+              .filter((p, k) => k === 0 || p.name)
+              .map((p, k) => ({ id: p.id, name: p.name, ...(p.hcp.trim() ? { hcp: p.hcp.trim() } : {}), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
+            const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(poolEntry === 'one' ? { oneScorer: true } : {}), ...(settle === 'single' ? { settle } : {}), ...(rounds.length ? { rounds } : {}) };
+            const e = await createPool(pool, players[0].id);
+            setBusy(false);
+            if (e) props.onCreated(e.code);
+            else setMsg(NO_NET());
+          },
         }}
-      >
-        {busy ? tr('Creating …', 'Erzeuge …') : tr('Create the pool', 'Pool anlegen')}
-      </button>
+      />
     </main>
   );
 }
@@ -1053,17 +1059,11 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           {msg}
         </span>
       )}
-      {/* the pool's actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – Speichern (every change
-          is on the server the moment it is made: it checks it is there and goes back), Pool beenden red, last */}
+      {/* the pool's actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – Pool beenden red, last;
+          no "Speichern" (Sascha 11.11.2026: every change is on the server the moment it is made) */}
       {host && !pool.finishedAt && (
         <>
-          <ActionBar
-            label={tr('This pool', 'Dieser Pool')}
-            actions={[
-              { label: tr('Save', 'Speichern'), icon: 'save', onClick: async () => void ((await change(() => null)) && props.onBack()) },
-              { label: tr('Finish the pool', 'Pool beenden'), icon: 'finish', danger: true, onClick: () => setSheet('finish') },
-            ]}
-          />
+          <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Finish the pool', 'Pool beenden'), icon: 'finish', danger: true, onClick: () => setSheet('finish') }]} />
         </>
       )}
       {/* a tournament today – a round of the series (Sascha 09.11.2026: "'Runde starten' only makes sense for a single
@@ -2177,9 +2177,8 @@ export function WagerSheet(props: {
             {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
           </span>
         ) : (
-          <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
-            {tr('Add the bet', 'Wette anlegen')}
-          </button>
+          // a new bet: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
+          <FloatActions overSheet save={{ label: tr('Add the bet', 'Wette anlegen'), disabled: !ok, onClick: save }} />
         )}
       </section>
     </div>

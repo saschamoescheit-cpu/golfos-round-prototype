@@ -216,9 +216,13 @@ await H.getByRole('group', { name: 'Flights der Runden' }).locator('.settings-ro
 await H.waitForTimeout(300);
 ok((await H.locator('.tour-unplaced').count()) === 0 && (await H.locator('.tour-flight-player').count()) === 4, 'round 3 in the change: its four players, Cedric not missing a flight');
 await H.getByRole('button', { name: 'Fertig' }).click();
-await H.getByRole('button', { name: 'Speichern' }).click();
+// changed afterwards: saved by itself a moment later, no save button (Sascha 11.11.2026) – back to the series
+ok((await H.getByRole('button', { name: 'Speichern' }).count()) === 0, 'changed: no "Speichern" – saved by itself');
+await H.fill('#tour-name', 'Clubmeisterschaft 2026');
 await H.waitForTimeout(4000);
-ok(shared.get(scode).game.rounds.map((r) => r.code).join() === rcodes.join() && flightsOf(rcodes[2]).filter((f) => f.players.length).length === 2, 'saved: the same three rounds, round 3 still dealt');
+ok(shared.get(scode).game.name === 'Clubmeisterschaft 2026' && shared.get(scode).game.rounds.map((r) => r.code).join() === rcodes.join() && flightsOf(rcodes[2]).filter((f) => f.players.length).length === 2, 'saved by itself: renamed, the same three rounds, round 3 still dealt');
+await H.getByRole('button', { name: 'Zurück' }).first().click();
+await H.waitForTimeout(1500);
 
 // one level back (Sascha 06.11.2026: "a round of the series opened and back – it jumps right to the front instead of
 // one level back"): the series → its round 2 → "Zurück" → the series again, then the list

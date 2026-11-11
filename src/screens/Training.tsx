@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ModulePill } from '../components/ModuleSheet';
 import { FloatActions } from '../components/FloatActions';
 import { CheckGlyph, CrossGlyph, PenGlyph, StarGlyph } from '../components/Glyph';
@@ -1991,6 +1991,17 @@ function GearForPlan(props: { items: { drill: string }[]; nav: Nav }) {
 
 function Builder(props: { plan: OwnPlan; nav: Nav }) {
   const [p, setP] = useState<OwnPlan>(props.plan);
+  // an own plan there already: every change kept at once (on this phone – nothing to wait for)
+  const [stored] = useState(() => loadOwnPlans().find((x) => x.id === props.plan.id));
+  const existing = !!stored;
+  const saved = useRef(JSON.stringify(stored ?? null));
+  const ok = !!p.items.length && !!p.name.trim();
+  useEffect(() => {
+    const key = JSON.stringify(p);
+    if (!existing || !ok || saved.current === key) return;
+    saved.current = key;
+    saveOwnPlan(p);
+  }, [p]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cat, setCat] = useState<CategoryId | null>(null);
   const [q, setQ] = useState('');
   const pool = DRILLS.filter((d) => (!cat || d.cat === cat || d.also?.includes(cat)) && (!q.trim() || t(d.name).toLowerCase().includes(q.trim().toLowerCase())));
@@ -2037,18 +2048,25 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
           ))}
         </ol>
         {/* the start at the end of the plan, after its settings – never floating (Sascha 17.10.2026 evening) */}
-        {/* saved with the round green tick bottom right (Sascha 11.11.2026: "Speicher-Buttons sollten auch schweben"), the
-            one main button "Speichern & starten" at the end */}
-        <FloatActions
-          save={{
-            label: tr('Save plan', 'Plan speichern'),
-            disabled: !p.items.length || !p.name.trim(),
-            onClick: () => {
-              saveOwnPlan(p);
-              props.nav.toTab('train');
-            },
-          }}
-        />
+        {/* a new plan: saved with the round green tick bottom right; an own plan changed: saved by itself, a quiet line
+            (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, … brauchen keine Speicherbuttons mehr"); the one
+            main button "Speichern & starten" at the end */}
+        {existing ? (
+          <span className="muted small autosave-note" role="status">
+            {!ok ? tr('A name and a drill – then it is saved.', 'Ein Name und eine Übung – dann wird gespeichert.') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          </span>
+        ) : (
+          <FloatActions
+            save={{
+              label: tr('Save plan', 'Plan speichern'),
+              disabled: !ok,
+              onClick: () => {
+                saveOwnPlan(p);
+                props.nav.toTab('train');
+              },
+            }}
+          />
+        )}
         <button
           type="button"
           className="btn-primary"

@@ -78,7 +78,9 @@ await p.getByRole('button', { name: 'LW aus dem Bag entfernen' }).click();
 await p.getByRole('textbox', { name: 'Loft des PW' }).fill('43');
 await p.waitForTimeout(200);
 await shot('bag-edit');
-await p.getByRole('button', { name: 'Bag speichern' }).click();
+// every change saved at once (Sascha 11.11.2026): no "Speichern" – the floating tick only ends the editing, "Fertig"
+ok((await p.getByRole('button', { name: /speichern/i }).count()) === 0, 'bag edit: no save button – saved at once');
+await p.getByRole('button', { name: 'Fertig', exact: true }).click();
 await p.getByText('Voller Schwung', { exact: true }).click();
 const after = await p.locator('main').innerText();
 ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') && !after.includes('SW (') && !after.includes('LW'), 'pencil: 4i added, LW removed, "PW (43°)" shown');

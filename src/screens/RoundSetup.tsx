@@ -759,6 +759,22 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
   const crNum = Number(crIn.replace(',', '.'));
   const slopeNum = Number(slopeIn);
   const valid = crNum >= 50 && crNum <= 85 && Number.isInteger(slopeNum) && slopeNum >= 55 && slopeNum <= 155;
+  // saved by itself once both are right (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, haben wir die
+  // automatische Speicherung") – a moment after the last digit, and when the form closes
+  const key = `${crNum}/${slopeNum}`;
+  const saved = useRef('');
+  const [done, setDone] = useState(false);
+  const flush = () => {
+    if (!edit || !valid || saved.current === key) return;
+    saved.current = key;
+    props.onSave({ cr: crNum, slope: slopeNum });
+    setDone(true);
+  };
+  useEffect(() => {
+    if (!edit || !valid || saved.current === key) return;
+    const t = window.setTimeout(flush, 900);
+    return () => window.clearTimeout(t);
+  }, [key, edit, valid]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!edit)
     return (
       <button
@@ -767,6 +783,8 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
         onClick={() => {
           setCrIn(rating ? dec(rating.cr.toFixed(1)) : '');
           setSlopeIn(rating ? String(rating.slope) : '');
+          saved.current = rating ? `${rating.cr}/${rating.slope}` : ''; // as it opened: nothing to save
+          setDone(false);
           setEdit(true);
         }}
       >
@@ -788,6 +806,20 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
     );
   return (
     <div className="card rating-form">
+      <div className="sheet-head">
+        <strong>{tr('Course rating', 'Course Rating')}</strong>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={tr('Close', 'Schließen')}
+          onClick={() => {
+            flush();
+            setEdit(false);
+          }}
+        >
+          ✕
+        </button>
+      </div>
       <div className="field">
         <label htmlFor="setup-cr">Course Rating</label>
         <input id="setup-cr" className="input" inputMode="decimal" placeholder={dec('71.6')} value={crIn} onChange={(e) => setCrIn(e.target.value)} />
@@ -796,17 +828,9 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
         <label htmlFor="setup-slope">Slope</label>
         <input id="setup-slope" className="input" inputMode="numeric" placeholder="130" value={slopeIn} onChange={(e) => setSlopeIn(e.target.value)} />
       </div>
-      <button
-        type="button"
-        className="btn-primary"
-        disabled={!valid}
-        onClick={() => {
-          props.onSave({ cr: crNum, slope: slopeNum });
-          setEdit(false);
-        }}
-      >
-        {tr('Save', 'Speichern')}
-      </button>
+      <span className="muted small autosave-note" role="status">
+        {!valid ? tr('Course rating 50–85 and slope 55–155 – then it is saved.', 'Course Rating 50–85 und Slope 55–155 – dann wird gespeichert.') : done ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+      </span>
     </div>
   );
 }

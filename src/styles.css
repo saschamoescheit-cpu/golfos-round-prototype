@@ -2498,7 +2498,12 @@ body:has(.tabbar) .fab-stack { bottom: calc(env(safe-area-inset-bottom) + 92px);
 .fab:disabled { opacity: 0.45; box-shadow: none; }
 .fab:active { transform: scale(0.96); }
 /* the last row of a list stays above the buttons */
-body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 170px); }
+body:has(.fab-stack:not(.over-sheet)) .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 170px); }
+/* a save tick opened from a sheet (a new bet, a new flight, an entry – Sascha 11.11.2026): above the sheet's backdrop
+   (10) and the full-page layers it may lie on (60–70), bottom right of the sheet; the sheet's last row stays above it */
+body .fab-stack.over-sheet { z-index: 75; bottom: calc(env(safe-area-inset-bottom) + 20px); }
+body:has(.fab-stack.over-sheet) .sheet { padding-bottom: calc(env(safe-area-inset-bottom) + 92px); }
+body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 
 /* the module pill top left (Sascha 12.11.2026) – "▦ Rounds ▾" */
 .module-pill { gap: 7px; min-height: 44px; padding: 0 12px 0 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }

@@ -23,8 +23,17 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
   - *Einstellungen*: everything else (Vorgabe, Pressen, Hausregeln, Klassen …), the optional ones last
   Neue Runde, Neues Spiel, Neue Wette, Neues Turnier, Turnierserie and their edit sheets keep this order; a block a
   screen does not have is left out, never moved.
-- **One main action** per screen: `btn-primary`, full width, at the bottom (Runde starten, Pool anlegen, Turnier
-  anlegen).
+- **One main action** per screen: `btn-primary`, full width, at the bottom (Runde starten, Spiel starten, Speichern &
+  starten) – a start, never floating.
+- **Saving** (Sascha 11.11.2026: "Wenn was erstmalig neu angelegt wird, brauchen wir unten rechts einen schwebenden
+  Speicherbutton. Aber wenn nachträglich was bearbeitet wird, haben wir die automatische Speicherung und brauchen keine
+  Speicherbuttons mehr."):
+  - *Something new* (Pool anlegen, Turnier anlegen, Wette anlegen, Flight anlegen, Plan speichern): the round green tick
+    bottom right – `<FloatActions save={{ label, onClick, disabled }} />`; opened from a sheet with `overSheet`.
+  - *Something there already, changed*: no save button – saved by itself a moment (~900 ms) after the last change and
+    when the sheet or page closes, with a quiet line `.autosave-note` ("Änderungen werden von selbst gespeichert" /
+    "Speichert …" / "Gespeichert"). Pattern: `PoolEditSheet` / `WagerSheet` (screens/Wagers.tsx). A page edited in place
+    whose changes are kept at once (the bag) ends its editing with the floating tick "Fertig".
 - **The other actions of a screen – one action bar** (Sascha 03.11.2026: "three buttons side by side with icons in one
   menu, three text-only buttons one under the other elsewhere – that cannot be"): `.sc-actions` with `.sc-action`
   buttons (the scorecard of Rounds is the reference) – side by side, the same width, the icon over a short word, at most
@@ -37,7 +46,7 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
   status card (läuft / bestätigt / signiert) → the result / content → the action bar → the main button. A result
   always: Sieger → Ergebnis → Verlauf → Abrechnung → Scores (Scorekarte with legend) → actions.
 - **A sheet** (edit a pool, a bet, a flight, an entry): its rows in the setup's order, then the action bar (Löschen /
-  Entfernen red), the main button (Speichern) last. All bars with `ActionBar` (components/ActionBar.tsx) – one icon per
+  Entfernen red), then the quiet autosave line (changed) or the floating tick (new) – no "Speichern" button. All bars with `ActionBar` (components/ActionBar.tsx) – one icon per
   meaning (share, edit, save, finish, reopen, dissolve, delete).
 - A pool's planned rounds lie in its days: there *Zeitraum* comes before *Runden (Platz)* – the one exception to Wo → Wann.
 - The start page: GOLFOS top left with the claim small below; no big logo in the middle.

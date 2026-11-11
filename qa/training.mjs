@@ -304,7 +304,16 @@ ok((await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.l
 await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').first().click();
 await p.waitForTimeout(200);
 { const pens = await p.locator('.topbar:visible .edit-btn, .fab-pen').count(); const del = await p.locator('.sc-actions:visible .sc-action.danger').allTextContents(); del.forEach((x, k) => (del[k] = x.trim())); ok(pens === 1 && del.join() === 'Löschen', `own plan: the green pen to edit, Löschen in the bar (${pens} · ${del})`); }
+// changed afterwards: saved by itself, no "Plan speichern" (Sascha 11.11.2026)
+await p.locator('.fab-pen').click();
+await p.waitForTimeout(200);
+ok((await p.getByRole('button', { name: 'Plan speichern' }).count()) === 0 && /von selbst gespeichert/.test(await p.locator('.autosave-note').innerText()), 'own plan changed: no "Plan speichern" – "Änderungen werden von selbst gespeichert"');
+await p.fill('#tr-plan-name', 'Mein Plan B');
 await back();
+await p.waitForTimeout(200);
+await back();
+await p.waitForTimeout(200);
+ok(/Mein Plan B/.test(await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).innerText()), 'own plan changed: the new name kept without a save button');
 
 // shop
 await tab('Shop');

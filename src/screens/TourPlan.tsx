@@ -15,7 +15,7 @@ import { ROUND_KINDS, type RoundKind } from '../lib/roundkind';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { CLASS_NAMES, netClasses, plannedEvent, plannedFlight, type Flight, type RoundEvent } from '../lib/sharedround';
 import type { RoundHole } from '../types';
-import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
+import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, tellTourChanged, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { deal, defaultDraw, drawOrder, FLIGHT_SIZES, GAPS, madeCut, teeSlots, type DrawMode, type Results, type TourDraw } from '../lib/tourdraw';
@@ -110,6 +110,8 @@ export interface TourDraft {
   at?: number;
   /** opened at the flights – "Ändern" at a flight of the tournament's page */
   focus?: 'flights';
+  /** a tournament changed: the draft as last saved by itself (draftKey) – kept while its course is picked */
+  saved?: string;
 }
 
 // the scorings of a tournament (Sascha 02.11.2026: "either gross or with the handicaps") – with the full handicap
@@ -446,26 +448,32 @@ const roundName = (d: TourDraft, k: number) => (d.rounds.length > 1 ? `${d.name.
 
 /** The draft saved: one round a tournament; several a tournament over rounds (a series marked `multi`). Its code – the
  *  tournament's or the series' –, or null. */
-async function saveDraft(d: TourDraft): Promise<{ code: string; series: boolean } | null> {
+async function saveDraft(d0: TourDraft, o: { quiet?: boolean } = {}): Promise<{ code: string; series: boolean; codes: string[] } | null> {
+  // saved again by itself while changed (Sascha 11.11.2026): a round or the series made by an earlier save is changed,
+  // never made twice – also when the draft did not get its code back (the course picked meanwhile)
+  const made = madeSeries.get(d0.rounds[0]?.id ?? '');
+  const d: TourDraft = { ...d0, ...(!d0.multi && made ? { multi: made } : {}), rounds: d0.rounds.map((r) => (r.code || !madeRound.has(r.id) ? r : { ...r, code: madeRound.get(r.id) })) };
   const codes: string[] = [];
   for (let k = 0; k < d.rounds.length; k++) {
     const ev = eventOf(d, k, roundName(d, k));
     if (!ev) return null;
     const r = d.rounds[k];
-    const code = r.code ? ((await changeTour(r.code, ev)) ? r.code : null) : await createTour(ev);
+    const code = r.code ? ((await changeTour(r.code, ev, o)) ? r.code : null) : await createTour(ev);
     if (!code) return null;
+    madeRound.set(r.id, code);
     codes.push(code);
   }
   if (d.rounds.length === 1 && !d.multi) {
     const code = codes[0];
     if (d.series) await addToSeries(d.series, code);
     else if (d.base?.series?.code) await addToSeries(d.base.series.code, code); // its day or course in the series' list
-    return { code, series: false };
+    return { code, series: false, codes };
   }
   const multi = { cut: d.cut ?? null };
   if (!d.multi) {
     const code = await createSeries(d.name.trim(), codes, multi);
-    return code ? { code, series: true } : null;
+    if (code) madeSeries.set(d.rounds[0].id, code);
+    return code ? { code, series: true, codes } : null;
   }
   // changed: every round in its list (a new one joined, the copy of day, course and name up to date), the rounds taken
   // out marked deleted and out of the list
@@ -474,11 +482,23 @@ async function saveDraft(d: TourDraft): Promise<{ code: string; series: boolean 
   const drop = was.filter((c) => !codes.includes(c));
   for (const c of drop) {
     const ev = loadTours().find((t) => t.code === c)?.ev;
-    if (ev) await changeTour(c, { ...ev, deletedAt: new Date().toISOString(), series: null });
+    if (ev) await changeTour(c, { ...ev, deletedAt: new Date().toISOString(), series: null }, o);
   }
   if (!(await changeMulti(d.multi, multi, drop))) return null;
   await renameSeries(d.multi, d.name.trim());
-  return { code: d.multi, series: true };
+  return { code: d.multi, series: true, codes };
+}
+/** what a save made, by the draft's round id: its tournament – and by the first round's id the series made of them */
+const madeRound = new Map<string, string>();
+const madeSeries = new Map<string, string>();
+/** a tournament being changed: each round as it was when the change began, by its code */
+const changedFrom = new Map<string, PlannedEvent>();
+
+/** The draft as it is saved – without what only the screen uses (the round open, the course being picked) and the codes
+ *  a save gives back: a change of these is no change to save. */
+function draftKey(d: TourDraft): string {
+  const { open: _o, at: _a, focus: _f, saved: _s, code: _c, multi: _m, base: _b, ...rest } = d;
+  return JSON.stringify({ ...rest, rounds: d.rounds.map(({ code: _rc, base: _rb, ...r }) => r) });
 }
 
 /** A round dealt again on the server by its draw (Sascha 04.11.2026: "the final day by result"): the standing of the
@@ -566,6 +586,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const ordered = d.rounds.every((r, k) => !k || r.date >= d.rounds[k - 1].date);
   const ready = !!d.name.trim() && d.players.length >= 2 && d.players.every((p) => p.name.trim()) && d.rounds.every(roundReady) && ordered;
 
+  // a new one: "Turnier anlegen", the round green tick bottom right
   const save = async () => {
     if (!ready) return;
     setBusy(true);
@@ -576,13 +597,86 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
     else setMsg(NO_NET());
   };
 
+  // a tournament there already: every change saved by itself (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird,
+  // haben wir die automatische Speicherung und brauchen keine Speicherbuttons mehr") – a moment after the last change,
+  // and when going back; one save at a time, the page stays
+  const changing = !!(d.code || d.multi);
+  const key = draftKey(d);
+  const savedKey = useRef(d.saved ?? key); // as it opened: nothing to save
+  const latest = useRef({ d, ready, onChange: props.onChange });
+  latest.current = { d, ready, onChange: props.onChange };
+  const chain = useRef<Promise<void>>(Promise.resolve()); // one save at a time, in order
+  const left = useRef(false);
+  const picking = useRef(false);
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const saveNow = async () => {
+    const { d: cur, ready: ok } = latest.current;
+    const k = draftKey(cur);
+    if (!(cur.code || cur.multi) || !ok || savedKey.current === k) return;
+    if (!left.current) {
+      setSaving('busy');
+      setMsg(null);
+    }
+    // quietly: the players hear what changed once, when the host leaves (tellTourChanged)
+    const done = await saveDraft(cur, { quiet: true });
+    if (left.current) {
+      if (done) savedKey.current = k;
+      return;
+    }
+    if (!done) {
+      setSaving('idle');
+      setMsg(NO_NET());
+      return;
+    }
+    savedKey.current = k;
+    setSaving('done');
+    // the codes made (a round added, a tournament become one over rounds) into the draft
+    const now = latest.current.d;
+    const rounds = now.rounds.map((r) => {
+      const j = cur.rounds.findIndex((x) => x.id === r.id);
+      return !r.code && j >= 0 && done.codes[j] ? { ...r, code: done.codes[j] } : r;
+    });
+    const series = done.series && !now.multi;
+    if (series || rounds.some((r, j) => r !== now.rounds[j])) latest.current.onChange({ ...now, rounds, ...(series ? { multi: done.code } : {}), saved: k });
+  };
+  const flush = () => (chain.current = chain.current.then(saveNow, saveNow));
+  useEffect(() => {
+    if (!changing || !ready || savedKey.current === key) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [key, ready, changing]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the rounds as they were when the change began – told to their players once, when done
+  useEffect(() => {
+    left.current = false;
+    picking.current = false;
+    for (const r of d.rounds) {
+      const ev = r.code && !changedFrom.has(r.code) ? loadTours().find((t) => t.code === r.code)?.ev : undefined;
+      if (ev) changedFrom.set(r.code!, ev);
+    }
+    // left (Zurück, another module): the last change saved, then told – not when only the course is being picked
+    return () => {
+      if (picking.current) return;
+      left.current = true;
+      const told = [...changedFrom];
+      changedFrom.clear();
+      void flush().then(() => {
+        for (const [code, ev] of told) tellTourChanged(code, ev);
+      });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // on to the courses: what is saved goes with the draft – the page opens again with it
+  const toCourse = (k: number) => {
+    picking.current = true;
+    props.onCourse({ ...d, at: k, ...(changing ? { saved: savedKey.current } : {}) });
+  };
+
   // several rounds: a round's own page – its course, day and flights
   if (multi && d.open != null && d.rounds[d.open]) {
     const k = d.open;
     return (
       <main className="screen">
         <TopBar title={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} onBack={() => set({ open: undefined })} backLabel={d.name.trim() || tr('Tournament', 'Turnier')} />
-        <RoundWhereWhen d={d} k={k} onChange={(r) => setRound(k, r)} onCourse={() => props.onCourse({ ...d, at: k })} />
+        <RoundWhereWhen d={d} k={k} onChange={(r) => setRound(k, r)} onCourse={() => toCourse(k)} />
         <RoundFlights d={d} k={k} label={label} onChange={(r) => setRound(k, r)} problems={problems(d.rounds[k])} />
         <span className="spacer" />
         <div className="sticky-cta">
@@ -697,7 +791,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
 
       {/* Wo → Wann: one round inline; several – a row each, its page with course, day and flights */}
       {!multi ? (
-        <RoundWhereWhen d={d} k={0} onChange={(r) => setRound(0, r)} onCourse={() => props.onCourse({ ...d, at: 0 })} rating={() => setRatingsSeen((n) => n + 1)} />
+        <RoundWhereWhen d={d} k={0} onChange={(r) => setRound(0, r)} onCourse={() => toCourse(0)} rating={() => setRatingsSeen((n) => n + 1)} />
       ) : (
         <section className="setup-part">
           <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
@@ -781,19 +875,20 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           {msg}
         </span>
       )}
-      {/* a tournament changed: saved with the round green tick bottom right (Sascha 11.11.2026: "Speicher-Buttons sollten
-          auch schweben"); a new one: "Turnier anlegen" at the end */}
-      {d.code || d.multi ? (
-        <FloatActions save={{ label: tr('Save', 'Speichern'), onClick: () => void save(), disabled: !ready || busy }} />
+      {/* a tournament changed: saved by itself, a quiet line instead of a button; a new one: "Turnier anlegen", the round
+          green tick bottom right (Sascha 11.11.2026) */}
+      {changing ? (
+        <span className="muted small autosave-note" role="status">
+          {!ready
+            ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.')
+            : saving === 'busy'
+              ? tr('Saving …', 'Speichert …')
+              : saving === 'done'
+                ? tr('Saved – for everyone', 'Gespeichert – für alle')
+                : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
       ) : (
-        <>
-          <span className="spacer" />
-          <div className="sticky-cta">
-            <button type="button" className="btn-primary" disabled={!ready || busy} onClick={() => void save()}>
-              {tr('Set up the tournament', 'Turnier anlegen')}
-            </button>
-          </div>
-        </>
+        <FloatActions save={{ label: tr('Set up the tournament', 'Turnier anlegen'), onClick: () => void save(), disabled: !ready || busy }} />
       )}
     </main>
   );
@@ -1393,7 +1488,7 @@ function FlightBoard(props: {
           label={props.label}
           onSave={(time, start, ids) => {
             props.onSaveFlight(open === 'new' ? null : open, time, start, ids);
-            setOpen(null);
+            if (open === 'new') setOpen(null); // a flight there already: saved by itself, the sheet stays open
           }}
           onRemove={
             open === 'new'
@@ -1416,12 +1511,33 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
   const [start, setStart] = useState(props.slot.start);
   const [ids, setIds] = useState<string[]>(props.chosen);
   const toggle = (id: string) => setIds((x) => (x.includes(id) ? x.filter((y) => y !== id) : x.length < FLIGHT_MAX ? [...x, id] : x));
+  // a flight there already: its changes taken by themselves (Sascha 11.11.2026) – a moment after the last one and when
+  // the sheet closes; a new one: "Flight anlegen", the round green tick bottom right
+  const there = !!props.onRemove;
+  const key = JSON.stringify([time, start, ids]);
+  const saved = useRef(key);
+  const [done, setDone] = useState(false);
+  const flush = () => {
+    if (!there || !ids.length || saved.current === key) return;
+    saved.current = key;
+    props.onSave(time, start, ids);
+    setDone(true);
+  };
+  useEffect(() => {
+    if (!there || !ids.length || saved.current === key) return;
+    const t = window.setTimeout(flush, 900);
+    return () => window.clearTimeout(t);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    flush();
+    props.onClose();
+  };
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet tour-flight-sheet" role="dialog" aria-label={`Flight ${props.n}`} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>Flight {props.n}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>
@@ -1457,9 +1573,13 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
           )}
         </div>
         {props.onRemove && <ActionBar label={`Flight ${props.n}`} actions={[{ label: tr(`Remove flight ${props.n}`, `Flight ${props.n} entfernen`), icon: 'delete', danger: true, onClick: props.onRemove }]} />}
-        <button type="button" className="btn-primary" disabled={!ids.length} onClick={() => props.onSave(time, start, ids)}>
-          {props.onRemove ? tr('Save', 'Speichern') : tr('Create flight', 'Flight anlegen')}
-        </button>
+        {there ? (
+          <span className="muted small autosave-note" role="status">
+            {!ids.length ? tr('A flight needs a player – then it is saved.', 'Ein Flight braucht einen Spieler – dann wird gespeichert.') : done ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          </span>
+        ) : (
+          <FloatActions overSheet save={{ label: tr('Create flight', 'Flight anlegen'), disabled: !ids.length, onClick: () => props.onSave(time, start, ids) }} />
+        )}
       </section>
     </div>
   );

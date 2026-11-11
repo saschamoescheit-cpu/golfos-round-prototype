@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
 import { KeyHint } from '../components/KeyHint';
@@ -213,20 +213,22 @@ function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void
             {msg}
           </span>
         )}
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={busy || !name.trim() || picked.size < 2}
-          onClick={async () => {
-            setBusy(true);
-            const code = await createSeries(name.trim(), props.tours.filter((e) => picked.has(e.code)).map((e) => e.code));
-            setBusy(false);
-            if (code) props.onDone(code);
-            else setMsg(NO_NET());
+        {picked.size < 2 && <span className="muted small">{tr('Pick at least two', 'Mindestens zwei wählen')}</span>}
+        {/* set up new: the round green tick bottom right, above the sheet (Sascha 11.11.2026) */}
+        <FloatActions
+          overSheet
+          save={{
+            label: picked.size < 2 ? tr('Make the series', 'Serie anlegen') : tr(`Make the series of ${picked.size}`, `Serie aus ${picked.size} Runden anlegen`),
+            disabled: busy || !name.trim() || picked.size < 2,
+            onClick: async () => {
+              setBusy(true);
+              const code = await createSeries(name.trim(), props.tours.filter((e) => picked.has(e.code)).map((e) => e.code));
+              setBusy(false);
+              if (code) props.onDone(code);
+              else setMsg(NO_NET());
+            },
           }}
-        >
-          {picked.size < 2 ? tr('Pick at least two', 'Mindestens zwei wählen') : tr(`Make the series of ${picked.size}`, `Serie aus ${picked.size} Runden anlegen`)}
-        </button>
+        />
       </section>
     </div>
   );
@@ -419,9 +421,8 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
           </label>
         )}
         <ActionBar label={tr('This entry', 'Dieser Eintrag')} actions={[{ label: tr('Take the entry away', 'Eintrag entfernen'), icon: 'delete', danger: true, disabled: !one, onClick: () => one && props.onSave(one.fid, one.pid, null, fairway) }]} />
-        <button type="button" className="btn-primary" disabled={!one || !(value > 0)} onClick={() => one && props.onSave(one.fid, one.pid, value, fairway)}>
-          {tr('Save', 'Speichern')}
-        </button>
+        {/* an entry set: the round green tick bottom right, above the sheet (Sascha 11.11.2026) – a correction is a new entry */}
+        <FloatActions overSheet save={{ label: tr('Save the entry', 'Eintrag speichern'), disabled: !one || !(value > 0), onClick: () => one && props.onSave(one.fid, one.pid, value, fairway) }} />
       </section>
     </div>
   );
@@ -438,8 +439,37 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
   const [fill, setFill] = useState<Record<string, RetiredFill>>(() => ({ ...(flight.retiredFill ?? {}) }));
   const [typed, setTyped] = useState<Record<string, (number | null)[]>>(() => Object.fromEntries(flight.players.map((p) => [p.id, ev.holes.map((_, i) => flight.scores[p.id]?.[i]?.s ?? null)])));
   const [who, setWho] = useState(flight.players[0]?.id ?? '');
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // saved by themselves (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, haben wir die automatische
+  // Speicherung") – a moment after the last stroke typed and when the sheet closes; one save at a time
+  const filledOut = Object.fromEntries(Object.keys(out).map((id) => [id, fill[id] ?? 'double'])) as Record<string, RetiredFill>;
+  const key = JSON.stringify([typed, out, filledOut]);
+  const saved = useRef(key); // as it opened: nothing to save
+  const latest = useRef({ typed, out, fill: filledOut, key });
+  latest.current = { typed, out, fill: filledOut, key };
+  const chain = useRef<Promise<void>>(Promise.resolve());
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const saveNow = async () => {
+    const cur = latest.current;
+    if (saved.current === cur.key) return;
+    setSaving('busy');
+    const ok = await props.onSave(cur.typed, cur.out, cur.fill);
+    if (ok) {
+      saved.current = cur.key;
+      setMsg(null);
+    } else setMsg(NO_NET());
+    setSaving(ok ? 'done' : 'idle');
+  };
+  const flush = () => (chain.current = chain.current.then(saveNow, saveNow));
+  useEffect(() => {
+    if (saved.current === key) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    void flush();
+    props.onClose();
+  };
   const row = typed[who] ?? [];
   const set = (i: number, v: string) => {
     const n = v.trim() === '' ? null : Math.round(Number(v.replace(',', '.')));
@@ -449,11 +479,11 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
   const filled = row.filter((v) => v != null).length;
   const par = ev.holes.reduce<number>((s, h, i) => s + (row[i] != null ? (h.par ?? 0) : 0), 0);
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet tour-scores-sheet" role="dialog" aria-label={tr(`Scores of flight ${props.n}`, `Scores von Flight ${props.n}`)} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr(`Scores · flight ${props.n}`, `Scores · Flight ${props.n}`)}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>
@@ -532,20 +562,9 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
             {msg}
           </span>
         )}
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            const ok = await props.onSave(typed, out, Object.fromEntries(Object.keys(out).map((id) => [id, fill[id] ?? 'double'])));
-            setBusy(false);
-            if (ok) props.onClose();
-            else setMsg(NO_NET());
-          }}
-        >
-          {busy ? tr('Saving …', 'Speichere …') : tr('Save the scores', 'Scores speichern')}
-        </button>
+        <span className="muted small autosave-note" role="status">
+          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
       </section>
     </div>
   );
@@ -766,6 +785,51 @@ export function keptRounds(code: string, today: string = dayOf(new Date())): Rou
     .filter((e): e is RoundEvent => !!e);
 }
 
+/** The series renamed – saved by itself (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, haben wir die
+ *  automatische Speicherung"): a moment after the last letter and when the sheet closes, no button. */
+function RenameSeriesSheet(props: { code: string; name: string; onMsg: (m: string | null) => void; onClose: () => void }) {
+  const [name, setName] = useState(props.name);
+  const saved = useRef(props.name.trim());
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const flush = async () => {
+    const n = name.trim();
+    if (!n || saved.current === n) return;
+    saved.current = n;
+    setSaving('busy');
+    const ok = await renameSeries(props.code, n);
+    props.onMsg(ok ? null : NO_NET());
+    setSaving(ok ? 'done' : 'idle');
+  };
+  useEffect(() => {
+    if (!name.trim() || saved.current === name.trim()) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    void flush();
+    props.onClose();
+  };
+  return (
+    <div className="sheet-backdrop" onClick={close}>
+      <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Rename the series', 'Serie umbenennen')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
+            ✕
+          </button>
+        </div>
+        <div className="field">
+          <label htmlFor="series-rename">{tr('Name of the series', 'Name der Serie')}</label>
+          <input id="series-rename" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <span className="muted small autosave-note" role="status">
+          {!name.trim() ? tr('The series needs a name – then it is saved.', 'Die Serie braucht einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
+      </section>
+    </div>
+  );
+}
+
 export function SeriesScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
   useTop(props.code);
   const allSeries = useSeries();
@@ -778,7 +842,6 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   const [dealing, setDealing] = useState<number | null>(null);
   const [adopting, setAdopting] = useState<string | null>(null);
   const [at, setAt] = useState<Date | null>(null);
-  const [name, setName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const today = dayOf(new Date());
   const codes = entry?.series.rounds.map((r) => r.code).join() ?? '';
@@ -883,7 +946,6 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
                 if (d) props.onEdit(d);
                 return;
               }
-              setName(s.name);
               setSheet('rename');
             },
           }}
@@ -1027,27 +1089,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
           </section>
         </div>
       )}
-      {sheet === 'rename' && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
-            <div className="field">
-              <label htmlFor="series-rename">{tr('Name of the series', 'Name der Serie')}</label>
-              <input id="series-rename" className="input" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!name.trim()}
-              onClick={async () => {
-                setMsg((await renameSeries(props.code, name.trim())) ? null : NO_NET());
-                setSheet(null);
-              }}
-            >
-              {tr('Save', 'Speichern')}
-            </button>
-          </section>
-        </div>
-      )}
+      {sheet === 'rename' && <RenameSeriesSheet code={props.code} name={s.name} onMsg={setMsg} onClose={() => setSheet(null)} />}
       {/* a tournament over rounds deleted for everyone: its rounds marked deleted (the bin brings them back) */}
       {sheet === 'dissolve' && multi && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>

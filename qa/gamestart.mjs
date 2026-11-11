@@ -90,7 +90,9 @@ const before = await vg();
 await p.locator('.rating-line').click();
 await p.fill('#setup-cr', '74,0');
 await p.fill('#setup-slope', '145');
-await p.getByRole('button', { name: 'Speichern' }).click();
+// saved by itself a moment later (Sascha 11.11.2026), the form closed with ✕
+await p.waitForTimeout(1200);
+await p.locator('.rating-form').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(300);
 ok(/Course Rating 74,0 · Slope 145/.test(await rline()) && (await vg()) !== before, `game setup: own values saved, the playing handicap follows (${before} → ${await vg()})`);
 await p.locator('.topbar').getByRole('button').first().click();

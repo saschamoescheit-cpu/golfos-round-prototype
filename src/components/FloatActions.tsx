@@ -25,12 +25,14 @@ const Tick = () => (
   </svg>
 );
 
-/** save: a page being changed saved with the round green tick at the same place (Sascha 11.11.2026: "Speicher-Buttons
- *  sollten auch schweben als Button") – the bag, a tournament changed, the own plan; a sheet keeps its own ✓ up top. */
-export function FloatActions(props: { plus?: FloatAction | null; pen?: FloatAction | null; save?: FloatAction | null }) {
+/** save: something set up NEW saved with the round green tick at the same place (Sascha 11.11.2026: "Wenn was erstmalig
+ *  neu angelegt wird, brauchen wir unten rechts einen schwebenden Speicherbutton. Aber wenn nachträglich was bearbeitet
+ *  wird, haben wir die automatische Speicherung") – a pool, a tournament, a bet, a flight, an own plan; something changed
+ *  afterwards saves by itself and has no save button. overSheet: opened from a sheet – the tick above its backdrop. */
+export function FloatActions(props: { plus?: FloatAction | null; pen?: FloatAction | null; save?: FloatAction | null; overSheet?: boolean }) {
   if (!props.plus && !props.pen && !props.save) return null;
   return createPortal(
-    <div className="fab-stack">
+    <div className={`fab-stack${props.overSheet ? ' over-sheet' : ''}`}>
       {props.save && (
         <button type="button" className="fab fab-save" aria-label={props.save.label} title={props.save.label} disabled={props.save.disabled} onClick={props.save.onClick}>
           <Tick />

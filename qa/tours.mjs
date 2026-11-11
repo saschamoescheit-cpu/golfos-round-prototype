@@ -353,6 +353,8 @@ ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris', 
 const sheet = H.getByRole('dialog', { name: /^Flight \d$/ });
 await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 ok(/12:16/.test(await sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).innerText()) && /Tee 1/.test(await sheet.locator('.settings-row').filter({ hasText: 'Start' }).last().innerText()), 'flight 2 opened: its tee time and its tee');
+// a flight there already: no "Speichern" – changes taken by themselves (Sascha 11.11.2026)
+ok((await sheet.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.getByRole('button', { name: 'Flight anlegen' }).count()) === 0 && /von selbst gespeichert/.test(await sheet.locator('.autosave-note').innerText().catch(() => '')), 'a flight changed: no "Speichern", the quiet line');
 await sheet.getByRole('button', { name: 'Schließen' }).click();
 // Score-Erfassung (Sascha 03./04.11.2026): "Mit Zähler" the default; "Einer für alle" – who keeps the score chosen there,
 // not in the flights
@@ -487,7 +489,9 @@ await H.getByRole('region', { name: 'Long Drive' }).getByRole('button', { name: 
 const fixer = H.getByRole('dialog', { name: 'Eintrag korrigieren' });
 await fixer.getByRole('combobox', { name: 'Spieler' }).selectOption({ label: 'Chris' });
 await fixer.locator('#special-m').fill('280');
-await fixer.getByRole('button', { name: 'Speichern' }).click();
+// an entry set: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
+ok((await fixer.getByRole('button', { name: 'Speichern' }).count()) === 0, 'the correction: no "Speichern" in the sheet – the floating tick');
+await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Eintrag speichern' }).click();
 await H.waitForTimeout(1500);
 const ld2 = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/Chris.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Chris 280 m in the fairway leads (${ld2.join(' | ')})`);
@@ -541,8 +545,12 @@ await H.waitForTimeout(800);
 await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
 await H.waitForTimeout(800);
 await H.fill('#tour-name', 'USA Tag 1 · Bethpage');
-await H.getByRole('button', { name: 'Speichern' }).click();
+// changed afterwards: saved by itself a moment later, no save button (Sascha 11.11.2026) – then back to its page
+ok((await H.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.locator('.autosave-note').count()) === 1, 'changed: no "Speichern" – "Änderungen werden von selbst gespeichert"');
 await H.waitForTimeout(2500);
+ok(shared.get(code).game.name === 'USA Tag 1 · Bethpage', 'changed: on the server with the page still open');
+await H.getByRole('button', { name: 'Zurück' }).first().click();
+await H.waitForTimeout(1000);
 const after = flightsOf(code);
 ok(shared.get(code).game.name === 'USA Tag 1 · Bethpage' && after.filter((f) => f.players.length).map((f) => f.id).sort().join() === ids, 'changed: renamed, the flights the same (their ids kept)');
 ok(after.find((f) => f.id === byTime[1].id)?.teeTime === '12:16' && after.find((f) => f.id === byTime[0].id)?.scores.p2?.[0]?.s === 3, 'changed: the tee times and the scores kept');
@@ -578,7 +586,8 @@ const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
 await ss.locator('#series-name').fill('USA 2026');
 await ss.locator('label', { hasText: 'USA Tag 2' }).click();
 await ss.locator('label', { hasText: 'USA Tag 1 · Bethpage' }).click();
-await ss.getByRole('button', { name: 'Serie aus 2 Runden anlegen' }).click();
+// set up new: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
+await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Serie aus 2 Runden anlegen' }).click();
 await H.waitForTimeout(2500);
 const scode = [...shared.entries()].find(([, r]) => r.game.kind === 'tour-series')?.[0];
 const srow = scode && shared.get(scode).game;
