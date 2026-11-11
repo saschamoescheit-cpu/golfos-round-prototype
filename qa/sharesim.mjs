@@ -47,7 +47,8 @@ export function sharedServer(b, url, o = {}) {
   async function serve(route) {
     const req = route.request();
     const u = new URL(req.url());
-    const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
+    // a request answered already (a test's own slower answer, a page gone – the gate 12.11.2026) is no error of the app
+    const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) }).catch((e) => { if (!/already handled|closed/i.test(String(e?.message))) throw e; });
     const uid = accountOf((req.headers()['authorization'] ?? '').replace(/^Bearer /, '')); // each phone its account
     const body = () => JSON.parse(req.postData() ?? '{}');
     if (u.pathname.endsWith('/golfos_items')) return json(200, []);
