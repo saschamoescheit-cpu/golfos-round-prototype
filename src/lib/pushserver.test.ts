@@ -118,7 +118,15 @@ describe('push: when and what', () => {
       round('j', '2026-10-21T08:00:00Z'), // reminded already
     ];
     const due = roundsToRemind(rows, new Set(['round:j']), now);
-    expect(due.map((r) => r.id)).toEqual(['a', 'i']);
+    // j: reminded 2 h after, two days later still not signed – asked once more (Sascha 11.11.2026)
+    expect(due.map((r) => r.id)).toEqual(['a', 'i', 'j']);
+    expect(due.find((r) => r.id === 'a')?.key).toBe('round:a');
+    expect(due.find((r) => r.id === 'j')).toMatchObject({ key: 'round:j:3', again: true });
+    expect(roundsToRemind(rows, new Set(['round:j', 'round:j:3', 'round:i:3']), now).map((r) => r.id)).toEqual(['a']);
+  });
+  it('the card still not signed a day later: "Scorekarte noch nicht unterschrieben"', () => {
+    expect(roundNote([{ id: 'r', courseName: 'Cypress', again: true }], 'de').title).toBe('Scorekarte noch nicht unterschrieben');
+    expect(roundNote([{ id: 'r', courseName: 'Cypress' }], 'de').title).toBe('Runde noch nicht geprüft');
   });
   it('one round: straight to its check; several: the list of rounds to sign', () => {
     expect(roundNote([{ id: 'r 1', courseName: 'Hetzenhof' }]).url).toBe('./#review=r%201');

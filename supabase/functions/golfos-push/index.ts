@@ -3,7 +3,8 @@
 // then "Verify JWT" off: the function checks the player's sign-in itself).
 //
 // What it sends:
-// - a round not yet checked and signed: once per round, 2 hours after it ended, between 9 and 20 o'clock of the phone
+// - a round not yet checked and signed: 2 hours after it ended, and once more each of the next two days while the card
+//   is still not signed (Sascha 11.11.2026) – between 9 and 20 o'clock of the phone
 // - games on several phones: a fellow player joined your game; a game ended
 // - bets in Games: a player of the pool made a bet – to everyone in the pool (Sascha 01.11.2026)
 // - a thunderstorm while a round is played: the forecast for the course, checked every 15 minutes
@@ -112,7 +113,15 @@ export interface Note {
 
 const T = (lang: string | null | undefined, en: string, de: string) => (lang === 'en' ? en : de);
 
-export function roundNote(rounds: { id: string; courseName: string }[], lang?: string | null): Note {
+export function roundNote(rounds: { id: string; courseName: string; again?: boolean }[], lang?: string | null): Note {
+  // asked again (the card still open a day later): "noch nicht unterschrieben"
+  if (rounds.length === 1 && rounds[0].again)
+    return {
+      title: T(lang, 'Card not signed yet', 'Scorekarte noch nicht unterschrieben'),
+      body: T(lang, `Your round at ${rounds[0].courseName} is still not signed – check it and sign it.`, `Deine Runde in ${rounds[0].courseName} ist noch nicht unterschrieben – prüfe sie und unterschreibe.`),
+      tag: 'golfos-rounds',
+      url: `./#review=${encodeURIComponent(rounds[0].id)}`,
+    };
   if (rounds.length === 1)
     return {
       title: T(lang, 'Round not checked yet', 'Runde noch nicht geprüft'),
@@ -454,16 +463,26 @@ interface RoundData {
 }
 
 /** The rounds to remind of: ended (2 hours to 7 days ago), not signed, a real round with a score – as in the app. */
-export function roundsToRemind(rows: { id: string; data: RoundData }[], sent: Set<string>, now: Date): { id: string; courseName: string; finishedAt: string }[] {
+/** The card still not signed: 2 hours after the round, then once more after a day and after two (Sascha 11.11.2026: "wenn
+ *  jemand seine Scorekarte noch nicht unterschrieben hat, sollte es hierfür auch eine Push-Benachrichtigung geben") –
+ *  each stage once ("round:<id>", "round:<id>:2", "round:<id>:3"), a later one replaces an earlier one not sent. */
+export function roundsToRemind(rows: { id: string; data: RoundData }[], sent: Set<string>, now: Date): { id: string; courseName: string; finishedAt: string; key: string; again: boolean }[] {
   const t = now.getTime();
+  const stageOf = (age: number) => (age >= 48 * 3600e3 ? 3 : age >= 24 * 3600e3 ? 2 : age >= 2 * 3600e3 ? 1 : 0);
+  const keyOf = (id: string, stage: number) => (stage === 1 ? `round:${id}` : `round:${id}:${stage}`);
   return rows
-    .filter(({ id, data: r }) => {
-      if (!r.finishedAt || r.signedAt || r.preview || r.capture === 'score' || sent.has(`round:${id}`)) return false;
+    .map(({ id, data: r }) => {
+      if (!r.finishedAt || r.signedAt || r.preview || r.capture === 'score') return null;
       const age = t - Date.parse(r.finishedAt);
-      if (!(age >= 2 * 3600e3 && age <= 7 * 24 * 3600e3)) return false;
-      return Object.values(r.entries ?? {}).some((list) => list.some((e) => e && (e.strokes != null || e.pickedUp)));
+      if (age > 7 * 24 * 3600e3) return null;
+      const stage = stageOf(age);
+      if (!stage) return null;
+      // this stage or a later one sent already
+      for (let s = stage; s <= 3; s++) if (sent.has(keyOf(id, s))) return null;
+      if (!Object.values(r.entries ?? {}).some((list) => list.some((e) => e && (e.strokes != null || e.pickedUp)))) return null;
+      return { id, courseName: r.courseName ?? 'GolfOS', finishedAt: r.finishedAt, key: keyOf(id, stage), again: [1, 2].some((s) => s < stage && sent.has(keyOf(id, s))) };
     })
-    .map(({ id, data }) => ({ id, courseName: data.courseName ?? 'GolfOS', finishedAt: data.finishedAt! }))
+    .filter((x): x is { id: string; courseName: string; finishedAt: string; key: string; again: boolean } => !!x)
     .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt));
 }
 
@@ -794,7 +813,7 @@ async function tick(now = new Date()): Promise<{ rounds: number; storms: number;
     const due = roundsToRemind(rows, new Set(sentRows.map((x) => x.key)), now);
     if (!due.length) continue;
     for (const s of mine) await send(s, roundNote(due, s.lang));
-    await d.insertIgnore('golfos_push_sent', due.map((r) => ({ user_id: user, key: `round:${r.id}` })));
+    await d.insertIgnore('golfos_push_sent', due.map((r) => ({ user_id: user, key: r.key })));
     rounds += due.length;
   }
   // thunderstorms on the course: phones on a round right now
