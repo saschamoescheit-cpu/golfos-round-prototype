@@ -3,10 +3,15 @@ import { tr } from '../lib/i18n';
 import { money } from '../lib/gameforms';
 import { PAY_DETAILS, paypalLink, type PayHow, type Payment } from '../lib/wagers';
 import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize';
+import { ACTION_ICONS } from './ActionBar';
+import { SwipeRow } from './SwipeRow';
 
 type Transfer = { from: string; to: string; amount: number };
 /** one line of what a payment is made of: a bet (+), what the other owes back and is set off (−), what was paid already */
 export type WhyLine = { label: string; amount: number; off?: boolean };
+
+/** a payment's swipe: "Zurücknehmen" with the arrow back, grey – nothing is deleted (Facelift-Abnahme G4) */
+export const TAKE_BACK = () => ({ word: tr('Take back', 'Zurücknehmen'), icon: ACTION_ICONS.reopen, tone: 'neutral' as const });
 
 const day = (iso?: string) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.` : '');
 /** how a payment came, in words */
@@ -33,7 +38,7 @@ export function PaidMarks(props: {
   paypalOf?: (id: string) => string | null | undefined;
   /** the money's currency, for the PayPal link */
   currency?: 'EUR' | 'USD';
-  onUndo: (id: string) => void;
+  onUndo: (id: string) => void | boolean | Promise<void | boolean>;
   /** what each payment is made of, right below it (Sascha 11.11.2026, design round 2: "der Rechenweg muss von der Logik
    *  her anders" – no separate "Rechenweg", each payment says where it comes from and what is set off) */
   why?: (t: Transfer) => WhyLine[] | null;
@@ -121,30 +126,46 @@ export function PaidMarks(props: {
         <>
           <span className="eyebrow">{paidWord(prize)}</span>
           <ul className="pool-pays paid-list" aria-label={paidWord(prize)}>
-            {[...props.payments].reverse().map((p) => (
-              <li key={p.id}>
-                <span className="grow">
-                  {tr(`${props.name(p.from)} to ${props.name(p.to)}`, `${props.name(p.from)} an ${props.name(p.to)}`)}
-                  <span className="muted small paid-state">
-                    {p.receivedAt
-                      ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}${PAY_DETAILS && p.how ? ` · ${howText(p.how)}` : ''}`
-                      : `${paidWord(prize).toLowerCase()} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
+            {[...props.payments].reverse().map((p) => {
+              const who = tr(`${props.name(p.from)} to ${props.name(p.to)}`, `${props.name(p.from)} an ${props.name(p.to)}`);
+              const row = (
+                <>
+                  <span className="grow">
+                    {who}
+                    <span className="muted small paid-state">
+                      {p.receivedAt
+                        ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}${PAY_DETAILS && p.how ? ` · ${howText(p.how)}` : ''}`
+                        : `${paidWord(prize).toLowerCase()} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
+                    </span>
                   </span>
-                </span>
-                <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>
-                {!p.receivedAt && mine(p.to) && (
-                  <button type="button" className="chip paid-mark mark-received" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) && PAY_DETAILS ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
-                    {tr('Received', 'Erhalten')}
-                  </button>
-                )}
-                {(mine(p.from) || mine(p.to)) && (
-                  <button type="button" className="icon-btn paid-undo" aria-label={tr(`Take back: ${props.name(p.from)} to ${props.name(p.to)}`, `Zurücknehmen: ${props.name(p.from)} an ${props.name(p.to)}`)} onClick={() => props.onUndo(p.id)}>
-                    ↺
-                  </button>
-                )}
-              </li>
-            ))}
+                  <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>
+                  {!p.receivedAt && mine(p.to) && (
+                    <button type="button" className="chip paid-mark mark-received" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) && PAY_DETAILS ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
+                      {tr('Received', 'Erhalten')}
+                    </button>
+                  )}
+                </>
+              );
+              return (
+                <li key={p.id}>
+                  {/* taken back by swiping left, as a mail – the action says "Zurücknehmen" with the arrow back, no bin (Sascha
+                      11.11.2026, Facelift-Abnahme G4: "Nach links wischen ok, aber Mülleimer ist löschen statt zurücknehmen") */}
+                  {mine(p.from) || mine(p.to) ? (
+                    <SwipeRow label={who} className="paid-row" action={TAKE_BACK()} onDelete={() => props.onUndo(p.id)}>
+                      {row}
+                      {/* for the keyboard and VoiceOver – the swipe is for the finger */}
+                      <button type="button" className="sr-only" aria-label={tr(`Take back: ${who}`, `Zurücknehmen: ${who}`)} onClick={() => props.onUndo(p.id)}>
+                        {tr('Take back', 'Zurücknehmen')}
+                      </button>
+                    </SwipeRow>
+                  ) : (
+                    <div className="paid-row">{row}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
+          {props.payments.some((p) => mine(p.from) || mine(p.to)) && <span className="muted small paid-hint">{tr('Swipe a payment left to take it back.', 'Eine Zahlung nach links wischen nimmt sie zurück.')}</span>}
         </>
       )}
       {asking && (

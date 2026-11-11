@@ -2547,3 +2547,32 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* "Tee" a row of the golf list like the others (Sascha 11.11.2026, design round 3) */
 .settings-list > .std-tee { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .settings-list > .std-tee .std-tee-name { justify-self: end; }
+
+/* Facelift 11.11.2026 – wetten */
+/* a payment taken back by swiping left (G4): the action grey with the arrow back – nothing is deleted */
+.swipe-bin.neutral { background: #5d6d77; }
+.paid-list > li, .balance-items li.paid-swipe { display: block; padding: 0; background: none; }
+.paid-row { display: flex; align-items: center; gap: 10px; }
+.paid-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.paid-list .swipe-front.paid-row { background: var(--surface); padding: 4px 0; }
+.balance-items .swipe-front.paid-row { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.balance-items .paid-row .grow { gap: 2px; }
+.balance-items .paid-row .grow strong { font-weight: 600; }
+.balance-done svg { flex: none; }
+/* the bets library (W2, "wetten"): where to pick from as chips; each bet a row to tick, its number right below it once ticked */
+.lib-tabs { flex-shrink: 0; }
+.lib-list > .lib-tick, .lib-list > .swipe { border-bottom: 1px solid var(--line); }
+.lib-list > :last-child { border-bottom: 0; }
+.lib-list > .swipe { border-radius: 0; }
+.lib-tick > .settings-row { width: 100%; border-bottom: 0; }
+.lib-tick-more { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 0 16px 12px; }
+.lib-tick-more .input { flex: 1 1 100%; }
+.lib-list .swipe-front.lib-swipe { background: var(--surface); }
+.sheet .lib-list .swipe-front.lib-swipe { background: var(--surface-2); }
+/* the pool's blocks (W5): the title an eyebrow above the card – Stand, Abrechnung, each player */
+.pool-part-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; }
+.pool-player.setup-part { gap: 8px; }
+.pool-player > .pool-player-head { align-items: center; justify-content: flex-start; }
+.pool-player-card { display: flex; flex-direction: column; gap: 6px; }
+/* a free bet's state as a sign (W6) */
+.free-mark { flex: none; }
