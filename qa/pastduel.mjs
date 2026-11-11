@@ -128,7 +128,7 @@ for (const P of [C, E]) await P.evaluate(async () => { await (await import('/src
 }
 // Sascha's phone, in neither: the standing and the settlement
 await openPool(H);
-const row = H.locator('section.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) }).locator('.pool-wager').filter({ hasText: /gegen Erik/ });
+const row = H.locator('section.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Chris$/ }) }).locator('.pool-wager').filter({ hasText: /gegen Erik/ });
 const rowText = (await row.innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/\+10 \$/.test(rowText), `Sascha's phone: Chris against Erik +10 $ (${rowText.slice(0, 120)})`);
 const bal = await H.evaluate(async (c) => {

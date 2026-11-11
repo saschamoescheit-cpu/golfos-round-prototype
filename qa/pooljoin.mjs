@@ -66,7 +66,7 @@ ok((await guest.p.getByText(/Bitte zuerst anmelden/).count()) === 1, 'not signed
 
 // the host: "Angenommen: Erik" → "Verknüpfung mit Erik lösen" – Erik without a phone, his bet kept; invited anew
 await openPool(H);
-const card = H.locator('section.pool-player').filter({ has: H.locator('h2', { hasText: /^Erik$/ }) });
+const card = H.locator('section.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Erik$/ }) });
 await card.locator('.pool-invite-edit').waitFor({ timeout: 15000 });
 await card.locator('.pool-invite-edit').click();
 const who = H.getByRole('dialog', { name: 'Wer ist Erik?' });

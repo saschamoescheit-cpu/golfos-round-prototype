@@ -12,7 +12,7 @@ import { loadSession } from '../lib/sync';
 import { money } from '../lib/gameforms';
 import { isMoney, isNone, prizeOf, prizeStakes, prizeSym, whoOf, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
-import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
+import { Chips, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
@@ -27,9 +27,10 @@ import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
 import { Avatar } from '../components/Avatar';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, OnOffRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, ToggleList, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, OnOffRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, TickRow, ToggleList, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -226,7 +227,7 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
         onPurge={forgetPool}
       />
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="notice small" role="alert">
           {msg}
         </span>
       )}
@@ -363,21 +364,26 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-      </section>
-      {/* Wer → Score-Erfassung → Worum, as Neue Runde and Neues Turnier (Sascha 03.11.2026: one order everywhere) */}
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+        {/* "Wer erfasst" right after the players, in every setup the same (Sascha 11.11.2026, Facelift-Abnahme O1) */}
         <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
       </section>
+      {/* Wer → Worum → Einstellungen (Facelift-Abnahme W7): what is played for a block of its own */}
       <section className="setup-part">
-        <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+        <span className="eyebrow">{tr('Played for', 'Worum')}</span>
         <SettingsList>
           <PrizeRow value={prize} onChange={setPrize} />
-          {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
         </SettingsList>
       </section>
+      {setsOff(prize) && (
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+          <SettingsList>
+            <SettleRow value={settle} onChange={setSettle} />
+          </SettingsList>
+        </section>
+      )}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="notice small" role="alert">
           {msg}
         </span>
       )}
@@ -558,34 +564,37 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
         />
       )}
       {/* a round added as a game or a round is set up (Sascha 02.11.2026: "as in Games and Rounds"): "Platz wählen" opens
-          the courses, then the course and the day as rows, the button below */}
+          the courses, then a real sheet "Runde anlegen" – Platz, Löcher, Tag, Gilt für – saved with the round green tick
+          above it, as "Flight anlegen" (Sascha 11.11.2026, Facelift-Abnahme W8) */}
       {adding?.course && (
-        <div className="card trip-add" role="group" aria-label={tr('New round', 'Neue Runde')}>
-          <div className="sheet-head">
-            <strong>{tr('New round', 'Neue Runde')}</strong>
-            <button type="button" className="icon-btn" aria-label={tr('Cancel', 'Abbrechen')} onClick={() => setAdding(null)}>
-              ✕
-            </button>
-          </div>
-          <SettingsList>
-            <SettingsRow label={tr('Course', 'Platz')} value={adding.course.name} onClick={() => setPicking(true)} />
-          </SettingsList>
-          {loadCachedCourse(adding.course.id) && <RoundHoles course={loadCachedCourse(adding.course.id)!} holes={adding.holes} onChange={(h) => setAdding({ ...adding, ...h })} />}
-          <SettingsList>
-            <DateRow id="trip-day" label={tr('Day', 'Tag')} min={props.from} max={props.to} value={adding.day} onChange={(d) => setAdding({ ...adding, day: d })} />
-            {adding.holes && <ValidityRow allDay={!!adding.allDay} onChange={(allDay) => setAdding({ ...adding, allDay })} />}
-          </SettingsList>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={adding.day < props.from || adding.day > props.to}
-            onClick={() => {
-              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}), ...(adding.holes ? { holes: adding.holes, holesName: adding.holesName, ...(adding.allDay ? { allDay: true } : {}) } : {}) }]);
-              setAdding(null);
-            }}
-          >
-            {tr('Add the round', 'Runde hinzufügen')}
-          </button>
+        <div className="sheet-backdrop" onClick={() => setAdding(null)}>
+          <section className="sheet trip-add" role="dialog" aria-label={tr('Add a round', 'Runde anlegen')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Add a round', 'Runde anlegen')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setAdding(null)}>
+                ✕
+              </button>
+            </div>
+            <SettingsList>
+              <SettingsRow label={tr('Course', 'Platz')} value={adding.course.name} onClick={() => setPicking(true)} />
+            </SettingsList>
+            {loadCachedCourse(adding.course.id) && <RoundHoles course={loadCachedCourse(adding.course.id)!} holes={adding.holes} onChange={(h) => setAdding({ ...adding, ...h })} />}
+            <SettingsList>
+              <DateRow id="trip-day" label={tr('Day', 'Tag')} min={props.from} max={props.to} value={adding.day} onChange={(d) => setAdding({ ...adding, day: d })} />
+              {adding.holes && <ValidityRow allDay={!!adding.allDay} onChange={(allDay) => setAdding({ ...adding, allDay })} />}
+            </SettingsList>
+            <FloatActions
+              overSheet
+              save={{
+                label: tr('Add the round', 'Runde hinzufügen'),
+                disabled: adding.day < props.from || adding.day > props.to,
+                onClick: () => {
+                  props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}), ...(adding.holes ? { holes: adding.holes, holesName: adding.holesName, ...(adding.allDay ? { allDay: true } : {}) } : {}) }]);
+                  setAdding(null);
+                },
+              }}
+            />
+          </section>
         </div>
       )}
       <span className="muted small">
@@ -886,7 +895,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           <p className="muted small">{tr('Whoever set it up can restore it.', 'Wer ihn angelegt hat, kann ihn wiederherstellen.')}</p>
         )}
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="notice small" role="alert">
             {msg}
           </span>
         )}
@@ -971,11 +980,13 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           .filter((w) => (w.player === p.id || (shapeOf(w.kind) === 'duel' && w.opponent === p.id)) && w.challenge?.state !== 'declined')
           .map((w) => (w.player === p.id ? { w, shown: w, prog: pool.progress[w.id] } : { w, shown: { ...w, player: p.id, opponent: w.player }, prog: mirrored(pool.progress[w.id]) }));
         return (
-          <section key={p.id} className="card pool-player" aria-label={p.name}>
+          // the player's name as the small heading above his card, never in it (Sascha 11.11.2026, Facelift-Abnahme W5)
+          <section key={p.id} className="setup-part pool-player" aria-label={p.name}>
             <div className="pool-player-head">
-              <h2>{p.name}</h2>
-              <PersonMark state={personOf(p, entry.owner)} />
+              <span className="eyebrow pool-player-name">{p.name}</span>
+              <PersonMark state={personOf(p, entry.owner)} size={18} />
             </div>
+          <div className="card pool-player-card">
             {/* the host invites right at a player not on a phone yet – or gives him the one who joined as a new player */}
             {host && !p.joined?.uid && p.id !== entry.me && (
               <button type="button" className="btn-secondary pool-whois" aria-label={p.invited ? tr(`Invited: ${p.invited.name} – not accepted yet`, `Eingeladen: ${p.invited.name} – noch nicht angenommen`) : tr(`Invite ${p.name}`, `${p.name} einladen`)} onClick={() => setSheet({ whois: p.id })}>
@@ -1038,6 +1049,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
                 {tr('+ Bets', '+ Wetten')}
               </button>
             )}
+          </div>
           </section>
         );
       })}
@@ -1055,7 +1067,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
           paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
           currency={pool.currency === 'USD' ? 'USD' : 'EUR'}
-          onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
+          onUndo={(id) => change((p) => ({ ...p, payments: (p.payments ?? []).filter((x) => x.id !== id) }))}
           {...(setsOff(prizeOf(pool)) ? settleWhy(pool, owed, pays, name) : {})}
         />}
         {isNone(prizeOf(pool)) && <span className="muted small">{tr('No stake – for the honour: one point a bet won.', 'Ohne Einsatz – um die Ehre: ein Punkt je gewonnene Wette.')}</span>}
@@ -1079,7 +1091,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {/* the standing for people outside (Sascha 08.11.2026) – the money only when switched on */}
       {!pool.deletedAt && <LiveShare code={props.code} name={pool.name} money />}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="notice small" role="alert">
           {msg}
         </span>
       )}
@@ -1191,26 +1203,19 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {sheet && typeof sheet === 'object' && 'whois' in sheet && pool.players.some((x) => x.id === sheet.whois) && (
         <WhoIsSheet code={props.code} pool={pool} player={pool.players.find((x) => x.id === sheet.whois)!} me={entry.me} onClose={() => setSheet(null)} />
       )}
+      {/* the one confirmation of the app (Sascha 11.11.2026, Facelift-Abnahme W9) – ending and settling is no deleting: green */}
       {sheet === 'finish' && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Finish the pool', 'Pool beenden')} onClick={(e) => e.stopPropagation()}>
-            <strong>{tr('Finish the pool now?', 'Pool jetzt beenden?')}</strong>
-            <span className="muted">{tr('Open bets count as missed; the settlement is final.', 'Offene Wetten gelten als verloren; die Abrechnung ist endgültig.')}</span>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={async () => {
-                await reportWagers();
-                if (await change((p) => ({ ...p, finishedAt: new Date().toISOString() }))) setSheet(null);
-              }}
-            >
-              {tr('Finish & settle', 'Beenden & abrechnen')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-          </section>
-        </div>
+        <ConfirmSheet
+          title={tr('Finish the pool now?', 'Pool jetzt beenden?')}
+          text={tr('Open bets count as missed; the settlement is final.', 'Offene Wetten gelten als verloren; die Abrechnung ist endgültig.')}
+          confirmLabel={tr('Finish & settle', 'Beenden & abrechnen')}
+          danger={false}
+          onConfirm={async () => {
+            await reportWagers();
+            if (await change((p) => ({ ...p, finishedAt: new Date().toISOString() }))) setSheet(null);
+          }}
+          onClose={() => setSheet(null)}
+        />
       )}
     </main>
   );
@@ -1444,11 +1449,13 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
   return (
-    <section className="card pool-standings" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
-      <div className="pool-settle-head">
-        <h2>{tr('Standing', 'Stand')}</h2>
+    // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
+    <section className="setup-part pool-part" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
+      <div className="pool-part-head">
+        <span className="eyebrow">{tr('Standing', 'Stand')}</span>
         <span className="muted small">{tr('live from the rounds', 'live aus den Runden')}</span>
       </div>
+    <div className="card pool-standings">
       {/* the total, then each round – as the series' rounds (Sascha 08.11.2026) */}
       {rows.length > 0 && roundsShown.length > 0 && (
         <StepPick<string>
@@ -1481,19 +1488,27 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
       {/* a round not counted taken out of the pool altogether – gone from the switch for everyone, "Undo" for a moment
           (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben") */}
+      {/* the red bin of the action bar, as everywhere (Facelift-Abnahme W4) */}
       {one?.out && props.onHide && (
-        <button
-          type="button"
-          className="btn-ghost bad-text skip-delete"
-          onClick={async () => {
-            const r = { day: one.day, course: one.course };
-            if (!(await props.onHide!(r, true))) return;
-            setShown(null);
-            window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
-          }}
-        >
-          {tr('Delete the round from the pool', 'Runde aus dem Pool löschen')}
-        </button>
+        <div className="skip-delete">
+          <ActionBar
+            label={tr('This round', 'Diese Runde')}
+            actions={[
+              {
+                label: tr('Delete from the pool', 'Aus dem Pool löschen'),
+                aria: tr('Delete the round from the pool', 'Runde aus dem Pool löschen'),
+                icon: 'delete',
+                danger: true,
+                onClick: async () => {
+                  const r = { day: one.day, course: one.course };
+                  if (!(await props.onHide!(r, true))) return;
+                  setShown(null);
+                  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
+                },
+              },
+            ]}
+          />
+        </div>
       )}
       {rows.length > 0 && !one?.out && (
         <div className="matrix-wrap">
@@ -1535,13 +1550,27 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
                   {w.opponent && <span className="muted"> {tr('vs', 'gegen')} {name(w.opponent)}</span>}
                   <span className="muted small"> · {wagerLabel(w)}</span>
                 </span>
-                <span className={`bet-cell ${state(w)}`}>{state(w) === 'done' ? '✓' : state(w) === 'missed' ? '✗' : '…'}</span>
+                <FreeMark state={state(w)} />
               </li>
             ))}
           </ul>
         </div>
       )}
+    </div>
     </section>
+  );
+}
+
+/** A free bet's state as a sign, the same as an invitation's (DuelMark): made – a tick, missed – a cross, open – a clock
+ *  (Sascha 11.11.2026, Facelift-Abnahme W6: no "✓", "✗", "…" as text). */
+function FreeMark(props: { state: WagerState }) {
+  const label = props.state === 'done' ? tr('Made', 'Geschafft') : props.state === 'missed' ? tr('Missed', 'Verloren') : tr('Open', 'Offen');
+  return (
+    <svg className={`free-mark ${props.state === 'done' ? 'good-text' : props.state === 'missed' ? 'bad-text' : 'muted'}`} data-state={props.state} role="img" aria-label={label} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <title>{label}</title>
+      <circle cx="12" cy="12" r="9" />
+      {props.state === 'done' ? <path d="M8 12.5l2.6 2.6L16 9.5" /> : props.state === 'open' ? <path d="M12 7v5l3 2" /> : <path d="M9 9l6 6M15 9l-6 6" />}
+    </svg>
   );
 }
 
@@ -1555,14 +1584,16 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
   const most = Math.max(1, ...rows.map((p) => Math.abs(bal[p.id] ?? 0)));
   const signed = (v: number) => (Math.abs(v) < 0.005 ? money(0, sym) : `${v > 0 ? '+' : '−'}${money(Math.abs(v), sym)}`);
   return (
-    <section className="card pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
-      <div className="pool-settle-head">
-        <h2>{tr('Settlement', 'Abrechnung')}</h2>
+    // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
+    <section className="setup-part pool-part" aria-label={tr('Settlement', 'Abrechnung')}>
+      <div className="pool-part-head">
+        <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
         <span className="muted small">
           {tr(`${props.settled} of ${n} bets decided`, `${props.settled} von ${n} Wetten entschieden`)}
           {props.pending > 0 && tr(` · ${props.pending} provisional`, ` · ${props.pending} vorläufig`)}
         </span>
       </div>
+    <div className="card pool-settle">
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
         <i style={{ width: `${n ? (props.settled / n) * 100 : 0}%` }} />
       </div>
@@ -1604,6 +1635,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
       {/* "Wer zahlt wem" with what was paid – PaidMarks; how each payment comes about stands right below it (Sascha
           10.11.2026: "the way must be shown and traceable"; 11.11.2026, design round 2: no separate "Rechenweg") */}
       {props.children}
+    </div>
     </section>
   );
 }
@@ -1794,9 +1826,9 @@ function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void
         </div>
         <CustomFields w={w} set={(patch) => setW({ ...w, ...patch })} />
         <strong className="custom-preview">{wagerLabel(w)}</strong>
-        <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onDone(keepMyBet(myBetOf(w)))}>
-          {tr('Keep in "Own bets"', 'In „Eigene Wetten“ speichern')}
-        </button>
+        {/* set up new: the round green tick bottom right, above the sheet (Sascha 11.11.2026, Facelift-Abnahme W3) */}
+        <FloatActions overSheet save={{ label: tr('Keep in "Own bets"', 'In „Eigene Wetten“ speichern'), disabled: !ok, onClick: () => props.onDone(keepMyBet(myBetOf(w))) }} />
+
       </section>
     </div>
   );
@@ -2340,11 +2372,22 @@ export function RoundBetsSheet(props: { date: string; course: { id: string; name
           </>
         )}
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="notice small" role="alert">
             {msg}
           </span>
         )}
       </section>
+    </div>
+  );
+}
+
+/** A bet of the library to tick (Sascha 11.11.2026, Facelift-Abnahme W2: "Häkchen-Zeilen"): the row with the round green
+ *  tick; ticked, its number (or the words of a free bet) right below it. */
+function LibTick(props: { label: string; text?: string; on: boolean; onToggle: () => void; children?: React.ReactNode }) {
+  return (
+    <div className={`lib-tick${props.on ? ' on' : ''}`}>
+      <TickRow label={props.label} text={props.text} on={props.on} onChange={props.onToggle} />
+      {props.on && props.children && <div className="lib-tick-more">{props.children}</div>}
     </div>
   );
 }
@@ -2364,6 +2407,12 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
   const [taken, setTaken] = useState<Set<string>>(new Set()); // earlier bets ticked: "group|index"
   const [mine, setMine] = useState<MyBet[]>(loadMyBets); // own bets kept (Sascha 02.11.2026)
   const [building, setBuilding] = useState(false);
+  // an own bet swiped away and brought back by "Rückgängig"
+  useEffect(() => {
+    const on = () => setMine(loadMyBets());
+    window.addEventListener('golfos:mybets', on);
+    return () => window.removeEventListener('golfos:mybets', on);
+  }, []);
   const name = pool.players.find((p) => p.id === player)?.name ?? '';
   const toggle = (id: string, start: number) => setPicked((x) => (id in x ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== id)) : { ...x, [id]: start }));
   const lib = LIBRARY.filter((b) => b.id in picked);
@@ -2399,17 +2448,19 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
             ✕
           </button>
         </div>
-        {/* bets set up before as templates – only once there are any (Sascha 01.11.2026) */}
-        <Segmented<'library' | 'own' | 'earlier'>
-          label={tr('Choose from', 'Auswählen aus')}
-          value={tab}
-          onChange={(v) => v && setTab(v)}
-          options={[
-            { value: 'library', label: tr('Library', 'Bibliothek') },
-            { value: 'own', label: tr('Own bets', 'Eigene Wetten') },
-            ...(earlier.length > 0 ? [{ value: 'earlier' as const, label: tr('Set up before', 'Schon angelegt') }] : []),
-          ]}
-        />
+        {/* where to pick from – green chips, as the topics of the statistics (Sascha 11.11.2026, Facelift-Abnahme "wetten":
+            no Segmented block); "Schon angelegt" only once there are bets set up before (Sascha 01.11.2026) */}
+        <div className="chip-row lib-tabs" role="group" aria-label={tr('Choose from', 'Auswählen aus')}>
+          {([
+            ['library', tr('Library', 'Bibliothek')],
+            ['own', tr('Own bets', 'Eigene Wetten')],
+            ...(earlier.length > 0 ? [['earlier', tr('Set up before', 'Schon angelegt')]] : []),
+          ] as ['library' | 'own' | 'earlier', string][]).map(([v, label]) => (
+            <button key={v} type="button" aria-pressed={tab === v} onClick={() => setTab(v)}>
+              {label}
+            </button>
+          ))}
+        </div>
         {/* the settings first, as in a setup (Sascha 03.11.2026: "not under the catalogue – as settings at the very top") */}
         {(tab !== 'earlier' || lib.length + myPicked.length > 0) && (
           <div className="lib-group lib-settings">
@@ -2427,41 +2478,53 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                 'Von dir aus Bausteinen gebaut (was zählt, mindestens oder höchstens, welche Löcher) – z. B. „Mindestens 2 Birdies auf den Par 3s“ oder „Kein Drei-Putt auf der hinteren 9“. Die App wertet sie aus und bietet sie in jedem Pool wieder an. Unter „Bibliothek“: fertige Wetten, ebenfalls automatisch ausgewertet; nur die freie Wette in Worten entscheidet der Host.',
               )}
             </span>
-            {mine.map((b) => {
-              const key = `my:${b.id}`;
-              const on = key in picked;
-              const w: Wager = { id: b.id, player, kind: 'custom', stake: 0, payout: 'success', attempts: 'any', ...b.bet, target: on ? picked[key] : b.bet.target };
-              return (
-                <div key={b.id} className={`lib-row${on ? ' on' : ''}`}>
-                  <button type="button" className="lib-pick" aria-pressed={on} onClick={() => toggle(key, b.bet.target)}>
-                    <span className="lib-check" aria-hidden="true">
-                      {on ? '✓' : ''}
-                    </span>
-                    <span className="grow">
-                      <span className="title">{wagerLabel(w)}</span>
-                      <span className="muted small">{metricOf(b.bet.metric).details ? tr('with the details of the holes', 'mit Detailerfassung') : tr('from the strokes', 'aus den Schlägen')}</span>
-                    </span>
-                  </button>
-                  {on && <Stepper compact label={wagerLabel(w)} value={picked[key]} min={b.bet.metric === 'strokes' ? -18 : 0} onChange={(v) => setPicked({ ...picked, [key]: v })} />}
-                  {!on && (
-                    <button
-                      type="button"
-                      className="icon-btn small"
-                      aria-label={tr(`Remove "${wagerLabel(w)}" from own bets`, `„${wagerLabel(w)}“ aus Eigene Wetten entfernen`)}
-                      onClick={() => {
+            {/* each own bet a row to tick; gone by swiping left, "Rückgängig" in the toast (Facelift-Abnahme W2) */}
+            {mine.length > 0 && (
+              <div className="settings-list lib-list">
+                {mine.map((b) => {
+                  const key = `my:${b.id}`;
+                  const on = key in picked;
+                  const w: Wager = { id: b.id, player, kind: 'custom', stake: 0, payout: 'success', attempts: 'any', ...b.bet, target: on ? picked[key] : b.bet.target };
+                  return (
+                    <SwipeRow
+                      key={b.id}
+                      label={wagerLabel(w)}
+                      className="lib-swipe"
+                      onDelete={() => {
                         forgetMyBet(b.id);
                         setMine(loadMyBets());
+                        setPicked((x) => Object.fromEntries(Object.entries(x).filter(([k]) => k !== key)));
+                        window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'pool', id: b.id, label: wagerLabel(w), undo: () => { keepMyBet(b.bet, b.id); window.dispatchEvent(new Event('golfos:mybets')); } } }));
                       }}
                     >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            <button type="button" className="btn-secondary" onClick={() => setBuilding(true)}>
-              {tr('+ Build an own bet', '+ Eigene Wette bauen')}
-            </button>
+                      <LibTick
+                        label={wagerLabel(w)}
+                        text={metricOf(b.bet.metric).details ? tr('with the details of the holes', 'mit Detailerfassung') : tr('from the strokes', 'aus den Schlägen')}
+                        on={on}
+                        onToggle={() => toggle(key, b.bet.target)}
+                      >
+                        <Stepper compact label={wagerLabel(w)} value={picked[key]} min={b.bet.metric === 'strokes' ? -18 : 0} onChange={(v) => setPicked({ ...picked, [key]: v })} />
+                      </LibTick>
+                      {/* for the keyboard and VoiceOver – the swipe is for the finger */}
+                      <button
+                        type="button"
+                        className="sr-only"
+                        aria-label={tr(`Remove "${wagerLabel(w)}" from own bets`, `„${wagerLabel(w)}“ aus Eigene Wetten entfernen`)}
+                        onClick={() => {
+                          forgetMyBet(b.id);
+                          setMine(loadMyBets());
+                        }}
+                      >
+                        {tr('Remove', 'Entfernen')}
+                      </button>
+                    </SwipeRow>
+                  );
+                })}
+              </div>
+            )}
+            <SettingsList>
+              <SettingsRow label={tr('Build an own bet', 'Eigene Wette bauen')} onClick={() => setBuilding(true)} />
+            </SettingsList>
           </div>
         )}
         {building && (
@@ -2478,27 +2541,21 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
           LIBRARY_GROUPS.map((g) => (
             <div key={g.group} className="lib-group">
               <span className="eyebrow">{g.name()}</span>
-              {LIBRARY.filter((b) => b.group === g.group).map((b) => {
-                const on = b.id in picked;
-                const k = KINDS.find((x) => x.kind === b.kind)!;
-                return (
-                  <div key={b.id} className={`lib-row${on ? ' on' : ''}`}>
-                    <button type="button" className="lib-pick" aria-pressed={on} onClick={() => toggle(b.id, b.start)}>
-                      <span className="lib-check" aria-hidden="true">
-                        {on ? '✓' : ''}
-                      </span>
-                      <span className="grow">
-                        <span className="title">{b.name()}</span>
-                        <span className="muted small">{b.hint()}</span>
-                      </span>
-                    </button>
-                    {on && b.kind !== 'free' && <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />}
-                    {on && b.kind === 'free' && (
-                      <input className="input" required aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('e.g. longest drive on hole 7', 'z. B. Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
-                    )}
-                  </div>
-                );
-              })}
+              <div className="settings-list lib-list">
+                {LIBRARY.filter((b) => b.group === g.group).map((b) => {
+                  const on = b.id in picked;
+                  const k = KINDS.find((x) => x.kind === b.kind)!;
+                  return (
+                    <LibTick key={b.id} label={b.name()} text={b.hint()} on={on} onToggle={() => toggle(b.id, b.start)}>
+                      {b.kind !== 'free' ? (
+                        <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />
+                      ) : (
+                        <input className="input" required aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('e.g. longest drive on hole 7', 'z. B. Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
+                      )}
+                    </LibTick>
+                  );
+                })}
+              </div>
             </div>
           ))}
         {tab === 'earlier' &&
@@ -2513,29 +2570,27 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                     {all ? tr('none', 'keine') : tr('all', 'alle')}
                   </button>
                 </div>
-                {g.wagers.map((w, wi) => {
-                  const key = `${gi}|${wi}`;
-                  const on = taken.has(key);
-                  return (
-                    <div key={key} className={`lib-row${on ? ' on' : ''}`}>
-                      <button type="button" className="lib-pick" aria-pressed={on} onClick={() => flip([key], !on)}>
-                        <span className="lib-check" aria-hidden="true">
-                          {on ? '✓' : ''}
-                        </span>
-                        <span className="grow">
-                          <span className="title">{wagerLabel(w)}</span>
-                          <span className="muted small">{wagerRules(w, pool, roundChoices(pool, [...tourChoices(), ...(w.picks ?? [])]).length)}</span>
-                        </span>
-                      </button>
-                    </div>
-                  );
-                })}
+                <div className="settings-list lib-list">
+                  {g.wagers.map((w, wi) => {
+                    const key = `${gi}|${wi}`;
+                    return <LibTick key={key} label={wagerLabel(w)} text={wagerRules(w, pool, roundChoices(pool, [...tourChoices(), ...(w.picks ?? [])]).length)} on={taken.has(key)} onToggle={() => flip([key], !taken.has(key))} />;
+                  })}
+                </div>
               </div>
             );
           })}
-        <button type="button" className="btn-primary" disabled={!ok} onClick={add}>
-          {n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`)}
-        </button>
+        {/* set up new: the round green tick bottom right, above the sheet, its words kept (Sascha 11.11.2026, Facelift-Abnahme W1) –
+            not while an own bet is built on top */}
+        {!building && (
+          <FloatActions
+            overSheet
+            save={{
+              label: n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`),
+              disabled: !ok,
+              onClick: add,
+            }}
+          />
+        )}
       </section>
     </div>
   );
@@ -2599,7 +2654,6 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
             ✕
           </button>
         </div>
-        {!del ? (
           <>
             <div className="field">
               <label htmlFor="pool-edit-name">{tr('Name', 'Name')}</label>
@@ -2638,30 +2692,35 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
                 <ActionBar label={asking.name} actions={[{ label: tr('Keep', 'Behalten'), icon: 'reopen', onClick: () => setAsking(null) }, { label: tr('Remove', 'Entfernen'), icon: 'delete', danger: true, onClick: () => remove(asking) }]} />
               </div>
             )}
-            {/* the order of "Neue Wette" (Sascha 03.11.2026: one order everywhere) */}
-            <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+            {/* the order of "Neue Wette" (Sascha 03.11.2026: one order everywhere; 11.11.2026, Facelift-Abnahme O1/W7: "Wer
+                erfasst" right after the players, "Worum" a block of its own, then "Einstellungen") */}
             <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
-            <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+            <span className="eyebrow">{tr('Played for', 'Worum')}</span>
             <SettingsList>
               <PrizeRow value={prize} onChange={setPrize} />
-              {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
             </SettingsList>
+            {setsOff(prize) && (
+              <>
+                <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+                <SettingsList>
+                  <SettleRow value={settle} onChange={setSettle} />
+                </SettingsList>
+              </>
+            )}
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
             <span className="muted small autosave-note" role="status">
               {!ok ? tr('Name and every player need a name – then it is saved.', 'Name und jeder Spieler brauchen einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
             </span>
           </>
-        ) : (
-          <>
-            <strong>{tr(`Delete "${pool.name}"?`, `„${pool.name}“ löschen?`)}</strong>
-            <span className="muted">{tr('For everyone in the pool: its bets and the settlement are gone on every phone.', 'Für alle im Pool: Wetten und Abrechnung sind auf jedem Handy weg.')}</span>
-            <button type="button" className="btn-primary btn-danger-fill" onClick={props.onDelete}>
-              {tr('Delete for everyone', 'Für alle löschen')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setDel(false)}>
-              {tr('Keep', 'Behalten')}
-            </button>
-          </>
+        {/* the one confirmation of the app (Sascha 11.11.2026, Facelift-Abnahme W9): head with ✕, red-outlined, "Zurück" */}
+        {del && (
+          <ConfirmSheet
+            title={tr(`Delete "${pool.name}"?`, `„${pool.name}“ löschen?`)}
+            text={tr('For everyone in the pool: its bets and the settlement are gone on every phone. It can be restored from the bin.', 'Für alle im Pool: Wetten und Abrechnung sind auf jedem Handy weg. Im Papierkorb lässt er sich wiederherstellen.')}
+            confirmLabel={tr('Delete for everyone', 'Für alle löschen')}
+            onConfirm={props.onDelete}
+            onClose={() => setDel(false)}
+          />
         )}
       </section>
     </div>
