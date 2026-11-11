@@ -262,8 +262,10 @@ export function Scorecard(props: {
             return (
               <div key={p.id} className="sc-other">
                 <span className="grow">{p.name}{p.playingHandicap != null ? <span className="muted small"> · {tr('hcp', 'SV')} {fmtHcp(p.playingHandicap)}</span> : null}</span>
-                <strong>{t.gross}</strong> <span className="muted small">{formatToPar(t.toPar)}</span>
-                {t.stableford != null && <span className="muted small"> · {t.stableford} {tr('pts', 'Pkt.')}</span>}
+                {/* in columns – strokes, to par, points under each other (Sascha 11.11.2026: "79 und 92 untereinander ausgerichtet") */}
+                <strong className="sc-o-num">{t.holesPlayed ? t.gross : '–'}</strong>
+                <span className="muted small sc-o-num">{t.holesPlayed ? formatToPar(t.toPar) : ''}</span>
+                <span className="muted small sc-o-num">{t.stableford != null ? `${t.stableford} ${tr('pts', 'Pkt.')}` : ''}</span>
               </div>
             );
           })}

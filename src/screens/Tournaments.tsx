@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
 import { KeyHint } from '../components/KeyHint';
-import { ToggleList, ToggleRow } from '../components/Settings';
+import { ChoiceRow, SettingsList, ToggleList, ToggleRow } from '../components/Settings';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
@@ -488,11 +488,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
           <ToggleRow
             inList
             label={tr('Gave up', 'Aufgegeben')}
-            text={
-              out[who] != null
-                ? tr(`after hole ${ev.holes[out[who] - 1]?.label ?? out[who]} – the holes missing in the series' total:`, `nach Loch ${ev.holes[out[who] - 1]?.label ?? out[who]} – die fehlenden Löcher zählen in der Gesamtwertung als:`)
-                : tr('Stopped during the round – from the first hole without a score', 'Während der Runde abgebrochen – ab dem ersten Loch ohne Score')
-            }
+            text={tr('Stopped during the round', 'Während der Runde abgebrochen')}
             on={out[who] != null}
             onChange={(v) => {
               const first = row.findIndex((x) => x == null);
@@ -503,14 +499,28 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
             }}
           />
         </ToggleList>
+        {/* after which hole (Sascha 11.11.2026: "bei Aufgegeben muss man angeben können, nach welchem Loch") and how the
+            holes missing count – or "No Return": the round does not count */}
         {out[who] != null && (
-          <div className="chip-set retire-fill" role="group" aria-label={tr('The holes missing count as', 'Fehlende Löcher zählen als')}>
-              {(['double', 'net', 'par'] as const).map((v) => (
-                <button key={v} type="button" className={`chip${(fill[who] ?? 'double') === v ? ' on' : ''}`} aria-pressed={(fill[who] ?? 'double') === v} onClick={() => ((v) => setFill({ ...fill, [who]: v }))(v)}>
-                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : 'Par'}
+          <>
+            <SettingsList>
+              <ChoiceRow<number>
+                label={tr('Gave up', 'Aufgegeben')}
+                value={out[who]}
+                onChange={(k) => setOut({ ...out, [who]: k })}
+                options={ev.holes.map((h, k) => ({ value: k, name: k === 0 ? tr(`before hole ${h.label}`, `vor Loch ${h.label}`) : tr(`after hole ${ev.holes[k - 1].label}`, `nach Loch ${ev.holes[k - 1].label}`) }))}
+              />
+            </SettingsList>
+            <span className="muted small">{tr("The holes missing in the series' total:", 'Die fehlenden Löcher zählen in der Gesamtwertung als:')}</span>
+            <div className="chip-set retire-fill" role="group" aria-label={tr('The holes missing count as', 'Fehlende Löcher zählen als')}>
+              {(['double', 'net', 'par', 'nr'] as const).map((v) => (
+                <button key={v} type="button" className={`chip${(fill[who] ?? 'double') === v ? ' on' : ''}`} aria-pressed={(fill[who] ?? 'double') === v} onClick={() => setFill({ ...fill, [who]: v })}>
+                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : v === 'par' ? 'Par' : 'No Return'}
                 </button>
               ))}
             </div>
+            {fill[who] === 'nr' && <span className="muted small">{tr('No Return: this round does not count in the total – he stands on one round fewer.', 'No Return: Diese Runde zählt in der Gesamtwertung nicht – er steht dort auf einer Runde weniger.')}</span>}
+          </>
         )}
         <span className="muted small">
           {filled
@@ -600,7 +610,9 @@ export function LiveBoard(props: { label: string; title: string; live: boolean; 
  *  confusing" – the PGA app's build, in GolfOS' look): one line a player – place, name, total, the hole he is on in
  *  the round played now ("F" once in), that round's score. Tapped: a sheet with his total and each round's scorecard,
  *  the rounds as one switch (as the bets' standing). */
-export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; out?: boolean; parts: { k: number; text: string; thru: number; finished: boolean; retired?: boolean; card: () => Round | null }[] };
+export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; /** "auf 5 Runden" – once someone has a No Return (Sascha 11.11.2026) */ sub?: string; out?: boolean; parts: { k: number; text: string; thru: number; finished: boolean; retired?: boolean; noReturn?: boolean; card: () => Round | null }[] };
+/** "auf 6 Runden" – what a total stands on, once a player has a No Return (Sascha 11.11.2026) */
+export const onRounds = (n: number): string => (n === 1 ? tr('on 1 round', 'auf 1 Runde') : tr(`on ${n} rounds`, `auf ${n} Runden`));
 export function SeriesBoard(props: { label: string; title: string; live: boolean; rounds: { date: string; name?: string }[]; rows: SeriesBoardRow[]; note?: string; cutAfter?: number }) {
   const [who, setWho] = useState<string | null>(null);
   const [pick, setPick] = useState<number | null>(null);
@@ -610,7 +622,7 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
   const partNow = (r: SeriesBoardRow) => r.parts.find((p) => p.k === cur);
   const thru = (r: SeriesBoardRow) => {
     const p = partNow(r);
-    return !p ? '–' : p.retired ? tr('WD', 'Aufg.') : p.finished ? 'F' : String(p.thru);
+    return !p ? '–' : p.noReturn ? 'NR' : p.retired ? tr('WD', 'Aufg.') : p.finished ? 'F' : String(p.thru);
   };
   const shown = row ? (row.parts.find((p) => p.k === pick) ?? row.parts[row.parts.length - 1]) : undefined;
   const card = shown ? shown.card() : null;
@@ -646,7 +658,10 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
               }}
             >
               <span className="lb-rank">{r.pos}</span>
-              <span className="lb-name">{r.name}</span>
+              <span className="lb-name">
+                {r.name}
+                {r.sub && <span className="muted small lb-sub">{r.sub}</span>}
+              </span>
               <span className="lb-value">{r.total}</span>
               <span className="series-lb-thru">{thru(r)}</span>
               <span className="series-lb-now">{partNow(r)?.text ?? '–'}</span>
@@ -673,7 +688,7 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
                 <strong>{row.pos}</strong>
               </span>
               <span>
-                <span className="muted small">{tr('Total', 'Gesamt')}</span>
+                <span className="muted small">{tr('Total', 'Gesamt')}{row.sub ? ` · ${row.sub}` : ''}</span>
                 <strong>{row.total}</strong>
               </span>
               {partNow(row) && (
@@ -694,9 +709,9 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
             </div>
             <span className="muted small">
               {[dm(props.rounds[shown.k]?.date ?? ''), props.rounds[shown.k]?.name].filter(Boolean).join(' ')} · {shown.text}
-              {shown.retired ? tr(` · WD after ${shown.thru}`, ` · aufg. nach ${shown.thru}`) : shown.finished ? '' : tr(` · thru ${shown.thru}`, ` · nach ${shown.thru}`)}
+              {shown.noReturn ? tr(` · No Return after ${shown.thru} – does not count`, ` · No Return nach ${shown.thru} – zählt nicht`) : shown.retired ? tr(` · WD after ${shown.thru}`, ` · aufg. nach ${shown.thru}`) : shown.finished ? '' : tr(` · thru ${shown.thru}`, ` · nach ${shown.thru}`)}
             </span>
-            {card ? <ScoreTable round={card} /> : <span className="muted small">{tr('No scorecard for this round.', 'Keine Scorekarte zu dieser Runde.')}</span>}
+            {card ? <ScoreTable round={card} full /> : <span className="muted small">{tr('No scorecard for this round.', 'Keine Scorekarte zu dieser Runde.')}</span>}
           </section>
         </div>
       )}
@@ -893,7 +908,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
                 pos: out(r.name) ? 'CUT' : r.pos,
                 name: r.name,
                 total: fmtSum(r.sum),
-                parts: r.parts.map((p) => ({ k: p.k, text: fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, card: () => cardByName(evs[p.k], r.name) })),
+                ...(total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
+                parts: r.parts.map((p) => ({ k: p.k, text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(evs[p.k], r.name) })),
                 out: out(r.name),
               }))
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, total: '–', parts: [] }))

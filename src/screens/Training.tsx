@@ -2037,22 +2037,18 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
           ))}
         </ol>
         {/* the start at the end of the plan, after its settings – never floating (Sascha 17.10.2026 evening) */}
-        {/* its other action in the action bar, then the one main button (Sascha 03.11.2026) */}
-        <div className="sc-actions" role="group" aria-label={tr('This plan', 'Dieser Plan')}>
-          <button
-            type="button"
-            className="sc-action"
-            aria-label={tr('Save plan', 'Plan speichern')}
-            disabled={!p.items.length || !p.name.trim()}
-            onClick={() => {
+        {/* saved with the round green tick bottom right (Sascha 11.11.2026: "Speicher-Buttons sollten auch schweben"), the
+            one main button "Speichern & starten" at the end */}
+        <FloatActions
+          save={{
+            label: tr('Save plan', 'Plan speichern'),
+            disabled: !p.items.length || !p.name.trim(),
+            onClick: () => {
               saveOwnPlan(p);
               props.nav.toTab('train');
-            }}
-          >
-            {ACT_ICONS.save}
-            <span>{tr('Save', 'Speichern')}</span>
-          </button>
-        </div>
+            },
+          }}
+        />
         <button
           type="button"
           className="btn-primary"

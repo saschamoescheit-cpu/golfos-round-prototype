@@ -5,7 +5,7 @@ import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
-import { SaveButton, Segmented, TopBar } from '../components/ui';
+import { Segmented, TopBar } from '../components/ui';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, WEDGES, type Partials } from '../lib/partials';
@@ -148,8 +148,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
       {count > MAX_CLUBS ? tr(` · a counting round allows ${MAX_CLUBS}`, ` · in einer Wertungsrunde sind ${MAX_CLUBS} erlaubt`) : ''}
     </span>
   );
-  // editing ends with the round save button, not a "Fertig" pill (Sascha 04.11.2026)
-  const pencil = <SaveButton label={tr('Save your bag', 'Bag speichern')} onClick={() => setEditing(false)} />;
 
   const open = session ? loadLaunch()?.sessions?.find((x) => x.id === session) : null;
   if (open)
@@ -166,9 +164,10 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
 
   return (
     <main className="screen">
-      <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} right={editing ? pencil : undefined} />
-      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app"); while editing "Bag speichern" up top */}
-      {!editing && <FloatActions pen={{ label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) }} />}
+      <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} />
+      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app"); while editing the round green
+          tick at the same place saves (11.11.2026: "Speicher-Buttons sollten auch schweben") */}
+      <FloatActions pen={!editing ? { label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) } : null} save={editing ? { label: tr('Save your bag', 'Bag speichern'), onClick: () => setEditing(false) } : null} />
       {!editing && (
         <Segmented<Tab>
           label={tr('Distances', 'Distanzen')}

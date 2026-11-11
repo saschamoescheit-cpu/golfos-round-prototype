@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import { useTop } from '../components/useTop';
 import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
@@ -780,12 +781,20 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           {msg}
         </span>
       )}
-      <span className="spacer" />
-      <div className="sticky-cta">
-        <button type="button" className="btn-primary" disabled={!ready || busy} onClick={() => void save()}>
-          {d.code || d.multi ? tr('Save', 'Speichern') : tr('Set up the tournament', 'Turnier anlegen')}
-        </button>
-      </div>
+      {/* a tournament changed: saved with the round green tick bottom right (Sascha 11.11.2026: "Speicher-Buttons sollten
+          auch schweben"); a new one: "Turnier anlegen" at the end */}
+      {d.code || d.multi ? (
+        <FloatActions save={{ label: tr('Save', 'Speichern'), onClick: () => void save(), disabled: !ready || busy }} />
+      ) : (
+        <>
+          <span className="spacer" />
+          <div className="sticky-cta">
+            <button type="button" className="btn-primary" disabled={!ready || busy} onClick={() => void save()}>
+              {tr('Set up the tournament', 'Turnier anlegen')}
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }

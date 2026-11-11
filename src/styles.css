@@ -477,8 +477,10 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sc-hero-main > div:first-child { text-align: left; }
 .sc-big { font: 700 44px/1 var(--display); font-variant-numeric: tabular-nums; }
 .sc-mid { font: 700 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
-.sc-other { display: flex; align-items: baseline; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
-.sc-other .grow { flex: 1; }
+/* the other players in fixed columns – strokes, to par, points under each other (Sascha 11.11.2026) */
+.sc-other { display: grid; grid-template-columns: minmax(0, 1fr) 3ch 4.5ch 7ch; align-items: baseline; column-gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sc-other .grow { min-width: 0; }
+.sc-other .sc-o-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sc-wrap { display: flex; flex-direction: column; gap: 10px; }
 .sc-block { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
 table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
@@ -887,6 +889,7 @@ button.tile:disabled { opacity: 1; }
 .hole-bar-mini > span { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .hole-bar-mini em { font: 400 13px var(--display); font-style: normal; color: var(--text); }
 .hole-bar-mini .hole-bar-dots { margin-left: 0; }
+.lb-name .lb-sub { display: block; font-weight: 500; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .hole-bar-score.placeholder { color: var(--muted); font-weight: 600; }
 :root[data-theme='sun'] .map-toolbar, :root[data-theme='sun'] .map-dist { background: rgba(255, 255, 255, 0.95); color: var(--text); }
@@ -2486,6 +2489,7 @@ body:has(.tabbar) .fab-stack { bottom: calc(env(safe-area-inset-bottom) + 92px);
   background: var(--brand); color: #fff; box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.55);
 }
 .fab.small { width: 46px; height: 46px; }
+.fab:disabled { opacity: 0.45; box-shadow: none; }
 .fab:active { transform: scale(0.96); }
 /* the last row of a list stays above the buttons */
 body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 170px); }

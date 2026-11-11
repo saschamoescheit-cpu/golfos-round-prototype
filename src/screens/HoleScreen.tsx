@@ -2013,6 +2013,7 @@ export function HoleScreen(props: {
             holeIndex={i}
             // gave up (Sascha 12.11.2026): kept on this round and in the flight – the leaderboard and the signing know
             retired={{ ...(round.retired ?? {}), ...(round.shared ? (shareEvent?.flights[round.shared.flight]?.retired ?? {}) : {}) }}
+            holeLabels={round.holes.map((x) => x.label)}
             onRetire={
               round.preview
                 ? undefined

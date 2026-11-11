@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
-import { ToggleRow } from './Settings';
+import { ChoiceRow, SettingsList, ToggleRow } from './Settings';
 import { cellOf, sameScore, type RetiredFill } from '../lib/sharedround';
 import { formatToPar } from './ui';
 import { drivesShort, type TexasDrives } from '../lib/games';
@@ -156,6 +156,8 @@ export function ScoreSheet(props: {
   retired?: Record<string, number>;
   /** a player's name tapped: he gives up from a hole on – null: he plays on */
   onRetire?: (playerId: string, from: number | null, fill?: RetiredFill) => void;
+  /** the round's hole labels – to say after which hole one gave up (Sascha 11.11.2026) */
+  holeLabels?: string[];
 }) {
   const h = props.hole;
   const [ask, setAsk] = useState<string | null>(null);
@@ -166,6 +168,11 @@ export function ScoreSheet(props: {
   const askedEntry = ask ? props.entries[ask] : undefined;
   // with a score on this hole already: from the next one on; else from this one
   const askFrom = askedEntry && (askedEntry.strokes != null || askedEntry.pickedUp) ? at + 1 : at;
+  // after which hole he gave up – chosen (Sascha 11.11.2026: "bei Aufgegeben muss man angeben können, nach welchem Loch"),
+  // this hole or the one before to start with
+  const [askAfter, setAskAfter] = useState<number | null>(null);
+  const after = askAfter ?? askFrom;
+  const labels = props.holeLabels ?? [];
   return (
     <section className="score-panel" role="dialog" aria-label={tr('Score on this hole', 'Score an diesem Loch')}>
       <div className="sheet-head">
@@ -388,7 +395,13 @@ export function ScoreSheet(props: {
         </div>
       )}
       {asked && props.onRetire && createPortal(
-        <div className="sheet-backdrop" onClick={() => setAsk(null)}>
+        <div
+          className="sheet-backdrop"
+          onClick={() => {
+            setAsk(null);
+            setAskAfter(null);
+          }}
+        >
           <section className="sheet retire-sheet" role="dialog" aria-label={asked.name} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{asked.name}</strong>
@@ -399,10 +412,20 @@ export function ScoreSheet(props: {
               </button>
             </div>
             <span>
-              {askFrom > at
+              {after > at
                 ? tr(`Gives up after this hole: from the next one on ${asked.name} is not scored any more.`, `Gibt nach diesem Loch auf: ab dem nächsten Loch wird ${asked.name} nicht mehr erfasst.`)
-                : tr(`Gives up: from hole ${h.label} on ${asked.name} is not scored any more.`, `Gibt auf: ab Loch ${h.label} wird ${asked.name} nicht mehr erfasst.`)}
+                : tr(`Gives up: from hole ${labels[after] ?? h.label} on ${asked.name} is not scored any more.`, `Gibt auf: ab Loch ${labels[after] ?? h.label} wird ${asked.name} nicht mehr erfasst.`)}
             </span>
+            {labels.length > 0 && (
+              <SettingsList>
+                <ChoiceRow<number>
+                  label={tr('Gave up', 'Aufgegeben')}
+                  value={after}
+                  onChange={setAskAfter}
+                  options={Array.from({ length: Math.min(at + 1, labels.length) + 1 }, (_, k) => ({ value: k, name: k === 0 ? tr(`before hole ${labels[0]}`, `vor Loch ${labels[0]}`) : tr(`after hole ${labels[k - 1]}`, `nach Loch ${labels[k - 1]}`) }))}
+                />
+              </SettingsList>
+            )}
             <span className="muted small">
               {tr(
                 'His holes up to there stay and can be signed; in this round\'s board he stands below without a place. In a series\' total the holes missing count as:',
@@ -410,12 +433,13 @@ export function ScoreSheet(props: {
               )}
             </span>
             <div className="chip-set retire-fill" role="group" aria-label={tr('The holes missing count as', 'Fehlende Löcher zählen als')}>
-              {(['double', 'net', 'par'] as const).map((v) => (
+              {(['double', 'net', 'par', 'nr'] as const).map((v) => (
                 <button key={v} type="button" className={`chip${askFill === v ? ' on' : ''}`} aria-pressed={askFill === v} onClick={() => setAskFill(v)}>
-                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : 'Par'}
+                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : v === 'par' ? 'Par' : 'No Return'}
                 </button>
               ))}
             </div>
+            {askFill === 'nr' && <span className="muted small">{tr('No Return: this round does not count in the total – he stands on one round fewer.', 'No Return: Diese Runde zählt in der Gesamtwertung nicht – er steht dort auf einer Runde weniger.')}</span>}
             <span className="muted small">{tr('"Plays on" takes it back.', '„Spielt weiter“ nimmt es zurück.')}</span>
             <div className="sc-actions" role="group" aria-label={asked.name}>
               <button
@@ -423,8 +447,9 @@ export function ScoreSheet(props: {
                 className="sc-action danger"
                 aria-label={tr(`${asked.name} gives up`, `${asked.name} gibt auf`)}
                 onClick={() => {
-                  props.onRetire!(asked.id, askFrom, askFill);
+                  props.onRetire!(asked.id, after, askFill);
                   setAsk(null);
+                  setAskAfter(null);
                 }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

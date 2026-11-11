@@ -360,7 +360,9 @@ export function sharedLines(ev: RoundEvent | null | undefined, own?: string): Re
 
 /** A player gave up from a hole on – or, from null, plays on (Sascha 12.11.2026: "a player had to stop after 8 holes").
  *  Written into the flight, so the leaderboard, the signing and the other phones know. False when offline. */
-export type RetiredFill = 'double' | 'net' | 'par';
+/** how the holes missing of one who gave up count in a series' total: double bogey, net par, par – or "No Return" (Sascha
+ *  11.11.2026: "bei Aufgeben in einem Turnier wäre es No Return"): that round does not count, he stands on fewer rounds */
+export type RetiredFill = 'double' | 'net' | 'par' | 'nr';
 export async function setRetired(round: Round, pid: string, from: number | null, fill?: RetiredFill): Promise<boolean> {
   const s = round.shared;
   if (!s) return true;
@@ -693,6 +695,8 @@ export interface Standing {
   /** given up: the holes played and the holes missing filled as set (double bogey, net par or par) – what the series'
    *  total counts (Sascha 12.11.2026: he stays in the total with every round) */
   filled?: number;
+  /** given up as "No Return": "NR" – the round does not count in a series' total (Sascha 11.11.2026) */
+  noReturn?: boolean;
 }
 /** the names of the net classes, A to J (Sascha 03.11.2026: "there can be more than four – freely configurable") */
 export const CLASS_NAMES = 'ABCDEFGHIJ'.split('');
@@ -785,11 +789,11 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
       name: x.p.name,
       flight: meta[x.p.id].flight,
       cls: meta[x.p.id].cls,
-      value: x.out && !hb ? tr('WD', 'Aufg.') : x.sort == null ? '–' : unit(x.sort),
+      value: x.out && meta[x.p.id].fill === 'nr' && !hb ? 'NR' : x.out && !hb ? tr('WD', 'Aufg.') : x.sort == null ? '–' : unit(x.sort),
       sort: x.sort,
       thru: x.thru,
       finished: x.thru === n || x.out,
-      ...(x.out ? { retired: true, filled: x.per.reduce<number>((s, v, i) => s + (v ?? fillAt(x.p.id, i)), 0) } : {}),
+      ...(x.out ? { retired: true, ...(meta[x.p.id].fill === 'nr' ? { noReturn: true } : { filled: x.per.reduce<number>((s, v, i) => s + (v ?? fillAt(x.p.id, i)), 0) }) } : {}),
       pos: x.sort == null ? '–' : `${tied ? 'T' : ''}${first + 1}`,
       countback: everyoneIn && sameScore && !tied,
       signed: meta[x.p.id].signed,

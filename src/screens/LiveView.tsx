@@ -11,7 +11,7 @@ import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
 import { dayOf, withDuels } from '../lib/wagers';
 import { leaderText } from '../components/Specials';
-import { LiveBoard, SeriesBoard } from './Tournaments';
+import { LiveBoard, onRounds, SeriesBoard } from './Tournaments';
 import { ScoreGrid, StandingCard } from './Games';
 import { Standings } from './Wagers';
 import type { HoleScore } from '../components/LiveCourse';
@@ -293,7 +293,8 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
             name: r.name,
             total: fmtSum(r.sum),
             // the part's index counts the rounds played – its round of the series
-            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: fmtSum(p.sort), thru: p.thru, finished: p.finished, card: () => cardByName(played[p.k] ?? null, r.name) })),
+            ...(total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
+            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
             out: out(r.name),
           }))}
           note={total.rows.length ? tr('Tap a player for his rounds and scorecards.', 'Spieler antippen für seine Runden und Scorekarten.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}

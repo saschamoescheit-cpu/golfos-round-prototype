@@ -14,7 +14,9 @@ const markFor = (gross: number, par: number): Mark => {
 };
 
 /** `differ`: per player the holes where his own count and his marker's differ – marked red (Sascha 03.11.2026). */
-export function ScoreTable(props: { round: Round; onHole?: (index: number) => void; differ?: Record<string, number[]> }) {
+/** full: the rows Meter and Putts always there, "–" where nothing is known – the rounds of a tournament side by side look
+ *  the same (Sascha 11.11.2026: "Runde 1 genauso darstellen wie R2 und R3") */
+export function ScoreTable(props: { round: Round; onHole?: (index: number) => void; differ?: Record<string, number[]>; full?: boolean }) {
   const { round } = props;
   const differs = (pid: string, i: number) => !!props.differ?.[pid]?.includes(i);
   const holeDiffers = (i: number) => round.players.some((p) => differs(p.id, i));
@@ -66,19 +68,19 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                 </tr>
               </thead>
               <tbody>
-                {hasMetres && (
+                {(hasMetres || props.full) && (
                   <tr className="meta">
                     <td className="lab">{tr('Metres', 'Meter')}</td>
                     {nine.map((h) => (
-                      <td key={h.index}>{metres(h) ?? ''}</td>
+                      <td key={h.index}>{metres(h) ?? (props.full ? '–' : '')}</td>
                     ))}
-                    <td className="sumc">{sum(nine.map(metres))}</td>
+                    <td className="sumc">{sum(nine.map(metres)) ?? (props.full ? '–' : null)}</td>
                   </tr>
                 )}
                 <tr className="meta">
                   <td className="lab">Hcp</td>
                   {nine.map((h) => (
-                    <td key={h.index}>{h.strokeIndex}</td>
+                    <td key={h.index}>{h.strokeIndex || '–'}</td>
                   ))}
                   <td className="sumc" />
                 </tr>
@@ -132,13 +134,13 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                     </tr>
                   ),
                 ])}
-                {hasPutts && me && (
+                {(hasPutts || props.full) && me && (
                   <tr className="meta">
                     <td className="lab">Putts</td>
                     {nine.map((h) => (
-                      <td key={h.index}>{round.entries[me.id][h.index].putts ?? ''}</td>
+                      <td key={h.index}>{round.entries[me.id][h.index].putts ?? (props.full ? '–' : '')}</td>
                     ))}
-                    <td className="sumc">{sum(nine.map((h) => round.entries[me.id][h.index].putts))}</td>
+                    <td className="sumc">{sum(nine.map((h) => round.entries[me.id][h.index].putts)) ?? (props.full ? '–' : null)}</td>
                   </tr>
                 )}
               </tbody>

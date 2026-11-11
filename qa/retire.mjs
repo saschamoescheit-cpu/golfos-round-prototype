@@ -54,7 +54,15 @@ const sheet = H.getByRole('dialog', { name: 'Chris' });
 ok(/nach diesem Loch auf/.test(await sheet.innerText()) && /Gesamtwertung/.test(await sheet.innerText()), 'Chris tapped: his sheet – gives up after this hole, what follows');
 // the holes missing in a series' total: double bogey by default, chosen here "Nach Vorgabe" (Sascha 12.11.2026)
 const fills = (await sheet.locator('.retire-fill .chip').allInnerTexts()).map((t) => t.trim());
-ok(fills.join('|') === 'Doppelbogey|Nach Vorgabe|Par' && /Doppelbogey/.test(await sheet.locator('.retire-fill .chip.on').innerText()), `the holes missing count as: ${fills.join(' · ')} – Doppelbogey to start`);
+ok(fills.join('|') === 'Doppelbogey|Nach Vorgabe|Par|No Return' && /Doppelbogey/.test(await sheet.locator('.retire-fill .chip.on').innerText()), `the holes missing count as: ${fills.join(' · ')} – Doppelbogey to start`);
+// after which hole – a row with its sheet (Sascha 11.11.2026: "angeben können, nach welchem Loch aufgegeben wurde")
+const afterRow = sheet.locator('.settings-row').filter({ hasText: 'Aufgegeben' });
+ok((await afterRow.count()) === 1 && /nach Loch 1/.test(await afterRow.innerText()), `the row "Aufgegeben · nach Loch 1" (${(await afterRow.innerText().catch(() => '')).replace(/s+/g, ' ')})`);
+await afterRow.click();
+const afterSheet = H.getByRole('dialog', { name: 'Aufgegeben' });
+const afterOpts = (await afterSheet.locator('.pick-option strong').allInnerTexts()).map((t) => t.trim());
+ok(/^vor Loch 1\w*\|nach Loch 1\w*$/.test(afterOpts.join('|')),`its sheet: ${afterOpts.join(' · ')}`);
+await afterSheet.locator('.pick-option').filter({ hasText: /^\s*nach Loch/ }).click();
 await sheet.locator('.retire-fill .chip').filter({ hasText: 'Nach Vorgabe' }).click();
 if (process.env.SHOTS) await H.screenshot({ path: `${process.env.SHOTS}/retire-sheet.png` });
 await sheet.getByRole('button', { name: 'Chris gibt auf' }).click();

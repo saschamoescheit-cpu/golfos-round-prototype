@@ -466,7 +466,7 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     for (let i = 0; i < 2; i++) chris = set(chris, 'e', i, { strokes: 5 });
     ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
     const stroke = { ...ev, format: { ...(ev.format ?? {}), scoring: 'stroke' } as RoundEvent['format'] };
-    const with_ = (fill?: 'double' | 'net' | 'par') => ({ ...stroke, flights: { ...stroke.flights, f1: { ...stroke.flights.f1, retired: { e: 2 }, ...(fill ? { retiredFill: { e: fill } } : {}) } } });
+    const with_ = (fill?: 'double' | 'net' | 'par' | 'nr') => ({ ...stroke, flights: { ...stroke.flights, f1: { ...stroke.flights.f1, retired: { e: 2 }, ...(fill ? { retiredFill: { e: fill } } : {}) } } });
     const erik = (e: RoundEvent) => eventStandings(e).rows.find((r) => r.key === 'f1/e')!;
     const dbl = erik(with_()).filled!;
     expect(erik(with_('double')).filled).toBe(dbl);
@@ -475,6 +475,19 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     const total = seriesStandings([with_()]).rows.find((r) => r.name === 'Erik')!;
     expect(total.sum).toBe(dbl);
     expect(total.parts[0].retired).toBe(true);
+    // "No Return" (Sascha 11.11.2026): "NR", the round not counted – Erik stands on fewer rounds, after the others
+    expect(erik(with_('nr')).value).toBe('NR');
+    expect(erik(with_('nr')).noReturn).toBe(true);
+    expect(erik(with_('nr')).filled).toBeUndefined();
+    const nr = seriesStandings([stroke, with_('nr')]);
+    const e2 = nr.rows.find((r) => r.name === 'Erik')!;
+    const s2 = nr.rows.find((r) => r.name === 'Sascha')!;
+    expect(nr.anyNoReturn).toBe(true);
+    expect(e2.noReturn).toBe(true);
+    expect(s2.rounds).toBe(2);
+    expect(e2.rounds).toBe(1);
+    expect(e2.parts.some((p) => p.noReturn)).toBe(true);
+    expect(nr.rows.indexOf(e2)).toBe(nr.rows.length - 1);
   });
 });
 
