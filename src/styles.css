@@ -2547,3 +2547,9 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* "Tee" a row of the golf list like the others (Sascha 11.11.2026, design round 3) */
 .settings-list > .std-tee { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .settings-list > .std-tee .std-tee-name { justify-self: end; }
+/* Facelift 11.11.2026 – tours */
+.eyebrow-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; padding: 0; border: 0; background: none; font-family: inherit; color: var(--brand-text); cursor: pointer; min-height: 24px; text-align: left; }
+.lb-signed { display: flex; align-items: center; gap: 3px; }
+.invite-friend button:has(> .btn-tick) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.live-course-chev { transition: transform 0.15s; color: var(--muted); flex-shrink: 0; }
+.live-course-chev.open { transform: rotate(90deg); }

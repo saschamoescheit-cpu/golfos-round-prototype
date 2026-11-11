@@ -83,7 +83,7 @@ ok(ids.every((id) => f.signed?.[id]?.player && f.signed?.[id]?.marker), `server:
 const signedCalls = sim.pushes.filter((x) => x.action === 'signed' && x.code === code && x.flight === f.id);
 ok(ids.every((id) => signedCalls.some((x) => x.player === id && x.as === 'player') && signedCalls.some((x) => x.player === id && x.as === 'marker')), `push: each card told signed as player and as marker (${signedCalls.map((x) => `${x.from}:${x.as}`).join(', ')})`);
 ok(/abgegeben, gesperrt/.test(await hs.innerText()), `Sascha: "${(await hs.innerText()).replace(/\s+/g, ' ')}"`);
-ok(/✓ unterschrieben/.test(await H.locator('.event-board').innerText()), 'the leaderboard: "✓ unterschrieben"');
+ok(/unterschrieben/.test(await H.locator('.event-board .lb-signed').first().innerText()) && !/✓/.test(await H.locator('.event-board').innerText()) && (await H.locator('.event-board .lb-signed svg').count()) >= 1, 'the leaderboard: "unterschrieben" with the tick as an icon, no glyph (Facelift-Abnahme O5)');
 // locked: the score panel shows it, no steppers
 await H.getByRole('button', { name: 'Zurück zum Loch' }).click();
 await H.locator('.map-score').click();

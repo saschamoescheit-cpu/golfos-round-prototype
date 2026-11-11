@@ -22,8 +22,9 @@ const LiveCourse = lazy(() => import('../components/LiveCourse').then((m) => ({ 
 // The page a spectator opens (Sascha 08.11.2026, USA: "the live leaderboard also for people outside the tournament –
 // the same for games and bets"; and: "not only the leaderboard – the scorecards of the rounds when tapping a player, and
 // the course played with its holes"): the link #live=… in any browser – no app, no account, nothing to change. Read
-// again every 20 seconds while the page is in front; switched off by the players, the link says so. In tabs, as the
-// app (no one-pager): the leaderboard, the rounds (a series), the course.
+// again every 20 seconds while the page is in front; switched off by the players, the link says so. As the
+// app (no one-pager): the leaderboard – a series' total and its rounds as the switch "‹ Gesamt ›" – and the course as a row
+// below it (Facelift-Abnahme 11.11.2026, T9).
 
 const EVERY = 20000;
 const clock = (d: Date) => d.toLocaleTimeString(tr('en-GB', 'de-DE'), { hour: '2-digit', minute: '2-digit' });
@@ -108,16 +109,23 @@ export function LiveScreen(props: { code: string }) {
   );
 }
 
-/** The tabs of the page – as in the app (Training, Agility). */
-function Tabs<T extends string>(props: { label: string; tabs: { id: T; label: string }[]; tab: T; onTab: (t: T) => void }) {
+/** The course as a row under the leaderboard (Facelift-Abnahme T9: "der Platz als Zeile"): "Platz · Cypress ›" – tapped, the
+ *  holes on the aerial image open below it (the map library loaded only then). */
+function CourseRow(props: { ev: RoundEvent }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="segmented tr-tabs" role="tablist" aria-label={props.label}>
-      {props.tabs.map((x) => (
-        <button key={x.id} type="button" role="tab" aria-selected={props.tab === x.id} aria-pressed={props.tab === x.id} onClick={() => props.onTab(x.id)}>
-          {x.label}
+    <>
+      <div className="settings-list live-course-row">
+        <button type="button" className="settings-row" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span>{tr('Course', 'Platz')}</span>
+          <span className="settings-value">{props.ev.course.name}</span>
+          <svg className={`live-course-chev${open ? ' open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 5l7 7-7 7" />
+          </svg>
         </button>
-      ))}
-    </div>
+      </div>
+      {open && <CoursePart ev={props.ev} />}
+    </>
   );
 }
 
@@ -207,7 +215,6 @@ function CoursePart(props: { ev: RoundEvent }) {
 
 function EventLive(props: { ev: RoundEvent }) {
   const { ev } = props;
-  const [tab, setTab] = useState<'board' | 'course'>('board');
   return (
     <>
       <span className="eyebrow">{tr('Live · tournament', 'Live · Turnier')}</span>
@@ -216,8 +223,8 @@ function EventLive(props: { ev: RoundEvent }) {
         {ev.date ? `${dm(ev.date)} · ` : ''}
         {ev.course.name}
       </span>
-      <Tabs label={ev.name} tab={tab} onTab={setTab} tabs={[{ id: 'board', label: 'Leaderboard' }, { id: 'course', label: tr('Course', 'Platz') }]} />
-      {tab === 'board' ? <EventBoard ev={ev} /> : <CoursePart ev={ev} />}
+      <EventBoard ev={ev} />
+      <CourseRow ev={ev} />
     </>
   );
 }
@@ -231,7 +238,6 @@ const roundDone = (e: RoundEvent) => {
 function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
   const { series } = props.v;
   const today = dayOf(new Date());
-  const [tab, setTab] = useState<'total' | 'round' | 'course'>('total');
   // the rounds' events in the series' order (the server sends them so)
   const evs = series.rounds.map((_, k) => props.v.events[k] ?? null);
   const started = evs.map((e) => !!e && (e.date ?? '') <= today);
@@ -240,8 +246,9 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
   // the round being played – else the last one played, else the first
   const liveK = evs.findIndex((e, k) => !!e && started[k] && eventStandings(e).rows.some((r) => r.thru && !r.finished));
   const lastK = started.lastIndexOf(true);
-  const [pick, setPick] = useState<number | null>(null);
-  const k = pick ?? (liveK >= 0 ? liveK : lastK >= 0 ? lastK : 0);
+  // the view: the total (-1) or a round; the course below is the round's shown – with the total the one played now
+  const [view, setView] = useState(-1);
+  const k = view >= 0 ? view : liveK >= 0 ? liveK : lastK >= 0 ? lastK : 0;
   const cut = series.multi?.cut ?? null;
   const cutPlayed = !!cut && evs.slice(0, cut.after).every((e) => e && roundDone(e));
   const madeIt = cutPlayed ? new Set(madeCut(seriesStandings(evs.slice(0, cut!.after).filter((e): e is RoundEvent => !!e)).rows, cut!.top).map((r) => r.name.trim().toLowerCase())) : null;
@@ -252,13 +259,17 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
     const row = eventStandings(e).rows.find((r) => r.name.trim().toLowerCase() === name.trim().toLowerCase());
     return row ? eventCard(e, row.key) : null;
   };
-  // the rounds as one switch – as the bets' standing (Sascha 10.11.2026: "one solution everywhere instead of tabs")
-  const roundChips = (
+  // the total and the rounds as one switch – as the bets' standing (Sascha 10.11.2026: "one solution everywhere instead of
+  // tabs"; Facelift-Abnahme T9: "‹ Gesamt ›")
+  const views = (
     <StepPick<number>
-      label={tr('Round', 'Runde')}
-      value={k}
-      onChange={setPick}
-      options={series.rounds.map((r, i) => ({ value: i, name: `${tr(`Round ${i + 1}`, `Runde ${i + 1}`)} · ${dm(r.date)}`, ...(r.name ? { text: r.name } : {}), done: !!evs[i] && roundDone(evs[i]!) }))}
+      label={tr('View', 'Ansicht')}
+      value={view}
+      onChange={setView}
+      options={[
+        { value: -1, name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden'), uncounted: true },
+        ...series.rounds.map((r, i) => ({ value: i, name: `${tr(`Round ${i + 1}`, `Runde ${i + 1}`)} · ${dm(r.date)}`, ...(r.name ? { text: r.name } : {}), done: !!evs[i] && roundDone(evs[i]!) })),
+      ]}
     />
   );
   const ev = evs[k];
@@ -271,17 +282,8 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
         {series.rounds.length ? ` · ${dm(series.rounds[0].date)}–${dm(series.rounds[series.rounds.length - 1].date)}` : ''}
         {cut ? ` · ${tr(`cut after round ${cut.after}: the best ${cut.top}`, `Cut nach Runde ${cut.after}: die besten ${cut.top}`)}` : ''}
       </span>
-      <Tabs
-        label={series.name}
-        tab={tab}
-        onTab={setTab}
-        tabs={[
-          { id: 'total', label: tr('Total', 'Gesamt') },
-          { id: 'round', label: tr('Rounds', 'Runden') },
-          { id: 'course', label: tr('Course', 'Platz') },
-        ]}
-      />
-      {tab === 'total' && (
+      {views}
+      {view < 0 && (
         <SeriesBoard
           label={tr('Total standing', 'Gesamtwertung')}
           title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
@@ -301,32 +303,18 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
           cutAfter={cutPlayed ? cut!.after : undefined}
         />
       )}
-      {tab === 'round' && (
-        <>
-          {roundChips}
-          {ev && started[k] ? (
-            <>
-              <span className="muted small">
-                {ev.name} · {ev.course.name}
-              </span>
-              <EventBoard ev={ev} label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} />
-            </>
-          ) : (
-            <span className="muted small">{tr(`Round ${k + 1} is on ${dm(series.rounds[k]?.date ?? '')}.`, `Runde ${k + 1} ist am ${dm(series.rounds[k]?.date ?? '')}.`)}</span>
-          )}
-        </>
-      )}
-      {tab === 'course' && (
-        <>
-          {roundChips}
-          {ev ? (
-            <>
-              <span className="muted small">{ev.course.name}</span>
-              <CoursePart key={k} ev={ev} />
-            </>
-          ) : null}
-        </>
-      )}
+      {view >= 0 &&
+        (ev && started[k] ? (
+          <>
+            <span className="muted small">
+              {ev.name} · {ev.course.name}
+            </span>
+            <EventBoard ev={ev} label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} />
+          </>
+        ) : (
+          <span className="muted small">{tr(`Round ${k + 1} is on ${dm(series.rounds[k]?.date ?? '')}.`, `Runde ${k + 1} ist am ${dm(series.rounds[k]?.date ?? '')}.`)}</span>
+        ))}
+      {ev && <CourseRow key={k} ev={ev} />}
     </>
   );
 }

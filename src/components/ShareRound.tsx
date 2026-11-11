@@ -10,7 +10,8 @@ import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
-import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
+import { boardText, copyLink, FriendInvite, InviteCard, saveCsv, shareLink, shareText } from './InviteCard';
+import { ActionBar } from './ActionBar';
 import { OnOffRow, SettingsList, SheetRow } from './Settings';
 import { ScanCodeButton } from './QrScan';
 
@@ -173,7 +174,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   );
   return allIn ? (
     <SettingsList>
-      <SheetRow label={tr('Invite players', 'Mitspieler einladen')} value={tr('Everyone in ✓', 'Alle dabei ✓')}>
+      <SheetRow label={tr('Invite players', 'Mitspieler einladen')} value={tr('Everyone in', 'Alle dabei')}>
         {block}
       </SheetRow>
     </SettingsList>
@@ -500,7 +501,7 @@ export function JoinRoundSheet(props: {
         {/* a series of tournaments (Sascha 01.11.2026): in every round – its days and courses, the own flight; a round
             today: on to it */}
         {series && series.deletedAt && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="alert">
             {tr('The host has called this series off.', 'Der Gastgeber hat diese Serie abgesagt.')}
           </span>
         )}
@@ -541,7 +542,7 @@ export function JoinRoundSheet(props: {
         )}
         {/* a tournament planned in Games (Sascha 01.11.2026): called off – or joined before its day, played on the day */}
         {ev?.planned && ev.deletedAt && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="alert">
             {tr('The host has called this tournament off.', 'Der Gastgeber hat dieses Turnier abgesagt.')}
           </span>
         )}
@@ -640,7 +641,7 @@ export function JoinRoundSheet(props: {
           </>
         )}
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="status">
             {msg}
           </span>
         )}
@@ -678,33 +679,23 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
     const holes = f ? differences(f, pid) : [];
     return holes.length ? holes.map((i) => ev.holes[i]?.label ?? String(i + 1)).join(', ') : null;
   };
-  const csv = async () => {
-    const text = standingsCsv(ev, gross);
-    const file = new File([`\uFEFF${text}`], `${ev.name.replace(/[^\p{L}\p{N} ._-]+/gu, '').trim() || 'Ergebnis'}.csv`, { type: 'text/csv' });
-    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean; share?: (d: { files: File[]; title?: string }) => Promise<void> };
-    try {
-      if (nav.canShare?.({ files: [file] }) && nav.share) return await nav.share({ files: [file], title: ev.name });
-    } catch {
-      return; // cancelled
-    }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(file);
-    a.download = file.name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  };
   const status = ev.tournament && flights > 1 ? flightStatus(ev) : [];
+  const played = b.rows.some((r) => r.thru);
   return (
-    <section className="card stats-card leaderboard event-board">
-      <h2>
-        {ev.tournament && props.onOpenTour ? (
-          <button type="button" className="link-text" style={{ textDecoration: 'none' }} onClick={props.onOpenTour}>
-            {ev.name} <span className="muted" aria-hidden="true">›</span>
-          </button>
-        ) : (
-          ev.name
-        )}
-      </h2>
+    <>
+    {/* the name as the block's eyebrow above the card, not a heading inside it (Facelift-Abnahme O6) – a finished
+        tournament's leads to its page */}
+    {ev.tournament && props.onOpenTour ? (
+      <button type="button" className="eyebrow eyebrow-link" onClick={props.onOpenTour}>
+        {ev.name}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    ) : (
+      <span className="eyebrow">{ev.name}</span>
+    )}
+    <section className="card stats-card leaderboard event-board" aria-label={ev.name}>
       <span className="muted small">
         {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
       </span>
@@ -747,7 +738,14 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
                   {r.cls && <small className="muted"> · {r.cls}</small>}
                   {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
                   {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
-                  {r.signed && <small className="lb-signed">{tr('✓ signed', '✓ unterschrieben')}</small>}
+                  {r.signed && (
+                    <small className="lb-signed">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                      {tr('signed', 'unterschrieben')}
+                    </small>
+                  )}
                 </span>
               </span>
               <span className="lb-value">{r.value}</span>
@@ -783,12 +781,18 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
           ))}
         </div>
       )}
-      {ev.tournament && (
-        <button type="button" className="btn-secondary" onClick={() => void csv()}>
-          {tr('Results as a list (CSV)', 'Ergebnisliste (CSV)')}
-        </button>
+      {/* Teilen · CSV as one bar of icons (Facelift-Abnahme T7) */}
+      {ev.tournament && played && (
+        <ActionBar
+          label={tr('The result', 'Das Ergebnis')}
+          actions={[
+            { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${b.title}`, b.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))) },
+            { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(ev, gross)) },
+          ]}
+        />
       )}
     </section>
+    </>
   );
 }
 
@@ -895,8 +899,9 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
     const locked = f.players.every((p) => isSigned(f, p.id));
     const names = others.map((p) => p.name).join(', ');
     return (
+      <>
+      <span className="eyebrow">{tr('Hand the cards in', 'Scorekarten abgeben')}</span>
       <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
-        <h2>{tr('Hand the cards in', 'Scorekarten abgeben')}</h2>
         <div className="sign-row">
           <span className="grow">
             <strong>{tr('Sign as scorer', 'Als Schreiber unterschreiben')}</strong>
@@ -926,13 +931,19 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
             </button>
           )}
         </div>
-        {msg && <span className="small bad-text">{msg}</span>}
+        {msg && (
+        <span className="small good-text" role="status">
+          {msg}
+        </span>
+      )}
       </section>
+      </>
     );
   }
   return (
+    <>
+    <span className="eyebrow">{tr('Hand the card in', 'Scorekarte abgeben')}</span>
     <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
-      <h2>{tr('Hand the card in', 'Scorekarte abgeben')}</h2>
       {cards.map((c) => {
         const done = f.signed?.[c.pid]?.[c.as];
         const locked = isSigned(f, c.pid);
@@ -990,7 +1001,12 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
           </div>
         );
       })}
-      {msg && <span className="small bad-text">{msg}</span>}
+      {msg && (
+        <span className="small good-text" role="status">
+          {msg}
+        </span>
+      )}
     </section>
+    </>
   );
 }

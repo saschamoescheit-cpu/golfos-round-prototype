@@ -15,9 +15,11 @@ import { sideGamesOf, sideGameView } from '../lib/sidegames';
 export function LeaderboardCard(props: { round: Round }) {
   const b = leaderboard(props.round);
   const me = props.round.players.find((p) => p.isMe);
+  // the eyebrow above the card, not a heading inside it (Facelift-Abnahme O6)
   return (
+    <>
+    <span className="eyebrow">Leaderboard</span>
     <section className="card stats-card leaderboard">
-      <h2>Leaderboard</h2>
       <span className="muted small">{b.title}</span>
       {b.status && <strong className="lb-status">{b.status}</strong>}
       <ol className="lb-rows">
@@ -34,6 +36,7 @@ export function LeaderboardCard(props: { round: Round }) {
         ))}
       </ol>
     </section>
+    </>
   );
 }
 
