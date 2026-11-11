@@ -304,6 +304,21 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
+        {/* the standard currency (Sascha 12.11.2026): the Bilanz shows games and bets in another currency converted to it –
+            at the rate of their cut-off day */}
+        <div className="field">
+          <label>{tr('Standard currency', 'Standardwährung')}</label>
+          <Segmented<'EUR' | 'USD'>
+            label={tr('Currency', 'Währung')}
+            value={p.currency ?? null}
+            onChange={(v) => set({ currency: v ?? undefined })}
+            options={[
+              { value: 'EUR', label: 'Euro (€)' },
+              { value: 'USD', label: 'Dollar ($)' },
+            ]}
+          />
+          <span className="muted small">{p.currency ? tr('Games and bets in another currency are converted in "Bilanz" – at the rate of the day they end.', 'Spiele und Wetten in einer anderen Währung rechnet „Bilanz“ um – zum Kurs des Tages, an dem sie enden.') : tr('None chosen: every game and bet in its own currency.', 'Keine gewählt: jedes Spiel und jede Wette in seiner Währung.')}</span>
+        </div>
         {/* (the switch "Schlag per Ton (Test)" is gone – Sascha 03.11.2026: the iOS app hears the shots by itself) */}
         {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
             a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}

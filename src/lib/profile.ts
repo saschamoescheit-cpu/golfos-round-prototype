@@ -21,6 +21,9 @@ export interface Profile {
   tee?: string;
   /** PayPal.me name (Sascha 10.11.2026: "pay by PayPal right from the app") – the others' settlement offers it */
   paypal?: string;
+  /** the standard currency (Sascha 12.11.2026): games and bets in another currency are shown converted to it in the
+   *  Bilanz – at the rate of their cut-off day (lib/fx.ts); euro by default */
+  currency?: 'EUR' | 'USD';
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };
