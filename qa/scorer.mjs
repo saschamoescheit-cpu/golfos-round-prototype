@@ -3,6 +3,7 @@
 // full (putts too), Sascha's phone only shows them. Supabase is simulated (qa/sharesim.mjs), the app is real.
 // Usage: node qa/scorer.mjs [url]
 import { webkit } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { sharedServer } from './sharesim.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -40,8 +41,8 @@ const ownRow = H.locator('.settings-row').filter({ hasText: 'Eigene Detailerfass
 ok(/Niemand/.test(await ownRow.innerText()), 'setup: "Eigene Detailerfassung · Niemand" to start with');
 await ownRow.click();
 const ownSheet = H.getByRole('dialog', { name: 'Eigene Detailerfassung' });
-ok((await ownSheet.getByRole('switch').count()) === 1 && (await ownSheet.getByRole('switch', { name: /Chris/ }).count()) === 0, 'its sheet: a switch per player – not for the scorer Chris');
-await ownSheet.getByRole('switch', { name: /Sascha/ }).click();
+ok((await ownSheet.getByRole('checkbox').count()) === 1 && (await ownSheet.getByRole('checkbox', { name: /Chris/ }).count()) === 0, 'its sheet: a switch per player – not for the scorer Chris');
+await ownSheet.getByRole('checkbox', { name: /Sascha/ }).click();
 await ownSheet.getByRole('button', { name: 'Fertig' }).click();
 ok(/Sascha/.test(await ownRow.innerText()), `setup: "Eigene Detailerfassung · Sascha" (${(await ownRow.innerText()).replace(/\s+/g, ' ')})`);
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
@@ -105,9 +106,9 @@ await H.waitForTimeout(800);
 const openOn2 = await H.locator('.score-panel').count();
 const hole2 = (await H.locator('.map-hole-no').innerText()).trim();
 ok(openOn2 === 1 && (await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 1, `own details on: on ${hole2} the score entry opens for them`);
-const sw = H.getByRole('switch', { name: /Eigene Detailerfassung/ });
-ok((await sw.getAttribute('aria-checked')) === 'true', 'the switch on his card: on (from the setup)');
-await sw.click();
+const sw = onOff(H, /Eigene Detailerfassung/);
+ok((await sw.getAttribute('data-on')) === 'true', 'the switch on his card: on (from the setup)');
+await flip(sw);
 await H.waitForTimeout(300);
 ok((await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 0, 'switched off on his phone: "Meine Analyse" gone');
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();

@@ -348,9 +348,30 @@ export function OnOffRow(props: { label: string; text?: string; on: boolean; onC
   );
 }
 
-/** A yes/no setting – since 11.11.2026 a row with "An"/"Aus" and its sheet (OnOffRow); `inList` inside a ToggleList. */
-export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; inList?: boolean }) {
-  const row = <OnOffRow label={props.label} text={props.text} on={props.on} onChange={props.onChange} disabled={props.disabled} />;
+/** One of a list to tick – players to challenge, rounds that count, extras of a game (Sascha 11.11.2026: no sliders
+ *  anywhere; a list of several is ticked, not each opened as a sheet): the row with a round green tick on the right. */
+export function TickRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean }) {
+  return (
+    <button type="button" className="settings-row tick-row" role="checkbox" aria-checked={props.on} disabled={props.disabled} onClick={() => props.onChange(!props.on)}>
+      <span className="switch-label">
+        <span>{props.label}</span>
+        {props.text && <span className="muted small">{props.text}</span>}
+      </span>
+      <span className={`tick-mark${props.on ? ' on' : ''}`} aria-hidden="true">
+        {props.on && (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/** A yes/no setting – since 11.11.2026 a row with "An"/"Aus" and its sheet (OnOffRow), or, `pick`, one of a list to
+ *  tick (TickRow); `inList` inside a ToggleList. */
+export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; inList?: boolean; pick?: boolean }) {
+  const row = props.pick ? <TickRow label={props.label} text={props.text} on={props.on} onChange={props.onChange} disabled={props.disabled} /> : <OnOffRow label={props.label} text={props.text} on={props.on} onChange={props.onChange} disabled={props.disabled} />;
   return props.inList ? row : <ToggleList>{row}</ToggleList>;
 }
 

@@ -11,6 +11,7 @@
 // 6 · switched off: the link says "Nicht live"
 // Usage: node qa/livewatch.mjs [url]
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { sharedServer } from './sharesim.mjs';
 import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
@@ -52,13 +53,13 @@ await H.waitForTimeout(1500);
 await H.locator('.list-item').filter({ hasText: 'Celebration' }).first().click();
 await H.waitForTimeout(2000);
 const block = H.getByRole('region', { name: 'Zuschauer' });
-const sw = block.getByRole('switch', { name: 'Live-Leaderboard für Zuschauer' });
+const sw = onOff(block, 'Live-Leaderboard für Zuschauer');
 await sw.waitFor({ timeout: 15000 }).catch(() => {});
-ok((await sw.getAttribute('aria-checked')) === 'false', '"Zuschauer": off at first, the switch right of its heading');
-await sw.click();
+ok((await sw.getAttribute('data-on')) === 'false', '"Zuschauer": off at first, the switch right of its heading');
+await flip(sw);
 await H.waitForTimeout(1500);
 const code = sim.shared.get(tour).live;
-ok(typeof code === 'string' && code.length === 24 && (await sw.getAttribute('aria-checked')) === 'true', `switched on: a watch code on the server (${code})`);
+ok(typeof code === 'string' && code.length === 24 && (await sw.getAttribute('data-on')) === 'true', `switched on: a watch code on the server (${code})`);
 ok((await block.locator('.qr-box').count()) === 1 && (await block.locator('.invite-qr-code').count()) === 0, 'the QR code – no code under it (not for joining)');
 const actions = await block.locator('.qr-action').allInnerTexts();
 ok(actions.map((t) => t.trim()).join('|') === 'Teilen|Link kopieren|Neuer Link' && (await block.locator('.qr-action svg').count()) === 3, `round icons: ${actions.map((t) => t.trim()).join(' · ')}`);
@@ -163,9 +164,9 @@ await V.waitForTimeout(500);
 ok(/Celebration/.test(await V.locator('main').innerText()) && (await V.locator('.lb-rows li').count()) === 2, 'the tab "Runden": the leaderboard of the round');
 
 // 6 · switched off by the host
-await sw.click();
+await flip(sw);
 await H.waitForTimeout(1500);
-ok(!sim.shared.get(tour).live && (await sw.getAttribute('aria-checked')) === 'false', 'switched off: no watch code on the server');
+ok(!sim.shared.get(tour).live && (await sw.getAttribute('data-on')) === 'false', 'switched off: no watch code on the server');
 t = await watch(code);
 ok(/Nicht live/.test(t), 'the old link: "Nicht live"');
 ok(verrs.length === 0 && host.errs.length === 0, `no page errors ${[...verrs, ...host.errs].slice(0, 3).join(' | ')}`);

@@ -1905,6 +1905,7 @@ function PickRounds(props: { pool: WagerPool; picks: BetRound[]; /** a score ove
             <ToggleRow
               key={key(x)}
               inList
+              pick
               label={`${shortDay(x.day)} · ${x.course ?? tr('every round of the day', 'jede Runde des Tages')}`}
               on={on(x)}
               disabled={full && !on(x)}

@@ -4,6 +4,7 @@
 // drills tab, the results as a screening, the swing characteristics, the week, the guided routine to the end, the
 // diary. Usage: node mobility-physio.mjs <app url> [shots dir]
 import { webkit, devices } from 'playwright';
+import { flip } from './onoff.mjs';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
@@ -106,7 +107,7 @@ ok((await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft
 for (const d of ['Mo', 'Mi', 'Fr', 'So']) await p.locator('.mob-physio-days button').filter({ hasText: d }).click();
 ok((await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).locator('.settings-value').innerText()) === '4×' && (await p.locator('.mob-physio-days button[aria-pressed="true"]').count()) === 4, 'four days chosen: four a week');
 // the reminder: a switch, then the time as a row
-await p.locator('.mob-physio-plan [role="switch"]').click();
+await flip(p.locator('.mob-physio-plan .onoff-row')); // since 11.11.2026 a row with An/Aus, no slider
 // the time: its sheet in the look of GolfOS (03.11.2026)
 await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Uhrzeit der Erinnerung' }).click();
 {

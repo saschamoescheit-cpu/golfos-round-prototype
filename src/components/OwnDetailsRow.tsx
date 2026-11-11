@@ -34,6 +34,7 @@ export function OwnDetailsRow(props: { names: string[]; value: string[]; onChang
                 <ToggleRow
                   key={n}
                   inList
+                  pick
                   label={n}
                   on={props.value.includes(ownKey(n))}
                   onChange={(v) => props.onChange(v ? [...new Set([...props.value, ownKey(n)])] : props.value.filter((x) => x !== ownKey(n)))}

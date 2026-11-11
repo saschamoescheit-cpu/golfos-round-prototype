@@ -38,8 +38,8 @@ ok(forms === '5+5+10|Skins|Nassau|Lochspiel|Stableford-Duell', `the side bet's f
 await P.getByRole('dialog', { name: 'Spielform wählen' }).locator('.pick-option').filter({ hasText: /^5\+5\+10/ }).first().click();
 await sheet.locator('.settings-row').filter({ hasText: 'Gegner' }).click();
 const who = P.getByRole('dialog', { name: 'Gegner' });
-ok((await who.getByText('In deiner Runde').count()) === 1 && (await who.getByRole('switch', { name: /^Ben/ }).count()) === 1, 'the opponents: Ben "In deiner Runde"');
-await who.getByRole('switch', { name: /^Ben/ }).click();
+ok((await who.getByText('In deiner Runde').count()) === 1 && (await who.getByRole('checkbox', { name: /^Ben/ }).count()) === 1, 'the opponents: Ben "In deiner Runde"');
+await who.getByRole('checkbox', { name: /^Ben/ }).click();
 await who.getByRole('button', { name: 'Fertig' }).click();
 await sheet.getByRole('button', { name: 'Herausfordern' }).click();
 await P.waitForTimeout(2500);
@@ -52,7 +52,7 @@ ok((await sheet.count()) === 0 && /1 Duell 5\+5\+10/.test(await row.innerText())
 await row.click();
 await sheet.locator('.settings-row').filter({ hasText: /^Spielform/ }).click();
 await P.getByRole('dialog', { name: 'Spielform wählen' }).locator('.pick-option').filter({ hasText: /^Skins/ }).first().click();
-ok((await sheet.getByRole('switch', { name: /^Sascha/ }).getAttribute('aria-checked')) === 'true' && (await sheet.getByRole('switch', { name: /^Ben/ }).getAttribute('aria-checked')) === 'true', 'Skins: the round\'s players chosen, the own one too');
+ok((await sheet.getByRole('checkbox', { name: /^Sascha/ }).getAttribute('aria-checked')) === 'true' && (await sheet.getByRole('checkbox', { name: /^Ben/ }).getAttribute('aria-checked')) === 'true', 'Skins: the round\'s players chosen, the own one too');
 await sheet.getByRole('button', { name: 'Skins starten' }).click();
 ok((await sheet.count()) === 0 && /Skins/.test(await row.innerText()), `Skins kept with the round: "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
 

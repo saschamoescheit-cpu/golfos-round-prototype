@@ -6,6 +6,7 @@
 // The reckoning itself is checked independently in src/lib/gameforms.*.test.ts.
 // Usage: node qa/gamesim.mjs [url] [form filter, e.g. "Wolf"]
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { mockNet } from './netmock.mjs';
 import { pickPrize } from './prize.mjs';
 
@@ -83,8 +84,8 @@ for (const c of cases) {
   // presses on where the form has them
   if (c.double) {
     // press on: a switch (02.11.2026)
-    const sw = p.getByRole('switch', { name: /^Press/ }).first();
-    if ((await sw.count()) && (await sw.getAttribute('aria-checked')) !== 'true') await sw.click().catch(() => {});
+    const sw = onOff(p, /^Press/);
+    if ((await sw.count()) && (await sw.getAttribute('data-on')) !== 'true') await flip(sw).catch(() => {});
   }
   await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
   await p.fill('#course-search', 'Hetzenhof');

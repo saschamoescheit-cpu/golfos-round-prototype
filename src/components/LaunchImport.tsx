@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Club } from '../types';
 import { clubCode, getLang, tr } from '../lib/i18n';
-import { OnOffRow } from './Settings';
+import { TickRow } from './Settings';
 import { clubName } from '../lib/caddie';
 import { loadLaunch, measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, saveLaunch, summarize, type LmClub, type LmData, type LmImport, type LmSession } from '../lib/launchmonitor';
 import { Segmented } from './ui';
@@ -192,7 +192,7 @@ export function LaunchImport(props: {
                   .filter((c) => !keepOld.includes(c.club))
                   .map((c) => (
                     <div key={c.club} className="launch-choice">
-                      <OnOffRow
+                      <TickRow
                         label={tr(`Add ${clubName(c.club)} to the bag`, `${clubName(c.club)} zum Bag hinzufügen`)}
                         text={tr(`not in your bag yet · ${show(c.carry)}`, `noch nicht in deinem Bag · ${show(c.carry)}`)}
                         on={!noAdd.includes(c.club)}

@@ -1270,7 +1270,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   .filter((s) => s.group === 'house')
                   .map((s) => {
                     const on = d.settings[s.key] === true || d.settings[s.key] === 'true';
-                    return <ToggleRow key={s.key} inList label={s.label()} on={on} onChange={(v) => set({ settings: { ...d.settings, [s.key]: v } })} />;
+                    return <ToggleRow key={s.key} inList pick label={s.label()} on={on} onChange={(v) => set({ settings: { ...d.settings, [s.key]: v } })} />;
                   })}
               </ToggleList>
             </SheetRow>
@@ -1308,7 +1308,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             {f.settings
               .filter((s) => s.group !== 'house' && s.type === 'bool' && s.key !== 'double' && (!s.when || s.when(d.settings)))
               .map((s) => (
-                <ToggleRow key={s.key} inList label={s.label()} on={d.settings[s.key] === true || d.settings[s.key] === 'true'} onChange={(v) => set({ settings: { ...d.settings, [s.key]: v } })} />
+                <ToggleRow key={s.key} inList pick label={s.label()} on={d.settings[s.key] === true || d.settings[s.key] === 'true'} onChange={(v) => set({ settings: { ...d.settings, [s.key]: v } })} />
               ))}
           </ToggleList>
         )}

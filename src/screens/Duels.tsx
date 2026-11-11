@@ -222,7 +222,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             {others.length > 0 && (
               <ToggleList>
                 {others.map((p) => (
-                  <ToggleRow key={p.id} inList label={p.name} text={taken(p.id) ? tr('A duel on this day already', 'An diesem Tag schon ein Duell') : undefined} disabled={taken(p.id)} on={chosen.includes(`p:${p.id}`)} onChange={(v) => flip(`p:${p.id}`, v)} />
+                  <ToggleRow key={p.id} inList pick label={p.name} text={taken(p.id) ? tr('A duel on this day already', 'An diesem Tag schon ein Duell') : undefined} disabled={taken(p.id)} on={chosen.includes(`p:${p.id}`)} onChange={(v) => flip(`p:${p.id}`, v)} />
                 ))}
               </ToggleList>
             )}
@@ -230,7 +230,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             {named.length > 0 && (
               <ToggleList>
                 {named.map((x) => (
-                  <ToggleRow key={x.name} inList label={x.name} text={tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`n:${x.name}`)} onChange={(v) => flip(`n:${x.name}`, v)} />
+                  <ToggleRow key={x.name} inList pick label={x.name} text={tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`n:${x.name}`)} onChange={(v) => flip(`n:${x.name}`, v)} />
                 ))}
               </ToggleList>
             )}
@@ -238,7 +238,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             {friends.length > 0 && (
               <ToggleList>
                 {friends.map((f) => (
-                  <ToggleRow key={f.id} inList label={f.name} text={f.uid ? tr('Gets the challenge on his phone', 'Bekommt die Herausforderung aufs Handy') : tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`f:${f.id}`)} onChange={(v) => flip(`f:${f.id}`, v)} />
+                  <ToggleRow key={f.id} inList pick label={f.name} text={f.uid ? tr('Gets the challenge on his phone', 'Bekommt die Herausforderung aufs Handy') : tr('Without a phone – you keep his score', 'Ohne Handy – du erfasst seinen Score')} on={chosen.includes(`f:${f.id}`)} onChange={(v) => flip(`f:${f.id}`, v)} />
                 ))}
               </ToggleList>
             )}
@@ -447,7 +447,7 @@ function SideGameSetup(props: { form: FormId; preset: SideBetPreset; roundId?: s
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
         <ToggleList>
           {people.map((p) => (
-            <ToggleRow key={p.name} inList label={p.name} text={p.playing != null ? tr(`Playing handicap ${p.playing}`, `Spielvorgabe ${p.playing}`) : undefined} on={chosen.includes(p.name)} onChange={(v) => setChosen(v ? [...new Set([...chosen, p.name])] : chosen.filter((x) => x !== p.name))} />
+            <ToggleRow key={p.name} inList pick label={p.name} text={p.playing != null ? tr(`Playing handicap ${p.playing}`, `Spielvorgabe ${p.playing}`) : undefined} on={chosen.includes(p.name)} onChange={(v) => setChosen(v ? [...new Set([...chosen, p.name])] : chosen.filter((x) => x !== p.name))} />
           ))}
         </ToggleList>
         {!fits && <span className="small bad-text">{tr(`${f.name()} needs ${playersText(f)} – ${n} chosen.`, `${f.name()} braucht ${playersText(f)} – ${n} gewählt.`)}</span>}

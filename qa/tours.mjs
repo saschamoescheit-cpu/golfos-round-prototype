@@ -379,7 +379,7 @@ ok(/Schreiber\s*Cedric/.test(await scorerOf(1).innerText()) && /Schreiber\s*(Sas
   ok((await row.count()) === 1 && /Niemand/.test(await row.innerText()), 'Einer für alle: "Eigene Detailerfassung · Niemand"');
   await row.click();
   const s = H.getByRole('dialog', { name: 'Eigene Detailerfassung' });
-  await s.getByRole('switch', { name: /^Erik/ }).click();
+  await s.getByRole('checkbox', { name: /^Erik/ }).click();
   await s.getByRole('button', { name: 'Fertig' }).click();
   ok(/Erik/.test(await row.innerText()), `Erik enters his own details too (${(await row.innerText()).replace(/\s+/g, ' ')})`);
 }

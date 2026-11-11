@@ -105,7 +105,7 @@ ok(/Schon gespielt/.test(await C.locator('main').innerText()), 'the hint: "Schon
 ok(/Pool USA-Wetten/.test((await C.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join('|')), 'the pool of that day: USA-Wetten');
 await C.locator('.settings-row').filter({ hasText: 'Gegner' }).click();
 const sheet = C.getByRole('dialog', { name: 'Gegner' });
-await sheet.getByRole('switch', { name: /Erik/ }).click();
+await sheet.getByRole('checkbox', { name: /Erik/ }).click();
 await sheet.getByRole('button', { name: 'Fertig' }).click();
 await C.getByRole('button', { name: /herausfordern/i }).click();
 await C.locator('.duel-challenges').waitFor({ timeout: 15000 });

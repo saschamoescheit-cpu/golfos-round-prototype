@@ -982,6 +982,11 @@ button.tile:disabled { opacity: 1; }
 .settings-row.onoff-row { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 56px; padding-block: 10px; }
 .onoff-row .switch-label { min-width: 0; }
 .onoff-row .settings-value { white-space: nowrap; }
+/* one of a list to tick (players, rounds, extras): a round tick, green when chosen */
+.settings-row.tick-row { grid-template-columns: minmax(0, 1fr) auto; min-height: 56px; padding-block: 10px; }
+.tick-row .switch-label { min-width: 0; }
+.tick-mark { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; color: #fff; flex: none; }
+.tick-mark.on { background: var(--brand); border-color: var(--brand); }
 .input:required::placeholder { color: var(--brand-text); opacity: 1; }
 :root[data-theme='sun'] .settings-value.need, :root[data-theme='sun'] .input:required::placeholder { color: #2f5a00; }
 .pick-list { display: flex; flex-direction: column; gap: 6px; }
@@ -2514,3 +2519,5 @@ body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) 
 /* the start page: a quiet line what each module is – may wrap, never cut */
 .module-desc { white-space: normal; line-height: 1.3; }
 .hole-bar .hole-cell > .map-hole-no { font-size: 22px; } /* Loch as big as Par (11.11.2026) */
+.settings-list.near-switch { background: transparent; } /* "In der Nähe anzeigen": a line of the invite, no box (04.11.2026) */
+.near-switch .onoff-row { padding-inline: 0; }

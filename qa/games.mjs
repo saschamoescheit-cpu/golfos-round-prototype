@@ -2,6 +2,7 @@
 // three holes of scores (plus the form's own input), finish and settlement – and the switch back to Rounds.
 // Usage: node games.mjs <app url>
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { mockNet } from './netmock.mjs';
 import { pickPrize } from './prize.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
@@ -278,11 +279,11 @@ ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('bu
   ok((await row.count()) === 1 && /3 Regeln/.test(text), `Chicago: house rules in one row, all on (${text})`);
   await row.click();
   const sheet = p.getByRole('dialog', { name: 'Hausregeln' });
-  const on = () => sheet.locator('[role="switch"][aria-checked="true"]').count();
-  ok((await sheet.getByRole('switch').count()) === 3 && (await on()) === 3, 'the sheet: three switches, all on');
-  await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
+  const on = () => sheet.locator('[role="checkbox"][aria-checked="true"]').count();
+  ok((await sheet.getByRole('checkbox').count()) === 3 && (await on()) === 3, 'the sheet: three switches, all on');
+  await sheet.getByRole('checkbox', { name: 'Eagle −10' }).click();
   ok((await on()) === 2, 'a tap switches a house rule off');
-  await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
+  await sheet.getByRole('checkbox', { name: 'Eagle −10' }).click();
   await sheet.getByRole('button', { name: 'Speichern', exact: true }).click();
 }
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
@@ -297,7 +298,7 @@ const pressMain = p.locator('.settings-row').filter({ hasText: /^\s*Press/ });
 ok(/An · bis 1,60 €/.test(await pressMain.innerText()), `Chicago: press on by default – one row "An · bis 1,60 €" (${(await pressMain.innerText()).replace(/\s+/g, ' ')})`);
 await pressMain.click();
 const pressSheet = p.getByRole('dialog', { name: 'Press (Einsatz verdoppeln)' });
-ok((await pressSheet.getByRole('switch', { name: /^Press/ }).getAttribute('aria-checked')) === 'true' && (await pressSheet.locator('.settings-row').count()) === 2, 'its sheet: the switch on, Höchsteinsatz and Erlaubte Pressen');
+ok((await onOff(pressSheet, /^Press/).getAttribute('data-on')) === 'true' && (await pressSheet.locator('.settings-row:not(.onoff-row)').count()) === 2, 'its sheet: the switch on, Höchsteinsatz and Erlaubte Pressen');
 // the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026) –
 // a row, its picker in the sheet
 const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });

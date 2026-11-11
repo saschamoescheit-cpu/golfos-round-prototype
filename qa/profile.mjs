@@ -2,6 +2,7 @@
 // under the unit (no language, no sun mode), the bag with tabs, short codes, the putter, the pencil, wedges by loft.
 // Usage: node qa/profile.mjs [url]   (SHOTS=<dir> for screenshots)
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -44,11 +45,11 @@ ok(heads.join(' | ').includes('Persönliche Daten | Golf | Caddie') && !heads.in
 ok(/Mein Bag[\s\S]*Distanzen in/.test(await p.locator('section').filter({ has: p.locator('h2', { hasText: /^Golf$/ }) }).innerText()), 'distances under Golf, below "Mein Bag"');
 ok(/Von selbst vorlesen/.test(prof) && /Wie der Caddie plant/.test(prof) && !/verfehlen darf/.test(prof), 'caddie settings in the profile, no miss map');
 ok(!/Grüns heute/.test(prof), 'no green speed setting');
-const voice = p.getByRole('switch', { name: /Von selbst vorlesen/ });
-ok((await voice.getAttribute('aria-checked')) === 'false', 'voice switch off by default');
-await voice.click();
-ok((await voice.getAttribute('aria-checked')) === 'true' && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).voice)) === true, 'switch turns reading aloud on');
-await voice.click();
+const voice = onOff(p, /Von selbst vorlesen/);
+ok((await voice.getAttribute('data-on')) === 'false', 'voice switch off by default');
+await flip(voice);
+ok((await voice.getAttribute('data-on')) === 'true' && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).voice)) === true, 'switch turns reading aloud on');
+await flip(voice);
 await shot('profile');
 // home club: searched like a course
 await p.getByRole('button', { name: /Platz suchen/ }).click();

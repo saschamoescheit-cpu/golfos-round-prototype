@@ -3,6 +3,7 @@
 // download), and qa/replay.ts counts the same reps from the file as the app did on the phone.
 // Usage: node mobility-log.mjs <app url> [shots dir]
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,13 +48,13 @@ await p.locator('.mob-today-start').click();
 
 // the setup: the switch, on by default (1.11.2026: "always recorded in the background"); off it says nothing is
 // recorded, on again it says only the body points are written down
-const sw = p.locator('.mob-log-switch .drawer-row');
-ok((await sw.getAttribute('aria-checked')) === 'true', 'the setup has the switch "Bewegungsprotokoll mitschreiben", on by default');
-await sw.click();
-ok((await sw.getAttribute('aria-checked')) === 'false' && /nichts wird aufgenommen/.test(await p.locator('.mob-private').innerText()), 'switched off: nothing is recorded');
-await sw.click();
+const sw = p.locator('.mob-log-switch .onoff-row');
+ok((await sw.getAttribute('data-on')) === 'true', 'the setup has the switch "Bewegungsprotokoll mitschreiben", on by default');
+await flip(sw);
+ok((await sw.getAttribute('data-on')) === 'false' && /nichts wird aufgenommen/.test(await p.locator('.mob-private').innerText()), 'switched off: nothing is recorded');
+await flip(sw);
 const priv = await p.locator('.mob-private').innerText();
-ok((await sw.getAttribute('aria-checked')) === 'true' && /Nur die Körperpunkte/.test(priv), `switched on, the setup says only the body points are written down (${priv})`);
+ok((await sw.getAttribute('data-on')) === 'true' && /Nur die Körperpunkte/.test(priv), `switched on, the setup says only the body points are written down (${priv})`);
 await shot('setup');
 await p.locator('.mob-start-train').click();
 await p.locator('.mob-train-summary').waitFor({ timeout: 240000 }).catch(() => {});
@@ -88,7 +89,7 @@ await p.waitForTimeout(300);
 await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
 await p.locator('.mob-start').filter({ hasText: 'Kurz-Check' }).click();
 await p.locator('.mob-setup').waitFor({ timeout: 15000 });
-ok((await p.locator('.mob-setup .mob-log-switch .drawer-row').getAttribute('aria-checked')) === 'true', 'the screening setup has the switch too – still on');
+ok((await p.locator('.mob-setup .mob-log-switch .onoff-row').getAttribute('data-on')) === 'true', 'the screening setup has the switch too – still on');
 await p.locator('.mob-start-coach').click();
 const tq = Date.now();
 while (Date.now() - tq < 300000) {

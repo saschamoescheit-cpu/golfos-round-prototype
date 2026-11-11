@@ -4,6 +4,7 @@
 // with four tabs, the spread first every time; in the stats the range's shots as rings, off at first, remembered.
 // Data: made up in the devices' formats (no real player's session). Usage: node qa/rangesession.mjs [url]  (SHOTS=<dir>)
 import { webkit, devices } from 'playwright';
+import { onOff, flip } from './onoff.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -74,8 +75,8 @@ await p.waitForTimeout(500);
 const sheet = p.getByRole('dialog', { name: 'Launch-Monitor-Daten' });
 const prev = (await sheet.innerText()).replace(/\s+/g, ' ');
 ok(/Garmin · 23 Schläge/.test(prev) && /gemessen am 15\.11\.2025/.test(prev), `preview: Garmin, 23 shots, "gemessen am 15.11.2025"`);
-const add4i = sheet.getByRole('switch', { name: /Eisen 4 zum Bag hinzufügen/ });
-ok(had4i || (await add4i.getAttribute('aria-checked')) === 'true', had4i ? 'iron 4 already in the bag – nothing to add' : 'iron 4 not in the bag: "Eisen 4 zum Bag hinzufügen" – on');
+const add4i = sheet.getByRole('checkbox', { name: /Eisen 4 zum Bag hinzufügen/ });
+ok(had4i || (await add4i.getAttribute('data-on')) === 'true', had4i ? 'iron 4 already in the bag – nothing to add' : 'iron 4 not in the bag: "Eisen 4 zum Bag hinzufügen" – on');
 const carry7 = Number((/7i \d+× (\d+) m/.exec(prev) ?? [])[1]);
 await shot('01-vorschau');
 await sheet.getByRole('button', { name: 'Übernehmen' }).click();
@@ -160,9 +161,9 @@ await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(600);
 await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
 await p.waitForTimeout(600);
-const sw = p.getByRole('switch', { name: /Range-Schläge zeigen/ });
-ok((await sw.count()) === 1 && (await sw.getAttribute('aria-checked')) === 'false' && (await p.locator('.spread-dot.range').count()) === 0, 'stats: "Range-Schläge zeigen" – off at first, no rings');
-await sw.click();
+const sw = onOff(p, /Range-Schläge zeigen/);
+ok((await sw.count()) === 1 && (await sw.getAttribute('data-on')) === 'false' && (await p.locator('.spread-dot.range').count()) === 0, 'stats: "Range-Schläge zeigen" – off at first, no rings');
+await flip(sw);
 await p.waitForTimeout(300);
 const rings = await p.locator('.spread-dot.range').count();
 ok(rings >= 20, `on: the range's shots as rings beside the course's (${rings})`);
@@ -174,7 +175,7 @@ await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(500);
 await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
 await p.waitForTimeout(500);
-ok((await p.getByRole('switch', { name: /Range-Schläge zeigen/ }).getAttribute('aria-checked')) === 'true', 'remembered after a reload');
+ok((await onOff(p, /Range-Schläge zeigen/).getAttribute('data-on')) === 'true', 'remembered after a reload');
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
