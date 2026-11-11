@@ -32,7 +32,8 @@ import { holeForTee } from '../lib/teeline';
 import { teeQuestion } from '../lib/teecheck';
 import { teeName } from '../data/tees';
 import { ShotSheet } from '../components/ShotSheet';
-import { Segmented, TopBar, formatToPar } from '../components/ui';
+import { TopBar, formatToPar } from '../components/ui';
+import { SettingsList, SettingsRow } from '../components/Settings';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
 import { clubCode, dec, getLang, tr } from '../lib/i18n';
 
@@ -813,9 +814,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
-      <div className="review-nav">
-        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={prevHole == null} onClick={() => prevHole != null && goTo(prevHole)}>
-          ←
+      {/* the hole bar with the chevrons of the round's hole bar (Facelift 11.11.2026, r8) */}
+      <div className="review-nav hole-nav">
+        <button type="button" className="icon-btn hole-step" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={prevHole == null} onClick={() => prevHole != null && goTo(prevHole)}>
+          <NavIcon d="M15 5l-7 7 7 7" />
         </button>
         <div style={{ textAlign: 'center' }}>
           <strong>{tr('Hole', 'Loch')} {hole.label}</strong>
@@ -832,30 +834,34 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <span className="review-progress-bar" aria-hidden="true">
                 <i style={{ width: `${(checkedCount / playedCount) * 100}%` }} />
               </span>
-              <span className="small">
-                {isChecked(e) ? <span className="good-text">✓ </span> : null}
-                {tr(`${checkedCount}/${playedCount} checked`, `${checkedCount}/${playedCount} geprüft`)}
+              <span className="small review-progress-text">
+                {isChecked(e) ? (
+                  <span className="good-text review-tick" role="img" aria-label={tr('this hole checked', 'dieses Loch geprüft')}>
+                    <NavIcon d="M5 12.5l4.5 4.5L19 7.5" size={14} />
+                  </span>
+                ) : null}
+                {tr(`${checkedCount} of ${playedCount} checked`, `${checkedCount} von ${playedCount} geprüft`)}
               </span>
             </div>
           )}
         </div>
-        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={nextHole == null} onClick={() => nextHole != null && goTo(nextHole)}>
-          →
+        <button type="button" className="icon-btn hole-step" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={nextHole == null} onClick={() => nextHole != null && goTo(nextHole)}>
+          <NavIcon d="M9 5l7 7-7 7" />
         </button>
       </div>
 
-      {/* only the open holes or all (Sascha 23.10.2026): shown once the end was reached with holes left to check */}
+      {/* only the open holes or all (Sascha 23.10.2026): shown once the end was reached with holes left to check – green
+          chips as the topics of the statistics (Facelift 11.11.2026) */}
       {(onlyOpen || reachedEnd || (last && openHoles.length > 0)) && stillOpen.length > 0 && (
         <div className="review-filter">
-          <Segmented<'open' | 'all'>
-            label={tr('Holes', 'Löcher')}
-            value={onlyOpen ? 'open' : 'all'}
-            onChange={(v) => v && setOnlyOpen(v === 'open')}
-            options={[
-              { value: 'open', label: tr(`Still to check (${stillOpen.length})`, `Noch zu prüfen (${stillOpen.length})`) },
-              { value: 'all', label: tr('All holes', 'Alle Löcher') },
-            ]}
-          />
+          <div className="chip-row" role="group" aria-label={tr('Holes', 'Löcher')}>
+            <button type="button" aria-pressed={onlyOpen} onClick={() => setOnlyOpen(true)}>
+              {tr(`Still to check (${stillOpen.length})`, `Noch zu prüfen (${stillOpen.length})`)}
+            </button>
+            <button type="button" aria-pressed={!onlyOpen} onClick={() => setOnlyOpen(false)}>
+              {tr('All holes', 'Alle Löcher')}
+            </button>
+          </div>
           {onlyOpen && (
             <div className="chip-row wrap" role="group" aria-label={tr('Holes still to check', 'Noch zu prüfende Löcher')}>
               {stillOpen.map((i) => (
@@ -1239,9 +1245,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <>
           {data && <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>}
           {data && (
-            <button type="button" className="link-text" onClick={() => setPuttEdit(true)}>
-              {tr('Set the flag and the putts ›', 'Fahne und Putts setzen ›')}
-            </button>
+            // a row as every setting, not a text link (Facelift 11.11.2026, r8)
+            <SettingsList>
+              <SettingsRow
+                label={tr('Flag and putts', 'Fahne und Putts')}
+                value={e.putts != null ? tr(`${e.putts} putt${e.putts === 1 ? '' : 's'}`, `${e.putts} Putt${e.putts === 1 ? '' : 's'}`) : tr('set', 'setzen')}
+                onClick={() => setPuttEdit(true)}
+              />
+            </SettingsList>
           )}
         </>
       ) : (
@@ -1637,5 +1648,14 @@ function PenaltyGrip(props: { onPointerDown: (ev: React.PointerEvent) => void })
         <circle cx="15" cy="18" r="1.6" />
       </svg>
     </span>
+  );
+}
+
+/** The chevrons of the hole bar and the tick of a checked hole (Facelift 11.11.2026, r8) – lines, no glyphs. */
+function NavIcon(props: { d: string; size?: number }) {
+  return (
+    <svg width={props.size ?? 22} height={props.size ?? 22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={props.d} />
+    </svg>
   );
 }

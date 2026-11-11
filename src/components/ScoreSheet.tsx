@@ -350,7 +350,7 @@ export function ScoreSheet(props: {
               <>
                 <Stepper
                   label="Putts"
-                  sub={e.puttsAt ? tr('placed on the green ✓', 'auf dem Grün gesetzt ✓') : undefined}
+                  sub={e.puttsAt ? tr('placed on the green', 'auf dem Grün gesetzt') : undefined}
                   extra={
                     props.canPlacePutts && p.isMe && e.putts != null && e.putts > 0 ? (
                       <button type="button" className="pencil" aria-label={tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={props.onPlacePutts}>
