@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { SwapGlyph } from '../components/Glyph';
+import { ModulePill } from '../components/ModuleSheet';
 import { goTour } from '../lib/nav';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
@@ -332,13 +332,7 @@ export function PlayTab(props: {
 export function RoundsTopBar(props: { onModules: () => void }) {
   return (
     <div className="topbar">
-      <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-        <span className="brand">
-          GOLF<span>OS</span>
-        </span>
-        <span className="module-tag">Rounds</span>
-        <SwapGlyph />
-      </button>
+      <ModulePill name={'Rounds'} onClick={props.onModules} />
       <TopTools />
     </div>
   );

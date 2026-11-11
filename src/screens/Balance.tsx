@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import { tr } from '../lib/i18n';
 import { formDef, formatEuro, money, standingOf, type Game } from '../lib/gameforms';
 import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
@@ -135,6 +136,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   usePools(); // read again when a pool changes
   const [, setTick] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   // the tiles filter (Sascha 04.11.2026: "the tiles in Bilanz have no filter") – a tap shows the games and bets behind it
   const [filter, setFilter] = useState<BalanceFilter>(lastFilter);
   const pick = (f: BalanceFilter) => setFilter((lastFilter = filter === f ? null : f));
@@ -497,6 +499,49 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       {/* each pool of bets on its own (Sascha 03.11.2026: "two pools, not under one heading") */}
       {!filter && pools.map(poolCard)}
 
+      {/* a payment (Sascha 12.11.2026: "+" in Bilanz): the round "+" bottom right – who you owe or who owes you, a tap
+          opens him with "Bezahlt" and "Erhalten" */}
+      {props.inTab && (owe.length > 0 || owed.length > 0) && <FloatActions plus={{ label: tr('Record a payment', 'Zahlung eintragen'), onClick: () => setPaying(true) }} />}
+      {paying && (
+        <div className="sheet-backdrop" onClick={() => setPaying(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Record a payment', 'Zahlung eintragen')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Record a payment', 'Zahlung eintragen')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPaying(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            <ul className="list pay-pick">
+              {[...owe, ...owed.filter((p) => !owe.includes(p))].map((p) => {
+                const open = sums(p.items, (i) => i.open);
+                return (
+                  <li key={p.key}>
+                    <button
+                      type="button"
+                      className="list-item"
+                      onClick={() => {
+                        setPaying(false);
+                        setOpen(p.key);
+                      }}
+                    >
+                      <span className="grow">
+                        <span className="title">{p.name}</span>
+                        <span className="muted small">{Object.values(open).some((v) => v < -0.004) ? tr('you owe him', 'du schuldest ihm') : tr('owes you', 'schuldet dir')}</span>
+                      </span>
+                      <Amounts m={open} />
+                      <span className="muted" aria-hidden="true">
+                        ›
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+      )}
       {person && <PersonSheet p={person} busy={busy} onClose={() => setOpen(null)} onOpen={openItem} onSettle={(as) => void settleAll(person, as)} onUndo={async (i, x) => {
         setBusy(true);
         await record(i, (ps2) => (i.kind === 'game' ? ps2.map((y) => (y.id === x.id ? { ...y, undoneAt: now() } : y)) : ps2.filter((y) => y.id !== x.id)));

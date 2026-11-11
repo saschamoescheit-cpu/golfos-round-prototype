@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FloatActions } from './FloatActions';
 import { tr } from '../lib/i18n';
 import { loadFriends, saveFriends, type Friend } from '../lib/friends';
 import { acceptFriend, appFriendLink, canLink, codeFromText, friendLink, friendPreview, isLeaving, myFriendCode, pendingAsk, publishCard, refreshFriends, renewFriendCode, setPendingAsk, unfriendLater, type FriendPreview } from '../lib/friendlinks';
@@ -15,7 +16,7 @@ import { SwipeRow } from './SwipeRow';
 // the friends linked by their accounts – name, handicap, home club and photo from their profiles – and the ones typed
 // by hand as before.
 
-export function Friends(props: { onSignIn: () => void }) {
+export function Friends(props: { onSignIn: () => void; /** the friends page itself: "+" floats bottom right (Sascha 12.11.2026) */ float?: boolean }) {
   // a friend swiped away stays out while his "Undo" runs
   const shownFriends = () => loadFriends().filter((f) => !f.uid || !isLeaving(f.uid));
   const [list, setList] = useState<Friend[]>(shownFriends);
@@ -193,9 +194,22 @@ export function Friends(props: { onSignIn: () => void }) {
           {tr('Send them your invitation: once accepted, the friend typed by hand becomes the linked one.', 'Schick ihnen deine Einladung: Sobald sie annehmen, wird aus dem von Hand angelegten Freund der verknüpfte.')}
         </span>
       )}
-      <button type="button" className="btn-secondary" onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])}>
-        {tr('+ Add friend', '+ Freund hinzufügen')}
-      </button>
+      {props.float ? (
+        <FloatActions
+          plus={{
+            label: tr('Add friend', 'Freund hinzufügen'),
+            onClick: () => {
+              const id = newId();
+              setList([...list, { id, name: '', hcp: '' }]);
+              window.setTimeout(() => document.getElementById(`fname-${id}`)?.focus(), 60);
+            },
+          }}
+        />
+      ) : (
+        <button type="button" className="btn-secondary" onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])}>
+          {tr('+ Add friend', '+ Freund hinzufügen')}
+        </button>
+      )}
 
       {scan && <QrScan title={tr('Scan QR code', 'QR-Code scannen')} onText={take} onClose={() => setScan(false)} />}
       {typing && (

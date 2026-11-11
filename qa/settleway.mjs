@@ -98,7 +98,7 @@ await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.getByRole('button', { name: /Abrechnung/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Einzeln' }).click();
-await edit.getByRole('button', { name: 'Speichern', exact: true }).click();
+await edit.getByRole('button', { name: 'Schließen' }).click(); // saved by itself (12.11.2026) – closing saves at once
 await H.waitForTimeout(1500);
 ok(shared.get(code).game.settle === 'single', 'the setting on the server: settle "single"');
 p = await pays();

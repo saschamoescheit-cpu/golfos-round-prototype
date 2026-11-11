@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
 import { KeyHint } from '../components/KeyHint';
 import { ToggleList, ToggleRow } from '../components/Settings';
@@ -367,15 +368,9 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
             </button>
           )}
           </section>
-        ) : (
-          <>
-            {props.onNew && (
-              <button type="button" className="btn-secondary" onClick={props.onNew}>
-                {tr('New tournament', 'Neues Turnier')}
-              </button>
-            )}
-          </>
-        ))}
+        ) : null)}
+      {/* a new tournament: the round "+" bottom right, as on every list (Sascha 12.11.2026) */}
+      <FloatActions plus={props.onNew ? { label: tr('New tournament', 'Neues Turnier'), onClick: props.onNew } : null} />
       {making && (
         <SeriesSheet
           tours={[...groupable].sort((a, b) => a.ev.date.localeCompare(b.ev.date))}
@@ -845,6 +840,13 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   const inSeries = new Set(allSeries.filter((x) => !x.series.deletedAt).flatMap((x) => x.series.rounds.map((r) => r.code)));
   const adoptable = tours.filter((t) => !t.ev.deletedAt && !inSeries.has(t.code) && !s.rounds.some((r) => r.code === t.code)).sort((a, b) => b.ev.date.localeCompare(a.ev.date));
   const fmtSum = (v: number) => (total.higherBetter ? tr(`${v} pts`, `${v} Pkt.`) : v === 0 ? 'Par' : v > 0 ? `+${v}` : `−${-v}`);
+  const addRound = () => {
+    if (!lastRound) return;
+    // a new round: the flights, markers and tee times of the last one (Sascha: "taken from round 1, changeable")
+    const d = draftOf(lastRound);
+    const next = dayOf(new Date(new Date(`${lastRound.ev.date}T12:00:00`).getTime() + 864e5));
+    props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, rounds: d.rounds.map((r) => ({ ...r, code: undefined, base: r.course ? undefined : r.base, date: next })), name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
+  };
   const lastRound = [...s.rounds].reverse().map((r) => tours.find((t) => t.code === r.code)).find(Boolean);
   return (
     <main className="screen tour-screen">
@@ -852,31 +854,27 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         title={s.name}
         onBack={props.onBack}
         backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')}
-        right={
-          host ? (
-            <button
-              type="button"
-              className="icon-btn edit-btn"
-              aria-label={multi ? tr('Change the tournament', 'Turnier bearbeiten') : tr('Rename the series', 'Serie umbenennen')}
-              onClick={() => {
-                if (multi) {
-                  // the rounds with their flights as the server has them now (the copy kept here may be older)
-                  const d = draftOfMulti(entry, tours.map((t) => ({ ...t, ev: (evs.find((x) => x.id === t.ev.id && isPlanned(x)) as PlannedEvent | undefined) ?? t.ev })));
-                  if (d) props.onEdit(d);
-                  return;
-                }
-                setName(s.name);
-                setSheet('rename');
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16z" />
-                <path d="M13.5 6.5l4 4" />
-              </svg>
-            </button>
-          ) : undefined
-        }
       />
+      {/* the pencil and "+ Runde" bottom right, floating (Sascha 12.11.2026: "the pencil bottom right – the same in the
+          whole app"; "+" in the series: a round) – the host's */}
+      {host && !sheet && (
+        <FloatActions
+          pen={{
+            label: multi ? tr('Change the tournament', 'Turnier bearbeiten') : tr('Rename the series', 'Serie umbenennen'),
+            onClick: () => {
+              if (multi) {
+                // the rounds with their flights as the server has them now (the copy kept here may be older)
+                const d = draftOfMulti(entry, tours.map((t) => ({ ...t, ev: (evs.find((x) => x.id === t.ev.id && isPlanned(x)) as PlannedEvent | undefined) ?? t.ev })));
+                if (d) props.onEdit(d);
+                return;
+              }
+              setName(s.name);
+              setSheet('rename');
+            },
+          }}
+          plus={lastRound && !multi ? { label: tr('Add a round', 'Runde hinzufügen'), onClick: addRound } : null}
+        />
+      )}
       <span className="muted small">
         {multi ? tr('Tournament', 'Turnier') : tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
         {cut ? ` · ${tr(`cut after round ${cut.after}: the best ${cut.top}`, `Cut nach Runde ${cut.after}: die besten ${cut.top}`)}` : ''}
@@ -942,20 +940,6 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
           </li>
         ))}
       </ul>
-      {host && lastRound && !multi && (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            // a new round: the flights, markers and tee times of the last one (Sascha: "taken from round 1, changeable")
-            const d = draftOf(lastRound);
-            const next = dayOf(new Date(new Date(`${lastRound.ev.date}T12:00:00`).getTime() + 864e5));
-            props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, rounds: d.rounds.map((r) => ({ ...r, code: undefined, base: r.course ? undefined : r.base, date: next })), name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
-          }}
-        >
-          {tr('+ Round', '+ Runde')}
-        </button>
-      )}
       {/* a tournament set up on its own – played already too – taken in afterwards (Sascha 08.11.2026: "yesterday's
           Celebration into The Orlando Invitational, with its scores and the leaderboard") */}
       {host && adoptable.length > 0 && (
@@ -1200,17 +1184,9 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
         title={ev.name}
         onBack={props.onBack}
         backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')}
-        right={
-          host ? (
-            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => edit(false)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16z" />
-                <path d="M13.5 6.5l4 4" />
-              </svg>
-            </button>
-          ) : undefined
-        }
       />
+      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app") – the host's */}
+      {host && !sheet && <FloatActions pen={{ label: tr('Change the tournament', 'Turnier bearbeiten'), onClick: () => edit(false) }} />}
       <span className="muted small">
         {longDate(ev.date)} · {ev.course.name} · {tourFormat(fmt)}
         {netClasses(ev).length ? ` · ${tr(`${netClasses(ev).length + 1} classes`, `${netClasses(ev).length + 1} Klassen`)}` : ''}

@@ -13,6 +13,8 @@ import { PausedIcon } from '../components/PausedIcon';
 export type HomeTab = 'start' | 'friends' | 'profile';
 
 export function Home(props: {
+  running?: RunningItem[];
+  onRunning?: (r: RunningItem) => void;
   tab: HomeTab;
   onTab: (t: HomeTab) => void;
   roundOpen: boolean;
@@ -33,8 +35,8 @@ export function Home(props: {
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
       {/* each round of the bets settled (Sascha 09.11.2026) – once, above the modules */}
       {props.tab === 'start' && <RoundSettleCards />}
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} tours={props.tours} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
-      {props.tab === 'friends' && <Friends onSignIn={() => props.onTab('profile')} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} tours={props.tours} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} running={props.running} onRunning={props.onRunning} />}
+      {props.tab === 'friends' && <Friends float onSignIn={() => props.onTab('profile')} />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
         items={[
@@ -64,8 +66,54 @@ function PausedMark() {
 /** what the module cards say (the same on the start page and in the module sheet) */
 export type ModuleCardInfo = { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; tours?: { today: string[]; planned: number }; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number };
 export type ModulePick = 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility';
+/** one thing running now, for the card "Läuft gerade" on the start page (Sascha 12.11.2026) */
+export type RunningItem = { key: string; kind: 'round' | 'tour' | 'pool'; title: string; line: string; value?: string; good?: boolean };
 
-function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void }) {
+const RUN_ICONS: Record<RunningItem['kind'], JSX.Element> = {
+  round: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M9.8 8.6v6.8M14.2 8.6v6.8" />
+    </svg>
+  ),
+  tour: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" />
+      <path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" />
+    </svg>
+  ),
+  pool: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V4H3z" />
+      <path d="M14 4v12" />
+    </svg>
+  ),
+};
+
+/** "Läuft gerade": each thing running now in one row – a tap goes there */
+function RunningCard(props: { items: RunningItem[]; onOpen: (r: RunningItem) => void }) {
+  if (!props.items.length) return null;
+  return (
+    <section className="card running-card" aria-label={tr('Running now', 'Läuft gerade')}>
+      <span className="eyebrow">{tr('Running now', 'Läuft gerade')}</span>
+      {props.items.map((r) => (
+        <button key={r.key} type="button" className="running-row" onClick={() => props.onOpen(r)}>
+          <span className="running-icon">{RUN_ICONS[r.kind]}</span>
+          <span className="grow">
+            <strong>{r.title}</strong>
+            <span className="muted small">{r.line}</span>
+          </span>
+          {r.value && <strong className={`running-value${r.good ? ' good-text' : ''}`}>{r.value}</strong>}
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
+function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; running?: RunningItem[]; onRunning?: (r: RunningItem) => void }) {
   return (
     <>
       {/* GOLFOS only top left, the claim small below it (Sascha 02.11.2026: "saves a lot of room") – the claim the
@@ -80,6 +128,7 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void }
         <TopTools />
       </div>
       <div className="home-hero">
+        {props.running && props.onRunning && <RunningCard items={props.running} onOpen={props.onRunning} />}
         <ModuleCardList {...props} />
       </div>
     </>

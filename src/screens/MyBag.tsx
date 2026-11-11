@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import type { Club, Round } from '../types';
 import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
@@ -148,16 +149,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     </span>
   );
   // editing ends with the round save button, not a "Fertig" pill (Sascha 04.11.2026)
-  const pencil = editing ? (
-    <SaveButton label={tr('Save your bag', 'Bag speichern')} onClick={() => setEditing(false)} />
-  ) : (
-    <button type="button" className="icon-btn bag-edit" aria-label={tr('Edit your bag', 'Bag bearbeiten')} onClick={() => setEditing(true)}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M4 20h4L19 9l-4-4L4 16v4z" />
-        <path d="M14 6l4 4" />
-      </svg>
-    </button>
-  );
+  const pencil = <SaveButton label={tr('Save your bag', 'Bag speichern')} onClick={() => setEditing(false)} />;
 
   const open = session ? loadLaunch()?.sessions?.find((x) => x.id === session) : null;
   if (open)
@@ -174,7 +166,9 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
 
   return (
     <main className="screen">
-      <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} right={pencil} />
+      <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} right={editing ? pencil : undefined} />
+      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app"); while editing "Bag speichern" up top */}
+      {!editing && <FloatActions pen={{ label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) }} />}
       {!editing && (
         <Segmented<Tab>
           label={tr('Distances', 'Distanzen')}
