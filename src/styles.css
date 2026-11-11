@@ -2421,6 +2421,7 @@ button.balance-item-row { cursor: pointer; }
 .module-sheet .module-card { padding: 12px 14px; }
 .module-sheet .module-card strong { font-size: 19px; }
 .module-sheet .module-icon { width: 44px; height: 44px; }
+.module-sheet .module-home .module-icon svg { width: 28px; height: 28px; } /* the house as big as the module icons */
 .module-card.on { border: 2px solid var(--brand); }
 /* the host takes a round out of a pool's standing (Sascha 12.11.2026) */
 .skip-round { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-2); }

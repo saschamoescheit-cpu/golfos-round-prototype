@@ -357,7 +357,16 @@ export function App() {
   useEffect(() => {
     const on = (e: Event) => pickModuleRef.current((e as CustomEvent<AppModule>).detail);
     window.addEventListener('golfos:pick-module', on);
-    return () => window.removeEventListener('golfos:pick-module', on);
+    // "Startseite" in the module sheet (Sascha 13.11.2026: "one does not get back to the start page any more")
+    const home = () => {
+      setModule(null);
+      setHomeTab('start');
+    };
+    window.addEventListener('golfos:go-home', home);
+    return () => {
+      window.removeEventListener('golfos:pick-module', on);
+      window.removeEventListener('golfos:go-home', home);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // a link into another module remembers where it came from – "Zurück" there goes back (Sascha 12.11.2026: "back goes
   // to the main menu instead of one level")

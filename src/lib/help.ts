@@ -80,8 +80,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How do I switch to another module quickly?', 'Wie wechsle ich schnell in ein anderes Modul?'),
         a: () =>
           tr(
-            'Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were.',
-            'Oben links auf den Modul-Knopf tippen. Von unten kommt ein Blatt mit allen Modulen und was in jedem zu tun ist – das, in dem du bist, ist grün umrandet. Ein Tipp wechselt dorthin; jedes Modul merkt sich, wo du warst.',
+            'Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were. The first row, "Start page", goes back to the start page.',
+            'Oben links auf den Modul-Knopf tippen. Von unten kommt ein Blatt mit allen Modulen und was in jedem zu tun ist – das, in dem du bist, ist grün umrandet. Ein Tipp wechselt dorthin; jedes Modul merkt sich, wo du warst. Die erste Zeile „Startseite“ führt zurück zur Startseite.',
           ),
         video: 'start',
       },
