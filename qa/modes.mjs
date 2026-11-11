@@ -156,6 +156,12 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
     const stText = await st.innerText().catch(() => '');
     ok((await st.count()) === 1 && /Runde gespeichert ✓/.test(stText) && (await y(st)) < (await y(p.locator('.sc-hero'))) && (await p.locator('.sign-card').count()) === 0, `${label}: finished – the state on top ("${stText.split(String.fromCharCode(10))[0]}")`);
     void stats;
+    // whose the big figures are, on top – the partners below (Sascha 12.11.2026)
+    {
+      const hero = p.locator('.sc-hero');
+      const name = hero.locator('.sc-hero-name');
+      if ((await hero.locator('.sc-other').count()) > 0) ok((await name.count()) === 1 && (await y(name)) < (await y(hero.locator('.sc-hero-main'))) && (await y(hero.locator('.sc-hero-main'))) < (await y(hero.locator('.sc-other').first())), `${label}: the own name on top of the figures, the partners below`);
+    }
     if (!c.team) {
       ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row of actions: check shots, share, delete`);
       // right after finishing the choice is open by itself (Sascha 22.10.2026)
