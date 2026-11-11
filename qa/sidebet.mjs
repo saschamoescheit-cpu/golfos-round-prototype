@@ -26,7 +26,9 @@ await P.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await P.getByLabel('Spieler 2', { exact: true }).fill('Ben');
 const eyebrows = (await P.locator('main .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
 const at = (x) => eyebrows.indexOf(x);
-ok(at('SIDEBET') === at('SPIELER') + 1 && (at('MITSPIELER EINLADEN') < 0 || at('MITSPIELER EINLADEN') === at('SIDEBET') + 1), `the setup: the side bet between the players and the invitation (${eyebrows.join(' · ')})`);
+// Facelift 11.11.2026 (r9): Wer (Spieler → Mitspieler einladen → Score-Erfassung) → Worum (the side bet) → Einstellungen
+const wer = Math.max(at('SPIELER'), at('MITSPIELER EINLADEN'), at('SCORE-ERFASSUNG'));
+ok(at('WORUM') === wer + 1 && at('EINSTELLUNGEN') === at('WORUM') + 1 && at('SPIELER') < at('WORUM'), `the setup: the side bet under "Worum", after the players and the invitation (${eyebrows.join(' · ')})`);
 const row = P.locator('.settings-row').filter({ hasText: /^Sidebet/ });
 ok(/Hinzufügen/.test(await row.innerText()), 'its row: "Sidebet · Hinzufügen"');
 await row.click();

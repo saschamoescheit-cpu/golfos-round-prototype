@@ -39,10 +39,10 @@ const pick = async () => {
 // preview: pull up the drawer, end the preview there
 await pick();
 ok(await p.getByRole('button', { name: 'Birdiebook', exact: true }).isVisible(), 'setup: "Birdiebook" and "Platzvorschau"');
-// no friends yet: a link to link them, right in the setup (night 10./11.11.2026)
+// no friends yet: a row "Freunde · verknüpfen ›" right in the setup (night 10./11.11.2026; Facelift 11.11.2026, r11)
 {
-  const link = p.getByRole('button', { name: /Golffreunde verknüpfen/ });
-  ok((await link.count()) === 1, 'setup without friends: "Golffreunde verknüpfen ›"');
+  const link = p.getByRole('button', { name: /^Freunde\s*verknüpfen/ });
+  ok((await link.count()) === 1, 'setup without friends: the row "Freunde · verknüpfen ›"');
   await link.click();
   await p.waitForTimeout(400);
   ok((await p.getByRole('dialog', { name: 'Freunde' }).count()) === 1, 'it opens the friends in a sheet – the setup stays');

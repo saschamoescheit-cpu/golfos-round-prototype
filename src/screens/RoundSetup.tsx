@@ -19,7 +19,8 @@ import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel, myName } from '../components/ShareRound';
-import { ToggleRow } from '../components/Settings';
+import { SettingsList, SettingsRow, ToggleRow } from '../components/Settings';
+import { SwipeRow } from '../components/SwipeRow';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
 import { SideBetRow } from './Duels';
@@ -287,7 +288,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
 
   return (
     <main className="screen">
-      <TopBar title={props.course.name} onBack={props.onBack} />
+      <TopBar title={tr('New round', 'Neue Runde')} onBack={props.onBack} />
 
       {kindOpen && (
         <div className="sheet-backdrop" onClick={() => setKindOpen(false)}>
@@ -324,7 +325,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         </div>
       )}
 
-      {/* Was → Wo → Wer (docs/DESIGN.md, Sascha 03.11.2026: the same order in every setup) – the format first, then the course */}
+      {/* Was → Wo → Wer → Worum → Einstellungen (docs/DESIGN.md; Facelift-Abnahme 11.11.2026, r9 – it overrides the order
+          of 04.11.2026): the kind of round and how it is played first */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Format', 'Format')}</span>
         <div className="settings-list">
@@ -344,21 +346,6 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             <span className="settings-value">{format.scoring === 'stableford' ? 'Stableford' : tr('Stroke play', 'Zählspiel')}</span>
             <span aria-hidden="true">›</span>
           </button>
-          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
-            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
-            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
-          {format.mode === 'scramble' && (
-            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
-              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
-              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )}
-          {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026); a row of the format (Sascha 08.11.2026) */}
-          {kind === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
         </div>
         {!fits && (
           <p className="small good-text" style={{ margin: 0 }}>
@@ -368,33 +355,13 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
       </section>
 
-      {/* who enters the scores on several phones (Sascha 30.10. / 02.11.2026), chosen like the format – everyone his own (the
-          default), with a marker, or one player for all; between the format and the holes (Sascha 04.11.2026) */}
-      {invitable && !isTeamMode(shownFormat.mode) && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-          <div className="settings-list">
-            <button type="button" className="settings-row" onClick={() => setPicker('entry')}>
-              <span>{tr('Who enters', 'Wer erfasst')}</span>
-              <span className="settings-value">{ENTRY.find(([v]) => v === counting)![1]()}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-            {counting === 'scorer' && (
-              <button type="button" className="settings-row" onClick={() => setPicker('scorer')}>
-                <span>{tr('Scorer', 'Schreiber')}</span>
-                <span className="settings-value">{scorers.find((p) => p.id === scorerId)?.name ?? scorers[0].name}</span>
-                <span aria-hidden="true">›</span>
-              </button>
-            )}
-            {counting === 'scorer' && <OwnDetailsRow names={scorers.filter((p) => p.id !== (scorers.some((x) => x.id === scorerId) ? scorerId : 'me')).map((p) => p.name)} value={ownDetails} onChange={setOwnDetailsList} />}
-          </div>
-          {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
-        </section>
-      )}
-
+      {/* Wo – the course (a tap: back to the course search), its holes, then where the playing handicap comes from */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
-        <div className="choice-grid">
+        <span className="eyebrow">{tr('Course', 'Platz')}</span>
+        <SettingsList>
+          <SettingsRow label={tr('Course', 'Platz')} value={props.course.name} onClick={props.onBack} />
+        </SettingsList>
+        <div className="choice-grid" role="group" aria-label={tr('Holes', 'Löcher')}>
           {options.map((o) => (
             <button key={o.id} type="button" className="choice choice-loop" aria-label={o.label} aria-pressed={o.id === optionId} onClick={() => setOptionId(o.id)}>
               {/* "A + B · 18 holes": the loops large, the number of holes small below (no odd wrap on small phones) */}
@@ -411,12 +378,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             )}
           </div>
         )}
-      </section>
-
-      {(holes.length === 18 || nine) && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* where the playing handicap comes from – once for all players, between the holes and the players (Sascha
-              02.11.2026); missing or wrong: typed from the club's scorecard, kept for this course, these loops and this tee */}
+        {/* where the playing handicap comes from – once for all players, under the holes (Wo); missing or wrong: typed
+            from the club's scorecard, kept for this course, these loops and this tee */}
+        {(holes.length === 18 || nine) && (
           <RatingLine
             rating={rating}
             nine={nine}
@@ -425,8 +389,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
               setRatingsSeen((n) => n + 1);
             }}
           />
-        </section>
-      )}
+        )}
+      </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
@@ -441,7 +405,10 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             allowance={allowance}
             tees={teeChoices}
             onChange={(np) => setOthers(others.map((o) => (o.id === p.id ? np : o)))}
-            onRemove={() => setOthers(others.filter((o) => o.id !== p.id))}
+            onRemove={() => {
+              setOthers((os) => os.filter((o) => o.id !== p.id));
+              return () => setOthers((os) => (os.some((o) => o.id === p.id) ? os : [...os.slice(0, i), p, ...os.slice(i)].slice(0, 3)));
+            }}
           />
         ))}
         {others.length < 3 && (
@@ -466,17 +433,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         )}
       </section>
 
-      {/* a side bet: 5+5+10 against the flight's players, friends or anyone (Sascha 10.11.2026: "between the players and
-          the invitation") – into the pool of bets of the day */}
-      <SideBetRow
-        preset={{
-          players: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), ...(o.index.trim() ? { hcp: o.index.trim() } : {}), playing: playingHandicap(o) })),
-          me: { playing: playingHandicap(me) },
-        }}
-      />
-
       {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
-          or competition, any format ("not only scramble or a tournament"); its own section (Sascha 02.11.2026) */}
+          or competition, any format ("not only scramble or a tournament"); its own section right below the players
+          (Sascha 02.11.2026, docs/DESIGN.md) */}
       {canShare !== null && (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <span className="eyebrow">{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</span>
@@ -496,6 +455,62 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           )}
         </section>
       )}
+
+      {/* who enters the scores on several phones (Sascha 30.10. / 02.11.2026), chosen like the format – everyone his own (the
+          default), with a marker, or one player for all; right after the players and the invitation, in every setup the
+          same place (Facelift 11.11.2026, o1) */}
+      {invitable && !isTeamMode(shownFormat.mode) && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+          <div className="settings-list">
+            <button type="button" className="settings-row" onClick={() => setPicker('entry')}>
+              <span>{tr('Who enters', 'Wer erfasst')}</span>
+              <span className="settings-value">{ENTRY.find(([v]) => v === counting)![1]()}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+            {counting === 'scorer' && (
+              <button type="button" className="settings-row" onClick={() => setPicker('scorer')}>
+                <span>{tr('Scorer', 'Schreiber')}</span>
+                <span className="settings-value">{scorers.find((p) => p.id === scorerId)?.name ?? scorers[0].name}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
+            {counting === 'scorer' && <OwnDetailsRow names={scorers.filter((p) => p.id !== (scorers.some((x) => x.id === scorerId) ? scorerId : 'me')).map((p) => p.name)} value={ownDetails} onChange={setOwnDetailsList} />}
+          </div>
+          {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
+        </section>
+      )}
+
+      {/* Worum – a side bet: 5+5+10 against the flight's players, friends or anyone (Sascha 10.11.2026), into the pool of
+          bets of the day */}
+      <SideBetRow
+        preset={{
+          players: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), ...(o.index.trim() ? { hcp: o.index.trim() } : {}), playing: playingHandicap(o) })),
+          me: { playing: playingHandicap(me) },
+        }}
+      />
+
+      {/* Einstellungen – the handicap allowance, Texas, the aids of a tournament (Facelift 11.11.2026, r9) */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
+            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
+            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
+          {format.mode === 'scramble' && (
+            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
+              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
+              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
+          {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026) */}
+          {kind === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
+        </div>
+      </section>
 
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>
@@ -656,19 +671,36 @@ export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[
   });
 }
 
-export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; /** the handicap allowance in %: the column shows what counts (Sascha 09.11.2026: 75 % → 75 % of it) */ allowance?: number; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean; /** the name required – "Name eingeben" in green while empty */ nameNeeded?: boolean }) {
+/** "Spieler entfernt · Rückgängig" – the toast of a player swiped out of a setup (Facelift 11.11.2026, r10). */
+export function toastPlayerRemoved(name: string, undo: () => void) {
+  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'player', id: '', label: name.trim(), undo } }));
+}
+
+/** A player of a setup. Removed by swiping left (Facelift 11.11.2026, r10: no "✕" on the card – as the friends' list);
+ *  `onRemove` may give back how to undo it – then "Spieler entfernt · Rückgängig" shows for a moment. A hidden button
+ *  "<name> entfernen" stays for VoiceOver and the keyboard (SwipeRow: the row's own delete stays for them). */
+export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void | (() => void); nameLabel: string; rating: TeeRating | null; playing: number | null; /** the handicap allowance in %: the column shows what counts (Sascha 09.11.2026: 75 % → 75 % of it) */ allowance?: number; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean; /** the name required – "Name eingeben" in green while empty */ nameNeeded?: boolean }) {
   const { player } = props;
   const [teeOpen, setTeeOpen] = useState(false);
   const myTee = props.tees?.find((t) => t.id === player.tee);
   // the playing handicap times the allowance, rounded as the scoring does (games.ts holeValues)
   const counted = props.playing == null ? null : props.allowance == null ? props.playing : Math.round((props.playing * props.allowance) / 100);
   const shown = counted == null ? '–' : counted < 0 ? `+${-counted}` : String(counted);
+  const who = player.name.trim() || props.nameLabel;
+  // a mouse dragging over the text of a field selects it – it does not swipe the row away (a finger still swipes)
+  const keepMouse = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') e.stopPropagation();
+  };
+  const remove = () => {
+    const undo = props.onRemove?.();
+    if (typeof undo === 'function') toastPlayerRemoved(who, undo);
+  };
   // one line (Sascha 21.10.2026): name, HCP typed, the playing handicap following from it – shown, not typed
-  return (
-    <div className={`card player-row${props.className ? ' ' + props.className : ''}`}>
+  const row = (
+    <div className={`card player-row${props.onRemove ? ' swipeable' : ''}${props.className ? ' ' + props.className : ''}`}>
       <div className="field">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
-        <input id={`name-${player.id}`} className="input" value={player.name} readOnly={props.nameFixed} required={props.nameNeeded} placeholder={props.nameNeeded ? tr('Enter a name', 'Name eingeben') : undefined} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
+        <input id={`name-${player.id}`} className="input" value={player.name} readOnly={props.nameFixed} onPointerDown={keepMouse} required={props.nameNeeded} placeholder={props.nameNeeded ? tr('Enter a name', 'Name eingeben') : undefined} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
       </div>
       {/* the tee: its colour, a tap chooses it */}
       <div className="field">
@@ -681,7 +713,9 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
             onClick={() => setTeeOpen(true)}
           >
             {myTee ? <span className="tee-dot" style={{ background: myTee.colour }} /> : <span className="tee-none">–</span>}
-            <span className="tee-pick-chev" aria-hidden="true">▾</span>
+            <svg className="tee-pick-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </button>
         ) : (
           <span className="tee-pick none" aria-label={tr('No course chosen yet', 'Noch kein Platz gewählt')}>–</span>
@@ -689,15 +723,15 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
       </div>
       <div className="field">
         <label htmlFor={`hcp-${player.id}`}>HCP</label>
-        <input id={`hcp-${player.id}`} className="input player-num" inputMode="decimal" value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
+        <input id={`hcp-${player.id}`} className="input player-num" inputMode="decimal" value={player.index} onPointerDown={keepMouse} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
       </div>
       <div className="field">
         <span className="field-label" id={`pl-${player.id}`}>{tr('Playing', 'Vorgabe')}</span>
         <output className="playing-hcp" aria-labelledby={`pl-${player.id}`} aria-label={tr(`Playing handicap ${shown}`, `Spielvorgabe ${shown}`)}>{shown}</output>
       </div>
       {props.onRemove && (
-        <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove}>
-          ✕
+        <button type="button" className="sr-only" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={remove}>
+          {tr('Remove', 'Entfernen')}
         </button>
       )}
       {teeOpen && props.tees && (
@@ -743,6 +777,13 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
         </span>
       )}
     </div>
+  );
+  return props.onRemove ? (
+    <SwipeRow label={who} onDelete={remove} className="player-swipe">
+      {row}
+    </SwipeRow>
+  ) : (
+    row
   );
 }
 

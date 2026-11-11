@@ -160,7 +160,9 @@ ok((await H.locator('.sheet .pick-option strong').allInnerTexts()).includes('Nac
 await H.getByRole('button', { name: 'Schließen' }).last().click();
 await choose('Spieler je Flight', '2 Spieler');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/rounds-r3.png', fullPage: true });
-await H.getByRole('button', { name: 'Fertig' }).click();
+// no "Fertig" (Facelift 11.11.2026, t4): the quiet line, back with ‹
+ok((await H.getByRole('button', { name: 'Fertig' }).count()) === 0 && /Änderungen werden übernommen/.test(await H.locator('.autosave-note').innerText()), 'round 3 (new tournament): no "Fertig" – "Änderungen werden übernommen", back with ‹');
+await H.locator('.topbar .icon-btn').first().click();
 await H.waitForTimeout(300);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/rounds-setup.png', fullPage: true });
 await H.getByRole('button', { name: 'Turnier anlegen' }).click();
@@ -215,7 +217,8 @@ ok((await H.getByRole('group', { name: 'Die Runden' }).locator('.settings-row').
 await H.getByRole('group', { name: 'Flights der Runden' }).locator('.settings-row').nth(2).click();
 await H.waitForTimeout(300);
 ok((await H.locator('.tour-unplaced').count()) === 0 && (await H.locator('.tour-flight-player').count()) === 4, 'round 3 in the change: its four players, Cedric not missing a flight');
-await H.getByRole('button', { name: 'Fertig' }).click();
+ok((await H.getByRole('button', { name: 'Fertig' }).count()) === 0 && (await H.locator('.autosave-note').count()) === 1, 'round 3 in the change: no "Fertig", the autosave line');
+await H.locator('.topbar .icon-btn').first().click();
 // changed afterwards: saved by itself a moment later, no save button (Sascha 11.11.2026) – back to the series
 ok((await H.getByRole('button', { name: 'Speichern' }).count()) === 0, 'changed: no "Speichern" – saved by itself');
 await H.fill('#tour-name', 'Clubmeisterschaft 2026');

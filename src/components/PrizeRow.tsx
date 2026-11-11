@@ -29,6 +29,8 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
     else if (k === 'drinks' || k === 'meal' || k === 'clubs') props.onChange({ kind: k, who });
     close();
   };
+  // the own stake typed: on to "who buys for whom" – Enter or the save button in the sheet's head (Facelift 11.11.2026, o3)
+  const next = () => (text.trim() ? setStep('who') : setError(tr('Type what is played for, e.g. a round of beer', 'Gib ein, worum gespielt wird, z. B. Bier-Runde')));
   const label = tr('Played for', 'Worum wird gespielt');
   const current = props.value;
   return (
@@ -53,7 +55,7 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
         />
       )}
       {step === 'label' && (
-        <PickSheet<string> title={tr('Own stake', 'Eigener Einsatz')} current={''} options={[]} onPick={() => undefined} onClose={close}>
+        <PickSheet<string> title={tr('Own stake', 'Eigener Einsatz')} current={''} options={[]} onPick={() => undefined} onClose={close} onSave={next} saveLabel={tr('Next', 'Weiter')}>
           <div className="cap-input">
             <input
               className="input"
@@ -67,14 +69,11 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
                 setText(e.target.value);
                 setError(null);
               }}
-              onKeyDown={(e) => e.key === 'Enter' && (text.trim() ? setStep('who') : setError(tr('Type what is played for', 'Gib ein, worum gespielt wird')))}
+              onKeyDown={(e) => e.key === 'Enter' && next()}
             />
-            <button type="button" className="btn-secondary" onClick={() => (text.trim() ? setStep('who') : setError(tr('Type what is played for, e.g. a round of beer', 'Gib ein, worum gespielt wird, z. B. Bier-Runde')))}>
-              {tr('Next', 'Weiter')}
-            </button>
           </div>
           {error && (
-            <span className="small bad-text" role="alert">
+            <span className="small good-text" role="alert">
               {error}
             </span>
           )}

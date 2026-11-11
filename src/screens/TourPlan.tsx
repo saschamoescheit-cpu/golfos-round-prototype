@@ -678,12 +678,17 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <TopBar title={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} onBack={() => set({ open: undefined })} backLabel={d.name.trim() || tr('Tournament', 'Turnier')} />
         <RoundWhereWhen d={d} k={k} onChange={(r) => setRound(k, r)} onCourse={() => toCourse(k)} />
         <RoundFlights d={d} k={k} label={label} onChange={(r) => setRound(k, r)} problems={problems(d.rounds[k])} />
-        <span className="spacer" />
-        <div className="sticky-cta">
-          <button type="button" className="btn-primary" onClick={() => set({ open: undefined })}>
-            {tr('Done', 'Fertig')}
-          </button>
-        </div>
+        {/* no "Fertig" (Facelift 11.11.2026, t4): every change is kept at once – a tournament there already saves it by
+            itself, a new one keeps it for "Turnier anlegen"; back with ‹ */}
+        <span className="muted small autosave-note" role="status">
+          {!changing
+            ? tr('Changes are kept', 'Änderungen werden übernommen')
+            : saving === 'busy'
+              ? tr('Saving …', 'Speichert …')
+              : saving === 'done'
+                ? tr('Saved – for everyone', 'Gespeichert – für alle')
+                : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
       </main>
     );
   }
@@ -702,7 +707,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </div>
       </section>
 
-      {/* Was: the rounds, the scoring, the classes, the cut – each a row with its sheet, as the format of a round */}
+      {/* Was: the kind, the mode, the scoring and the rounds – each a row with its sheet, as the format of a round; the
+          order Was → Wo/Wann → Wer → Einstellungen (Facelift-Abnahme 11.11.2026, t5) */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Format', 'Format')}</span>
         <SettingsList>
@@ -730,6 +736,111 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               { value: 'stableford', name: 'Stableford', text: tr('Collect points on every hole from your strokes and handicap – most points win.', 'Auf jedem Loch Punkte sammeln, aus deinen Schlägen und deiner Vorgabe – die meisten Punkte gewinnen.') },
             ]}
           />
+          {/* a new round of a series of single tournaments stays one round */}
+          {!d.code && !d.series && (
+            <RoundsRow value={d.rounds.length} onChange={setCount} />
+          )}
+        </SettingsList>
+        {/* how the teams come about – in every flight */}
+        {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
+      </section>
+
+      {/* Wo → Wann: one round inline; several – a row each, its page with course, day and flights */}
+      {!multi ? (
+        <RoundWhereWhen d={d} k={0} onChange={(r) => setRound(0, r)} onCourse={() => toCourse(0)} rating={() => setRatingsSeen((n) => n + 1)} />
+      ) : (
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
+          <SettingsList label={tr('The rounds', 'Die Runden')}>
+            {d.rounds.map((r, k) => (
+              <SettingsRow
+                key={r.id}
+                label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)}
+                value={`${shortDay(r.date)} · ${r.course?.name ?? r.base?.course.name ?? tr('Choose a course', 'Platz wählen')}`}
+                need={!holesOf(r).holes.length}
+                onClick={() => set({ open: k })}
+              />
+            ))}
+          </SettingsList>
+          {!ordered && <span className="small good-text">{tr('The rounds in the order of their days.', 'Die Runden in der Reihenfolge ihrer Tage.')}</span>}
+        </section>
+      )}
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Players', 'Spieler')}</span>
+        {d.players.map((p, k) => (
+          <PlayerRow
+            key={p.id}
+            className="game-player-row"
+            nameNeeded
+            player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: t0.teeOf(p, k) }}
+            nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
+            rating={t0.ratingOf(p, k)}
+            playing={t0.playingOf(p, k)}
+            allowance={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
+            nine={t0.nine}
+            tees={teeChoices.length ? teeChoices : undefined}
+            onChange={(np) => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, name: np.name, hcp: np.index, tee: np.tee, fixed: np.index !== x.hcp ? null : x.fixed } : x)) })}
+            onRemove={
+              d.players.length > 1
+                ? () => {
+                    setPlayers(d.players.filter((x) => x.id !== p.id));
+                    // "Rückgängig": back in his place, on the draft as it is then
+                    return () => {
+                      const cur = latest.current.d;
+                      if (cur.players.some((x) => x.id === p.id)) return;
+                      const players = [...cur.players.slice(0, k), p, ...cur.players.slice(k)];
+                      latest.current.onChange({ ...cur, players, rounds: cur.rounds.map((r) => drawRound(r, players)) });
+                    };
+                  }
+                : undefined
+            }
+          />
+        ))}
+        <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
+        <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, newPlayer('', '')])}>
+          {tr('+ Add player', '+ Spieler hinzufügen')}
+        </button>
+      </section>
+
+      {/* Wer: the flights right after the players (Facelift 11.11.2026, t5) – several rounds: a row each, to its page */}
+      {!multi ? (
+        <RoundFlights d={d} k={0} label={label} onChange={(r) => setRound(0, r)} problems={problems(r0)} />
+      ) : (
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Flights and tee times', 'Flights und Startzeiten')}</span>
+          <SettingsList label={tr('Flights of the rounds', 'Flights der Runden')}>
+            {d.rounds.map((r, k) => (
+              <SettingsRow key={r.id} label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} value={`${drawName(r.draw.mode)} · ${tr('from', 'ab')} ${r.draw.first}`} need={!roundReady(r)} onClick={() => set({ open: k })} />
+            ))}
+          </SettingsList>
+          {d.cut && <span className="muted small">{tr(`After round ${d.cut.after} the best ${d.cut.top} and ties play on – their flights dealt then.`, `Nach Runde ${d.cut.after} spielen die besten ${d.cut.top} und Gleichstand weiter – ihre Flights werden dann eingeteilt.`)}</span>}
+        </section>
+      )}
+
+      {/* Score-Erfassung right after the players and their flights (Facelift 11.11.2026, o1/t5), "Mit Zähler" the default */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+        <SettingsList>
+          <ChoiceRow<'own' | 'marker' | 'one'>
+            label={tr('Who enters', 'Wer erfasst')}
+            value={d.oneScorer ? 'one' : d.ownOnly ? 'own' : 'marker'}
+            onChange={(v) => set({ oneScorer: v === 'one', ownOnly: v === 'own' })}
+            options={[
+              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Everyone enters only his own score and sees the others – nobody marks.', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen – ohne Zähler.') },
+              { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a difference shows.", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt.') },
+              { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
+            ]}
+          />
+          {/* the players who still enter their own details besides the scorer's card (07.11.2026) */}
+          {d.oneScorer && <OwnDetailsRow names={d.players.map((p) => p.name)} value={d.ownDetails ?? []} onChange={(ownDetails) => set({ ownDetails })} />}
+        </SettingsList>
+        {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
+      </section>
+      {/* Einstellungen: the handicap allowance, Texas, the classes, the cut, the aids (Facelift 11.11.2026, t5) */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+        <SettingsList>
           <ChoiceRow<number>
             label={tr('Handicap allowance', 'HCP-Vorgabe')}
             value={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
@@ -744,10 +855,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               onChange={(v) => set({ minDrives: v || undefined })}
               options={[0, 2, 3, 4, 6].map((v) => ({ value: v, name: v ? tr(`at least ${v}`, `mindestens ${v}`) : tr('free', 'frei'), text: v ? tr(`Each player's drive is played at least ${v} times.`, `Der Drive jedes Spielers wird mindestens ${v}-mal gespielt.`) : tr('Any drive, as the team likes.', 'Beliebige Drives, wie das Team will.') }))}
             />
-          )}
-          {/* a new round of a series of single tournaments stays one round */}
-          {!d.code && !d.series && (
-            <RoundsRow value={d.rounds.length} onChange={setCount} />
           )}
           {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
           {multi && (
@@ -775,8 +882,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </SettingsList>
         {/* the limits under the list – the row stays one line */}
         {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
-        {/* how the teams come about – in every flight */}
-        {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>
       {pick === 'classes' && (
         <ClassesSheet
@@ -789,91 +894,13 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         />
       )}
 
-      {/* Wo → Wann: one round inline; several – a row each, its page with course, day and flights */}
-      {!multi ? (
-        <RoundWhereWhen d={d} k={0} onChange={(r) => setRound(0, r)} onCourse={() => toCourse(0)} rating={() => setRatingsSeen((n) => n + 1)} />
-      ) : (
-        <section className="setup-part">
-          <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
-          <SettingsList label={tr('The rounds', 'Die Runden')}>
-            {d.rounds.map((r, k) => (
-              <SettingsRow
-                key={r.id}
-                label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)}
-                value={`${shortDay(r.date)} · ${r.course?.name ?? r.base?.course.name ?? tr('Choose a course', 'Platz wählen')}`}
-                need={!holesOf(r).holes.length}
-                onClick={() => set({ open: k })}
-              />
-            ))}
-          </SettingsList>
-          {!ordered && <span className="small bad-text">{tr('The rounds in the order of their days.', 'Die Runden in der Reihenfolge ihrer Tage.')}</span>}
-        </section>
-      )}
-
-      {/* Score-Erfassung between the day and the players (Sascha 04.11.2026), "Mit Zähler" the default */}
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-        <SettingsList>
-          <ChoiceRow<'own' | 'marker' | 'one'>
-            label={tr('Who enters', 'Wer erfasst')}
-            value={d.oneScorer ? 'one' : d.ownOnly ? 'own' : 'marker'}
-            onChange={(v) => set({ oneScorer: v === 'one', ownOnly: v === 'own' })}
-            options={[
-              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Everyone enters only his own score and sees the others – nobody marks.', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen – ohne Zähler.') },
-              { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a difference shows.", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt.') },
-              { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
-            ]}
-          />
-          {/* the players who still enter their own details besides the scorer's card (07.11.2026) */}
-          {d.oneScorer && <OwnDetailsRow names={d.players.map((p) => p.name)} value={d.ownDetails ?? []} onChange={(ownDetails) => set({ ownDetails })} />}
-        </SettingsList>
-        {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
-      </section>
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        {d.players.map((p, k) => (
-          <PlayerRow
-            key={p.id}
-            className="game-player-row"
-            nameNeeded
-            player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: t0.teeOf(p, k) }}
-            nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
-            rating={t0.ratingOf(p, k)}
-            playing={t0.playingOf(p, k)}
-            allowance={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
-            nine={t0.nine}
-            tees={teeChoices.length ? teeChoices : undefined}
-            onChange={(np) => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, name: np.name, hcp: np.index, tee: np.tee, fixed: np.index !== x.hcp ? null : x.fixed } : x)) })}
-            onRemove={d.players.length > 1 ? () => setPlayers(d.players.filter((x) => x.id !== p.id)) : undefined}
-          />
-        ))}
-        <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
-        <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, newPlayer('', '')])}>
-          {tr('+ Add player', '+ Spieler hinzufügen')}
-        </button>
-      </section>
-
       <Specials d={d} holes={h0.holes} onChange={(specials) => set({ specials })} />
 
-      {/* the flights the last settings (Sascha 04.11.2026) – several rounds: a row each, to its page */}
-      {!multi ? (
-        <RoundFlights d={d} k={0} label={label} onChange={(r) => setRound(0, r)} problems={problems(r0)} />
-      ) : (
-        <section className="setup-part">
-          <span className="eyebrow">{tr('Flights and tee times', 'Flights und Startzeiten')}</span>
-          <SettingsList label={tr('Flights of the rounds', 'Flights der Runden')}>
-            {d.rounds.map((r, k) => (
-              <SettingsRow key={r.id} label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} value={`${drawName(r.draw.mode)} · ${tr('from', 'ab')} ${r.draw.first}`} need={!roundReady(r)} onClick={() => set({ open: k })} />
-            ))}
-          </SettingsList>
-          {d.cut && <span className="muted small">{tr(`After round ${d.cut.after} the best ${d.cut.top} and ties play on – their flights dealt then.`, `Nach Runde ${d.cut.after} spielen die besten ${d.cut.top} und Gleichstand weiter – ihre Flights werden dann eingeteilt.`)}</span>}
-        </section>
-      )}
-
+      {/* no connection: a green notice – nothing done wrong (Facelift 11.11.2026, o4) */}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <p className="notice" role="alert">
           {msg}
-        </span>
+        </p>
       )}
       {/* a tournament changed: saved by itself, a quiet line instead of a button; a new one: "Turnier anlegen", the round
           green tick bottom right (Sascha 11.11.2026) */}
@@ -936,6 +963,7 @@ function RoundsRow(props: { value: number; onChange: (n: number) => void }) {
             close();
           }}
           onClose={close}
+          {...(typing ? { onSave: take, saveLabel: tr('Use', 'Übernehmen') } : {})}
         >
           {typing && (
             <div className="cap-input">
@@ -952,13 +980,10 @@ function RoundsRow(props: { value: number; onChange: (n: number) => void }) {
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && take()}
               />
-              <button type="button" className="btn-secondary" onClick={take}>
-                {tr('Use', 'Übernehmen')}
-              </button>
             </div>
           )}
           {error && (
-            <span className="small bad-text" role="alert">
+            <span className="small good-text" role="alert">
               {error}
             </span>
           )}
@@ -1040,10 +1065,10 @@ function Specials(props: { d: TourDraft; holes: RoundHole[]; onChange: (s: Speci
             <div className="sheet-head">
               <strong>{specialName(open)}</strong>
               <span className="sheet-head-acts">
-                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(null)} />
                 <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(null)}>
                   ✕
                 </button>
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(null)} />
               </span>
             </div>
             <div className="pick-list">
@@ -1169,8 +1194,8 @@ function RoundFlights(props: { d: TourDraft; k: number; label: (p: TourPlayer, k
           })
         }
       />
-      {props.problems.small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
-      {props.problems.big && <span className="small bad-text">{tr('A flight has at most four players.', 'Ein Flight hat höchstens vier Spieler.')}</span>}
+      {props.problems.small && <span className="small good-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
+      {props.problems.big && <span className="small good-text">{tr('A flight has at most four players.', 'Ein Flight hat höchstens vier Spieler.')}</span>}
     </section>
   );
 }
@@ -1597,20 +1622,28 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
     if (editing == null) return;
     requestAnimationFrame(() => document.querySelector('.sheet .pick-option[aria-pressed="true"]')?.scrollIntoView({ block: 'center' }));
   }, [editing]);
-  const add = () => {
+  // the classes with a limit still typed in the field – taken with them
+  const withTyped = (list: number[]): number[] => {
     const v = Math.round(Number(typed.replace(',', '.')));
+    if (!typed.trim() || !(v >= 1 && v < CLASS_TOP) || list.includes(v) || list.length >= LETTERS.length - 1) return list;
+    return [...list, v].sort((a, b) => a - b);
+  };
+  const add = () => {
+    if (own) setOwn(withTyped(own));
     setTyped('');
-    if (!own || !(v >= 1 && v < CLASS_TOP) || own.includes(v) || own.length >= LETTERS.length - 1) return;
-    setOwn([...own, v].sort((a, b) => a - b));
   };
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{own ? tr('Own classes', 'Eigene Klassen') : tr('Net classes', 'Netto-Klassen')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
+          {/* own classes: taken with the round save button in the head, after the ✕ (Facelift 11.11.2026, t6) */}
+          <span className="sheet-head-acts">
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+              ✕
+            </button>
+            {own && <SaveButton label={tr(`Use ${withTyped(own).length + 1} classes`, `${withTyped(own).length + 1} Klassen übernehmen`)} onClick={() => props.onPick(withTyped(own))} />}
+          </span>
         </div>
         {!own ? (
           <div className="pick-list">
@@ -1654,12 +1687,10 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
                 </label>
               )}
             </SettingsList>
-            <button type="button" className="btn-primary" onClick={() => props.onPick(own)}>
-              {tr(`Use ${own.length + 1} classes`, `${own.length + 1} Klassen übernehmen`)}
-            </button>
-            <button type="button" className="link-btn small" onClick={() => setOwn(null)}>
-              {tr('Back to the presets', 'Zurück zu den Vorlagen')}
-            </button>
+            {/* back to "none, 2 or 3 classes" – a row, not a link (Facelift 11.11.2026, t6) */}
+            <SettingsList>
+              <SettingsRow label={tr('Presets', 'Vorlagen')} onClick={() => setOwn(null)} />
+            </SettingsList>
           </>
         )}
         {own && editing != null && (

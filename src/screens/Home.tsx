@@ -6,6 +6,7 @@ import { Friends } from '../components/Friends';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { PausedIcon } from '../components/PausedIcon';
+import { SettingsList, SettingsRow } from '../components/Settings';
 
 // The start page of GolfOS (Sascha 15.10.2026): the two modules, the friends you play with and your profile – with a
 // menu at the bottom like inside the modules. The profile is the same everywhere.
@@ -309,18 +310,19 @@ export function FriendChips(props: { taken: string[]; onAdd: (f: Friend) => void
   const [linking, setLinking] = useState(false);
   const all = loadFriends();
   const free = all.filter((f) => f.name.trim() && !props.taken.some((n) => n.trim().toLowerCase() === f.name.trim().toLowerCase()));
-  // no friends yet (night 10./11.11.2026: "nothing shows how to add one"): link them right here – the setup stays
+  // no friends yet (night 10./11.11.2026: "nothing shows how to add one"): link them right here – the setup stays; a row
+  // "Freunde · verknüpfen ›" as every other choice of a setup, its sheet titled "Freunde" (Facelift 11.11.2026, r11)
   if (!all.length)
     return (
       <div className="friend-chips">
-        <button type="button" className="link-text muted small" onClick={() => setLinking(true)}>
-          {tr('Link golf friends – one tap next time', 'Golffreunde verknüpfen – nächstes Mal mit einem Tipp')} ›
-        </button>
+        <SettingsList>
+          <SettingsRow label={tr('Friends', 'Freunde')} value={tr('link', 'verknüpfen')} onClick={() => setLinking(true)} />
+        </SettingsList>
         {linking && (
           <div className="sheet-backdrop" onClick={() => setLinking(false)}>
-            <section className="sheet" role="dialog" aria-label={tr('Friends', 'Freunde')} onClick={(e) => e.stopPropagation()}>
+            <section className="sheet friends-sheet" role="dialog" aria-label={tr('Friends', 'Freunde')} onClick={(e) => e.stopPropagation()}>
               <div className="sheet-head">
-                <strong />
+                <strong>{tr('Friends', 'Freunde')}</strong>
                 <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setLinking(false)}>
                   ✕
                 </button>
