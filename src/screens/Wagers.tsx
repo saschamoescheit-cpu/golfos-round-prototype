@@ -948,6 +948,11 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         pool={pool}
         today={today}
         me={entry.me}
+        onHide={
+          host
+            ? async (r, hide) => !!(await change((p) => ({ ...p, skip: (p.skip ?? []).map((x) => (skipped([x], r) ? { ...x, ...(hide ? { hidden: true } : { hidden: undefined }) } : x)) })))
+            : undefined
+        }
         onCount={
           host
             ? async (r, counts) => {
@@ -1303,7 +1308,7 @@ const rowName = (w: Wager) => {
  *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
  *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
-export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean; /** in a round's leaderboard: this round shown first, not the total (Sascha 12.11.2026) – else the latest */ round?: { day: string; course?: string }; /** the host: a round counted or not (Sascha 12.11.2026; 11.11.2026: "Runde werten · An/Aus" in the standing) */ onCount?: (r: { day: string; course: string }, counts: boolean) => Promise<boolean> }) {
+export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean; /** in a round's leaderboard: this round shown first, not the total (Sascha 12.11.2026) – else the latest */ round?: { day: string; course?: string }; /** the host: a round counted or not (Sascha 12.11.2026; 11.11.2026: "Runde werten · An/Aus" in the standing) */ onCount?: (r: { day: string; course: string }, counts: boolean) => Promise<boolean>; /** the host: a round not counted taken out of the pool altogether – or back (Sascha 11.11.2026) */ onHide?: (r: { day: string; course: string }, hide: boolean) => Promise<boolean> }) {
   const { pool } = props;
   // "Gesamt" (null) or one round (Sascha 08.11.2026: "a bet holds for one round – an overview over all rounds for a
   // total, and then per round")
@@ -1332,7 +1337,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     }
   }, []);
   // the rounds that count – and those taken out, kept in the switch, marked (Sascha 11.11.2026: "Runde werten · An/Aus")
-  const roundsShown = [...standingRounds(pool).map((r) => ({ ...r, out: false })), ...(pool.skip ?? []).map((s) => ({ key: `${s.day}|${s.course}`, day: s.day, course: s.course, out: true }))].sort((a, b) => (a.key < b.key ? -1 : 1));
+  const roundsShown = [...standingRounds(pool).map((r) => ({ ...r, out: false })), ...(pool.skip ?? []).filter((s) => !s.hidden).map((s) => ({ key: `${s.day}|${s.course}`, day: s.day, course: s.course, out: true }))].sort((a, b) => (a.key < b.key ? -1 : 1));
   // the round coming into the standing once its first scores count – followed until a round is picked by hand
   const now = picked ? null : roundNow();
   useEffect(() => {
@@ -1474,6 +1479,22 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         </div>
       )}
       {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
+      {/* a round not counted taken out of the pool altogether – gone from the switch for everyone, "Undo" for a moment
+          (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben") */}
+      {one?.out && props.onHide && (
+        <button
+          type="button"
+          className="btn-ghost bad-text skip-delete"
+          onClick={async () => {
+            const r = { day: one.day, course: one.course };
+            if (!(await props.onHide!(r, true))) return;
+            setShown(null);
+            window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
+          }}
+        >
+          {tr('Delete the round from the pool', 'Runde aus dem Pool löschen')}
+        </button>
+      )}
       {rows.length > 0 && !one?.out && (
         <div className="matrix-wrap">
           {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}

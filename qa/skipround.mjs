@@ -96,6 +96,27 @@ await flip(countRow());
 await H.waitForTimeout(800);
 const skip3 = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).map((x) => x.course);
 ok(skip3.length === 1 && skip3[0].includes('Reunion') && (await isOn(countRow())), `Celebration counted again, Reunion still out (${skip3.join(', ')})`);
+// a round not counted deleted from the pool altogether (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben"):
+// gone from the switch, "Rückgängig" brings it back
+({ dlg, names } = await listRounds());
+await dlg.locator('.pick-option').filter({ hasText: 'Reunion' }).click();
+await H.waitForTimeout(300);
+ok((await countRow().count()) === 1 && (await stand.getByRole('button', { name: 'Runde aus dem Pool löschen' }).count()) === 1, 'a round not counted: "Runde aus dem Pool löschen"');
+await stand.getByRole('button', { name: 'Runde aus dem Pool löschen' }).click();
+await H.waitForTimeout(800);
+const hid = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).find((x) => x.course.includes('Reunion'));
+({ dlg, names } = await listRounds());
+ok(!!hid?.hidden && !names.some((n) => n.includes('Reunion')) && names.length === 3, `deleted: on the server hidden, gone from the switch (${names.join(' | ')})`);
+await H.keyboard.press('Escape');
+await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
+await H.waitForTimeout(200);
+await H.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
+await H.waitForTimeout(800);
+({ dlg, names } = await listRounds());
+ok(names.some((n) => n.includes('Reunion')), `"Rückgängig": back in the switch (${names.join(' | ')})`);
+await H.keyboard.press('Escape');
+await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
+await H.waitForTimeout(200);
 // the pencil: no list of rounds not counted any more
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });

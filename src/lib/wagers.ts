@@ -357,6 +357,9 @@ export interface PoolPlayer {
 export interface PoolSkip {
   day: string;
   course: string;
+  /** taken out of the pool altogether by the host – not shown in its standing either (Sascha 11.11.2026: "die Runden will
+   *  ich auch gelöscht haben"); still not counted */
+  hidden?: boolean;
 }
 export const skipped = (skip: PoolSkip[] | undefined, r: { day: string; course: string }): boolean => !!skip?.some((s) => s.day === r.day && s.course.trim().toLowerCase() === r.course.trim().toLowerCase());
 
