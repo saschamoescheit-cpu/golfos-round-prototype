@@ -123,7 +123,7 @@ const moved = await ed.evaluate((root) => {
 ok(Math.hypot(moved[1][0] - moved[0][0], moved[1][1] - moved[0][1]) > 0.3, `iPhone: the ball's lost finger does not end the drag (${moved[0].map((v) => v.toFixed(1))} → ${moved[1].map((v) => v.toFixed(1))})`);
 if (process.env.SHOTS) await ed.screenshot({ path: `${process.env.SHOTS}/puttplace.png` });
 
-await ed.getByRole('button', { name: 'Putts speichern' }).click();
+await p.getByRole('button', { name: 'Putts speichern' }).click(); // floating since 11.11.2026
 await p.waitForTimeout(800);
 const e1 = await entry();
 ok(e1.putts === 3 && e1.puttsAt?.balls?.length === 3 && !!e1.puttsAt?.pin, `saved: 3 putts, flag and three balls (${e1.putts} · ${e1.puttsAt?.balls?.length})`);

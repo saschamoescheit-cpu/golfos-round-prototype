@@ -213,7 +213,7 @@ ok(/^Fahne: [\d,]+ (cm|m) (von vorne|bis hinten) · [\d,]+ (cm|m) vom Rand (link
 }
 ok(Math.abs((await width()) - w0) < 0.5, 'zoomed out again: the whole green');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/puttzoom.png' });
-await ed.getByRole('button', { name: 'Putts speichern' }).click();
+await p.getByRole('button', { name: 'Putts speichern' }).click(); // floating since 11.11.2026
 await p.waitForTimeout(400);
 const saved = await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];

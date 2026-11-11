@@ -3,7 +3,7 @@ import type { LngLat } from '../types';
 import { bearingDeg, distanceM, keepOnGreen } from '../lib/geo';
 import { move } from '../lib/aimpoint';
 import { dec, tr } from '../lib/i18n';
-import { SaveButton } from './ui';
+import { FloatActions } from './FloatActions';
 import type { ImagerySource } from '../lib/imagery';
 
 /** The aerial photo's tiles around the green (Sascha 11.11.2026: "in the USA the putt editor lacks bunkers and so on" –
@@ -287,14 +287,16 @@ export function PuttEditor(props: {
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet putt-editor" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
-        {/* ✕ = leave without saving, the round save button = save (Sascha 14.10.2026; the disc, not a check – 04.11.2026) */}
+        {/* ✕ = leave without saving; the save floating bottom right, above the sheet (Sascha 11.11.2026: "der Speicherbutton
+            soll auch in der Rundennachbereitung schweben") */}
         <div className="sheet-head">
           <button type="button" className="icon-btn" aria-label={tr('Cancel – do not save', 'Abbrechen – nicht speichern')} onClick={props.onCancel}>
             ✕
           </button>
           <strong>{props.title}</strong>
-          <SaveButton label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls, putts: balls.length })} />
+          <span aria-hidden="true" />
         </div>
+        <FloatActions overSheet save={{ label: tr('Save putts', 'Putts speichern'), onClick: () => props.onSave({ pin, balls, putts: balls.length }) }} />
         {/* no explanation, no zoom buttons (Sascha 17.10.2026) – two fingers zoom and move the green */}
         {SHOW_ZOOM_BUTTONS && (
           <div className="putt-zoom" role="group" aria-label={tr('Zoom', 'Zoom')}>

@@ -5,6 +5,7 @@ import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, S
 import { isLeftHanded } from '../lib/profile';
 import { Chips, Segmented } from './ui';
 import { clubCode, tr } from '../lib/i18n';
+import { FloatActions } from './FloatActions';
 
 // Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), shot type (suggested
 // from lie and distance), club (suggested from the distance), penalty. One tap on a club saves a new
@@ -238,10 +239,10 @@ export function ShotSheet(props: {
               {tr('Holed it! (chip-in)', 'Eingelocht! (Chip-in)')}
             </button>
           )}
-          <button type="button" className="btn-primary" onClick={() => save(club)}>
-            {props.editing ? tr('Save', 'Speichern') : club ? `${tr('Save', 'Speichern')} · ${clubCode(club)}` : tr('Save without club', 'Ohne Schläger speichern')}
-          </button>
         </div>
+        {/* the save floating bottom right, above the sheet (Sascha 11.11.2026: "der Speicherbutton muss auch in einem Schlag
+            immer mitschweben statt unten platziert zu sein") */}
+        <FloatActions overSheet save={{ label: props.editing ? tr('Save', 'Speichern') : club ? `${tr('Save', 'Speichern')} · ${clubCode(club)}` : tr('Save without club', 'Ohne Schläger speichern'), onClick: () => save(club) }} />
       </section>
     </div>
   );
