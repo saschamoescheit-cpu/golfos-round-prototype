@@ -3,10 +3,11 @@ import { PenGlyph } from '../components/Glyph';
 import { loadFriends } from '../lib/friends';
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
-import { Attribution, Segmented, TopBar } from '../components/ui';
+import { Attribution, TopBar } from '../components/ui';
 import { carryToReview } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
 import { getLang, tr } from '../lib/i18n';
+import { ChoiceRow, SettingsList } from '../components/Settings';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
@@ -265,60 +266,52 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             <span aria-hidden="true">›</span>
           </button>
         )}
-        {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
-        <div className="field">
-          <label>{tr('Standard tee', 'Standard-Tee')}</label>
+        {/* rows like every other setting, the choice in a sheet (Sascha 11.11.2026, design rounds 3–4: "Distanzen wie
+            Standard-Tee darstellen"; "Standardwährung einfach nur Währung, Standard-Tee nur Tee") */}
+        <SettingsList>
+          {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
           <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
-            <span className="std-tee-name">
+            <span>Tee</span>
+            <span className="settings-value std-tee-name">
               {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
-              <span className={p.tee ? '' : 'muted'}>{p.tee ? teeName(p.tee) : tr('none – yellow (ladies red)', 'keins – Gelb (Damen Rot)')}</span>
+              <span>{p.tee ? teeName(p.tee) : tr('none', 'keins')}</span>
             </span>
             <span aria-hidden="true">›</span>
           </button>
-        </div>
-        <div className="field">
-          <label>{tr('Distances in', 'Distanzen in')}</label>
-          <Segmented<'m' | 'yd'>
-            label={tr('Unit', 'Einheit')}
+          <ChoiceRow<'m' | 'yd'>
+            label={tr('Distances in', 'Distanzen in')}
             value={unit}
             onChange={(v) => {
-              if (!v) return;
               setUnit(v);
               saveUnit(v);
             }}
             options={[
-              { value: 'm', label: tr('Metres', 'Meter') },
-              { value: 'yd', label: 'Yards' },
+              { value: 'm', name: tr('Metres', 'Meter'), text: tr('As on courses in Germany', 'Wie auf deutschen Plätzen') },
+              { value: 'yd', name: 'Yards', text: tr('As in the USA and Great Britain', 'Wie in den USA und in Großbritannien') },
             ]}
           />
-        </div>
-        <div className="field">
-          <label>{tr('You play', 'Du spielst')}</label>
-          <Segmented<'right' | 'left'>
-            label={tr('Hand', 'Hand')}
+          <ChoiceRow<'right' | 'left'>
+            label={tr('You play', 'Du spielst')}
             value={p.hand ?? 'right'}
-            onChange={(v) => v && set({ hand: v })}
+            onChange={(v) => set({ hand: v })}
             options={[
-              { value: 'right', label: tr('Right-handed', 'Rechtshänder') },
-              { value: 'left', label: tr('Left-handed', 'Linkshänder') },
+              { value: 'right', name: tr('Right-handed', 'Rechtshänder') },
+              { value: 'left', name: tr('Left-handed', 'Linkshänder'), text: tr('Pictures and the 3D golfer mirrored', 'Bilder und der 3D-Golfer gespiegelt') },
             ]}
           />
-        </div>
-        {/* the standard currency (Sascha 12.11.2026): the Bilanz shows games and bets in another currency converted to it –
-            at the rate of their cut-off day */}
-        <div className="field">
-          <label>{tr('Standard currency', 'Standardwährung')}</label>
-          <Segmented<'EUR' | 'USD'>
+          {/* the currency (Sascha 12.11.2026): the Bilanz shows games and bets in another currency converted to it – at the
+              rate of their cut-off day; none: each in its own */}
+          <ChoiceRow<'none' | 'EUR' | 'USD'>
             label={tr('Currency', 'Währung')}
-            value={p.currency ?? null}
-            onChange={(v) => set({ currency: v ?? undefined })}
+            value={p.currency ?? 'none'}
+            onChange={(v) => set({ currency: v === 'none' ? undefined : v })}
             options={[
-              { value: 'EUR', label: 'Euro (€)' },
-              { value: 'USD', label: 'Dollar ($)' },
+              { value: 'none', name: tr('None', 'Keine'), text: tr('Every game and bet in its own currency', 'Jedes Spiel und jede Wette in seiner Währung') },
+              { value: 'EUR', name: 'Euro (€)', text: tr('"Bilanz" converts other currencies to euro – at the rate of the day they end', '„Bilanz“ rechnet andere Währungen in Euro um – zum Kurs des Tages, an dem sie enden') },
+              { value: 'USD', name: 'Dollar ($)', text: tr('"Bilanz" converts other currencies to dollars – at the rate of the day they end', '„Bilanz“ rechnet andere Währungen in Dollar um – zum Kurs des Tages, an dem sie enden') },
             ]}
           />
-          <span className="muted small">{p.currency ? tr('Games and bets in another currency are converted in "Bilanz" – at the rate of the day they end.', 'Spiele und Wetten in einer anderen Währung rechnet „Bilanz“ um – zum Kurs des Tages, an dem sie enden.') : tr('None chosen: every game and bet in its own currency.', 'Keine gewählt: jedes Spiel und jede Wette in seiner Währung.')}</span>
-        </div>
+        </SettingsList>
         {/* (the switch "Schlag per Ton (Test)" is gone – Sascha 03.11.2026: the iOS app hears the shots by itself) */}
         {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
             a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
@@ -341,9 +334,9 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       {sgSheet}
       {teePick && (
         <div className="sheet-backdrop" onClick={() => setTeePick(false)}>
-          <section className="sheet" role="dialog" aria-label={tr('Standard tee', 'Standard-Tee')} onClick={(e) => e.stopPropagation()}>
+          <section className="sheet" role="dialog" aria-label="Tee" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{tr('Standard tee', 'Standard-Tee')}</strong>
+              <strong>Tee</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setTeePick(false)}>
                 ✕
               </button>

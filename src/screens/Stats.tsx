@@ -7,6 +7,7 @@ import { CoursesCard } from '../components/HistoryCards';
 import { comparisonGroup, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
+import { OnOffRow } from '../components/Settings';
 import { statRounds, unsignedRounds } from '../lib/signing';
 import { clubReports, corridorText } from '../lib/clubstats';
 import { approachBands, puttMisses } from '../lib/approachstats';
@@ -474,13 +475,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               <p className="muted small stats-sub">{tr('Each dot a shot around the target line – green a good strike, red a mishit · the ellipse holds 80 % of your balls', 'Jeder Punkt ein Schlag um die Ziellinie – grün ein guter Treffer, rot ein Fehlschlag · in der Ellipse landen 80 % deiner Bälle')}</p>
               {rangeShots.size > 0 && (
                 <div className="drawer-list settings-switches range-switch">
-                  <button type="button" className="drawer-row" role="switch" aria-checked={withRange} onClick={() => setWithRange(!withRange)}>
-                    <span className="switch-label">
-                      <span>{tr('Show range shots', 'Range-Schläge zeigen')}</span>
-                      <span className="muted small">{tr('from the launch monitor, as rings', 'vom Launch-Monitor, als Ringe')}</span>
-                    </span>
-                    <span className={`drawer-switch${withRange ? ' on' : ''}`} aria-hidden="true" />
-                  </button>
+                  <OnOffRow label={tr('Show range shots', 'Range-Schläge zeigen')} text={tr('from the launch monitor, as rings', 'vom Launch-Monitor, als Ringe')} on={withRange} onChange={setWithRange} />
                 </div>
               )}
               <div className="tee-clubs">

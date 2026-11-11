@@ -84,8 +84,10 @@ ok(t3 === '+20 $' && (await p.locator('.fx-note').count()) === 0, `Dollar as sta
 // the profile: "Standardwährung" Euro / Dollar
 await p.locator('.tabbar button').filter({ hasText: /^\s*Profil\s*$/ }).click();
 await p.waitForTimeout(800);
-const seg = p.getByRole('group', { name: 'Währung' });
-ok((await seg.count()) === 1 && /Euro/.test(await seg.innerText()) && /Dollar/.test(await seg.innerText()), 'Profil: "Standardwährung" with Euro and Dollar');
+// since 11.11.2026 a row "Währung" (renamed, design round 3) with its sheet: Keine, Euro, Dollar
+await p.locator('.settings-row').filter({ hasText: /^\s*Währung/ }).click();
+const seg = p.getByRole('dialog', { name: 'Währung' });
+ok((await seg.count()) === 1 && /Keine/.test(await seg.innerText()) && /Euro/.test(await seg.innerText()) && /Dollar/.test(await seg.innerText()), 'Profil: the row "Währung" with Keine, Euro and Dollar');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(bad ? 1 : 0);

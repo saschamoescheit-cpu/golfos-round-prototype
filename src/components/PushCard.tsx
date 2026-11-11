@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
+import { OnOffRow } from './Settings';
 import { disablePush, enablePush, loadPush, pushAvailability, PushError, setPushKind, type PushKind } from '../lib/push';
 
 // Notifications in the profile (final list, Sascha 23.10.2026): a slider right of the heading turns them on for this
@@ -49,23 +50,14 @@ export function PushCard(props: { signedIn: boolean }) {
 
   return (
     <section className="card stats-card push-card">
-      {/* sliders, the main one right of the heading (Sascha 23.10.2026) – as the caddie's switches */}
-      <div className="card-head">
-        <h2>{tr('Notifications', 'Mitteilungen')}</h2>
-        {can && (
-          <button
-            type="button"
-            className="switch-btn"
-            role="switch"
-            aria-checked={state.on}
-            aria-label={tr('Notifications on this phone', 'Mitteilungen auf diesem Handy')}
-            disabled={busy}
-            onClick={() => (state.on ? turnOff() : turnOn())}
-          >
-            <span className={`drawer-switch${state.on ? ' on' : ''}`} aria-hidden="true" />
-          </button>
-        )}
-      </div>
+      {/* rows with An/Aus, no sliders (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App"; before: the main
+          slider right of the heading, 23.10.2026) */}
+      <h2>{tr('Notifications', 'Mitteilungen')}</h2>
+      {can && (
+        <div className="settings-list onoff-card-row">
+          <OnOffRow label={tr('Notifications on this phone', 'Mitteilungen auf diesem Handy')} on={state.on} disabled={busy} onChange={(v) => void (v ? turnOn() : turnOff())} />
+        </div>
+      )}
       {why === 'homescreen' && (
         <span className="muted small">
           {tr(
@@ -82,20 +74,7 @@ export function PushCard(props: { signedIn: boolean }) {
       {can && state.on && (
         <div className="drawer-list settings-switches">
           {KINDS.map((k) => (
-            <button
-              key={k.kind}
-              type="button"
-              className="drawer-row"
-              role="switch"
-              aria-checked={state.kinds[k.kind]}
-              onClick={async () => setState(await setPushKind(k.kind, !state.kinds[k.kind]))}
-            >
-              <span className="switch-label">
-                <span>{k.label()}</span>
-                <span className="muted small">{k.hint()}</span>
-              </span>
-              <span className={`drawer-switch${state.kinds[k.kind] ? ' on' : ''}`} aria-hidden="true" />
-            </button>
+            <OnOffRow key={k.kind} label={k.label()} text={k.hint()} on={state.kinds[k.kind]} onChange={async (v) => setState(await setPushKind(k.kind, v))} />
           ))}
         </div>
       )}

@@ -2,6 +2,7 @@
 // card to share the log at its end. See motionlog.ts.
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
+import { OnOffRow } from '../components/Settings';
 import { clearKept, currentLog, isLogging, keptLog, logFile, setLogging, shareFile, type MotionLog } from './motionlog';
 import { DeletedIcon } from '../components/RoundIcons';
 import { ShareIcon } from './icons';
@@ -16,13 +17,7 @@ export function LogSwitch() {
   return (
     <>
       <div className="drawer-list settings-switches mob-log-switch">
-        <button type="button" className="drawer-row" role="switch" aria-checked={on} onClick={flip}>
-          <span className="switch-label">
-            <span>{tr('Keep a motion log', 'Bewegungsprotokoll mitschreiben')}</span>
-            <span className="muted small">{tr('only the body points, no picture – the last 20 stay on this phone to check the measuring; you share them', 'nur die Körperpunkte, kein Bild – die letzten 20 bleiben auf diesem Handy zum Prüfen der Messung; du teilst sie')}</span>
-          </span>
-          <span className={`drawer-switch${on ? ' on' : ''}`} aria-hidden="true" />
-        </button>
+        <OnOffRow label={tr('Keep a motion log', 'Bewegungsprotokoll mitschreiben')} text={tr('only the body points, no picture – the last 20 stay on this phone to check the measuring; you share them', 'nur die Körperpunkte, kein Bild – die letzten 20 bleiben auf diesem Handy zum Prüfen der Messung; du teilst sie')} on={on} onChange={(v) => v !== on && flip()} />
       </div>
       <p className="muted small mob-private">
         {on

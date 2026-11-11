@@ -45,7 +45,7 @@ const teeY = (await p.locator('.std-tee').boundingBox()).y;
 const distY = (await p.getByText('Distanzen in', { exact: true }).boundingBox()).y;
 ok(bagY < teeY && teeY < distY, 'standard tee between "Mein Bag" and "Distanzen in"');
 await p.locator('.std-tee').click();
-await p.getByRole('dialog', { name: 'Standard-Tee' }).locator('.pick-option').filter({ hasText: 'Weiß' }).click();
+await p.getByRole('dialog', { name: 'Tee' }).locator('.pick-option').filter({ hasText: 'Weiß' }).click();
 const prof = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')));
 ok(prof.gender === 'm' && prof.tee === 'White', `profile: gender and standard tee kept (${prof.gender}, ${prof.tee})`);
 ok(/Weiß/.test(await p.locator('.std-tee').innerText()), 'the standard tee shown in the profile');

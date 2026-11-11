@@ -305,17 +305,52 @@ export function ToggleList(props: { children: ReactNode }) {
   return <div className="drawer-list settings-switches">{props.children}</div>;
 }
 
-/** A yes/no as a switch with what it means (as "In der Nähe anzeigen"); `inList` inside a ToggleList. */
-export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; inList?: boolean }) {
-  const row = (
-    <button type="button" className="drawer-row" role="switch" aria-checked={props.on} disabled={props.disabled} onClick={() => props.onChange(!props.on)}>
-      <span className="switch-label">
-        <span>{props.label}</span>
-        {props.text && <span className="muted small">{props.text}</span>}
-      </span>
-      <span className={`drawer-switch${props.on ? ' on' : ''}`} aria-hidden="true" />
-    </button>
+/** A yes/no as a row like every other setting (Sascha 11.11.2026, design round 4: "ohne Schieberegler, sodass alles
+ *  einheitlich ist – in allen Menüs der gesamten App"): the label (and what it means) on the left, "An" or "Aus" on the
+ *  right, a tap opens the sheet with both and a line each. `data-on` carries the state for the tests. */
+export function OnOffRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; onText?: string; offText?: string; className?: string; ariaLabel?: string }) {
+  const [open, setOpen] = useState(false);
+  const word = (on: boolean) => (on ? tr('On', 'An') : tr('Off', 'Aus'));
+  return (
+    <>
+      <button
+        type="button"
+        className={`settings-row onoff-row${props.className ? ` ${props.className}` : ''}`}
+        data-on={props.on ? 'true' : 'false'}
+        aria-haspopup="dialog"
+        aria-label={`${props.ariaLabel ?? props.label}: ${word(props.on)}`}
+        disabled={props.disabled}
+        onClick={() => setOpen(true)}
+      >
+        <span className="switch-label">
+          <span>{props.label}</span>
+          {props.text && <span className="muted small">{props.text}</span>}
+        </span>
+        <span className={`settings-value${props.on ? ' onoff-on' : ''}`}>{word(props.on)}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {open && (
+        <PickSheet
+          title={props.ariaLabel ?? props.label}
+          options={[
+            { value: true, name: word(true), text: props.onText ?? props.text },
+            { value: false, name: word(false), text: props.offText },
+          ]}
+          current={props.on}
+          onPick={(v) => {
+            setOpen(false);
+            if (v !== props.on) props.onChange(v);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
+}
+
+/** A yes/no setting – since 11.11.2026 a row with "An"/"Aus" and its sheet (OnOffRow); `inList` inside a ToggleList. */
+export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; inList?: boolean }) {
+  const row = <OnOffRow label={props.label} text={props.text} on={props.on} onChange={props.onChange} disabled={props.disabled} />;
   return props.inList ? row : <ToggleList>{row}</ToggleList>;
 }
 

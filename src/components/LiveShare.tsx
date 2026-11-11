@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { liveLink, liveState, setLive, type LiveState } from '../lib/live';
 import { copyLink, InviteCard, shareLink } from './InviteCard';
-import { ToggleRow } from './Settings';
+import { OnOffRow, ToggleRow } from './Settings';
 
 // "Zuschauer" (Sascha 08.11.2026, USA: "the live leaderboard also for people outside the tournament – the same for
 // games and bets"): a block of its own below "Mitspieler einladen", the same in a tournament, a series, a game and a
@@ -46,19 +46,17 @@ export function LiveShare(props: {
     <section className="setup-part live-share" aria-label={tr('Spectators', 'Zuschauer')}>
       <span className="eyebrow">{tr('Spectators', 'Zuschauer')}</span>
       <div className="card invite-card">
-        <div className="card-head">
-          <h2>{tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}</h2>
-          <button
-            type="button"
-            className="switch-btn"
-            role="switch"
-            aria-checked={on}
-            aria-label={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
+        {/* a row with An/Aus, no slider (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App") */}
+        <div className="settings-list onoff-card-row">
+          <OnOffRow
+            label={tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}
+            ariaLabel={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
+            on={on}
             disabled={busy || (!st && !failed)}
-            onClick={() => void change(!on, st?.money ?? false)}
-          >
-            <span className={`drawer-switch${on ? ' on' : ''}`} aria-hidden="true" />
-          </button>
+            onChange={(v) => void change(v, st?.money ?? false)}
+            onText={tr('A link to watch the leaderboard live', 'Ein Link, mit dem man das Leaderboard live verfolgt')}
+            offText={tr('No link – an old one no longer opens', 'Kein Link – ein alter öffnet nicht mehr')}
+          />
         </div>
         {!on && (
           <span className="muted small">

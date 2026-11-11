@@ -978,6 +978,10 @@ button.tile:disabled { opacity: 1; }
 .settings-value { text-align: right; color: var(--muted); font-weight: 500; font-size: 15px; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 /* a required field not filled yet – green, as "Platz wählen" (Sascha 03.11.2026); an optional one stays grey */
 .settings-value.need { color: var(--brand-text); }
+/* a yes/no as a row (Sascha 11.11.2026: no sliders anywhere): label and its line on the left, An/Aus on the right */
+.settings-row.onoff-row { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 56px; padding-block: 10px; }
+.onoff-row .switch-label { min-width: 0; }
+.onoff-row .settings-value { white-space: nowrap; }
 .input:required::placeholder { color: var(--brand-text); opacity: 1; }
 :root[data-theme='sun'] .settings-value.need, :root[data-theme='sun'] .input:required::placeholder { color: #2f5a00; }
 .pick-list { display: flex; flex-direction: column; gap: 6px; }

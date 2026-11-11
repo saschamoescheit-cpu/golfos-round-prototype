@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Club } from '../types';
 import { clubCode, getLang, tr } from '../lib/i18n';
+import { OnOffRow } from './Settings';
 import { clubName } from '../lib/caddie';
 import { loadLaunch, measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, saveLaunch, summarize, type LmClub, type LmData, type LmImport, type LmSession } from '../lib/launchmonitor';
 import { Segmented } from './ui';
@@ -191,13 +192,12 @@ export function LaunchImport(props: {
                   .filter((c) => !keepOld.includes(c.club))
                   .map((c) => (
                     <div key={c.club} className="launch-choice">
-                      <button type="button" className="drawer-row" role="switch" aria-checked={!noAdd.includes(c.club)} onClick={() => toggle(noAdd, setNoAdd, c.club)}>
-                        <span className="switch-label">
-                          <span>{tr(`Add ${clubName(c.club)} to the bag`, `${clubName(c.club)} zum Bag hinzufügen`)}</span>
-                          <span className="muted small">{tr(`not in your bag yet · ${show(c.carry)}`, `noch nicht in deinem Bag · ${show(c.carry)}`)}</span>
-                        </span>
-                        <span className={`drawer-switch${noAdd.includes(c.club) ? '' : ' on'}`} aria-hidden="true" />
-                      </button>
+                      <OnOffRow
+                        label={tr(`Add ${clubName(c.club)} to the bag`, `${clubName(c.club)} zum Bag hinzufügen`)}
+                        text={tr(`not in your bag yet · ${show(c.carry)}`, `noch nicht in deinem Bag · ${show(c.carry)}`)}
+                        on={!noAdd.includes(c.club)}
+                        onChange={() => toggle(noAdd, setNoAdd, c.club)}
+                      />
                     </div>
                   ))}
               </div>

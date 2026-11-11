@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
 import { tr } from '../lib/i18n';
+import { OnOffRow } from './Settings';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
 // and how he plans (green speed dropped, Sascha 15.10.2026). The miss map is gone until it is good; language and sun mode sit in
@@ -31,13 +32,8 @@ export function CaddieSettingsFields() {
             ['voice', tr('Read aloud by itself', 'Von selbst vorlesen'), tr('with headphones', 'mit Kopfhörern')],
           ] as const
         ).map(([k, label, sub]) => (
-          <button key={k} type="button" className="drawer-row" role="switch" aria-checked={s[k]} onClick={() => set({ [k]: !s[k] })}>
-            <span className="switch-label">
-              <span>{label}</span>
-              {sub && <span className="muted small">{sub}</span>}
-            </span>
-            <span className={`drawer-switch${s[k] ? ' on' : ''}`} aria-hidden="true" />
-          </button>
+          // a row with An/Aus and its sheet, no slider (Sascha 11.11.2026: "ohne Schieberegler – einheitlich")
+          <OnOffRow key={k} label={label} text={sub ?? undefined} on={s[k]} onChange={(v) => set({ [k]: v })} />
         ))}
         {/* how the caddie plans: a row of the same list, the choice in a sheet (Sascha 17.10.2026: "does not fit the style") */}
         <button type="button" className="drawer-row" aria-haspopup="dialog" onClick={() => setPicking(true)}>

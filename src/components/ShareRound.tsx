@@ -11,7 +11,7 @@ import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
-import { SettingsList, SheetRow } from './Settings';
+import { OnOffRow, SettingsList, SheetRow } from './Settings';
 import { ScanCodeButton } from './QrScan';
 
 /** A planned tournament's day: "Fr., 6.11." */
@@ -154,20 +154,17 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
         top={
           // shown to players nearby: a switch above the QR code, off by default, no explanation (Sascha 04.11.2026) – part of
           // "Mitspieler einladen", no box of its own, space to the QR code; on and off again
-          <button
-            type="button"
-            className="near-switch"
-            role="switch"
-            aria-checked={nearOn}
-            disabled={nearState === 'busy'}
-            onClick={() => void (nearOn ? offNearby(shared.code) : putNearby(shared.code))}
-          >
-            <span className="switch-label">
-              <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
-              {nearState === 'failed' && <span className="muted small">{tr('Not possible right now', 'Gerade nicht möglich')}</span>}
-            </span>
-            <span className={`drawer-switch${nearOn ? ' on' : ''}`} aria-hidden="true" />
-          </button>
+          // a row with An/Aus, no slider (Sascha 11.11.2026)
+          <div className="settings-list near-switch">
+            <OnOffRow
+              label={tr('Show to players nearby', 'In der Nähe anzeigen')}
+              text={nearState === 'failed' ? tr('Not possible right now', 'Gerade nicht möglich') : undefined}
+              on={nearOn}
+              disabled={nearState === 'busy'}
+              onChange={(v) => void (v ? putNearby(shared.code) : offNearby(shared.code))}
+              onText={tr('Players close by see the round and join with one tap', 'Spieler in der Nähe sehen die Runde und treten mit einem Tipp bei')}
+            />
+          </div>
         }
       />
       <FriendInvite code={shared.code} only={props.round.players.filter((p) => !p.isMe).map((p) => p.name)} />
