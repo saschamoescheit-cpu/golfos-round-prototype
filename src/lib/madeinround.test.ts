@@ -47,3 +47,27 @@ describe('a round decided', () => {
     expect(sumSoFar(w, p([4, 7]))?.verdict).toBe('missed');
   });
 });
+
+// Sascha 11.11.2026, USA: "Cedric hat 2 von 6 für brutto über Par in 6 Runden in der Wertung, nicht 1 von 6" – a round
+// with a hole picked up stays in the total: the hole counts as net double bogey (par + 2 + the strokes he receives)
+import { judge, type PlayedRound } from './wagers';
+describe('a score over N rounds with a hole picked up', () => {
+  const round = (id: string, day: string, pick: boolean): PlayedRound => ({
+    id,
+    day,
+    course: 'Kissimmee',
+    pars: Array(18).fill(4),
+    entries: Array.from({ length: 18 }, (_, i) => (pick && i === 4 ? { strokes: null, putts: null, pickedUp: true, fairway: null, penalties: 0 } : { strokes: 5, putts: 2, pickedUp: false, fairway: null, penalties: 0 })) as PlayedRound['entries'],
+    hcp: 20,
+    received: Array(18).fill(1),
+    counted: true,
+  });
+  it('both rounds count, the picked-up hole as par + 2 + 1', () => {
+    const w = bet({ kind: 'scoreSum', target: 50, rounds: 6 });
+    const p = judge(w, { from: '2026-11-07', to: '2026-11-17' }, [round('a', '2026-11-08', false), round('b', '2026-11-09', true)]);
+    expect(p.rounds).toBe(2);
+    // round a: 18 × +1 = +18; round b: 17 × +1 and the hole picked up 4 + 2 + 1 = 7 → +3 → +20
+    expect(p.best).toBe(38);
+    expect(sumSoFar(w, p)?.played).toBe(2);
+  });
+});

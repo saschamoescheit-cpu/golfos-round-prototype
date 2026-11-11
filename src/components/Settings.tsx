@@ -381,6 +381,9 @@ export function ToggleRow(props: { label: string; text?: string; on: boolean; on
 export interface StepChoice<T> extends Choice<T> {
   /** over – a tick beside it (a round played) */
   done?: boolean;
+  /** not one of the counted ones – "Gesamt" before the rounds: no "1 von 4" (Sascha 11.11.2026: "Gesamt sollte nicht als
+   *  Runde gezählt werden") */
+  uncounted?: boolean;
 }
 export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; value: T; onChange: (v: T) => void }) {
   const [open, setOpen] = useState(false);
@@ -408,8 +411,12 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
           {cur.name}
         </strong>
         <span className="muted small">
-          {cur.text ? `${cur.text} · ` : ''}
-          {tr(`${k + 1} of ${props.options.length}`, `${k + 1} von ${props.options.length}`)}
+          {(() => {
+            const counted = props.options.filter((o) => !o.uncounted);
+            const at = counted.indexOf(cur);
+            const pos = cur.uncounted || at < 0 ? '' : tr(`${at + 1} of ${counted.length}`, `${at + 1} von ${counted.length}`);
+            return [cur.text, pos].filter(Boolean).join(' · ');
+          })()}
         </span>
       </button>
       <button type="button" className="icon-btn" aria-label={tr('Next', 'Nächste')} disabled={k === props.options.length - 1} onClick={() => props.onChange(props.options[k + 1].value)}>

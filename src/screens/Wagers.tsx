@@ -146,7 +146,9 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
   const deleted = all.filter((e) => e.pool.deletedAt);
   const running = pools.filter((e) => live(e, today));
   const over = pools.filter((e) => !live(e, today));
-  const made = running.reduce((n, e) => n + e.pool.wagers.filter((w) => stateOf(w, e.pool, today) === 'done').length, 0);
+  // made: decided and won – a 5+5+10 only when its challenger came out ahead, not a ±0 or a loss (Sascha 11.11.2026)
+  const won = (w: Wager, pool: WagerPool) => stateOf(w, pool, today) === 'done' && (shapeOf(w.kind) !== 'duel' || (progressOf(pool, w)?.amount ?? 0) > 0.004);
+  const made = running.reduce((n, e) => n + e.pool.wagers.filter((w) => won(w, e.pool)).length, 0);
   // a pool swiped away: marked deleted for everyone, as from its sheet – "Undo" for a moment, then the bin
   const removePool = async (e: PoolEntry): Promise<boolean> => {
     const ok = !!(await changePool(e.code, (p) => ({ ...p, deletedAt: new Date().toISOString() })));
@@ -156,13 +158,13 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
   };
   const pick = (f: 'running' | 'made' | 'over' | 'bin') => setFilter(filter === f ? null : f);
   // "made": the running pools with a bet made in them (Sascha 02.11.2026: "the tile has a number but cannot be tapped")
-  const withMade = running.filter((e) => e.pool.wagers.some((w) => stateOf(w, e.pool, today) === 'done'));
+  const withMade = running.filter((e) => e.pool.wagers.some((w) => won(w, e.pool)));
   const shown = filter === 'running' ? running : filter === 'made' ? withMade : filter === 'over' ? over : pools;
   // "geschafft" lists the bets made one by one (Sascha 12.11.2026: "the tiles have no function" – with one pool every tile
   // showed the same pool): whose, which bet, where, in which pool – a tap opens the pool
   const madeBets = withMade.flatMap((e) =>
     e.pool.wagers
-      .filter((w) => stateOf(w, e.pool, today) === 'done')
+      .filter((w) => won(w, e.pool))
       .map((w) => ({ e, w, who: e.pool.players.find((p) => p.id === w.player)?.name ?? '?', where: progressOf(e.pool, w)?.where })),
   );
   return (
@@ -1432,7 +1434,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
             setShown(v || null);
           }}
           options={[
-            { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden') },
+            { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden'), uncounted: true },
             // no tick – only rounds played or in play are there (Sascha 11.11.2026); "läuft" for one in play
             ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: played.has(r.key) ? undefined : tr('in play', 'läuft') })),
           ]}

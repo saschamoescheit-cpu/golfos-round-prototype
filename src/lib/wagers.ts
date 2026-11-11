@@ -743,7 +743,9 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
     for (const r of rs) {
       if (used >= (w.rounds ?? 6)) break;
       if (r.pars.length < 18) continue;
-      const s = r.entries.map(strokesOf);
+      // a hole picked up counts as net double bogey – par + 2 + the strokes he receives there (WHS); the round stays in the
+      // total (Sascha 11.11.2026: "Cedric hat 2 von 6 in der Wertung, nicht 1 von 6")
+      const s = r.entries.map((e, i) => (e?.pickedUp ? r.pars[i] + 2 + (r.received?.[i] ?? 0) : strokesOf(e)));
       if (s.some((x) => x == null)) continue;
       let toPar = (s as number[]).reduce((a, x) => a + x, 0) - r.pars.reduce((a, x) => a + x, 0);
       if (w.net) {
