@@ -86,16 +86,14 @@ await p.keyboard.press('Escape');
 await p.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
 await p.waitForTimeout(300);
 
-// the pool: pencil small above "+", none in the top bar
+// the pool: only the pencil (Sascha 11.11.2026: "+" made a bet for him only – bets per player come by "+ Wetten"), none in the top bar
 await tab('Wetten');
 await p.getByText('USA-Wetten').first().click();
 await p.locator('.pool-standings, .pool-screen').first().waitFor({ timeout: 10000 }).catch(() => {});
 const host = await p.evaluate(() => !!document.querySelector('.fab-pen'));
 if (host) {
   ok((await p.locator('.topbar .edit-btn').count()) === 0, 'pool: no pencil in the top bar any more');
-  const pen = await p.locator('.fab-pen').boundingBox();
-  const plus = await p.locator('.fab-plus').boundingBox();
-  ok(!!pen && !!plus && pen.y + pen.height <= plus.y && pen.width < plus.width, 'pool: the pencil small above the "+"');
+  ok((await p.locator('.fab-pen').count()) === 1 && (await p.locator('.fab-plus').count()) === 0, 'pool: only the pencil – no "+"');
 } else {
   console.log('· pool: this phone is not the host here – pencil not checked');
 }

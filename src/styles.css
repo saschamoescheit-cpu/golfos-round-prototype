@@ -2521,3 +2521,6 @@ body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) 
 .hole-bar .hole-cell > .map-hole-no { font-size: 22px; } /* Loch as big as Par (11.11.2026) */
 .settings-list.near-switch { background: transparent; } /* "In der Nähe anzeigen": a line of the invite, no box (04.11.2026) */
 .near-switch .onoff-row { padding-inline: 0; }
+/* "Tee" a row of the golf list like the others (Sascha 11.11.2026, design round 3) */
+.settings-list > .std-tee { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.settings-list > .std-tee .std-tee-name { justify-self: end; }

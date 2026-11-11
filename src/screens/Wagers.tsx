@@ -894,14 +894,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         onBack={props.onBack}
         backLabel={props.backLabel ?? tr('Bets', 'Wetten')}
       />
-      {/* the pencil and a new bet bottom right, floating (Sascha 12.11.2026: "the pencil bottom right too – the same in the
-          whole app"; "+" in the pool: a new bet) – the host's */}
-      {host && !sheet && (
-        <FloatActions
-          pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }}
-          plus={!pool.finishedAt ? { label: tr('New bet', 'Neue Wette'), onClick: () => setSheet({ library: entry.me }) } : null}
-        />
-      )}
+      {/* only the pencil bottom right, floating (Sascha 12.11.2026: "the pencil bottom right too – the same in the whole
+          app"); no "+" (11.11.2026: "+ legt nur für Sascha eine Wette an – hier macht nur Bearbeiten Sinn": bets for each
+          player come by "+ Wetten" on his card) – the host's */}
+      {host && !sheet && <FloatActions pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }} />}
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
