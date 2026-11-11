@@ -2557,18 +2557,31 @@ export function HoleScreen(props: {
               aria-label={round.preview ? undefined : tr(`Hole ${hole.label}, score ${strokesShown} – tap to enter`, `Loch ${hole.label}, Score ${strokesShown} – antippen zum Eintragen`)}
               onClick={() => (hasShots ? setView('score') : setScoreSheet(scoreSheet ? false : 'score'))}
             >
-              <span className="map-hole-no">{hole.label}</span>
-              <span className="hole-bar-par">
-                <span>Par {hole.par || '?'}</span>
+              {/* fixed columns, a small label over each value – nothing cut off (Sascha 11.11.2026, design rounds 2–4): Loch and
+                  Par big; the hole's Hcp and one's PHCP (strokes received, a dot each) small, one under the other */}
+              <span className="hole-cell" aria-hidden="true">
+                <small>{tr('Hole', 'Loch')}</small>
+                <span className="map-hole-no">{hole.label}</span>
+              </span>
+              <span className="hole-cell" aria-hidden="true">
+                <small>Par</small>
+                <strong>{hole.par || '?'}</strong>
+              </span>
+              <span className="hole-bar-mini" aria-hidden="true">
                 <span>
-                  Hcp {hole.strokeIndex || '?'}
-                  {/* strokes received on this hole – one yellow dot each, as on the scorecard */}
-                  {received > 0 && !round.preview && (
-                    <i className="hole-bar-dots" aria-label={tr(`${received} handicap ${received === 1 ? 'stroke' : 'strokes'} on this hole`, `${received} ${received === 1 ? 'Vorgabeschlag' : 'Vorgabeschläge'} auf diesem Loch`)}>
-                      {'•'.repeat(Math.min(received, 3))}
-                    </i>
-                  )}
+                  <small>Hcp</small>
+                  <em>{hole.strokeIndex || '?'}</em>
                 </span>
+                {!round.preview && (
+                  <span>
+                    <small>PHCP</small>
+                    <i className="hole-bar-dots">{received > 0 ? '•'.repeat(Math.min(received, 3)) : '–'}</i>
+                  </span>
+                )}
+              </span>
+              <span className="sr-only">
+                {`Par ${hole.par || '?'} · Hcp ${hole.strokeIndex || '?'}`}
+                {received > 0 && !round.preview ? tr(` · ${received} handicap ${received === 1 ? 'stroke' : 'strokes'} on this hole`, ` · ${received} ${received === 1 ? 'Vorgabeschlag' : 'Vorgabeschläge'} auf diesem Loch`) : ''}
               </span>
               {round.preview ? (
                 <span className="hole-bar-score muted small">

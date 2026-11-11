@@ -1534,11 +1534,22 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
           <button type="button" className="map-score" aria-label={tr(`Hole ${hole.label} – open the overview`, `Loch ${hole.label} – Übersicht öffnen`)} onClick={() => setDrawer(true)}>
-            <span className="map-hole-no">{hole.label}</span>
-            <span className="hole-bar-par">
-              <span>Par {hole.par || '?'}</span>
-              <span>Hcp {hole.si || '?'}</span>
+            {/* as the round's hole bar (Sascha 11.11.2026, design rounds 2–4): Loch and Par big, Hcp small */}
+            <span className="hole-cell" aria-hidden="true">
+              <small>{tr('Hole', 'Loch')}</small>
+              <span className="map-hole-no">{hole.label}</span>
             </span>
+            <span className="hole-cell" aria-hidden="true">
+              <small>Par</small>
+              <strong>{hole.par || '?'}</strong>
+            </span>
+            <span className="hole-bar-mini" aria-hidden="true">
+              <span>
+                <small>Hcp</small>
+                <em>{hole.si || '?'}</em>
+              </span>
+            </span>
+            <span className="sr-only">{`Par ${hole.par || '?'} · Hcp ${hole.si || '?'}`}</span>
             <span className="hole-bar-score muted small">
               {g.players.filter((p) => g.scores[p.id][i] != null).length}/{g.players.length}
             </span>
