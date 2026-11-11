@@ -1,3 +1,4 @@
+import { ModuleSheetHost } from './components/ModuleSheet';
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
@@ -77,6 +78,7 @@ void bigStore.then(() =>
       <RoundInviteHost />
       <StorageFullToast />
       <JoinRequests />
+      <ModuleSheetHost />
     </ErrorBoundary>
   </React.StrictMode>,
   ),

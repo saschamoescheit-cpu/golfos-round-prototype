@@ -76,6 +76,16 @@ export const FAQ: FaqTopic[] = [
     title: () => tr('Before the round', 'Vor der Runde'),
     items: [
       {
+        // Sascha 12.11.2026: "a burger menu or so, to switch modules faster" – the sheet from below
+        q: () => tr('How do I switch to another module quickly?', 'Wie wechsle ich schnell in ein anderes Modul?'),
+        a: () =>
+          tr(
+            'Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were.',
+            'Oben links auf den Modul-Knopf tippen. Von unten kommt ein Blatt mit allen Modulen und was in jedem zu tun ist – das, in dem du bist, ist grün umrandet. Ein Tipp wechselt dorthin; jedes Modul merkt sich, wo du warst.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('How do I start a round?', 'Wie starte ich eine Runde?'),
         a: () =>
           tr(
@@ -436,6 +446,26 @@ export const FAQ: FaqTopic[] = [
             'Das Männchen an jeder Karte zeigt, wo er steht: schlicht der Host, mit Haken auf seinem Handy, grau mit Pfeil eingeladen, aber noch nicht angenommen, rot noch nicht eingeladen. Als Host tippst du bei seiner Karte auf die Einladung („Eingeladen: …“ oder „Angenommen: …“): „Einladung zurücknehmen“ – oder, schon angenommen, „Verknüpfung lösen“ – seine Wetten bleiben; danach lädst du ihn neu ein. Sagt sein Handy, der Pool lasse sich nicht laden: anmelden (Profil → Mit Google anmelden) und ihn noch einmal öffnen – die App tritt mit dem Code selbst bei.',
           ),
         video: 'wagers',
+      },
+      {
+        // Sascha 12.11.2026, USA: two rounds of the 08.11. in the standing nobody knew – "remove them"
+        q: () => tr('A round in the pool should not count – how do I take it out?', 'Eine Runde im Pool soll nicht zählen – wie nehme ich sie raus?'),
+        a: () =>
+          tr(
+            'As the host: pool → "Standing" → with the arrows to that round → "Do not count this round" → "Do not count". It is gone from the standing for everyone and counts for no bet; the scores of the round stay where they are. The pencil → "Rounds not counted" → "Count again" brings it back.',
+            'Als Host: Pool → „Stand“ → mit den Pfeilen zu der Runde → „Runde nicht werten“ → „Nicht werten“. Sie verschwindet bei allen aus dem Stand und zählt für keine Wette mehr; die Scores der Runde bleiben, wo sie sind. Stift → „Nicht gewertete Runden“ → „Wieder werten“ holt sie zurück.',
+          ),
+        video: 'wagers',
+      },
+      {
+        // Sascha 12.11.2026: "Verlust 30 $, Gewinn 320 $ – Geld renamed Bilanz"
+        q: () => tr('What do Won, Lost and Balance in "Bilanz" mean?', 'Was bedeuten Gewinn, Verlust und Bilanz in „Bilanz“?'),
+        a: () =>
+          tr(
+            '"Won" adds up every bet and game you won, "Lost" every one you lost – each on its own, not set off against each other. "Balance" is the two together: what you are up or down. A tap on "Won" or "Lost" lists where it came from.',
+            '„Gewinn“ zählt alle Wetten und Spiele zusammen, die du gewonnen hast, „Verlust“ alle, die du verloren hast – jede für sich, nicht miteinander verrechnet. „Bilanz“ ist beides zusammen: wie viel du im Plus oder Minus bist. Ein Tipp auf „Gewinn“ oder „Verlust“ zeigt, woher es kommt.',
+          ),
+        video: 'balance',
       },
       {
         // Sascha 09.11.2026, USA: 5+5+10 one against one, also across flights

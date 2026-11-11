@@ -117,7 +117,7 @@ ok((await tileOf('Siege').getAttribute('aria-pressed')) === 'true' && (await lis
 await tileOf('Siege').click();
 await p.waitForTimeout(300);
 ok((await p.locator('.balance-list').count()) === 0 && (await p.locator('.balance-people').count()) === 1, 'tapped again: everything again');
-ok((await tiles.locator('button.tile').count()) === 5 && (await tiles.locator('div.tile').filter({ hasText: 'Geld' }).count()) === 1, 'Geld the sum, counts only – the other five filter');
+ok((await tiles.locator('button.tile').count()) === 5 && (await tiles.locator('div.tile').filter({ hasText: 'Bilanz' }).count()) === 1, 'Bilanz the sum, counts only – the other five filter');
 if (process.env.SHOTS) {
   await tileOf('Verlust').click();
   await p.waitForTimeout(300);

@@ -184,6 +184,18 @@ export function loadGeometry(courseId: string): CourseGeometry {
     const card = CARDS[courseId] ?? [];
     base = { ...base, holes: COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })) };
   }
+  // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
+  const community = read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {});
+  if (Object.keys(community).length) {
+    const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
+    const add = Object.entries(community)
+      .map(([key, line]) => {
+        const [loop, num] = key.split('#');
+        return { ref: holeLabel(loop, Number(num)), line };
+      })
+      .filter((h) => !have.has(h.ref));
+    if (add.length) base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
+  }
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {

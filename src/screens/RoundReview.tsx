@@ -7,6 +7,7 @@ import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSp
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit, saveHoleLine } from '../lib/storage';
 import { HoleSetup } from '../components/HoleSetup';
 import { shareLine } from '../lib/sharedround';
+import { fetchCourseLines, shareCourseLine } from '../lib/courselines';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { flightName, flightOf, fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
 import { shotChecks } from '../lib/reviewchecks';
@@ -57,6 +58,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // a hole without a map checked afterwards (Sascha 12.11.2026: "Stefan cannot check today's round – the people must be
   // able to set the shots by hand afterwards"): its tee and green set on the aerial photo, then the shots
   const [setupHole, setSetupHole] = useState(false);
+  // the holes other players set up on this course (12.11.2026)
+  useEffect(() => {
+    void fetchCourseLines(round.courseId).then((changed) => changed && setGeoTick((t) => t + 1));
+  }, [round.courseId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     ensureCourseMap(round.courseId).then((came) => came && setGeoTick((t) => t + 1));
   }, [round.courseId]);
@@ -952,6 +957,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               saveHoleLine(round.courseId, hole.loop, hole.number, line);
               // the round's other phones take it too, as on the course
               if (round.shared) void shareLine(round, hole.loop, hole.number, line);
+              void shareCourseLine(round.courseId, hole.loop, hole.number, line);
               setGeoTick((t) => t + 1);
               setSetupHole(false);
             }}
