@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { tr } from './lib/i18n';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NAV_EVENT, type NavTarget } from './lib/nav';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
@@ -349,8 +350,26 @@ export function App() {
     };
   }, []);
 
+  // a link into another module remembers where it came from – "Zurück" there goes back (Sascha 12.11.2026: "back goes
+  // to the main menu instead of one level")
+  const [cameFrom, setCameFrom] = useState<AppModule | null>(null);
+  // the module now – the link handlers are set up once, so they read it here, not from their first look
+  const moduleNow = useRef(module);
+  moduleNow.current = module;
+  const returnTo = (here: AppModule) =>
+    cameFrom && cameFrom !== here
+      ? {
+          label: cameFrom === 'rounds' ? tr('Rounds', 'Runden') : cameFrom === 'tournaments' ? tr('Tournaments', 'Turniere') : cameFrom === 'games' ? tr('Games', 'Games') : tr('Back', 'Zurück'),
+          go: () => {
+            const to = cameFrom;
+            setCameFrom(null);
+            setModule(to);
+          },
+        }
+      : undefined;
   // a pool of bets or a tournament named anywhere, tapped (Sascha 10.11.2026: click paths across the app) – as a push
   const openPool = (code: string, day?: string) => {
+    setCameFrom(moduleNow.current && moduleNow.current !== 'games' ? moduleNow.current : null);
     try {
       sessionStorage.setItem('golfos.openPool', code);
       // the standing opens on that day's round (Sascha 11.11.2026)
@@ -364,6 +383,7 @@ export function App() {
     window.dispatchEvent(new CustomEvent('golfos:open-pool', { detail: code }));
   };
   const openTour = (code: string) => {
+    setCameFrom(moduleNow.current && moduleNow.current !== 'tournaments' ? moduleNow.current : null);
     try {
       sessionStorage.setItem('golfos.openTour', code);
     } catch {
@@ -479,8 +499,8 @@ export function App() {
       />
     );
   // the tournaments a module of their own (Sascha 03.11.2026) – the same screens of a tournament as before
-  if (module === 'tournaments') return <GamesApp kind="tours" onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} onOpenRounds={() => { setScreen(HOME); setModule('rounds'); }} />;
+  if (module === 'tournaments') return <GamesApp key="tours" kind="tours" returnTo={returnTo('tournaments')} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
+  if (module === 'games') return <GamesApp key="games" returnTo={returnTo('games')} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} onOpenRounds={() => { setScreen(HOME); setModule('rounds'); }} />;
   if (module === 'mobility')
     return (
       <Suspense fallback={<Waiting />}>

@@ -64,13 +64,13 @@ type View =
   | { name: 'play'; game: Game }
   | { name: 'result'; game: Game; /** the menu it was opened from – back there (the balance) */ back?: GamesTab }
   | { name: 'poolSetup'; back: GamesTab }
-  | { name: 'pool'; code: string; back?: GamesTab }
+  | { name: 'pool'; code: string; back?: GamesTab; /** opened from another module – "Zurück" goes back there */ ext?: boolean }
   | { name: 'tourSetup'; draft: TourDraft; back: View }
   | { name: 'tourCourse'; draft: TourDraft; back: View }
   // the page it was opened from – "Zurück" goes there, one level back (Sascha 06.11.2026: "a round of the series opened and
   // back – it jumps right to the front instead of one level back")
-  | { name: 'tour'; code: string; back?: View }
-  | { name: 'series'; code: string; back?: View }
+  | { name: 'tour'; code: string; back?: View; ext?: boolean }
+  | { name: 'series'; code: string; back?: View; ext?: boolean }
   // the pool's way back (the balance or "Wetten") kept through its round
   | { name: 'poolRoundSetup'; code: string; course: Course | null; back?: GamesTab }
   | { name: 'poolRoundCourse'; code: string; back?: GamesTab }
@@ -183,14 +183,18 @@ function takeOpenTour(keep = false): string | null {
     return null;
   }
 }
-const tourView = (code: string): View =>
-  loadSeries().some((e) => e.code === code) ? { name: 'series', code, back: { name: 'tab', tab: 'tours' } } : { name: 'tour', code, back: { name: 'tab', tab: 'tours' } };
+const tourView = (code: string, ext = false): View =>
+  loadSeries().some((e) => e.code === code) ? { name: 'series', code, back: { name: 'tab', tab: 'tours' }, ...(ext ? { ext } : {}) } : { name: 'tour', code, back: { name: 'tab', tab: 'tours' }, ...(ext ? { ext } : {}) };
+// where each module was (Sascha 12.11.2026: "back goes to the main menu instead of one level"): a module left for another
+// and come back to opens where it was – a series, its round, a pool – not on its list
+const keptView: Partial<Record<'games' | 'tours', View>> = {};
+const keepable = (v: View) => v.name === 'tab' || v.name === 'pool' || v.name === 'tour' || v.name === 'series';
 
 export function GamesApp(props: {
   /** 'games' – "Games & Bets": games and pools of bets; 'tours' – "Tournaments", a module of its own (Sascha
    *  03.11.2026: "the tournaments out of Games, their own menu item below Games") – the same screens of a tournament */
   kind?: 'games' | 'tours';
-  onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void; /** Rounds, its start page – today's tournament to take part in (a pool's "Zum Turnier") */ onOpenRounds?: () => void }) {
+  onModules: () => void; profile: ReactNode; profileDot?: boolean; /** opened from another module by a link: "Zurück" goes back there (12.11.2026) */ returnTo?: { label: string; go: () => void }; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void; /** Rounds, its start page – today's tournament to take part in (a pool's "Zum Turnier") */ onOpenRounds?: () => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => {
@@ -198,11 +202,12 @@ export function GamesApp(props: {
       // a push about a tournament (changed, its result, a special prize – 07.11.2026): only read here – the first look may
       // run twice (React's strict mode), it is taken once the screen is there
       const tour = takeOpenTour(true);
-      if (tour) return tourView(tour);
-      return { name: 'tab', tab: props.tab ?? 'play' };
+      if (tour) return tourView(tour, !!props.returnTo);
+      return keptView.tours ?? { name: 'tab', tab: props.tab ?? 'play' };
     }
-    const pool = takeOpenPool(); // a push about a bet made: its pool
-    if (pool) return { name: 'pool', code: pool };
+    const pool = takeOpenPool(true); // a push about a bet made: its pool – taken below (the first look may run twice)
+    if (pool) return { name: 'pool', code: pool, ...(props.returnTo ? { ext: true } : {}) };
+    if (keptView.games && !running[0] && !location.hash.startsWith('#join=')) return keptView.games;
     return running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' };
   });
   // the push tapped while Games is open already
@@ -218,6 +223,7 @@ export function GamesApp(props: {
   }, []);
   useEffect(() => {
     if (props.kind === 'tours') return;
+    takeOpenPool(); // read by the first look
     const open = () => {
       const pool = takeOpenPool();
       if (pool) setView({ name: 'pool', code: pool });
@@ -242,6 +248,9 @@ export function GamesApp(props: {
     setGames(loadGames());
   };
 
+  useEffect(() => {
+    if (keepable(view)) keptView[props.kind === 'tours' ? 'tours' : 'games'] = view;
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
   // one level back – a menu tab tells the module which tab is shown
   const goBack = (v: View) => {
     setView(v);
@@ -365,7 +374,7 @@ export function GamesApp(props: {
       return (
         <PoolScreen
           code={view.code}
-          backLabel={view.back === 'balance' ? tr('Balance', 'Bilanz') : undefined}
+          backLabel={view.ext && props.returnTo ? props.returnTo.label : view.back === 'balance' ? tr('Balance', 'Bilanz') : undefined}
           onTour={props.onOpenRounds}
           onRound={(code) => {
             const running = poolRoundOf(code);
@@ -383,6 +392,11 @@ export function GamesApp(props: {
                 .catch(() => null);
           }}
           onBack={() => {
+            // opened from another module by a link: back there (Sascha 12.11.2026)
+            if (view.ext && props.returnTo) {
+              setView({ name: 'tab', tab: 'bets' });
+              return props.returnTo.go();
+            }
             // back where it was opened (Sascha 04.11.2026: the balance; night 10./11.11.2026: Spielen too – a challenge,
             // a duel set up there); else the bets
             const back: GamesTab = view.back === 'balance' || view.back === 'play' ? view.back : 'bets';
@@ -448,8 +462,14 @@ export function GamesApp(props: {
       return (
         <TourScreen
           code={view.code}
-          backLabel={backTo(view.back)}
-          onBack={() => goBack(view.back ?? { name: 'tab', tab: 'tours' })}
+          backLabel={view.ext && props.returnTo ? props.returnTo.label : backTo(view.back)}
+          onBack={() => {
+            if (view.ext && props.returnTo) {
+              setView(view.back ?? { name: 'tab', tab: 'tours' });
+              return props.returnTo.go();
+            }
+            goBack(view.back ?? { name: 'tab', tab: 'tours' });
+          }}
           onEdit={(draft) => setView({ name: 'tourSetup', draft, back: view })}
           // its series: back to it when it was opened from there, else on to it
           onOpenSeries={(code) => setView(view.back?.name === 'series' && view.back.code === code ? view.back : { name: 'series', code, back: view })}
@@ -459,8 +479,14 @@ export function GamesApp(props: {
       return (
         <SeriesScreen
           code={view.code}
-          backLabel={backTo(view.back)}
-          onBack={() => goBack(view.back ?? { name: 'tab', tab: 'tours' })}
+          backLabel={view.ext && props.returnTo ? props.returnTo.label : backTo(view.back)}
+          onBack={() => {
+            if (view.ext && props.returnTo) {
+              setView(view.back ?? { name: 'tab', tab: 'tours' });
+              return props.returnTo.go();
+            }
+            goBack(view.back ?? { name: 'tab', tab: 'tours' });
+          }}
           onOpen={(code) => setView(view.back?.name === 'tour' && view.back.code === code ? view.back : { name: 'tour', code, back: view })}
           onAddRound={(draft) => setView({ name: 'tourSetup', draft, back: view })}
           onEdit={(draft) => setView({ name: 'tourSetup', draft, back: view })}

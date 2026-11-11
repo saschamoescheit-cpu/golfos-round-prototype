@@ -46,10 +46,10 @@ const ONLY_HOST = () => tr('Only whoever set up the pool changes its bets – yo
 const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 
 /** The pool a tapped push asks for (App puts it here) – once. */
-export function takeOpenPool(): string | null {
+export function takeOpenPool(keep = false): string | null {
   try {
     const code = sessionStorage.getItem('golfos.openPool');
-    if (code) sessionStorage.removeItem('golfos.openPool');
+    if (code && !keep) sessionStorage.removeItem('golfos.openPool');
     return code;
   } catch {
     return null;
