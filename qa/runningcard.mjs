@@ -74,6 +74,24 @@ ok(((await row.boundingBox())?.height ?? 0) >= 44, 'a row big enough to tap');
 await row.click();
 await p.waitForTimeout(1200);
 ok((await p.locator('.pool-screen, .pool-standings').count()) >= 1, 'a tap opens the pool');
+// the bets made (Sascha 11.11.2026, Prüfliste: "den Platz als Information zeigen; bei Klick der Pool mit der Runde, nicht gesamt")
+await seed([{ code: 'USA1', pool, me: 'p0' }]);
+await p.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+await p.reload();
+await p.waitForTimeout(1500);
+await p.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+await p.waitForTimeout(500);
+await p.locator('.tile').filter({ hasText: 'geschafft' }).click();
+await p.waitForTimeout(400);
+const madeRow = p.locator('.made-bets .list-item').first();
+const madeText = (await madeRow.innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/Celebration Golf Club · \d\d\.\d\d\./.test(madeText), `a bet made: its course and day (${madeText})`);
+await madeRow.click();
+await p.locator('.pool-standings').waitFor({ timeout: 10000 }).catch(() => {});
+const shownRound = (await p.locator('.pool-standings .step-pick-now').innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/Celebration/.test(shownRound), `a tap opens the pool on that round, not the total (${shownRound})`);
+await p.evaluate(() => sessionStorage.setItem('golfos.module', ''));
+
 // a paused training: its own row – a tap goes to Training
 await seed([], { 'golfos.training.sessions.v1': [{ id: 's1', name: 'Putten', createdAt: now, finishedAt: null, current: 0, items: [{ drill: 'slice-gate', minutes: 10 }], spent: [0] }] });
 const trow = p.locator('.running-card .running-row').filter({ hasText: 'Training' });

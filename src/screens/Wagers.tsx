@@ -165,7 +165,14 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
   const madeBets = withMade.flatMap((e) =>
     e.pool.wagers
       .filter((w) => won(w, e.pool))
-      .map((w) => ({ e, w, who: e.pool.players.find((p) => p.id === w.player)?.name ?? '?', where: progressOf(e.pool, w)?.where })),
+      .map((w) => {
+        // the round it was made in (Sascha 11.11.2026: "den Platz als Information zeigen; bei Klick der Pool mit der Runde,
+        // nicht gesamt"): a bet for each round – its first round made; a 5+5+10 – its last round played
+        const p = progressOf(e.pool, w);
+        const at = shapeOf(w.kind) === 'duel' ? p?.duels?.[p.duels.length - 1] : (p?.perRound ?? []).find((r) => roundVerdict(w, r) === 'made');
+        const where = at ? `${at.course} · ${at.day.slice(8, 10)}.${at.day.slice(5, 7)}.` : p?.where;
+        return { e, w, who: e.pool.players.find((x) => x.id === w.player)?.name ?? '?', where, round: at ? `${at.day}|${at.course}` : null };
+      }),
   );
   return (
     <>
@@ -225,9 +232,21 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
       )}
       {filter === 'made' && madeBets.length > 0 && (
         <ul className="list made-bets">
-          {madeBets.map(({ e, w, who, where }) => (
+          {madeBets.map(({ e, w, who, where, round }) => (
             <li key={`${e.code}:${w.id}`}>
-              <button type="button" className="list-item" onClick={() => props.onOpen(e.code)}>
+              <button
+                type="button"
+                className="list-item"
+                onClick={() => {
+                  // the pool opens on that round's standing, not the total
+                  try {
+                    if (round) sessionStorage.setItem('golfos.openPoolDay', round);
+                  } catch {
+                    /* the total then */
+                  }
+                  props.onOpen(e.code);
+                }}
+              >
                 <span className="grow">
                   <span className="title">
                     {who}: {wagerLabel(w)}
@@ -1295,7 +1314,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   const [shown, setShown] = useState<string | null>(() => {
     try {
       const d = sessionStorage.getItem('golfos.openPoolDay');
-      if (d) return standingRounds(pool).find((r) => r.day === d)?.key ?? null;
+      // a day, or one round of it ("day|course" – from the bets made, 11.11.2026)
+      if (d) return standingRounds(pool).find((r) => r.key === d)?.key ?? standingRounds(pool).find((r) => r.day === d.split('|')[0])?.key ?? null;
       // in a round's leaderboard (Sascha 12.11.2026: "the current round at once, not the total"): this round – its
       // course on its day, else its day – and before it counts anywhere, the latest
       return props.round ? roundNow() : null;
