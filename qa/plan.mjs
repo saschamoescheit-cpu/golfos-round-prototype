@@ -43,8 +43,16 @@ await panel.locator('.plan-shot').nth(1).waitFor({ timeout: 15000 }).catch(() =>
 ok(await panel.isVisible(), 'planning: the plan of 1A over the hole bar');
 const shots = await panel.locator('.plan-shot').count();
 ok(shots === 2, `1A: ${shots} shots (tee → target 1 → green)`);
-await panel.locator('select').first().selectOption('5i');
-await panel.locator('select').nth(1).selectOption('9i');
+// a row per shot, its club in a sheet (Facelift 11.11.2026, r3) – no select field
+ok((await panel.locator('select').count()) === 0, 'the clubs as rows "Abschlag → Ziel 1 · … ›", no select field');
+const pickClub = async (k, club) => {
+  await panel.locator('.plan-shot').nth(k).click();
+  await p.locator('.sheet .pick-option').filter({ has: p.locator('strong', { hasText: new RegExp('^' + club + '$') }) }).first().click();
+  await p.waitForTimeout(200);
+};
+await pickClub(0, '5i');
+await pickClub(1, '9i');
+ok(/5i/.test(await panel.locator('.plan-shot').first().innerText()) && (await p.locator('.sheet').count()) === 0, 'the club picked in the sheet shows in the row, the sheet closed');
 await p.waitForTimeout(300);
 const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.strategy.v1.osm:relation/1326323') ?? '{}'));
 ok(saved['1A']?.clubs?.join(',') === '5i,9i' && saved['1A']?.targets?.length === 1, `plan saved: ${JSON.stringify(saved['1A']?.clubs)}`);
@@ -54,22 +62,27 @@ for (let k = 0; k < 3; k++) {
   await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
   await p.waitForTimeout(1200);
   // a par 3 has its target too – to aim beside the flag or lay up (Sascha 24.10.2026): one to move, "+ Ziel" for a second
-  if (k === 0) ok((await p.locator('.map-target, .map-crosshair').count()) >= 1 && (await p.locator('.plan-panel .plan-shot').count()) === 2 && (await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).count()) === 1, `par 3 (${(await p.locator('.map-hole-no').innerText()).trim()}): a target to move (${await p.locator('.plan-panel .plan-shot').count()} shots), "+ Ziel" for a layup`);
+  if (k === 0) ok((await p.locator('.map-target, .map-crosshair').count()) >= 1 && (await p.locator('.plan-panel .plan-shot').count()) === 2 && (await p.locator('.plan-panel').getByRole('button', { name: 'Ziel hinzufügen' }).count()) === 1, `par 3 (${(await p.locator('.map-hole-no').innerText()).trim()}): a target to move (${await p.locator('.plan-panel .plan-shot').count()} shots), "+ Ziel" for a layup`);
 }
 const label4 = (await p.locator('.map-hole-no').innerText()).trim();
 const shots4 = await p.locator('.plan-panel .plan-shot').count();
 ok(label4 === '4A' && shots4 === 3, `par 5 ${label4}: ${shots4} shots (tee → target 1 → target 2 → green)`);
-await p.locator('.plan-panel').getByRole('button', { name: '− Ziel 2' }).click();
+await p.locator('.plan-panel').getByRole('button', { name: 'Ziel 2 entfernen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.plan-panel .plan-shot').count()) === 2, '"− Ziel 2" removes the second target');
-await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).click();
+await p.locator('.plan-panel').getByRole('button', { name: 'Ziel hinzufügen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.plan-panel .plan-shot').count()) === 3, '"+ Ziel" adds it back');
 // the hole note while planning (Sascha 21.10.2026)
 await p.locator('.plan-panel').getByRole('button', { name: /^Lochnotiz/ }).click();
 await p.waitForTimeout(300);
 await p.fill('#hole-note', 'Blind – auf den linken Baum');
-await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+// a new note: the floating tick; one there already (the club's choices) saves by itself on closing (Facelift 11.11.2026, r5)
+{
+  const save = p.getByRole('button', { name: 'Für diesen Platz speichern' });
+  if (await save.count()) await save.click();
+  else await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+}
 await p.waitForTimeout(300);
 const notes4 = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
 ok((await p.locator('.plan-panel').getByRole('button', { name: /^Lochnotiz – eine ist gespeichert/ }).locator('.note-dot').count()) === 1 && /linken Baum/.test(notes4), 'planning: "Lochnotiz" opens the hole note, saved for the course – a green dot on the button (Sascha 23.10.2026)');

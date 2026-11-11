@@ -89,8 +89,8 @@ if (!process.env.ONLY || process.env.ONLY === '1') {
   await p.waitForTimeout(400);
   const after = pct(await hint(p));
   ok(after >= before, `back on screen it goes on from ${before} % (${after} %), not from 0`);
-  await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert ✓'), null, { timeout: 240000 }).catch(() => {});
-  ok((await p.locator('body').innerText()).includes('offline gespeichert ✓'), 'the hint ends with "Karte offline gespeichert ✓"');
+  await p.waitForFunction(() => document.body.innerText.includes('Karte offline gespeichert'), null, { timeout: 240000 }).catch(() => {});
+  ok((await p.locator('body').innerText()).includes('Karte offline gespeichert'), 'the hint ends with "Karte offline gespeichert"');
   await p.waitForTimeout(1500);
   const s = await store(p);
   ok(s.lgl >= 200, `the aerial tiles are in the offline store (${s.lgl} LGL tiles)`);

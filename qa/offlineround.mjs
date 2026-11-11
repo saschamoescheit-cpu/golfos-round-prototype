@@ -45,7 +45,7 @@ await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.getByRole('button', { name: new RegExp(loop) }).click({ timeout: 5000 }).catch(() => {});
 await p.getByText('Runde starten').click();
-await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert ✓'), null, { timeout: 240000 }).catch(() => {});
+await p.waitForFunction(() => document.body.innerText.includes('Karte offline gespeichert'), null, { timeout: 240000 }).catch(() => {});
 ok(await p.evaluate(() => JSON.stringify(Object.keys(localStorage)).includes('golfos.offline')), 'the course map kept for offline');
 
 // —— the network goes ——

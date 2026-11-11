@@ -77,7 +77,7 @@ ok(await scoreShown(), 'still the score entry after a while');
 // on to the next hole (no map either): straight to the score entry – not the set-up on every hole
 for (const plus of await p.getByRole('button', { name: /Schläge plus eins/ }).all()) await plus.click();
 if (process.env.SHOT) await p.screenshot({ path: process.env.SHOT.replace('.png', '3.png'), fullPage: true });
-await p.getByRole('button', { name: /^Weiter · Loch 2A/ }).click();
+await p.getByRole('button', { name: /^Nächstes Loch · 2A/ }).click();
 await p.waitForTimeout(1500);
 const hole2 = await p.locator('.score-hole-no, .map-hole-no, h1').first().innerText().catch(() => '');
 ok((await p.getByText(/Wo ist der Abschlag/).count()) === 0 && (await scoreShown()), `next hole: the score entry at once, no set-up (${hole2.trim()})`);

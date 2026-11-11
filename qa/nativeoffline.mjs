@@ -1,7 +1,7 @@
 // The offline aerial map in the iOS app (Sascha 01.11.2026): WKWebView has no service worker – the app keeps the tiles
 // in its own store (src/lib/tilestore.ts). Here the page believes it is the app (Capacitor's iOS bridge faked, service
 // workers blocked):
-// 1 · a round on Hetzenhof: "Karte offline gespeichert ✓", the aerial tiles are in the app's store
+// 1 · a round on Hetzenhof: "Karte offline gespeichert", the aerial tiles are in the app's store
 // 2 · no reception: the tiles come from the store – not one request goes out
 // 3 · a service answering "200 OK" with an error page: nothing of it is kept
 // Usage: node qa/nativeoffline.mjs [dev url, default http://localhost:5173/]
@@ -69,8 +69,8 @@ const stored = () =>
   );
 
 // 1 · saved for offline
-const done = await p.waitForFunction(() => /Karte offline gespeichert ✓/.test(document.body.innerText), null, { timeout: 120000 }).then(() => true, () => false);
-ok(done, '"Karte offline gespeichert ✓" in the app');
+const done = await p.waitForFunction(() => /Karte offline gespeichert/.test(document.body.innerText), null, { timeout: 120000 }).then(() => true, () => false);
+ok(done, '"Karte offline gespeichert" in the app');
 // the shots found by the app itself – no "Schlag hier" button in the app, only on the website for testing (Sascha 02.11.2026)
 ok((await p.locator('.map-shot-btn').count()) === 0 && (await p.locator('.map-hole-no').count()) > 0, 'the app: no "Schlag hier" button on the hole map');
 const s1 = await stored();

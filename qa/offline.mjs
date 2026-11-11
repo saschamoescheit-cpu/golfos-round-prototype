@@ -43,7 +43,7 @@ await p.getByText('Runde starten').click();
 await p.waitForTimeout(6000);
 // the hole map saves the imagery of the round for offline (hint "Karte offline gespeichert")
 const t0 = Date.now();
-await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert ✓'), null, { timeout: 240000 }).catch(() => {});
+await p.waitForFunction(() => document.body.innerText.includes('Karte offline gespeichert'), null, { timeout: 240000 }).catch(() => {});
 console.log('prefetch', Math.round((Date.now() - t0) / 1000), 's; hint:', (await p.locator('.map-shot').allInnerTexts()).join(' | '));
 ok(await p.evaluate(() => JSON.stringify(Object.keys(localStorage)).includes('golfos.offline')), 'map of the round saved for offline');
 
