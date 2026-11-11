@@ -57,7 +57,15 @@ await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(800);
 await p.getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2500);
-await inView(/^Loch .* passt|Runde .*fertig|passt/, 'round-check');
+// the round check's "Loch passt ✓" floats since 11.11.2026 (Sascha: "Loch bestätigen sollte auch schwebend sein als Button
+// mit einem Icon") – a round tick bottom right, always in reach
+{
+  const fab = p.locator('.fab-save').filter({ hasText: /passt/ });
+  await fab.waitFor({ timeout: 30000 });
+  const r = await fab.boundingBox();
+  const pos = await fab.evaluate((el) => getComputedStyle(el.closest('.fab-stack')).position);
+  ok(pos === 'fixed' && !!r && r.y + r.height <= p.viewportSize().height, `round-check: "Loch passt" floating bottom right, in reach (${pos})`);
+}
 await toModule('games');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
 // no game form preset any more (Sascha 03.11.2026) – Skins picked
