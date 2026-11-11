@@ -73,8 +73,15 @@ ok((await notesBtn.locator('.note-dot').count()) === 1, '1A has a note (the choi
 ok(/Deine Notiz\s+Aus links und rechts/.test(await card.innerText()), `the note in the caddie: "${(await card.locator('.caddie-note').innerText().catch(() => '')).trim()}"`);
 await notesBtn.click();
 await p.waitForTimeout(400);
+// a note there already: no save button – it saves by itself (Facelift 11.11.2026, r5); the choices as tick rows
+const notesSheet = p.getByRole('dialog', { name: /was der Caddie wissen soll/ });
+ok((await notesSheet.locator('.tick-row').count()) === 3 && (await notesSheet.getByRole('checkbox', { name: /Aus links/ }).getAttribute('aria-checked')) === 'true', 'the hole note: three tick rows, "Aus links" ticked');
+ok((await p.getByRole('button', { name: 'Für diesen Platz speichern' }).count()) === 0 && /von selbst gespeichert/.test(await notesSheet.locator('.autosave-note').innerText()), 'a note there already: no save button, "Änderungen werden von selbst gespeichert"');
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
-await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.waitForTimeout(1400);
+ok(/Gespeichert/.test(await notesSheet.locator('.autosave-note').innerText()) && /Blinder Abschlag/.test(await card.innerText()), 'saved a moment after typing – the caddie shows it with the sheet still open');
+if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/caddie-notes-sheet.png` });
+await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(500);
 const cardText = await card.innerText();
 ok(/Deine Notiz\s+Blinder Abschlag – auf den rechten Baum · Aus links und rechts/.test(cardText), 'the own text shows in the caddie at once');
@@ -83,26 +90,28 @@ ok(cardText.split('Blinder Abschlag').length === 2, 'once in the card, not also 
 await notesBtn.click();
 await p.waitForTimeout(300);
 await p.fill('#hole-note', 'Ball unbedingt ins Spiel bringen.\n ');
-await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(500);
 const cardText2 = await card.innerText();
 ok(cardText2.split('Ball unbedingt ins Spiel').length === 2 && (await card.locator('.plan.warn').filter({ hasText: 'Ball unbedingt' }).count()) === 0, 'a note with a line break at the end: once, not in red too');
 await notesBtn.click();
 await p.waitForTimeout(300);
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
-await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(500);
 // no note at all (text emptied, choices off): no dot, no row – then the text again
 await notesBtn.click();
 await p.waitForTimeout(300);
-await p.getByRole('button', { name: /Aus links/ }).click();
-await p.getByRole('button', { name: /Aus rechts/ }).click();
+await p.getByRole('checkbox', { name: /Aus links/ }).click();
+await p.getByRole('checkbox', { name: /Aus rechts/ }).click();
 await p.fill('#hole-note', '');
-await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(500);
 ok((await notesBtn.locator('.note-dot').count()) === 0 && (await card.locator('.caddie-note').count()) === 0, 'no note left: no dot, no row');
 await notesBtn.click();
 await p.waitForTimeout(300);
+// no note any more: a new one – saved with the floating tick (Facelift 11.11.2026, r5)
+ok((await p.locator('.fab-stack.over-sheet .fab-save').count()) === 1 && (await p.getByRole('button', { name: 'Für diesen Platz speichern' }).isDisabled()), 'a new note: the floating green tick, off while empty');
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
 await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
 await p.waitForTimeout(500);

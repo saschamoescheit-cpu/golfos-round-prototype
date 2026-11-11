@@ -3,7 +3,9 @@ import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import { answer, canListen, speak, startListening, summary, toggleSpeak, type CaddieFacts, type Listening } from '../lib/caddietalk';
 import { RulesBook } from './RulesBook';
 import { hasNote, type HoleNote } from '../lib/holenotes';
-import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
+import { LIE_OPTIONS, lieEffect, type LieKind } from '../lib/caddie';
+import { ChoiceRow, SettingsList, TickRow } from './Settings';
+import { FloatActions } from './FloatActions';
 import { getLang, tr } from '../lib/i18n';
 import type { HazardAhead, HoleBook } from '../lib/holebook';
 import type { PlaysLike } from '../lib/caddie';
@@ -78,16 +80,18 @@ export function CaddieCard(props: {
         {SHOW_DETAILS && props.alt && <span className="alt">{props.alt}</span>}
         {SHOW_DETAILS && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
         {props.lie != null && (
-          <label className="caddie-lie">
-            <span>{tr('Lie', 'Lage')}</span>
-            <select value={props.lie} onChange={(e) => props.onLie(e.target.value as LieKind)}>
-              {LIE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          // a row with its sheet, one line of meaning per lie (Facelift 11.11.2026, r4)
+          <div className="caddie-lie-row">
+            <SettingsList>
+              <ChoiceRow<LieKind>
+                label={tr('Lie', 'Lage')}
+                title={tr('Lie of the ball', 'Lage des Balls')}
+                value={props.lie}
+                onChange={props.onLie}
+                options={LIE_OPTIONS.map((o) => ({ value: o.value, name: o.label, text: lieMeaning(o.value) }))}
+              />
+            </SettingsList>
+          </div>
         )}
         <div className="caddie-actions">
           {/* read aloud exactly what the card says */}
@@ -255,35 +259,65 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
 
 export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote) => void; onClose: () => void }) {
   const [n, setN] = useState<HoleNote>(props.note);
+  // Facelift 11.11.2026, r5: a hole without a note gets one with the floating tick; a note there already saves by itself
+  // (~900 ms after the last change and when the sheet closes), with the quiet line – the app's rule (docs/DESIGN.md)
+  const [existing] = useState(() => hasNote(props.note));
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const saved = useRef(JSON.stringify(props.note));
+  const latest = useRef(n);
+  latest.current = n;
+  const save = props.onSave;
+  const flush = () => {
+    const now = JSON.stringify(latest.current);
+    if (now === saved.current) return;
+    saved.current = now;
+    save(latest.current);
+  };
+  useEffect(() => {
+    if (!existing || JSON.stringify(n) === saved.current) return;
+    setSaving('busy');
+    const t = setTimeout(() => {
+      flush();
+      setSaving('done');
+    }, 900);
+    return () => clearTimeout(t);
+  }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    if (existing) flush();
+    props.onClose();
+  };
   const flip = (k: 'obLeft' | 'obRight' | 'obLong') => setN({ ...n, [k]: !n[k] });
   return (
-    <Sheet title={tr(`Hole ${props.hole} – what the caddie should know`, `Loch ${props.hole} – was der Caddie wissen soll`)} onClose={props.onClose}>
-      <button type="button" className="toggle" aria-pressed={!!n.obLeft} onClick={() => flip('obLeft')}>
-        {n.obLeft ? '✓' : '○'} {tr('Out of bounds left', 'Aus links')}
-      </button>
-      <button type="button" className="toggle" aria-pressed={!!n.obRight} onClick={() => flip('obRight')}>
-        {n.obRight ? '✓' : '○'} {tr('Out of bounds right', 'Aus rechts')}
-      </button>
-      <button type="button" className="toggle" aria-pressed={!!n.obLong} onClick={() => flip('obLong')}>
-        {n.obLong ? '✓' : '○'} {tr('Out of bounds behind the green', 'Aus hinter dem Grün')}
-      </button>
+    <Sheet title={tr(`Hole ${props.hole} – what the caddie should know`, `Loch ${props.hole} – was der Caddie wissen soll`)} onClose={close}>
+      <SettingsList label={tr('Out of bounds', 'Aus')}>
+        <TickRow label={tr('Out of bounds left', 'Aus links')} on={!!n.obLeft} onChange={() => flip('obLeft')} />
+        <TickRow label={tr('Out of bounds right', 'Aus rechts')} on={!!n.obRight} onChange={() => flip('obRight')} />
+        <TickRow label={tr('Out of bounds behind the green', 'Aus hinter dem Grün')} on={!!n.obLong} onChange={() => flip('obLong')} />
+      </SettingsList>
       <div className="field">
         <label htmlFor="hole-note">{tr('Note (shown by the caddie)', 'Notiz (zeigt der Caddie)')}</label>
         <input id="hole-note" className="input" value={n.text ?? ''} placeholder={tr('e.g. blind tee shot – aim at the right tree', 'z. B. blinder Abschlag – auf den rechten Baum zielen')} onChange={(e) => setN({ ...n, text: e.target.value })} />
       </div>
-      <button
-        type="button"
-        className="btn-primary"
-        onClick={() => {
-          props.onSave(n);
-          props.onClose();
-        }}
-      >
-        {tr('Save for this course', 'Für diesen Platz speichern')}
-      </button>
       <p className="muted small" style={{ margin: 0 }}>
         {tr(`Kept with the course, not the round: hole ${props.hole} shows it in every round and every combination of loops.`, `Gilt für den Platz, nicht nur diese Runde: Loch ${props.hole} zeigt sie in jeder Runde und jeder Schleifen-Kombination.`)}
       </p>
+      {existing ? (
+        <span className="muted small autosave-note" role="status">
+          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for this course', 'Gespeichert – für diesen Platz') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
+      ) : (
+        <FloatActions
+          overSheet
+          save={{
+            label: tr('Save for this course', 'Für diesen Platz speichern'),
+            disabled: !hasNote(n),
+            onClick: () => {
+              props.onSave(n);
+              props.onClose();
+            },
+          }}
+        />
+      )}
     </Sheet>
   );
 }
@@ -439,4 +473,12 @@ export function TournamentCaddie(props: { holeLabel: string; note: HoleNote; onN
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
   );
+}
+
+/** One line what a lie means for the shot – under its name in the sheet "Lage" (Facelift 11.11.2026, r4). */
+function lieMeaning(l: LieKind): string {
+  const e = lieEffect(l);
+  if (!e) return tr('A clean lie – the full length', 'Saubere Lage – die volle Länge');
+  const t = e.text.replace(/^[^:]+:\s*/, '');
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

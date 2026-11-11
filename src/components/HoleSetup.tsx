@@ -5,6 +5,8 @@ import { centroid, distanceM, pointInRing } from '../lib/geo';
 import type { ImagerySource } from '../lib/imagery';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION } from './mapStyle';
 import { tr } from '../lib/i18n';
+import { ActionBar } from './ActionBar';
+import { FloatActions } from './FloatActions';
 
 // "Set up hole": for courses where OpenStreetMap has no hole lines (e.g. Son Quint).
 // The player marks the tee (own GPS position or a tap) and taps the green; the app stores tee → green.
@@ -137,7 +139,7 @@ export function HoleSetup(props: {
         </div>
       </div>
       <div className="map-bottom">
-        <div className="setup-card">
+        <div className={`setup-card${step === 3 ? ' with-fab' : ''}`}>
           {step === 1 && (
             <>
               <strong>{tr(`1 · Where is the tee of hole ${props.holeLabel}?`, `1 · Wo ist der Abschlag von Loch ${props.holeLabel}?`)}</strong>
@@ -163,44 +165,30 @@ export function HoleSetup(props: {
             <>
               <strong>{tr('2 · Tap the green', '2 · Tippe auf das Grün')}</strong>
               <span>{tr(`Mapped greens are outlined. Zoom and pan to find the green of hole ${props.holeLabel}.`, `Bekannte Grüns sind umrandet. Zoome und verschiebe die Karte, um das Grün von Loch ${props.holeLabel} zu finden.`)}</span>
-              <button type="button" className="btn-secondary" onClick={() => setTee(null)}>
-                {tr('Set tee again', 'Abschlag neu setzen')}
-              </button>
             </>
-          )}
-          {props.onReset && step < 3 && (
-            <button type="button" className="btn-ghost" onClick={props.onReset}>
-              {tr('Use the course map again (remove my marking)', 'Platzkarte verwenden (meine Markierung entfernen)')}
-            </button>
-          )}
-          {props.onResetAll && step < 3 && (
-            <button type="button" className="btn-ghost" onClick={props.onResetAll}>
-              {tr('Course map for every hole (remove all my markings here)', 'Platzkarte für alle Löcher (alle meine Markierungen hier entfernen)')}
-            </button>
-          )}
-          {props.onScoreOnly && step < 3 && (
-            <button type="button" className="btn-ghost" onClick={props.onScoreOnly}>
-              {tr('Enter score only', 'Nur Score eintragen')}
-            </button>
           )}
           {step === 3 && (
             <>
               <strong>
-                {tr('Tee → green', 'Abschlag → Grün')}: {length} m {snapped ? tr('· green outline found ✓', '· Grün-Umriss gefunden ✓') : tr('· no green outline (center only)', '· kein Grün-Umriss (nur Mitte)')}
+                {tr('Tee → green', 'Abschlag → Grün')}: {length} m {snapped ? tr('· green outline found', '· Grün-Umriss gefunden') : tr('· no green outline (center only)', '· kein Grün-Umriss (nur Mitte)')}
               </strong>
               <span>{tr('Tap the map again to move the green, or save.', 'Tippe erneut auf die Karte, um das Grün zu verschieben, oder speichere.')}</span>
-              <div className="map-actions" style={{ gridTemplateColumns: '1fr 2fr' }}>
-                <button type="button" className="btn-secondary" onClick={() => { setTee(null); setGreen(null); }}>
-                  {tr('Start over', 'Neu beginnen')}
-                </button>
-                <button type="button" className="btn-primary" onClick={() => props.onSave([tee!, green!])}>
-                  {tr('Save hole', 'Loch speichern')}
-                </button>
-              </div>
             </>
           )}
+          {/* the other actions as one bar of icons (Facelift 11.11.2026, r6) – removing every marking red, last */}
+          <ActionBar
+            label={tr('Set up the hole', 'Loch einrichten')}
+            actions={[
+              step > 1 && { label: tr('Start over', 'Neu beginnen'), icon: 'reopen', onClick: () => { setTee(null); setGreen(null); } },
+              props.onScoreOnly && { label: tr('Score only', 'Nur Score'), aria: tr('Enter score only', 'Nur Score eintragen'), icon: 'card', onClick: props.onScoreOnly },
+              props.onReset && { label: tr('Course map', 'Platzkarte'), aria: tr('Use the course map again (remove my marking)', 'Platzkarte verwenden (meine Markierung entfernen)'), icon: 'map', onClick: props.onReset },
+              props.onResetAll && { label: tr('All holes', 'Alle Löcher'), aria: tr('Course map for every hole (remove all my markings here)', 'Platzkarte für alle Löcher (alle meine Markierungen hier entfernen)'), icon: 'delete', danger: true, onClick: props.onResetAll },
+            ]}
+          />
         </div>
       </div>
+      {/* the hole marked: saved with the floating tick (Facelift 11.11.2026, r6) – above the layer of the round check, any other tick hidden meanwhile */}
+      {step === 3 && <FloatActions overSheet save={{ label: tr('Save hole', 'Loch speichern'), onClick: () => props.onSave([tee!, green!]) }} />}
     </main>
   );
 }
