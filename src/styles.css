@@ -2406,3 +2406,5 @@ button.balance-item-row { cursor: pointer; }
 .score-player-name svg { color: var(--muted); }
 .score-player.retired { opacity: 0.85; }
 .retire-sheet { display: flex; flex-direction: column; gap: 12px; }
+/* whose the big figures are, on top (Sascha 12.11.2026) */
+.sc-hero-name { font-size: 17px; }

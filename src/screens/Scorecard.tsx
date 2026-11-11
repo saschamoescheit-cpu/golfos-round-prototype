@@ -221,6 +221,13 @@ export function Scorecard(props: {
       {statusRow}
 
       <section className="card sc-hero">
+        {/* whose the big figures are, on top – the partners below (Sascha 12.11.2026: "Sascha should stand on top with his score, below the other players") */}
+        {round.players.length > 1 && (
+          <div className="sc-hero-name">
+            <strong>{me.name}</strong>
+            {me.playingHandicap != null && <span className="muted small"> · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</span>}
+          </div>
+        )}
         {(() => {
           const t = playerTotals(round.holes, round.entries[me.id], me.playingHandicap);
           return (
@@ -260,7 +267,6 @@ export function Scorecard(props: {
               </div>
             );
           })}
-        {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
 
       {/* the board of all phones as last exchanged – own scores ranked, a marker's differing count flagged; a
