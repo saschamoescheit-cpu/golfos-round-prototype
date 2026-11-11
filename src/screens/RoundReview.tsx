@@ -545,7 +545,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     return out;
   };
 
-  const detectAll = () => {
+  /** The shots from the GPS track; `onlyEmpty`: only the holes with no shot at all yet – a hole that got its map later (a
+   *  course bundled afterwards, a hole set up here – Sascha 12.11.2026, Cypress) */
+  const detectAll = (onlyEmpty = false) => {
     let holes = 0;
     let byHand = 0;
     const list = entries.slice();
@@ -555,6 +557,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // holes the player touched (a shot moved, set, edited – or the hole confirmed) stay as they are; the rest is
       // detected again, so older rounds profit from a better detection
       if (!m || list[i].detail?.shots.some((x) => !x.review)) return;
+      if (onlyEmpty && list[i].detail?.shots.length) return;
       const part = parts[i] ?? [];
       // score, putts and penalties from the course: the number of swings, water and out of bounds (see track.ts)
       const e = list[i];
@@ -587,6 +590,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const placed = e.puttsAt?.balls[0];
       list[i] = { ...list[i], detail: { ...found, ...(placed ? { onGreen: placed } : {}), pin: pinFor(i) }, ...derived };
     });
+    if (onlyEmpty && !holes) return;
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
     setNotice(
       byHand
@@ -618,6 +622,17 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // a hole that has its map only now (the course bundled after the round, a hole set up here): its shots from the track
+  // too – the holes with shots stay as they are (Sascha 12.11.2026: "now that Cypress has a map")
+  const mapsWith = maps.map((m) => !!m).join('');
+  const firstMaps = useRef(mapsWith);
+  useEffect(() => {
+    if (mapsWith === firstMaps.current && !entries.some((x, i) => maps[i] && !x.detail?.shots.length && (parts[i] ?? []).length > 20)) return;
+    firstMaps.current = mapsWith;
+    // the first visit with no shot anywhere is the effect above
+    if (track.length > 20 && entries.some((x) => x.detail?.shots.length) && entries.some((x, i) => maps[i] && !x.detail?.shots.length && (parts[i] ?? []).length > 20)) detectAll(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapsWith]);
 
   // A later shot standing as a tee shot away from the tee (noted on the course before the tee shot was there – Sascha
   // 08.11.2026: "tee" and the driver for 77 m into the green): its lie from the map, the club for its distance. A
