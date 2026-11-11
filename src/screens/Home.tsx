@@ -66,8 +66,9 @@ function PausedMark() {
 /** what the module cards say (the same on the start page and in the module sheet) */
 export type ModuleCardInfo = { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; tours?: { today: string[]; planned: number }; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number };
 export type ModulePick = 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility';
-/** one thing running now, for the card "Läuft gerade" on the start page (Sascha 12.11.2026) */
-export type RunningItem = { key: string; kind: 'round' | 'tour' | 'pool'; title: string; line: string; value?: string; good?: boolean };
+/** one thing to do now, for the card "Jetzt dran" on the start page (Sascha 12.11.2026 "Läuft gerade"; 11.11.2026 design
+ *  round 2: green frame, renamed, every row a direct way there – the module cards no longer repeat it) */
+export type RunningItem = { key: string; kind: 'round' | 'tour' | 'pool' | 'sign' | 'confirm' | 'training' | 'mobility'; title: string; line: string; value?: string; good?: boolean };
 
 const RUN_ICONS: Record<RunningItem['kind'], JSX.Element> = {
   round: (
@@ -88,14 +89,41 @@ const RUN_ICONS: Record<RunningItem['kind'], JSX.Element> = {
       <path d="M14 4v12" />
     </svg>
   ),
+  sign: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15.5 4.5l4 4L9 19l-5 1 1-5z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  ),
+  confirm: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="7" width="18" height="12" rx="3" />
+      <path d="M8 11v4M6 13h4" />
+      <circle cx="15.5" cy="12" r="1" />
+      <circle cx="17.5" cy="14.5" r="1" />
+    </svg>
+  ),
+  training: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+    </svg>
+  ),
+  mobility: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="4.2" r="2" />
+      <path d="M12 6.8v6.2M12 13l-4.2 7.5M12 13l4.2 7.5M5 8.6l7 1.6 7-3.4" />
+    </svg>
+  ),
 };
 
-/** "Läuft gerade": each thing running now in one row – a tap goes there */
+/** "Jetzt dran": each thing running or to do now in one row – a tap goes there */
 function RunningCard(props: { items: RunningItem[]; onOpen: (r: RunningItem) => void }) {
   if (!props.items.length) return null;
   return (
-    <section className="card running-card" aria-label={tr('Running now', 'Läuft gerade')}>
-      <span className="eyebrow">{tr('Running now', 'Läuft gerade')}</span>
+    <section className="card running-card" aria-label={tr('Up now', 'Jetzt dran')}>
+      <span className="eyebrow">{tr('Up now', 'Jetzt dran')}</span>
       {props.items.map((r) => (
         <button key={r.key} type="button" className="running-row" onClick={() => props.onOpen(r)}>
           <span className="running-icon">{RUN_ICONS[r.kind]}</span>
@@ -129,20 +157,23 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
       </div>
       <div className="home-hero">
         {props.running && props.onRunning && <RunningCard items={props.running} onOpen={props.onRunning} />}
-        <ModuleCardList {...props} />
+        <ModuleCardList {...props} describe />
       </div>
     </>
   );
 }
 
-/** the five module cards with what is to do on each – the start page and the module sheet (Sascha 12.11.2026: mock-up
- *  A, the sheet from below); `current` marks the module one is in */
-export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | null; onPick: (m: ModulePick) => void }) {
+/** the five module cards – in the module sheet with what is to do on each (Sascha 12.11.2026: mock-up A, the sheet from
+ *  below), `current` the module one is in; on the start page (`describe`) only a quiet line what each module is – what
+ *  is to do stands once in "Jetzt dran" above (Sascha 11.11.2026, design round 2: "not twice") */
+export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | null; onPick: (m: ModulePick) => void; describe?: boolean }) {
+  const desc = (en: string, de: string) => (props.describe ? <span className="small muted module-desc">{tr(en, de)}</span> : null);
+  const todo = !props.describe;
   return (
     <>
       <button type="button" className={`module-card${props.current === 'rounds' ? ' on' : ''}`} aria-current={props.current === 'rounds' ? 'true' : undefined} onClick={() => props.onPick('rounds')}>
         <span className="module-icon" aria-hidden="true">
-          {props.toCheck > 0 && <i className="tabbar-dot module-dot" />}
+          {todo && props.toCheck > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 21V3l11 4-11 4" />
             <ellipse cx="12" cy="21" rx="8" ry="1.6" />
@@ -151,7 +182,8 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
         <span className="grow">
           <strong>Rounds</strong>
           {/* only what is still to do: the rounds to check & sign – a paused round is no task here (Sascha 18.10.2026) */}
-          {props.toCheck > 0 && (
+          {desc('Play and review rounds', 'Runden spielen und auswerten')}
+          {todo && props.toCheck > 0 && (
             <span className="small module-todo">
               {props.toCheck === 1 ? tr('1 round to check & sign', '1 Runde prüfen & signieren') : tr(`${props.toCheck} rounds to check & sign`, `${props.toCheck} Runden prüfen & signieren`)}
             </span>
@@ -161,7 +193,7 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
       </button>
       <button type="button" className={`module-card${props.current === 'games' ? ' on' : ''}`} aria-current={props.current === 'games' ? 'true' : undefined} onClick={() => props.onPick('games')}>
         <span className="module-icon" aria-hidden="true">
-          {props.gamesToConfirm > 0 && <i className="tabbar-dot module-dot" />}
+          {todo && props.gamesToConfirm > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="7" width="18" height="12" rx="3" />
             <path d="M8 11v4M6 13h4" />
@@ -173,13 +205,14 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
           {/* "Games & Bets" (Sascha 03.11.2026: clearer that games and bets are together here) */}
           <strong>Games &amp; Bets</strong>
           {/* as on Rounds: only what is still to do – the results to confirm; a paused game is no task here (Sascha 25.10.2026) */}
-          {props.gamesToConfirm > 0 && (
+          {desc('Games and bets with friends', 'Spiele und Wetten mit Freunden')}
+          {todo && props.gamesToConfirm > 0 && (
             <span className="small module-todo">
               {props.gamesToConfirm === 1 ? tr('1 result to confirm', '1 Ergebnis bestätigen') : tr(`${props.gamesToConfirm} results to confirm`, `${props.gamesToConfirm} Ergebnisse bestätigen`)}
             </span>
           )}
           {/* the bets running (Sascha 01.11.2026: "show in Games when bets are running") – as Training's paused session */}
-          {props.betsRunning.length > 0 && (
+          {todo && props.betsRunning.length > 0 && (
             <span className="small module-live">
               {props.betsRunning.length === 1 ? tr(`Bets running: ${props.betsRunning[0]}`, `Wetten laufen: ${props.betsRunning[0]}`) : tr(`${props.betsRunning.length} pools of bets running`, `${props.betsRunning.length} Wett-Pools laufen`)}
             </span>
@@ -198,12 +231,13 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
         </span>
         <span className="grow">
           <strong>Tournaments</strong>
-          {props.tours && props.tours.today.length > 0 && (
+          {desc('Plan tournaments and series', 'Turniere und Serien planen')}
+          {todo && props.tours && props.tours.today.length > 0 && (
             <span className="small module-live">
               {props.tours.today.length === 1 ? tr(`Today: ${props.tours.today[0]}`, `Heute: ${props.tours.today[0]}`) : tr(`${props.tours.today.length} tournaments today`, `${props.tours.today.length} Turniere heute`)}
             </span>
           )}
-          {props.tours && !props.tours.today.length && props.tours.planned > 0 && (
+          {todo && props.tours && !props.tours.today.length && props.tours.planned > 0 && (
             <span className="small module-live">{props.tours.planned === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${props.tours.planned} tournaments planned`, `${props.tours.planned} Turniere geplant`)}</span>
           )}
         </span>
@@ -220,7 +254,8 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
         </span>
         <span className="grow">
           <strong>Training (Beta)</strong>
-          {props.trainingOpen && (
+          {desc('Training and practice plans', 'Training und Übungspläne')}
+          {todo && props.trainingOpen && (
             <span className="small module-live">
               {tr('A session is paused', 'Eine Einheit ist pausiert')}
               <PausedMark />
@@ -239,14 +274,15 @@ export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | 
         </span>
         <span className="grow">
           <strong>Agility (Beta)</strong>
-          {props.mobilityOpen && (
+          {desc('Screening and exercises', 'Screening und Übungen')}
+          {todo && props.mobilityOpen && (
             <span className="small module-live">
               {tr('A screening is paused', 'Ein Screening ist pausiert')}
               <PausedMark />
             </span>
           )}
           {/* the training of the day (Sascha 18.10.2026: the app leads through the drills) – one look at the start */}
-          {!props.mobilityOpen && props.mobilityToday && (
+          {todo && !props.mobilityOpen && props.mobilityToday && (
             <span className={`small${props.mobilityToday === 'done' ? ' muted' : ' module-live'}`}>
               {props.mobilityToday === 'paused' ? (
                 <>

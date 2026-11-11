@@ -58,7 +58,8 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(800);
 // the start page of the app: a screening alone is no plan – no training waiting (Sascha 02.11.2026)
-const agilityTile = () => p.locator('.module-card').filter({ hasText: 'Agility' }).innerText();
+// since 11.11.2026 (design round 2) what is to do stands in "Jetzt dran" above the module cards
+const agilityTile = () => p.locator('.running-card .running-row').filter({ hasText: 'Agility' }).innerText().catch(() => '');
 const bare = await agilityTile();
 ok(!/wartet/.test(bare), `the Agility tile without a plan: no training waiting (${bare.replace(/\n/g, ' · ')})`);
 // a physio plan with its week: waiting on a training day, quiet on another one

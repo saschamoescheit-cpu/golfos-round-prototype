@@ -495,7 +495,9 @@ export function App() {
     mobilityOpen: mobilityPaused(),
     mobilityToday: mobilityToday(),
   });
-  // "Läuft gerade" on the start page (Sascha 12.11.2026): a paused round, today's tournament, a pool on its days
+  // "Jetzt dran" on the start page (Sascha 12.11.2026 "Läuft gerade"; 11.11.2026 design round 2: everything that is to do
+  // now in one green card, each row a direct way there – the module cards below no longer say it): a paused round,
+  // today's tournament, rounds to check & sign, a pool on its days, results to confirm, a paused training, Agility's day
   const running = (): RunningItem[] => {
     const today = dayOf(new Date());
     const out: RunningItem[] = [];
@@ -508,6 +510,14 @@ export function App() {
       const t = loadTours().find((e) => e.code === code);
       if (t) out.push({ key: `tour:${code}`, kind: 'tour', title: t.ev.name, line: tr('Tournament today', 'Turnier heute') });
     }
+    const sign = roundsToSign(rounds);
+    if (sign.length)
+      out.push({
+        key: 'sign:rounds',
+        kind: 'sign',
+        title: sign.length === 1 ? tr('1 round to check & sign', '1 Runde prüfen & signieren') : tr(`${sign.length} rounds to check & sign`, `${sign.length} Runden prüfen & signieren`),
+        line: [...new Set(sign.map((r) => r.courseName))].slice(0, 2).join(', ') + (sign.length > 2 ? ' …' : ''),
+      });
     for (const p of myPoolBalances(today).filter((x) => x.running)) {
       const e = loadPools().find((x) => x.code === p.code);
       const from = e?.pool.from ?? today;
@@ -517,12 +527,28 @@ export function App() {
       const value = p.amount ? `${p.amount > 0 ? '+' : '−'}${Math.abs(p.amount)} ${p.sym}` : undefined;
       out.push({ key: `pool:${p.code}`, kind: 'pool', title: p.name, line: day >= 1 && day <= days ? tr(`Day ${day} of ${days}`, `Tag ${day} von ${days}`) : tr('Bets running', 'Wetten laufen'), value, good: p.amount > 0 });
     }
+    const confirm = loadGames().filter((g) => g.finishedAt && !g.signedAt).length;
+    if (confirm)
+      out.push({ key: 'confirm:games', kind: 'confirm', title: confirm === 1 ? tr('1 result to confirm', '1 Ergebnis bestätigen') : tr(`${confirm} results to confirm`, `${confirm} Ergebnisse bestätigen`), line: 'Games & Bets' });
+    if (trainingPaused()) out.push({ key: 'training:paused', kind: 'training', title: 'Training', line: tr('A session is paused', 'Eine Einheit ist pausiert') });
+    const mob = mobilityPaused() ? 'screening' : mobilityToday();
+    if (mob && mob !== 'done')
+      out.push({
+        key: `mobility:${mob}`,
+        kind: 'mobility',
+        title: 'Agility',
+        line: mob === 'screening' ? tr('A screening is paused', 'Ein Screening ist pausiert') : mob === 'paused' ? tr('A training is paused', 'Ein Training ist pausiert') : tr('Your training today is waiting', 'Dein Training heute wartet'),
+      });
     return out;
   };
   const openRunning = (r: RunningItem) => {
     const [kind, id] = [r.kind, r.key.slice(r.key.indexOf(':') + 1)];
     if (kind === 'pool') return openPool(id);
     if (kind === 'tour') return openTour(id);
+    if (kind === 'sign') return pickModule('rounds'); // straight to the rounds to check & sign
+    if (kind === 'confirm') return pickModule('games');
+    if (kind === 'training') return pickModule('training');
+    if (kind === 'mobility') return pickModule('mobility');
     const round = rounds.find((x) => x.id === id);
     if (round) {
       setModule('rounds');

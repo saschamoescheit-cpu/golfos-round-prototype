@@ -1,4 +1,5 @@
-// QA (Sascha 12.11.2026, design "Heute": "„Läuft gerade“-Karte oben auf der Startseite"): a pool of bets on its days
+// QA (Sascha 12.11.2026, design "Heute": "„Läuft gerade“-Karte oben auf der Startseite"; 11.11.2026 design round 2:
+// renamed "Jetzt dran", a green frame, every row a direct way there, the module cards only say what they are): a pool of bets on its days
 // shows on the start page above the modules – its name, "Tag N von M", my standing in green when ahead – and a tap
 // opens the pool; without anything running there is no such card.
 // Usage: node qa/runningcard.mjs [url]
@@ -29,14 +30,15 @@ const pool = {
   wagers: [{ id: 'w1', player: 'p0', kind: 'birdieRun', target: 2, stake: 20, payout: 'success', attempts: 'any', counted: true }],
   progress: { w1: { best: 2, done: true, rounds: 1, at: now, perRound: [{ day: day(-1), course: 'Celebration Golf Club', value: 2, counted: true }] } },
 };
-const seed = async (pools) => {
-  await p.evaluate((ps) => {
+const seed = async (pools, extra = {}) => {
+  await p.evaluate(([ps, extra]) => {
     localStorage.clear();
     sessionStorage.clear();
     localStorage.setItem('golfos.intro.v1', '1');
     localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: 'Sascha', lastName: '', hcpIndex: '10', homeClub: '' }));
     localStorage.setItem('golfos.pools.v1', JSON.stringify(ps));
-  }, pools);
+    for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, JSON.stringify(v));
+  }, [pools, extra]);
   await p.reload();
   await p.waitForTimeout(1500);
 };
@@ -50,7 +52,17 @@ ok((await p.locator('.running-card').count()) === 0, 'nothing running: no "Läuf
 // a pool on its days
 await seed([{ code: 'USA1', pool, me: 'p0' }]);
 const card = p.locator('.running-card');
-ok((await card.count()) === 1, 'a pool on its days: the card "Läuft gerade"');
+ok((await card.count()) === 1, 'a pool on its days: the card "Jetzt dran"');
+ok((await card.locator('.eyebrow').innerText()).trim().toLowerCase() === 'jetzt dran', 'its title "Jetzt dran"');
+const frame = await card.evaluate((el) => [getComputedStyle(el).borderTopColor, getComputedStyle(el).borderTopWidth]);
+const brand = await p.evaluate(() => { const d = document.createElement('i'); d.style.color = 'var(--brand)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
+ok(frame[0] === brand && parseFloat(frame[1]) >= 1, `a green frame (${frame.join(' ')})`);
+// the module cards no longer repeat it – only a quiet line what each module is, never cut
+ok((await p.locator('.home-hero .module-card .module-live, .home-hero .module-card .module-todo, .home-hero .module-card .module-dot').count()) === 0, 'the module cards: no green hint, no dot');
+const descs = await p.locator('.home-hero .module-card .module-desc').allInnerTexts();
+ok(descs.join('|') === 'Runden spielen und auswerten|Spiele und Wetten mit Freunden|Turniere und Serien planen|Training und Übungspläne|Screening und Übungen', `each module says what it is (${descs.join(' | ')})`);
+const cut = await p.locator('.home-hero .module-desc').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).length);
+ok(cut === 0, 'no description cut off');
 const row = card.locator('.running-row').filter({ hasText: 'USA-Wetten' });
 const txt = (await row.innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/Tag 3 von 8/.test(txt) && /\+20 \$/.test(txt), `the pool's row: day and my standing (${txt})`);
@@ -62,6 +74,14 @@ ok(((await row.boundingBox())?.height ?? 0) >= 44, 'a row big enough to tap');
 await row.click();
 await p.waitForTimeout(1200);
 ok((await p.locator('.pool-screen, .pool-standings').count()) >= 1, 'a tap opens the pool');
+// a paused training: its own row – a tap goes to Training
+await seed([], { 'golfos.training.sessions.v1': [{ id: 's1', name: 'Putten', createdAt: now, finishedAt: null, current: 0, items: [{ drill: 'slice-gate', minutes: 10 }], spent: [0] }] });
+const trow = p.locator('.running-card .running-row').filter({ hasText: 'Training' });
+ok((await trow.count()) === 1 && /Eine Einheit ist pausiert/.test(await trow.innerText()), 'a paused training: a row in "Jetzt dran"');
+await trow.click();
+await p.waitForTimeout(1200);
+const where = [await p.locator('.brand-claim').count(), await p.locator('.module-pill').first().innerText().catch(() => ''), (await p.locator('main').first().innerText().catch(() => '')).slice(0, 80).replace(/s+/g, ' ')];
+ok(where[0] === 0 && /Training|Übung 1 von 1/i.test(where[1] + where[2]), `a tap goes to Training – the paused session (${where.join(' · ')})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(bad ? 1 : 0);

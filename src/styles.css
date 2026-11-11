@@ -2457,7 +2457,7 @@ body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) 
 .list-month { display: block; margin: 10px 2px 6px; }
 .list > li:first-child > .list-month { margin-top: 0; }
 
-/* "Läuft gerade" on the start page (Sascha 12.11.2026) */
+/* "Jetzt dran" (before: "Läuft gerade") on the start page (Sascha 12.11.2026) */
 .running-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; }
 .running-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 0; background: none; border: 0; color: var(--text); font: inherit; text-align: left; }
 .running-row + .running-row { border-top: 1px solid var(--line); }
@@ -2465,3 +2465,9 @@ body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) 
 .running-row .grow strong { font: 600 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .running-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); display: grid; place-items: center; flex: none; }
 .running-value { font: 700 18px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* "Jetzt dran" (Sascha 11.11.2026, design round 2): green frame, green eyebrow; titles wrap instead of being cut */
+.running-card { border: 1.5px solid var(--brand); }
+.running-card > .eyebrow { color: var(--brand-text); }
+.running-row .grow strong { white-space: normal; overflow: visible; text-overflow: clip; }
+/* the start page: a quiet line what each module is – may wrap, never cut */
+.module-desc { white-space: normal; line-height: 1.3; }
