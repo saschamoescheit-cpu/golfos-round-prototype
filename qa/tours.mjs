@@ -125,7 +125,7 @@ await H.evaluate(() => localStorage.setItem('golfos.friends.v1', JSON.stringify(
 ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Planen|Turniere|Profil' && (await H.locator('.module-tag').textContent()) === 'Tournaments', `the module Tournaments: ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
 ok(await H.getByText('Neues Turnier planen').isVisible() && (await H.getByRole('button', { name: 'Neue Wette' }).count()) === 0, 'its start page: "Neues Turnier planen", no bets');
 await H.locator('.module-switch').click();
-const cards = (await H.locator('.module-card strong').allInnerTexts()).join('|');
+const cards = (await H.locator('.module-card:not(.module-home) strong').allInnerTexts()).join('|'); // the sheet's first row "Startseite" aside
 ok(cards === 'Rounds|Games & Bets|Tournaments|Training (Beta)|Agility (Beta)', `the start page: ${cards}`);
 await H.locator('.module-card').filter({ hasText: 'Games & Bets' }).click();
 ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil' && (await H.getByText('Neues Turnier planen').count()) === 0, 'Games & Bets: no tournaments any more');
