@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { convert, fetchRate, homeMoney, moneyOfSym, rateFinal, rateKept, symOf, type Money } from '../lib/fx';
+import { convert, fetchRate, homeMoney, moneyOfSym, symOf, type Money } from '../lib/fx';
 import { FloatActions } from '../components/FloatActions';
-import { getLang, tr } from '../lib/i18n';
+import { tr } from '../lib/i18n';
 import { formDef, formatEuro, money, standingOf, type Game } from '../lib/gameforms';
 import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
 import { loadGames, saveGame } from '../lib/gamestore';
@@ -257,7 +257,6 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     const c = convert(v, m, home, until);
     return c == null ? [sym, v] : [symOf(home), c];
   };
-  const converted = home ? entries.filter((x) => { const m = moneyOfSym(x.sym); return !!m && m !== home; }) : [];
   const book = (sym0: string, v0: number, until = today) => {
     const [sym, v] = conv(sym0, v0, until);
     if (Math.abs(v) < 0.005) return;
@@ -389,7 +388,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           </div>
         </section>
       )}
-      {converted.length > 0 && <FxNote entries={converted} />}
+      {/* no line about the conversion any more (Sascha 11.11.2026: "Hinweistext wegen Umrechnung entfernen") */}
 
       {/* a tile tapped: the games and bets behind it, each with what it came to for me – a tap opens it */}
       {filter === 'bets' && pools.map(poolCard)}
@@ -450,7 +449,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                       · {tr('got it?', 'erhalten?')}
                     </span>
                   </span>
-                  <button type="button" className="chip paid-mark" disabled={busy} onClick={async () => {
+                  <button type="button" className="chip paid-mark mark-received" disabled={busy} onClick={async () => {
                     setBusy(true);
                     await record(i, (ps2) => ps2.map((y) => (y.id === x.id ? { ...y, receivedAt: now() } : y)));
                     setBusy(false);
@@ -474,7 +473,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                     <strong className="bad-text">
                       <Amounts m={Object.fromEntries(Object.entries(sums(p.items, (i) => i.open)).filter(([, v]) => v < 0))} plain />
                     </strong>
-                    <button type="button" className="chip paid-mark" disabled={busy} aria-label={tr(`Paid ${p.name}`, `${p.name} bezahlt`)} onClick={() => void settleAll(p, 'paid')}>
+                    <button type="button" className="chip paid-mark mark-paid" disabled={busy} aria-label={tr(`Paid ${p.name}`, `${p.name} bezahlt`)} onClick={() => void settleAll(p, 'paid')}>
                       {word(p, 'paid')}
                     </button>
                   </li>
@@ -494,7 +493,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                     <strong className="good-text">
                       <Amounts m={Object.fromEntries(Object.entries(sums(p.items, (i) => i.open)).filter(([, v]) => v > 0))} plain />
                     </strong>
-                    <button type="button" className="chip paid-mark" disabled={busy} aria-label={tr(`Received from ${p.name}`, `Von ${p.name} erhalten`)} onClick={() => void settleAll(p, 'received')}>
+                    <button type="button" className="chip paid-mark mark-received" disabled={busy} aria-label={tr(`Received from ${p.name}`, `Von ${p.name} erhalten`)} onClick={() => void settleAll(p, 'received')}>
                       {word(p, 'received')}
                     </button>
                   </li>
@@ -708,25 +707,3 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
   );
 }
 
-/** Which rate the totals used (Sascha 12.11.2026): "1 $ = 0,86 € · Kurs vom 17.11." – a day to come: "heute, bis zum
- *  17.11. noch offen". Not known yet: "noch nicht umgerechnet". */
-function FxNote(props: { entries: Entry[] }) {
-  const home = homeMoney();
-  if (!home) return null;
-  const lines = [...new Map(props.entries.map((e) => [`${e.sym}|${e.until}`, e])).values()].map((e) => {
-    const m = moneyOfSym(e.sym)!;
-    const r = rateKept(m, home, e.until);
-    const fmt = (x: number) => x.toLocaleString(getLang() === 'de' ? 'de-DE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-    const d = `${e.until.slice(8, 10)}.${e.until.slice(5, 7)}.`;
-    if (r == null) return tr(`${e.head}: not converted yet (no rate)`, `${e.head}: noch nicht umgerechnet (kein Kurs)`);
-    return rateFinal(m, home, e.until)
-      ? tr(`${e.head}: 1 ${e.sym} = ${fmt(r)} ${symOf(home)} · rate of ${d}`, `${e.head}: 1 ${e.sym} = ${fmt(r)} ${symOf(home)} · Kurs vom ${d}`)
-      : tr(`${e.head}: 1 ${e.sym} ≈ ${fmt(r)} ${symOf(home)} · today's rate, final on ${d}`, `${e.head}: 1 ${e.sym} ≈ ${fmt(r)} ${symOf(home)} · heutiger Kurs, fest am ${d}`);
-  });
-  return (
-    <p className="muted small fx-note" role="note">
-      {tr(`In ${symOf(home)} (your standard currency): `, `In ${symOf(home)} (deine Standardwährung): `)}
-      {lines.join(' · ')}
-    </p>
-  );
-}

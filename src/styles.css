@@ -2174,6 +2174,9 @@ button.tile:disabled { opacity: 1; }
 .pays-why > div.off > span:last-child { color: var(--bad); }
 .pays-why > div.sum { color: var(--text); font-weight: 700; border-top: 1px dashed var(--line); padding-top: 2px; }
 .paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
+/* "Bezahlt" green, "Erhalten" red – filled, white words (Sascha 11.11.2026) */
+.paid-mark.mark-paid { background: var(--brand); border-color: var(--brand); color: #fff; }
+.paid-mark.mark-received { background: var(--bad); border-color: var(--bad); color: #fff; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
 .friend-code .qr-box { width: min(200px, 56vw); }

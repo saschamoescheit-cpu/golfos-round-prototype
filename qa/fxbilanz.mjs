@@ -64,8 +64,8 @@ ok(t0 === '+20 $' && (await p.locator('.fx-note').count()) === 0, `no standard c
 await seed([{ code: 'A1', pool: poolOf('a', 'Florida', day(-6), day(-1)), me: 'p0' }], 'EUR');
 const t1 = await tile('Bilanz');
 ok(t1 === '+18 €', `ended $ pool: +20 $ at 0,90 → "+18 €" (${t1})`);
-const note1 = (await p.locator('.fx-note').innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/1 \$ = 0,9.* Kurs vom/.test(note1), `the line says which rate: ${note1}`);
+// no line about the conversion (Sascha 11.11.2026: "Hinweistext wegen Umrechnung entfernen")
+ok((await p.locator('.fx-note').count()) === 0, 'no hint line about the conversion');
 ok(asked.some((u) => u.includes(day(-1))), 'asked for the rate of the cut-off day');
 
 // a pool still running: today's rate, "≈"
@@ -73,8 +73,7 @@ asked.length = 0;
 await seed([{ code: 'B1', pool: poolOf('b', 'USA-Wetten', day(-2), day(5)), me: 'p0' }], 'EUR');
 const t2 = await tile('Bilanz');
 ok(t2 === '+19 €', `running $ pool: today's rate 0,95 → "+19 €" (${t2})`);
-const note2 = (await p.locator('.fx-note').innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/≈ 0,95.* heutiger Kurs, fest am/.test(note2), `"≈ … heutiger Kurs, fest am …": ${note2}`);
+ok((await p.locator('.fx-note').count()) === 0, 'running: no hint line either');
 
 // Dollar the standard currency: nothing converted
 await seed([{ code: 'B1', pool: poolOf('b', 'USA-Wetten', day(-2), day(5)), me: 'p0' }], 'USD');
