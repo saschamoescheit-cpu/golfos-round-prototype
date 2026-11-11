@@ -120,7 +120,7 @@ ok((await p.locator('ul.list button.list-item:not(.bin-item)').count()) === 0 &&
 // the row as a played one (03.11.2026), a tap opens its sheet
 ok((await p.locator('.bin-item .bin-actions').count()) === 0 && (await p.locator('.bin-item [aria-label="gelöscht"]').count()) === 1, 'the deleted row as a round row: the bin mark, no buttons below it');
 await p.locator('.bin-item').first().click();
-await p.getByRole('button', { name: 'Wiederherstellen' }).click();
+await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);
 ok(back.round && back.track && back.bin === 0, 'restored with its GPS track, bin empty');
@@ -181,7 +181,7 @@ await fill(3);
 await openBin();
 ok((await binN()) === 3 && (await p.locator('.bin-item').count()) === 3, 'three rounds in the bin');
 await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
-ok((await p.locator('.bin-check').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen' }).first().isVisible().catch(() => false)), 'select: a tick per row, no single buttons');
+ok((await p.locator('.bin-check').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).first().isVisible().catch(() => false)), 'select: a tick per row, no single buttons');
 ok(await p.getByRole('button', { name: '0 löschen' }).isDisabled(), 'nothing ticked: "0 löschen" not tappable');
 await p.locator('.bin-check').nth(0).check();
 await p.locator('.bin-item').nth(1).locator('.grow').click(); // the row itself ticks it too

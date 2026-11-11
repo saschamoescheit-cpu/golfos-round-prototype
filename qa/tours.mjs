@@ -554,7 +554,7 @@ await H.waitForTimeout(1500);
 ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.locator('.bin-item').first().click();
-await H.getByRole('button', { name: 'Wiederherstellen' }).click();
+await H.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await H.waitForTimeout(1500);
 ok(!shared.get(code).game.deletedAt, 'restored from the bin');
 

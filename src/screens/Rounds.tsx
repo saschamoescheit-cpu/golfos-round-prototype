@@ -123,7 +123,11 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
       <Bin
         open={binOpen}
         title={tr('Deleted rounds', 'Gelöschte Runden')}
-        items={trash.map((t) => ({ id: t.round.id, date: t.round.createdAt, title: t.round.courseName, meta: `${t.round.holes.length} ${tr('holes', 'Löcher')}`, deletedAt: t.deletedAt }))}
+        items={trash.map((t) => {
+          const me = mine(t.round);
+          const x = me ? playerTotals(t.round.holes, t.round.entries[me.id], me.playingHandicap) : null;
+          return { id: t.round.id, date: t.round.createdAt, title: t.round.courseName, meta: `${t.round.holes.length} ${tr('holes', 'Löcher')}`, deletedAt: t.deletedAt, score: x && x.holesPlayed ? { big: String(x.gross), small: formatToPar(x.toPar) } : undefined };
+        })}
         onRestore={restoreRound}
         onPurge={(id) => {
           purgeRound(id);

@@ -94,7 +94,7 @@ await C.locator('.duel-challenges').waitFor({ timeout: 15000 });
   ok(ws.length === 2 && ws.every((w) => w.player === 'c' && w.challenge?.state === 'open' && w.day === day(0) && w.parts.front === 5 && w.parts.total === 10) && ws.map((w) => w.opponent).sort().join() === 'e,s', `two duels, each on its own, open: Chris against ${ws.map((w) => w.opponent).join(' and ')}`);
   ok(pushes.some((x) => x.action === 'wager-new' && x.code === code && x.wagers?.length === 2), 'the two challenged hear of it (push)');
 }
-ok((await C.locator('.duel-challenge').filter({ hasText: 'Gegen Sascha' }).locator('.invite-mark.muted').count()) === 1 && /wartet auf Annahme/.test(await C.locator('.duel-challenge').filter({ hasText: 'Gegen Sascha' }).innerText()), "Chris's pool: \"Gegen Sascha · wartet auf Annahme\" with a clock");
+ok((await C.locator('.duel-challenge').filter({ hasText: 'Du forderst Sascha heraus' }).locator('.invite-mark.muted').count()) === 1 && /Wartet auf Sascha/.test(await C.locator('.duel-challenge').filter({ hasText: 'Du forderst Sascha heraus' }).innerText()), "Chris's pool: \"Du forderst Sascha heraus · Wartet auf Sascha\" with a clock");
 
 // Sascha: on Games' start page, "Chris fordert dich zu 5+5+10 heraus" – into the pool, "Annehmen"
 await toGames(H);
@@ -156,8 +156,8 @@ if (process.env.SHOTS) await E.screenshot({ path: `${process.env.SHOTS}/duel-eri
 
 // Chris: the declined one said so, "Entfernen" takes it out
 await openPool(C);
-const declined = C.locator('.duel-challenge').filter({ hasText: 'Gegen Erik' });
-ok(/abgelehnt/.test(await declined.innerText().catch(() => '')) && (await declined.locator('.invite-mark.bad-text').count()) === 1, 'Chris: "Gegen Erik · abgelehnt" with a red cross');
+const declined = C.locator('.duel-challenge').filter({ hasText: 'Erik hat abgelehnt' });
+ok(/abgelehnt/.test(await declined.innerText().catch(() => '')) && (await declined.locator('.invite-mark.bad-text').count()) === 1, 'Chris: "Erik hat abgelehnt" with a red cross');
 await declined.getByRole('button', { name: 'Entfernen' }).click();
 await C.waitForTimeout(1500);
 ok(!shared.get(code).game.wagers.some((w) => w.opponent === 'e' && w.kind === 'nassau'), 'removed from the pool');

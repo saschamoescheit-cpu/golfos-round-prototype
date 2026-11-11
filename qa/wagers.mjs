@@ -473,11 +473,11 @@ ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'W
 await G.goto('about:blank');
 await G.goto(url + '#pool=' + code);
 await G.waitForTimeout(3000);
-ok((await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible()) && (await G.getByRole('button', { name: 'Wiederherstellen' }).count()) === 0, "Chris's phone: the pool was deleted – its bets kept; only the host restores it");
+ok((await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible()) && (await G.getByRole('button', { name: 'Wiederherstellen', exact: true }).count()) === 0, "Chris's phone: the pool was deleted – its bets kept; only the host restores it");
 // restored from the bin of the menu "Wetten": back for everyone, with all bets
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.locator('.bin-item').first().click(); // the bin's row opens its sheet (03.11.2026)
-await H.getByRole('button', { name: 'Wiederherstellen' }).click();
+await H.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await H.waitForTimeout(1500);
 ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 6, 'restored from the bin: back for everyone, all 6 bets (Erik removed before)');
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();

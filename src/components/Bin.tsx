@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getLang, tr } from '../lib/i18n';
 import { DeletedIcon } from './RoundIcons';
 import { SwipeRow } from './SwipeRow';
+import { DateBlock } from './DateBlock';
 
 // The bin of deleted rounds and games (Sascha 15.10.2026) – the same in every module: folded under the list,
 // "Restore" with one tap, "Delete for good" only after a second tap. Since 03.11.2026 (Sascha: "the deleted rounds look
@@ -15,6 +16,8 @@ export interface BinItem {
   title: string;
   meta: string;
   deletedAt: string;
+  /** the score on the right, as in the list (e.g. 84 / +12) */
+  score?: { big: string; small?: string };
 }
 
 const UNDO_MS = 8000; // as long as the toast shows "Undo"
@@ -138,10 +141,7 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                     onChange={() => toggle(t.id)}
                   />
                 )}
-                <span className="round-date">
-                  <strong>{day(t.date)}</strong>
-                  <span className="muted small">{new Date(t.date).getFullYear()}</span>
-                </span>
+                <DateBlock iso={t.date} />
                 <span className="grow">
                   <span className="title with-mark">
                     <span className="title-text">{t.title}</span>
@@ -152,7 +152,22 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                   </span>
                   <span className="muted small">{`${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
                 </span>
-                {!picking && <span aria-hidden="true">›</span>}
+                {t.score && (
+                  <span className="bin-score">
+                    <strong>{t.score.big}</strong>
+                    {t.score.small && <span className="muted small">{t.score.small}</span>}
+                  </span>
+                )}
+              </button>
+            );
+            // back with one tap (Sascha 11.11.2026, design round 2: "Wiederherstellen nimmt viel Platz weg") – a round green
+            // button at the row's right end; the row itself still opens its sheet (Restore · Delete for good)
+            const restore = !picking && (
+              <button type="button" className="icon-btn bin-restore" aria-label={tr(`Restore ${t.title}`, `${t.title} wiederherstellen`)} title={tr('Restore', 'Wiederherstellen')} onClick={() => props.onRestore(t.id)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 14L4 9l5-5" />
+                  <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+                </svg>
               </button>
             );
             // swiped as everywhere else (Sascha 02.11.2026: "in the tile 'deleted' it does not work yet") – here for good,
@@ -160,8 +175,9 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
             return (
               <li key={t.id}>
                 {picking ? row : (
-                  <SwipeRow label={t.title} onDelete={() => purgeLater(t)}>
+                  <SwipeRow className="bin-row" label={t.title} onDelete={() => purgeLater(t)}>
                     {row}
+                    {restore}
                   </SwipeRow>
                 )}
               </li>

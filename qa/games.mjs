@@ -192,7 +192,7 @@ await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).
 ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'games list: tile "1 gelöscht" as in Rounds');
 await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.locator('.bin-item').first().click();
-await p.getByRole('button', { name: 'Wiederherstellen' }).click();
+await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');
 // only confirmed games count in the balance (Sascha 16.10.2026, as signed rounds)

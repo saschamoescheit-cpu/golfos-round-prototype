@@ -334,14 +334,19 @@ export function Challenges(props: { entry: PoolEntry; onChanged?: () => void }) 
           </div>
         </div>
       ))}
+      {/* one's own challenge in the same box as one to answer (Sascha 11.11.2026, design round 2: "Gegen Chris mit
+          Zurückziehen geht optisch unter – im gleichen Stil wie ‚Erik fordert dich …‘") */}
       {mine.map((w) => (
-        <div key={w.id} className="duel-challenge">
-          <DuelMark state={w.challenge!.state === 'open' ? 'open' : 'declined'} />
+        <div key={w.id} className="duel-challenge duel-mine">
           <span className="grow">
-            <span className="title">{tr(`Against ${name(w.opponent)}`, `Gegen ${name(w.opponent)}`)}</span>
-            <span className="muted small">
-              {w.challenge!.state === 'open' ? tr('waiting for the answer', 'wartet auf Annahme') : tr('declined', 'abgelehnt')} · {duelText(w, sym)}
+            <span className="title">
+              {w.challenge!.state === 'open' ? tr(`You challenge ${name(w.opponent)}`, `Du forderst ${name(w.opponent)} heraus`) : tr(`${name(w.opponent)} declined`, `${name(w.opponent)} hat abgelehnt`)}
             </span>
+            <span className="muted small">{duelText(w, sym)}</span>
+          </span>
+          <span className="duel-wait muted small">
+            <DuelMark state={w.challenge!.state === 'open' ? 'open' : 'declined'} />
+            {w.challenge!.state === 'open' ? tr(`Waiting for ${name(w.opponent)}`, `Wartet auf ${name(w.opponent)}`) : tr('Declined', 'Abgelehnt')}
           </span>
           <button type="button" className="btn-secondary duel-takeback" disabled={busy === w.id} onClick={() => void act(w.id, () => takeBackDuel(entry.code, w.id))}>
             {w.challenge!.state === 'open' ? tr('Take back', 'Zurückziehen') : tr('Remove', 'Entfernen')}

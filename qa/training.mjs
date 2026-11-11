@@ -276,7 +276,7 @@ await tab('Verlauf');
 await tile('gelöscht').click();
 ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "deleted" shows only the bin');
 await p.locator('.bin-item').first().click();
-await p.getByRole('button', { name: 'Wiederherstellen' }).click();
+await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(200);
 ok((await sessionsBlock().locator('.list-item').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'restored from the bin: the whole page again');
 

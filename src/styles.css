@@ -1520,6 +1520,12 @@ button.tile:disabled { opacity: 1; }
 .paused-row { display: flex; align-items: center; gap: 8px; }
 .paused-row > .list-item { flex: 1; min-width: 0; }
 .paused-delete { flex: none; }
+/* deleted rows: the score as in the list, a round green "restore" at the right end inside the row (11.11.2026) */
+.bin-row { position: relative; }
+.bin-row > .list-item { padding-right: 64px; }
+.bin-row > .bin-restore { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--brand); border-color: var(--brand); color: #fff; }
+.bin-score { text-align: right; flex: none; display: flex; flex-direction: column; }
+.bin-score strong { font: 700 20px var(--display); font-variant-numeric: tabular-nums; }
 
 /* the caddie's facts under his advice (Sascha 18.10.2026): length changes, out of bounds, hazards ahead */
 .caddie-facts { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 13px; }
@@ -1606,8 +1612,11 @@ button.tile:disabled { opacity: 1; }
 .sc-status { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; color: var(--text); font: inherit; cursor: pointer; border: 1px solid var(--line); }
 .sc-status .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .sc-status-icon { width: 40px; height: 40px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--brand-text); flex: none; }
-.sc-status.signed { border: 1px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface)); }
-.sc-status.signed .sc-status-icon { background: var(--brand-soft); }
+/* signed / confirmed set off clearly (Sascha 11.11.2026, design round 2: "Bestätigt wieder grün umranden und optisch
+   hervorheben") – the same for a signed round and a confirmed game */
+.sc-status.signed { border: 1.5px solid var(--brand); background: var(--brand-soft); }
+.sc-status.signed .grow > strong { color: var(--brand-text); }
+.sc-status.signed .sc-status-icon { background: var(--brand); color: #fff; }
 .sc-status.attention { border: 2px solid var(--brand); }
 /* a player in the round setup, one line: name · HCP (typed) · playing handicap (shown) · remove (Sascha 21.10.2026) */
 .player-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px 36px; gap: 6px; align-items: end; padding: 12px; }
@@ -1992,11 +2001,14 @@ button.tile:disabled { opacity: 1; }
 /* 5+5+10 challenges (Sascha 09.11.2026) */
 .duel-challenges { display: flex; flex-direction: column; gap: 14px; }
 .duel-challenges h2 { margin: 0; font-size: 18px; }
-.duel-challenge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.duel-challenge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-2); border-radius: 14px; padding: 12px; }
 .duel-challenge .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .duel-answer { display: flex; gap: 8px; width: 100%; }
 .duel-answer button { flex: 1; }
 .duel-takeback { min-height: 40px; padding: 0 14px; }
+/* one's own challenge: as one to answer – title and line, then "Wartet auf …", then a full button (11.11.2026) */
+.duel-mine .duel-wait { display: flex; align-items: center; gap: 6px; width: 100%; }
+.duel-mine .duel-takeback { width: 100%; min-height: 46px; }
 .pool-invite-state { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .pool-invite-edit { background: none; border: 0; padding: 4px 0; text-align: left; font: inherit; font-size: 14px; color: var(--muted); width: 100%; min-height: 40px; }
 .invite-mark { flex: none; }
