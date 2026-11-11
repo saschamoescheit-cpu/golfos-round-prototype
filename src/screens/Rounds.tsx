@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { DateBlock, monthHeading } from '../components/DateBlock';
+import { FloatActions } from '../components/FloatActions';
 import { deleteRound, loadTrash, purgeRound, restoreRound } from '../lib/storage';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import type { Round } from '../types';
 import { checksShots, playerTotals } from '../lib/scoring';
 import { formatToPar } from '../components/ui';
-import { getLang, tr } from '../lib/i18n';
+import { tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { kindName } from '../lib/roundkind';
 import { isTeamRound } from '../lib/games';
@@ -45,7 +47,6 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
   const [filter, setFilter] = useState<RoundsFilter>(props.filter === 'check' ? 'sign' : props.filter ?? null);
   const pick = (f: RoundsFilter) => setFilter(filter === f ? null : f);
   const shown = filter === 'sign' ? toSign : filter === 'signed' ? signed : finished;
-  const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const holes = finished.reduce((n, r) => n + r.holes.length, 0);
   // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
   const [trash, setTrash] = useState(loadTrash);
@@ -139,10 +140,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
               <li key={r.id}>
                 <SwipeRow className="paused-row" label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" aria-label={tr(`${r.courseName}, paused – continue`, `${r.courseName}, pausiert – fortsetzen`)} onClick={() => props.onContinue(r)}>
-                  <span className="round-date">
-                    <strong>{new Date(r.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                    <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
-                  </span>
+                  <DateBlock iso={r.createdAt} />
                   <span className="grow">
                     <span className="title with-mark">
                       <span className="title-text">{r.courseName}</span>
@@ -181,25 +179,20 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
       {filter === 'paused' || filter === 'bin' ? null : finished.length === 0 ? (
         <div className="empty-action">
           <p className="muted">{tr('Your finished rounds show up here.', 'Hier erscheinen deine beendeten Runden.')}</p>
-          {props.onNew && !props.rounds.length && (
-            <button type="button" className="btn-primary" onClick={props.onNew}>
-              {tr('New round', 'Neue Runde')}
-            </button>
-          )}
         </div>
       ) : (
         <ul className="list">
-          {shown.map((r) => {
+          {shown.map((r, k) => {
             const me = mine(r);
             const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
+            // the month above its first row – the date block says only the day (Sascha 12.11.2026)
+            const month = monthHeading(shown.map((x) => x.createdAt), k);
             return (
               <li key={r.id}>
+                {month && <span className="eyebrow list-month">{month}</span>}
                 <SwipeRow label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" onClick={() => props.onOpen(r)}>
-                  <span className="round-date">
-                    <strong>{new Date(r.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                    <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
-                  </span>
+                  <DateBlock iso={r.createdAt} />
                   <span className="grow">
                     <span className="title with-mark">
                       <span className="title-text">{r.courseName}</span>
@@ -234,7 +227,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           })}
         </ul>
       )}
-
+      {/* a new round: the round "+" bottom right, as on every list (Sascha 12.11.2026) */}
+      <FloatActions plus={props.onNew ? { label: tr('New round', 'Neue Runde'), onClick: props.onNew } : null} />
     </>
   );
 }

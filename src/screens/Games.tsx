@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { SwapGlyph } from '../components/Glyph';
+import { DateBlock, monthHeading } from '../components/DateBlock';
+import { ModulePill } from '../components/ModuleSheet';
+import { FloatActions } from '../components/FloatActions';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course, Round } from '../types';
@@ -566,13 +568,7 @@ function GamesTabs(props: {
       {/* the module header on every tab, the profile too (uniform with Rounds and Training) */}
       {(
         <div className="topbar">
-          <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-            <span className="brand">
-              GOLF<span>OS</span>
-            </span>
-            <span className="module-tag">{props.kind === 'tours' ? 'Tournaments' : 'Games & Bets'}</span>
-            <SwapGlyph />
-          </button>
+          <ModulePill name={props.kind === 'tours' ? 'Tournaments' : 'Games & Bets'} onClick={props.onModules} />
           <TopTools />
         </div>
       )}
@@ -679,7 +675,8 @@ function GamesTabs(props: {
             onRestore={restoreGame}
             onPurge={purgeGame}
           />
-          {/* no "no games yet" (Sascha 03.11.2026) – the tiles say it */}
+          {/* no "no games yet" (Sascha 03.11.2026) – the tiles say it; a new game: the round "+" bottom right (12.11.2026) */}
+          <FloatActions plus={{ label: tr('New game', 'Neues Spiel'), onClick: () => props.onNew() }} />
           {props.games.length > 0 && !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'played' ? g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />}
         </>
       )}
@@ -730,7 +727,6 @@ function GamesTabs(props: {
 }
 
 function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: string }) {
-  const locale = undefined;
   const remove = (g: Game) => {
     deleteGame(g.id);
     window.dispatchEvent(new Event('golfos:games-changed'));
@@ -739,16 +735,16 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
     <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {props.title && <span className="eyebrow">{props.title}</span>}
       <ul className="list">
-        {props.games.map((g) => {
+        {props.games.map((g, k) => {
           const f = formDef(g.form);
+          // the month above its first row – the date block says only the day (Sascha 12.11.2026)
+          const month = monthHeading(props.games.map((x) => x.createdAt), k);
+          const head = month && <span className="eyebrow list-month">{month}</span>;
           const st = standingOf(g);
           const winner = g.finishedAt ? winnerOf(st.rows) : null;
           const row = (
             <button type="button" className="list-item" aria-label={g.finishedAt ? undefined : tr(`${f.name()} at ${g.courseName}, paused – continue`, `${f.name()} ${g.courseName}, pausiert – fortsetzen`)} onClick={() => props.onOpen(g)}>
-              <span className="round-date">
-                <strong>{new Date(g.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                <span className="muted small">{new Date(g.createdAt).getFullYear()}</span>
-              </span>
+              <DateBlock iso={g.createdAt} />
               <span className="grow">
                 <span className="title with-mark">
                   <span className="title-text">{f.name()}</span>
@@ -794,6 +790,7 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
           // swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back
           return g.finishedAt ? (
             <li key={g.id}>
+              {head}
               <SwipeRow label={`${f.name()} ${g.courseName}`} onDelete={() => remove(g)}>
                 {row}
               </SwipeRow>
@@ -801,6 +798,7 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
           ) : (
             // carry on (tap the row) or delete – into the bin, "Undo" brings it back – as a paused round
             <li key={g.id}>
+              {head}
               <SwipeRow className="paused-row" label={`${f.name()} ${g.courseName}`} onDelete={() => remove(g)}>
               {row}
               <button

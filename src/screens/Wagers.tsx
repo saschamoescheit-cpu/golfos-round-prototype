@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import { goTour } from '../lib/nav';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
@@ -255,15 +256,9 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
               </li>
             ))}
           </ul>
-        ) : (
-          <>
-            {props.onNew && (
-              <button type="button" className="btn-secondary" onClick={props.onNew}>
-                {tr('New bet', 'Neue Wette')}
-              </button>
-            )}
-          </>
-        ))}
+        ) : null)}
+      {/* a new bet: the round "+" bottom right, as on every list (Sascha 12.11.2026) */}
+      <FloatActions plus={props.onNew ? { label: tr('New bet', 'Neue Wette'), onClick: props.onNew } : null} />
     </>
   );
 }
@@ -898,17 +893,15 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         title={pool.name}
         onBack={props.onBack}
         backLabel={props.backLabel ?? tr('Bets', 'Wetten')}
-        right={
-          host ? (
-            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16z" />
-                <path d="M13.5 6.5l4 4" />
-              </svg>
-            </button>
-          ) : undefined
-        }
       />
+      {/* the pencil and a new bet bottom right, floating (Sascha 12.11.2026: "the pencil bottom right too – the same in the
+          whole app"; "+" in the pool: a new bet) – the host's */}
+      {host && !sheet && (
+        <FloatActions
+          pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }}
+          plus={!pool.finishedAt ? { label: tr('New bet', 'Neue Wette'), onClick: () => setSheet({ library: entry.me }) } : null}
+        />
+      )}
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
@@ -1162,10 +1155,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               const restaked = restake(wagers, isMoney(prizeOf(p)), isMoney(x.prize));
               return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, ...(x.skip.length ? { skip: x.skip } : { skip: undefined }), counted: x.counted, oneScorer: x.oneScorer, settle: x.settle, players };
             });
-            if (ok) {
-              setSheet(null);
-              void reportWagers(); // other days: other rounds count
-            }
+            // saved by itself (Sascha 12.11.2026): the sheet stays open – the cross or a tap beside it closes it
+            if (ok) void reportWagers(); // other days: other rounds count
+            return !!ok;
           }}
           onDelete={async () => {
             // only marked deleted – the bin of the menu "Bets" brings it back on every phone
@@ -2554,7 +2546,10 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
 /** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
  *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
 
-function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; skip: PoolSkip[]; counted: boolean; oneScorer: boolean; settle: 'net' | 'single' }) => void; onDelete: () => void; onClose: () => void }) {
+type PoolPatch = { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; skip: PoolSkip[]; counted: boolean; oneScorer: boolean; settle: 'net' | 'single' };
+/** The pool's pencil: every change saved by itself (Sascha 12.11.2026: "changes saved automatically instead of having
+ *  to press Speichern") – a moment after the last change, and when the sheet closes; nothing while a field is invalid. */
+function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: PoolPatch) => Promise<boolean> | void; onDelete: () => void; onClose: () => void }) {
   const { pool } = props;
   const [name, setName] = useState(pool.name);
   const [from, setFrom] = useState(pool.from);
@@ -2577,12 +2572,32 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
     setAsking(null);
   };
   const ok = !!name.trim() && from <= to && players.length > 0 && players.every((p) => p.name.trim());
+  const patch: PoolPatch = { name: name.trim(), from, to, prize, rounds, skip, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) };
+  const key = JSON.stringify(patch);
+  const saved = useRef(key); // as it opened: nothing to save
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const flush = async () => {
+    if (!ok || saved.current === key) return;
+    saved.current = key;
+    setSaving('busy');
+    await props.onSave(patch);
+    setSaving('done');
+  };
+  useEffect(() => {
+    if (!ok || saved.current === key) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [key, ok]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    void flush();
+    props.onClose();
+  };
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet wager-sheet" role="dialog" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr('Change the pool', 'Pool bearbeiten')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>
@@ -2651,9 +2666,9 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
               {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
             </SettingsList>
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, skip, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
-              {tr('Save', 'Speichern')}
-            </button>
+            <span className="muted small autosave-note" role="status">
+              {!ok ? tr('Name and every player need a name – then it is saved.', 'Name und jeder Spieler brauchen einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+            </span>
           </>
         ) : (
           <>

@@ -48,3 +48,22 @@ export function ModuleSheetHost() {
     document.body,
   );
 }
+
+/** The module pill top left in every module (Sascha 12.11.2026: "Modul-Pille oben links"): the module's name between the
+ *  grid and a chevron – a tap opens the module sheet. The name keeps the class "module-tag". */
+export function ModulePill(props: { name: string; onClick: () => void }) {
+  return (
+    <button type="button" className="module-switch module-pill" onClick={props.onClick} aria-label={tr(`Switch module – now ${props.name}`, `Modul wechseln – jetzt ${props.name}`)}>
+      <svg className="module-pill-grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden="true">
+        <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" />
+        <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" />
+        <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" />
+        <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" />
+      </svg>
+      <span className="module-tag">{props.name}</span>
+      <svg className="module-pill-down" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </button>
+  );
+}

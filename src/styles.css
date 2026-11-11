@@ -2427,3 +2427,40 @@ button.balance-item-row { cursor: pointer; }
 .skip-ask { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .skip-ask-btns { display: flex; gap: 8px; justify-content: flex-end; }
 .skip-list .list-item { display: flex; align-items: center; gap: 10px; }
+/* the floating actions bottom right (Sascha 12.11.2026): "+" for something new, the page's pencil – above the menu bar */
+.fab-stack {
+  position: fixed; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  right: max(16px, calc((100vw - 536px) / 2 + 6px)); bottom: calc(env(safe-area-inset-bottom) + 20px);
+}
+body:has(.tabbar) .fab-stack { bottom: calc(env(safe-area-inset-bottom) + 92px); }
+.fab {
+  width: 58px; height: 58px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer;
+  background: var(--brand); color: #fff; box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.55);
+}
+.fab.small { width: 46px; height: 46px; }
+.fab:active { transform: scale(0.96); }
+/* the last row of a list stays above the buttons */
+body:has(.fab-stack) .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 170px); }
+
+/* the module pill top left (Sascha 12.11.2026) – "▦ Rounds ▾" */
+.module-pill { gap: 7px; min-height: 44px; padding: 0 12px 0 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.module-pill .module-pill-grid { color: var(--brand-text); flex: none; }
+.module-pill .module-pill-down { color: var(--muted); flex: none; }
+.module-pill .module-tag { border: 0; padding: 0; border-radius: 0; text-transform: none; letter-spacing: 0; color: var(--text); font: 600 15px var(--body); white-space: nowrap; }
+@media (max-width: 380px) { .module-pill .module-tag { font-size: 14px; } }
+
+/* the date block of a list row (Sascha 12.11.2026): the day big, the weekday small below; the month as a heading */
+.date-block { min-width: 40px; line-height: 1.05; }
+.date-block strong { font: 700 21px var(--display); font-variant-numeric: tabular-nums; }
+.date-block .small { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; }
+.list-month { display: block; margin: 10px 2px 6px; }
+.list > li:first-child > .list-month { margin-top: 0; }
+
+/* "Läuft gerade" on the start page (Sascha 12.11.2026) */
+.running-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; }
+.running-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 0; background: none; border: 0; color: var(--text); font: inherit; text-align: left; }
+.running-row + .running-row { border-top: 1px solid var(--line); }
+.running-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.running-row .grow strong { font: 600 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.running-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); display: grid; place-items: center; flex: none; }
+.running-value { font: 700 18px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }

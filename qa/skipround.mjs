@@ -1,7 +1,7 @@
 // QA (Sascha 12.11.2026: "remove these two rounds at last" – Celebration and Reunion on the 08.11. in the pool's
 // standing): the host picks a round in the standing, "Runde nicht werten", confirms – the round is gone from the switch
 // on his phone and on the server (pool.skip), no bet counts it (inPool); the pool's pencil lists it under "Nicht
-// gewertete Runden", "Wieder werten" + "Speichern" brings it back. A player who is not the host has no such button.
+// gewertete Runden", "Wieder werten" brings it back. A player who is not the host has no such button.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/skipround.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer } from './sharesim.mjs';
@@ -91,14 +91,14 @@ await H.keyboard.press('Escape');
 await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
 await H.waitForTimeout(300);
 
-// the pencil: "Nicht gewertete Runden" – "Wieder werten" + "Speichern" brings Celebration back
+// the pencil: "Nicht gewertete Runden" – "Wieder werten" (saved by itself) brings Celebration back
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.waitFor();
 const skippedRows = edit.locator('.skip-list .list-item');
 ok((await skippedRows.count()) === 2, `the pencil lists ${await skippedRows.count()} rounds not counted`);
 await skippedRows.filter({ hasText: 'Celebration' }).getByRole('button', { name: 'Wieder werten' }).click();
-await edit.getByRole('button', { name: 'Speichern' }).click();
+await edit.getByRole('button', { name: 'Schließen' }).click();
 await H.waitForTimeout(800);
 ({ dlg, names } = await listRounds());
 ok(names.length === 3 && names.some((n) => n.includes('Celebration')) && !names.some((n) => n.includes('Reunion')), `Celebration counted again, Reunion still out (${names.join(' | ')})`);

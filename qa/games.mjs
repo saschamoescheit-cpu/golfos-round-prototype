@@ -39,7 +39,7 @@ ok((await p.locator('.module-card').count()) === 5, 'app opens on the module cho
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.join('|') === 'Start|Freunde|Profil', `start page menu: ${tabs.join(' · ')}`);
 await p.locator('.tabbar button').filter({ hasText: 'Freunde' }).click();
-await p.getByRole('button', { name: '+ Freund hinzufügen' }).click();
+await p.getByRole('button', { name: 'Freund hinzufügen' }).click();
 await p.locator('.game-player-row input').first().fill('Ben');
 await p.locator('.game-player-row input').nth(1).fill('12,4');
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
@@ -210,6 +210,12 @@ await p.waitForTimeout(400);
 ok((await p.locator('ul.list .list-item').count()) === nConfirm && (await p.locator('button.tile').filter({ hasText: 'zu bestätigen' }).getAttribute('aria-pressed')) === 'true', 'it opens the games list filtered to the ones to confirm');
 ok((await p.locator('ul.list .signed-mark[aria-label="zu bestätigen"]').count()) === nConfirm && (await p.locator('.tile .tile-mark svg').count()) >= 2, 'the same marks as in the rounds list, on the tiles too');
 ok((await p.locator('ul.list .round-date').count()) === nConfirm, 'rows with the date block as in the rounds list');
+// the date block (Sascha 12.11.2026): the day big, the weekday below – the month as a heading above the rows
+{
+  const blk = (await p.locator('ul.list .date-block').first().innerText()).replace(/\s+/g, ' ').trim();
+  const head = (await p.locator('ul.list .list-month').first().innerText().catch(() => '')).trim();
+  ok(/^\d{1,2} [A-ZÄÖÜ]{2,3}$/.test(blk) && /^[A-Za-zäöü]+ \d{4}$/.test(head), `the date block "${blk}" under the month "${head}"`);
+}
 await p.locator('.list-item').first().click();
 await p.waitForTimeout(500);
 // as on a round's scorecard: to confirm it follows the result and the scores, confirmed it stands on top

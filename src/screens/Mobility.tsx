@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import { SwapGlyph } from '../components/Glyph';
+import { ModulePill } from '../components/ModuleSheet';
 import { tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -243,13 +243,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
     return (
       <main className="screen with-tabs training mobility">
         <div className="topbar">
-          <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-            <span className="brand">
-              GOLF<span>OS</span>
-            </span>
-            <span className="module-tag">Agility</span>
-            <SwapGlyph />
-          </button>
+          <ModulePill name={'Agility'} onClick={props.onModules} />
           <TopTools />
         </div>
         {view.tab !== 'profile' && <h1 className="tab-title">{TAB_TITLES[view.tab]()}</h1>}

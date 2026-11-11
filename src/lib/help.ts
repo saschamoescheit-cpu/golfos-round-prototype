@@ -86,6 +86,16 @@ export const FAQ: FaqTopic[] = [
         video: 'start',
       },
       {
+        // Sascha 12.11.2026: "+" and the pencil floating bottom right, the same in the whole app; edits save by themselves
+        q: () => tr('Where do I start something new – and where do I change it?', 'Wo starte ich etwas Neues – und wo ändere ich es?'),
+        a: () =>
+          tr(
+            'Bottom right, above the menu: the round green "+" starts something new on every list – a round, a game, a bet, a tournament, a payment, a friend. On a page that can be changed (a pool, a tournament, your bag) the pencil sits there too. Changes are saved by themselves – close the sheet when you are done.',
+            'Unten rechts über dem Menü: Das runde grüne „+“ startet auf jeder Liste etwas Neues – eine Runde, ein Spiel, eine Wette, ein Turnier, eine Zahlung, einen Freund. Auf Seiten, die sich ändern lassen (Pool, Turnier, Mein Bag), sitzt dort auch der Stift. Änderungen werden von selbst gespeichert – das Blatt einfach schließen, wenn du fertig bist.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('How do I start a round?', 'Wie starte ich eine Runde?'),
         a: () =>
           tr(

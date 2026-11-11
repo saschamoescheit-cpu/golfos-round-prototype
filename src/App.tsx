@@ -4,7 +4,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NAV_EVENT, type NavTarget } from './lib/nav';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
-import { commitParAt, finishRound } from './lib/scoring';
+import { commitParAt, finishRound, playerTotals } from './lib/scoring';
 import { endWatchIfIdle, endWatchRound, endWatchRoundIfGone } from './lib/watch';
 import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
@@ -25,7 +25,7 @@ import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
 import { CourseStats } from './screens/CourseStats';
 import { GamesApp, type GamesTab } from './screens/Games';
-import { Home, type HomeTab, type ModuleCardInfo, type ModulePick } from './screens/Home';
+import { Home, type HomeTab, type ModuleCardInfo, type ModulePick, type RunningItem } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 import { roundsInPlay } from './lib/poolround';
 import type { TrainingTab } from './screens/Training';
@@ -33,8 +33,9 @@ import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
-import { reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
-import { startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
+import { loadPools, myPoolBalances, reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
+import { dayOf } from './lib/wagers';
+import { loadTours, startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
 
 /** A practice session of the Training module is paused (read without loading the module). */
@@ -485,6 +486,40 @@ export function App() {
     mobilityOpen: mobilityPaused(),
     mobilityToday: mobilityToday(),
   });
+  // "Läuft gerade" on the start page (Sascha 12.11.2026): a paused round, today's tournament, a pool on its days
+  const running = (): RunningItem[] => {
+    const today = dayOf(new Date());
+    const out: RunningItem[] = [];
+    for (const r of rounds.filter((x) => !x.finishedAt && !x.preview)) {
+      const me = r.players.find((p) => p.isMe) ?? r.players[0];
+      const played = me ? playerTotals(r.holes, r.entries[me.id], me.playingHandicap).holesPlayed : 0;
+      out.push({ key: `round:${r.id}`, kind: 'round', title: r.courseName, line: tr(`Paused · hole ${Math.min(played + 1, r.holes.length)} of ${r.holes.length}`, `Pausiert · Loch ${Math.min(played + 1, r.holes.length)} von ${r.holes.length}`) });
+    }
+    for (const code of toursTodayCodes()) {
+      const t = loadTours().find((e) => e.code === code);
+      if (t) out.push({ key: `tour:${code}`, kind: 'tour', title: t.ev.name, line: tr('Tournament today', 'Turnier heute') });
+    }
+    for (const p of myPoolBalances(today).filter((x) => x.running)) {
+      const e = loadPools().find((x) => x.code === p.code);
+      const from = e?.pool.from ?? today;
+      const to = e?.pool.to ?? today;
+      const days = Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1;
+      const day = Math.round((Date.parse(today) - Date.parse(from)) / 864e5) + 1;
+      const value = p.amount ? `${p.amount > 0 ? '+' : '−'}${Math.abs(p.amount)} ${p.sym}` : undefined;
+      out.push({ key: `pool:${p.code}`, kind: 'pool', title: p.name, line: day >= 1 && day <= days ? tr(`Day ${day} of ${days}`, `Tag ${day} von ${days}`) : tr('Bets running', 'Wetten laufen'), value, good: p.amount > 0 });
+    }
+    return out;
+  };
+  const openRunning = (r: RunningItem) => {
+    const [kind, id] = [r.kind, r.key.slice(r.key.indexOf(':') + 1)];
+    if (kind === 'pool') return openPool(id);
+    if (kind === 'tour') return openTour(id);
+    const round = rounds.find((x) => x.id === id);
+    if (round) {
+      setModule('rounds');
+      setScreen({ name: 'hole', round });
+    }
+  };
   const pickModule = (m: ModulePick) => {
     // the card's line says what is to do – a tap goes there (night 10./11.11.2026: "click paths"): the rounds to
     // sign (a round open is paused here – it waits on Spielen), today's one tournament
@@ -511,6 +546,8 @@ export function App() {
         tab={homeTab}
         onTab={setHomeTab}
         {...cardInfo()}
+        running={running()}
+        onRunning={openRunning}
         profileDot={profileDot}
         onPick={pickModule}
         profile={profile}

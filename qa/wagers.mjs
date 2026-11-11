@@ -446,7 +446,7 @@ await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 // "Einer für alle" (Sascha 04.11.2026): kept with the pool, it counts as "Mit Zähler"
 await ed.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
-await ed.getByRole('button', { name: 'Speichern' }).click();
+await ed.getByRole('button', { name: 'Schließen' }).click(); // saved by itself (12.11.2026) – closing saves at once
 await H.waitForTimeout(1200);
 const after = shared.get(code).game;
 ok(after.oneScorer === true && after.counted === true, `edit: "Einer für alle" kept – counted as with a marker (${after.oneScorer}, ${after.counted})`);
@@ -459,7 +459,7 @@ ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',
   await ed2.getByRole('button', { name: 'Erik entfernen' }).click();
   const ask = ed2.getByRole('alertdialog', { name: 'Erik entfernen?' });
   if (await ask.count()) await ask.getByRole('button', { name: 'Entfernen' }).click();
-  await ed2.getByRole('button', { name: 'Speichern' }).click();
+  await ed2.getByRole('button', { name: 'Schließen' }).click();
   await H.waitForTimeout(1200);
   const g = shared.get(code).game;
   ok(!g.players.some((p) => p.name === 'Erik') && g.wagers.length === 7 - erikBets && Object.keys(g.progress).every((id) => g.wagers.some((w) => w.id === id)), `edit: Erik removed – with his ${erikBets} bets, the others kept (${g.players.map((p) => p.name).join(', ')}; ${g.wagers.length} bets)`);

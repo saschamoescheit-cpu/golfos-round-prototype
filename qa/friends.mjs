@@ -31,7 +31,7 @@ const typedMark = '[aria-label="Von Hand angelegt"]';
 const sascha = await phone('Sascha');
 const S = sascha.p;
 await friendsTab(S);
-await S.getByRole('button', { name: '+ Freund hinzufügen' }).click();
+await S.getByRole('button', { name: 'Freund hinzufügen' }).click();
 await S.locator('input[id^="fname-"]').last().fill('Chris');
 await S.locator('input[id^="fhcp-"]').last().fill('20');
 await S.locator('.friend-code-text').waitFor({ timeout: 10000 });

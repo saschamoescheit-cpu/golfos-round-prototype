@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckGlyph, CrossGlyph, PenGlyph, StarGlyph, SwapGlyph } from '../components/Glyph';
+import { ModulePill } from '../components/ModuleSheet';
+import { FloatActions } from '../components/FloatActions';
+import { CheckGlyph, CrossGlyph, PenGlyph, StarGlyph } from '../components/Glyph';
 import type { Round } from '../types';
 import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile, fullName } from '../lib/profile';
@@ -192,17 +194,6 @@ const ACT_ICONS = {
   ),
 };
 
-/** the green pen of the TopBar – the one tool on its right, to edit (as a pool or a tournament) */
-function EditPen(props: { label: string; onClick: () => void }) {
-  return (
-    <button type="button" className="icon-btn edit-btn" aria-label={props.label} onClick={props.onClick}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M4 20h4L19 9l-4-4L4 16z" />
-        <path d="M13.5 6.5l4 4" />
-      </svg>
-    </button>
-  );
-}
 
 /** Plan items with existing drills only. */
 const planItems = (p: { items: { drill: string; minutes: number }[] }) => p.items.filter((i) => drillById(i.drill));
@@ -388,13 +379,7 @@ function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: Rea
     <main className="screen with-tabs training">
       {/* the module header on every tab, the profile too (like Rounds and Games since 16.10.2026) */}
       <div className="topbar">
-        <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-          <span className="brand">
-            GOLF<span>OS</span>
-          </span>
-          <span className="module-tag">Training</span>
-          <SwapGlyph />
-        </button>
+        <ModulePill name={'Training'} onClick={props.onModules} />
         <TopTools />
       </div>
       {props.tab === 'learn' && <LearnTab nav={props.nav} rounds={props.rounds} />}
@@ -1921,7 +1906,9 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
   const items = planItems(p);
   return (
     <main className="screen training">
-      <TopBar title={name} onBack={props.nav.back} right={isOwn ? <EditPen label={tr('Edit plan', 'Plan bearbeiten')} onClick={() => props.nav.push({ name: 'builder', plan: p as OwnPlan })} /> : undefined} />
+      <TopBar title={name} onBack={props.nav.back} />
+      {/* the pencil bottom right, floating (Sascha 12.11.2026: "the same in the whole app") */}
+      {isOwn && <FloatActions pen={{ label: tr('Edit plan', 'Plan bearbeiten'), onClick: () => props.nav.push({ name: 'builder', plan: p as OwnPlan }) }} />}
       {'about' in p && <p className="muted">{t(p.about)}</p>}
       {week ? (
         week.map((day, k) => (

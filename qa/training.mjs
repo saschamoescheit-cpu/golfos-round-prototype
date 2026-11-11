@@ -303,7 +303,7 @@ await p.waitForTimeout(200);
 ok((await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').count()) === 1, 'own plan saved');
 await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').first().click();
 await p.waitForTimeout(200);
-{ const pens = await p.locator('.topbar:visible .edit-btn').count(); const del = await p.locator('.sc-actions:visible .sc-action.danger').allTextContents(); del.forEach((x, k) => (del[k] = x.trim())); ok(pens === 1 && del.join() === 'Löschen', `own plan: the green pen to edit, Löschen in the bar (${pens} · ${del})`); }
+{ const pens = await p.locator('.topbar:visible .edit-btn, .fab-pen').count(); const del = await p.locator('.sc-actions:visible .sc-action.danger').allTextContents(); del.forEach((x, k) => (del[k] = x.trim())); ok(pens === 1 && del.join() === 'Löschen', `own plan: the green pen to edit, Löschen in the bar (${pens} · ${del})`); }
 await back();
 
 // shop
