@@ -9,7 +9,8 @@ import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
-const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+// no service worker: the simulated rates must reach the page (in the built app the worker would fetch past the route)
+const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'block' });
 await mockNet(ctx);
 const asked = [];
 await ctx.route(/api\.frankfurter\.app/, (route) => {
