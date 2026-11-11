@@ -2547,3 +2547,38 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* "Tee" a row of the golf list like the others (Sascha 11.11.2026, design round 3) */
 .settings-list > .std-tee { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .settings-list > .std-tee .std-tee-name { justify-self: end; }
+
+/* Facelift 11.11.2026 – play */
+/* the hole bar ‹ hole › of the score page (r2, as on the map) and of the round check (r8) */
+.hole-header.hole-nav, .hole-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
+.hole-nav-mid { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.hole-nav-mid .hole-meta { justify-content: center; }
+.hole-nav .hole-step { color: var(--brand-text); }
+.hole-nav .hole-step:disabled { color: var(--muted); opacity: 0.6; }
+/* the putts as tiles like the clubs: five columns, big numbers (putts) */
+.club-grid.putt-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.club-grid.putt-tiles button { min-height: 56px; font: 700 22px var(--display); }
+.badge.gir-badge { gap: 3px; vertical-align: middle; }
+.hint-tick { display: inline-flex; align-items: center; gap: 6px; }
+.hint-tick svg { color: var(--brand-text); flex: none; }
+/* the plan of a hole: a row per shot, the bar below a little lower on the map (r3) */
+.plan-list .settings-row.plan-shot { min-height: 46px; padding-block: 6px; font-size: 14px; }
+.plan-list .plan-own { color: var(--brand-text); font-weight: 700; }
+.plan-panel .sc-action { min-height: 56px; padding: 6px 4px; gap: 3px; }
+.sc-action:has(.note-dot) { position: relative; }
+.sc-action .note-dot { top: 8px; right: calc(50% - 20px); border-color: var(--surface); }
+/* the caddie's lie as a row (r4) */
+.caddie-lie-row .settings-row { min-height: 46px; padding-block: 6px; }
+/* the set-up of a hole: the card above the floating tick (r6) */
+.setup-card .sc-actions { margin-top: 4px; }
+.setup-card .sc-action { min-height: 60px; }
+.setup-card.with-fab { margin-bottom: 76px; }
+/* the caddie talking: stop and mute as round icon buttons (r7) */
+.speech-bar .speech-icon { width: 36px; min-width: 36px; height: 36px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+/* the round check: the tick of a checked hole beside the count (r8) */
+.review-progress-text { display: inline-flex; align-items: center; gap: 4px; }
+.review-tick { display: inline-flex; }
+/* the An/Aus rows inside the score card: flush with its other lines, no box of their own (r1) */
+.score-card > .settings-list { background: transparent; border-radius: 0; }
+.score-card > .settings-list > .settings-row { padding-inline: 0; background: transparent; }
+.caddie-lie-row { flex: none; } /* the caddie card scrolls – the row keeps its height */

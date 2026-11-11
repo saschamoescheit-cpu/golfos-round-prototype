@@ -164,8 +164,8 @@ ok((await shotsNow()) === n0 + 1, `a tap on the map adds the shot (${n0} → ${a
 ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
 {
   // the lies: semi rough next to rough (Sascha 18.10.2026), all on the screen
-  const lies = await p.locator('.sheet .segmented').first().locator('button').allInnerTexts();
-  const fits = await p.locator('.sheet .segmented').first().evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
+  const lies = await p.locator('.sheet .chips-field').first().locator('button').allInnerTexts();
+  const fits = await p.locator('.sheet .chips-field').first().evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
   ok(lies.includes('Semi Rough') && lies.indexOf('Semi Rough') === lies.indexOf('Fairway') + 1 && lies.includes('Vorgrün') && lies.includes('Grün') && fits, `lie: "Semi Rough" after fairway, "Vorgrün" too, nothing cut off (${lies.join(' · ')})`);
   ok((await p.locator('.sheet .club-grid').getByRole('button', { name: /Texas Wedge/ }).count()) === 1, 'club: the putter from off the green (Texas wedge) to choose');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/shot-sheet.png' });

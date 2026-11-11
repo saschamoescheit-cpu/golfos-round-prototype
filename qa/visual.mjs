@@ -80,7 +80,7 @@ for (const theme of ['sun', 'dark']) {
   await p.locator('.review-list .shot-row').first().click();
   await p.waitForTimeout(400);
   await shot('shot-sheet');
-  ok(await p.locator('.sheet .segmented').first().evaluate((e) => [...e.querySelectorAll('button')].every((x) => x.scrollWidth <= x.clientWidth + 1)), `${theme} · the lies read in full on 375 px`);
+  ok(await p.locator('.sheet .chips-field').first().evaluate((e) => [...e.querySelectorAll('button')].every((x) => x.scrollWidth <= x.clientWidth + 1)), `${theme} · the lies read in full on 375 px`);
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
   await p.getByRole('button', { name: 'Fertig' }).first().click().catch(() => {});
   await p.waitForTimeout(600);

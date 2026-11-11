@@ -3,7 +3,7 @@ import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, STRIKES, toggleStance } from '../lib/shotfacts';
 import { isLeftHanded } from '../lib/profile';
-import { Chips, Segmented } from './ui';
+import { Chips } from './ui';
 import { clubCode, tr } from '../lib/i18n';
 import { FloatActions } from './FloatActions';
 
@@ -118,11 +118,12 @@ export function ShotSheet(props: {
         )}
         <div className="field">
           <label>{tr('Lie', 'Lage')}</label>
-          <Segmented<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES.map((o) => (o.value === 'tee' ? { ...o, label: 'Tee' } : o))} /* "Abschlag" is cut off on small phones */ />
+          {/* the app's green chips, wrapping – as Strafschlag, Treffer and Absicht in this sheet (Facelift 11.11.2026) */}
+          <Chips<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES.map((o) => (o.value === 'tee' ? { ...o, label: 'Tee' } : o))} /* "Abschlag" is cut off on small phones */ />
         </div>
         <div className="field">
           <label>{tr('Shot', 'Schlag')}</label>
-          <Segmented<ShotKind> label={tr('Shot type', 'Schlagart')} value={shownKind} onChange={(v) => v && setKind(v)} options={KINDS} />
+          <Chips<ShotKind> label={tr('Shot type', 'Schlagart')} value={shownKind} onChange={(v) => v && setKind(v)} options={KINDS} />
         </div>
         <div className="field">
           <label>{tr('Club', 'Schläger')} {props.editing ? '' : tr('– tap to save', '– antippen zum Speichern')}</label>
@@ -171,7 +172,7 @@ export function ShotSheet(props: {
         {(pk === 'ob' || pk === 'lost') && (
           <div className="field">
             <label>{tr('Then – stroke and distance', 'Danach – Schlag und Distanz')}</label>
-            <Segmented<'again' | 'provisional'>
+            <Chips<'again' | 'provisional'>
               label={tr('Then', 'Danach')}
               value={provisional ? 'provisional' : 'again'}
               onChange={(v) => v && setProvisional(v === 'provisional')}
@@ -185,7 +186,7 @@ export function ShotSheet(props: {
         {(pk === 'water' || pk === 'unplayable') && (
           <div className="field">
             <label>{tr('Then', 'Danach')}</label>
-            <Segmented<'drop' | 'replay'>
+            <Chips<'drop' | 'replay'>
               label={tr('Then', 'Danach')}
               value={replay ? 'replay' : 'drop'}
               onChange={(v) => v && setReplay(v === 'replay')}
