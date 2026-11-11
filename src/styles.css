@@ -932,6 +932,10 @@ button.tile:disabled { opacity: 1; }
 .putt-editor { gap: 10px; }
 .putt-green { width: 100%; aspect-ratio: 1; max-height: 52vh; border-radius: 16px; background: #2f5d23; touch-action: none; user-select: none; }
 .putt-green-shape { fill: #5aa63a; stroke: #c9f1a3; }
+/* on the aerial photo (11.11.2026): the green only outlined, the photo shows through – bunkers, water, paths */
+.putt-green-shape.on-photo { fill: #5aa63a; fill-opacity: 0.18; } /* ci-allow: green turf */
+.putt-photo { pointer-events: none; }
+.putt-bunker.on-photo { fill-opacity: 0.35; } /* the mapped bunkers over the photo, the photo shows through */
 .putt-zoom { display: flex; flex-wrap: wrap; gap: 8px; }
 .putt-wrap { position: relative; }
 /* the dragged putt's length, large and above the finger (Sascha 16.10.2026) */

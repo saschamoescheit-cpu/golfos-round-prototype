@@ -1427,6 +1427,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           green={data.green}
           greenCenter={data.greenCenter}
           bunkers={data.bunkers}
+          imagery={imagery}
           from={approachFrom(data)}
           pin={pin ?? data.greenCenter}
           putts={e.putts ?? 2}

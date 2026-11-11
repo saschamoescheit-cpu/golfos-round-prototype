@@ -4,6 +4,25 @@ import { bearingDeg, distanceM, keepOnGreen } from '../lib/geo';
 import { move } from '../lib/aimpoint';
 import { dec, tr } from '../lib/i18n';
 import { SaveButton } from './ui';
+import type { ImagerySource } from '../lib/imagery';
+
+/** The aerial photo's tiles around the green (Sascha 11.11.2026: "in the USA the putt editor lacks bunkers and so on" –
+ *  the maps there know tees and greens only): the same source as the hole's map, each tile placed into the editor's
+ *  turned metres by its corners. Mercator is straight enough over one tile. */
+const lon2x = (lon: number, z: number) => ((lon + 180) / 360) * 2 ** z;
+const lat2y = (lat: number, z: number) => ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 2 ** z;
+const x2lon = (x: number, z: number) => (x / 2 ** z) * 360 - 180;
+const y2lat = (y: number, z: number) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI;
+function tileUrl(src: ImagerySource, z: number, x: number, y: number): string {
+  if (src.tiles.includes('{bbox-epsg-3857}')) {
+    const R = 6378137;
+    const m = (v: number) => (v / 2 ** z) * 2 * Math.PI * R - Math.PI * R;
+    const bbox = [m(x), -m(y + 1), m(x + 1), -m(y)].map((v) => v.toFixed(2)).join(',');
+    return src.tiles.replace('{bbox-epsg-3857}', bbox);
+  }
+  const yy = src.scheme === 'tms' ? 2 ** z - 1 - y : y;
+  return src.tiles.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(yy));
+}
 
 // Putts on the green right after the hole (Sascha 14.10.2026, as in BeBrassie): drag the flag to where the hole was
 // and one ball per putt to where it lay – e.g. first putt from 5 m, second from 10 cm. The round check then has the
@@ -33,6 +52,8 @@ export function PuttEditor(props: {
   countable?: boolean;
   onSave: (v: { pin: LngLat; balls: LngLat[]; putts: number }) => void;
   onCancel: () => void;
+  /** the hole's aerial photo under the green – bunkers, water, paths where the map has none (Sascha 11.11.2026) */
+  imagery?: ImagerySource | null;
 }) {
   const c = props.greenCenter;
   const up = bearingDeg(props.from, c); // playing direction: up on the screen
@@ -97,6 +118,25 @@ export function PuttEditor(props: {
     const lim = half - h;
     return { zoom: z, cx: Math.min(lim, Math.max(-lim, cx)), cy: Math.min(lim, Math.max(-lim, cy)) };
   };
+  // the photo's tiles covering the green's square (turned: its corners' radius), as fine as the source has them
+  const photo = (() => {
+    const src = props.imagery;
+    if (!src) return [];
+    const rad = half * Math.SQRT2 + 5;
+    const [w, e] = [c[0] - rad / mLon(c[1]), c[0] + rad / mLon(c[1])];
+    const [s, n] = [c[1] - rad / M_LAT, c[1] + rad / M_LAT];
+    let z = Math.min(src.maxzoom, 20);
+    while (z > 15 && (Math.floor(lon2x(e, z)) - Math.floor(lon2x(w, z)) + 1) * (Math.floor(lat2y(s, z)) - Math.floor(lat2y(n, z)) + 1) > 30) z--;
+    const out: { key: string; href: string; m: string }[] = [];
+    for (let x = Math.floor(lon2x(w, z)); x <= Math.floor(lon2x(e, z)); x++)
+      for (let y = Math.floor(lat2y(n, z)); y <= Math.floor(lat2y(s, z)); y++) {
+        const p0 = toXY([x2lon(x, z), y2lat(y, z)]);
+        const p1 = toXY([x2lon(x + 1, z), y2lat(y, z)]);
+        const p2 = toXY([x2lon(x, z), y2lat(y + 1, z)]);
+        out.push({ key: `${z}/${x}/${y}`, href: tileUrl(src, z, x, y), m: `matrix(${p1[0] - p0[0]} ${p1[1] - p0[1]} ${p2[0] - p0[0]} ${p2[1] - p0[1]} ${p0[0]} ${p0[1]})` });
+      }
+    return out;
+  })();
   const vh = half / view.zoom;
   const vb = `${view.cx - vh} ${view.cy - vh} ${vh * 2} ${vh * 2}`;
   const r = vh / 26; // markers keep their size on the screen at every zoom
@@ -303,10 +343,13 @@ export function PuttEditor(props: {
           role="img"
           aria-label={tr('Green with flag and balls', 'Grün mit Fahne und Bällen')}
         >
-          {bunkers.map((b, k) => (
-            <polygon key={k} points={b.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className="putt-bunker" strokeWidth={r * 0.25} />
+          {photo.map((t) => (
+            <image key={t.key} href={t.href} x={0} y={0} width={1} height={1} preserveAspectRatio="none" transform={t.m} className="putt-photo" aria-hidden="true" />
           ))}
-          <polygon points={ring.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className="putt-green-shape" strokeWidth={r * 0.35} />
+          {bunkers.map((b, k) => (
+            <polygon key={k} points={b.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className={`putt-bunker${photo.length ? ' on-photo' : ''}`} strokeWidth={r * 0.25} />
+          ))}
+          <polygon points={ring.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className={`putt-green-shape${photo.length ? ' on-photo' : ''}`} strokeWidth={r * 0.35} />
           {/* where he walked on the green (GPS) and where he stood still */}
           {walk && (
             <g className="putt-walk" aria-hidden="true">

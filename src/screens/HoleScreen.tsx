@@ -2123,6 +2123,7 @@ export function HoleScreen(props: {
             green={mapData.green}
             greenCenter={mapData.greenCenter}
             bunkers={mapData.bunkers}
+            imagery={imagery}
             from={approachFrom(mapData)}
             pin={myEntry.puttsAt?.pin ?? pin}
             putts={myEntry.putts}
