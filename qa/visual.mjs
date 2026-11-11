@@ -55,7 +55,8 @@ for (const theme of ['sun', 'dark']) {
   const marks = await p.locator('ul.list .list-item').evaluateAll((rows) => rows.map((r) => { const m = r.querySelector('.signed-mark, .paused-mark'); if (!m) return 'none'; const a = m.getBoundingClientRect(); const t = r.querySelector('.title').getBoundingClientRect(); return a.width > 0 && a.right <= t.right + 1 ? 'ok' : 'cut'; }));
   ok(marks.every((m) => m === 'ok'), `${theme} · every round's mark visible next to a cut name (${marks.join(' ')})`);
   // the round with a missing score: the pencil and the action row
-  await p.locator('ul.list button.list-item').filter({ hasText: '17.10.' }).first().click();
+  // the date block shows only the day (12.11.2026) – its full date is in its label
+  await p.locator('ul.list button.list-item').filter({ has: p.locator('.date-block[aria-label*="17. Oktober"], .date-block[aria-label*="October 17"]') }).first().click();
   await p.waitForTimeout(900);
   await shot('scorecard-gap');
   await fits('scorecard');
