@@ -730,12 +730,13 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
         <output className="playing-hcp" aria-labelledby={`pl-${player.id}`} aria-label={tr(`Playing handicap ${shown}`, `Spielvorgabe ${shown}`)}>{shown}</output>
       </div>
       {props.onRemove && (
-        <button type="button" className="sr-only" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={remove}>
+        <button type="button" className="player-remove-a11y" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={remove}>
           {tr('Remove', 'Entfernen')}
         </button>
       )}
       {teeOpen && props.tees && (
-        <div className="sheet-backdrop" onClick={() => setTeeOpen(false)}>
+        // the sheet lies in the swiped row: a finger moving in it does not swipe the row
+        <div className="sheet-backdrop" onClick={() => setTeeOpen(false)} onPointerDown={(e) => e.stopPropagation()}>
           <section className="sheet" role="dialog" aria-label="Tee" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{`Tee – ${player.name || props.nameLabel}`}</strong>

@@ -2552,5 +2552,8 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* r10: a player of a setup removed by swiping left – the card's own corners, no "✕" */
 .swipe:has(> .player-swipe) { border-radius: 14px; flex: none; }
 .swipe:has(> .player-swipe) > .swipe-bin { border-radius: 14px; }
+/* the row's own "<name> entfernen" for VoiceOver and the keyboard: not seen, one pixel in the card's corner */
+.player-row .player-remove-a11y { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; min-height: 0; padding: 0; margin: 0; border: 0; opacity: 0; overflow: hidden; }
+.player-row .player-remove-a11y:focus-visible { opacity: 1; width: auto; height: auto; padding: 4px 8px; background: var(--surface-2); border-radius: 8px; }
 /* r11: the friends in a sheet titled "Freunde" – the page's own title not twice */
 .friends-sheet h1.tab-title { display: none; }
