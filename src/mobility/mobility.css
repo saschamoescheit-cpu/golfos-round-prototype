@@ -3,7 +3,7 @@
 
 .mobility .mob-grade {
   flex: none; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  font: 800 17px var(--display); color: var(--bg); background: var(--surface-2);
+  font: 800 17px var(--display); color: #ffffff; background: var(--surface-2);
 }
 .mob-grade.small { width: 28px; height: 28px; font-size: 14px; }
 .mob-grade.pass { background: var(--brand); }
@@ -123,7 +123,7 @@
 .mob-3d-controls .grow { flex: 1; }
 .mob-3d-controls .chip, .mob-3d-controls .icon-btn { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
 .mob-3d-controls .icon-btn { width: 44px; padding: 0; }
-.mob-3d-controls .chip.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.mob-3d-controls .chip.on { background: var(--brand); border-color: var(--brand); color: #ffffff; }
 .mob-3d-views { display: flex; gap: 6px; }
 .mob-3d-wait { aspect-ratio: 4 / 3; border-radius: 14px; background: #cfe6f5; }
 
@@ -131,7 +131,7 @@
 /* playing with it today: the pro's tips per pattern, green ticks */
 .mob-play-now { margin: 0; padding: 14px 16px 14px 40px; display: flex; flex-direction: column; gap: 8px; list-style: none; }
 .mob-play-now li { position: relative; }
-.mob-play-now li::before { content: '✓'; position: absolute; left: -24px; color: var(--brand); font-weight: 700; }
+.mob-play-now .mob-play-tick { position: absolute; left: -24px; top: 3px; color: var(--brand); }
 
 /* pain: its own result (TPI) – red with "!", a note instead of drills */
 .mob-grade.pain { border-radius: 8px; }
@@ -143,11 +143,11 @@
 .mob-when, .mob-private { margin: 0; text-align: center; }
 
 /* play / pause: a round symbol bottom right in the picture, CI green (as in Training) */
-.mob-3d-play { position: absolute; right: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--brand); color: #0e1418; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
+.mob-3d-play { position: absolute; right: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--brand); color: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
 .mob-3d.compact .mob-3d-stage { border-radius: 12px; }
 /* the voice: a loudspeaker bottom left in the picture, CI green while it is on (Sascha 1.11.2026) */
 .mob-3d-voice { position: absolute; left: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(14, 20, 24, 0.62); color: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
-.mob-3d-voice[aria-pressed="true"] { background: var(--brand); color: #0e1418; }
+.mob-3d-voice[aria-pressed="true"] { background: var(--brand); color: #ffffff; }
 
 /* trainer mode: the 3D golfer over the camera – big while it shows the test, then small top right */
 .mob-stage-wrap { position: relative; }
@@ -189,7 +189,7 @@
 
 .mob-model { margin: 0; text-align: center; color: var(--text-2); }
 .mob-model.ready { color: var(--brand); font-weight: 600; }
-.mob-model.ready::before { content: '✓ '; }
+.mob-model.ready svg { vertical-align: -2px; margin-right: 4px; }
 
 /* the guided drill session (Sascha 18.10.2026: lead through the drills and measure meanwhile) */
 .mob-drill-live .mob-live-value { font-variant-numeric: tabular-nums; }
@@ -295,7 +295,7 @@
 .mob-physio-retest.due { border: 2px solid var(--brand); }
 .mob-light { flex: none; width: 14px; height: 14px; border-radius: 50%; }
 .mob-light.red { background: #e5544b; }
-.mob-light.yellow { background: #e8b931; }
+.mob-light.yellow { background: #8fa3b0; }
 .mob-light.green { background: #7fb236; }
 .mob-physio-tests .list-item, .mob-physio-log .list-item { display: flex; align-items: center; gap: 10px; }
 .mob-physio-fault { display: flex; align-items: center; gap: 10px; }
@@ -303,17 +303,17 @@
 .mob-physio-meter { display: block; height: 8px; border-radius: 4px; background: var(--surface-2, rgba(255, 255, 255, 0.12)); overflow: hidden; }
 .mob-physio-meter i { display: block; height: 100%; border-radius: 4px; }
 .mob-physio-meter.high i { background: #e5544b; }
-.mob-physio-meter.moderate i { background: #e8b931; }
+.mob-physio-meter.moderate i { background: #8fa3b0; }
 .mob-physio-meter.low i { background: var(--brand); }
 .mob-physio-level { flex: none; font: 700 13px var(--display); }
 .mob-physio-level.high { color: #e5544b; }
-.mob-physio-level.moderate { color: #c99a12; }
+.mob-physio-level.moderate { color: var(--text-2); }
 .mob-physio-level.low { color: var(--brand-text); }
 .mob-physio-manage { margin-top: 8px; }
 .mob-physio-save { display: flex; flex-direction: column; gap: 8px; }
 .mob-physio-info { padding: 16px; flex: 1; overflow-y: auto; color: #fff; }
 .mob-physio-phase { font: 700 20px var(--display); color: var(--brand); }
-.mob-physio-phase.rest, .mob-physio-phase.switch { color: #e8b931; }
+.mob-physio-phase.rest, .mob-physio-phase.switch { color: #c3ced5; }
 .mob-physio-clock { font-size: 64px; line-height: 1; }
 .mob-physio-per, .mob-physio-days { flex-wrap: wrap; overflow: visible; }
 .mob-today-alt { align-self: center; min-height: 44px; }
@@ -321,7 +321,7 @@
 /* the results as traffic lights, as the TPI form rates them (Sascha 1.11.2026) */
 .mob-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--line-strong); flex: none; }
 .mob-dot.red { background: #e5544b; }
-.mob-dot.yellow { background: #e8b931; }
+.mob-dot.yellow { background: #8fa3b0; }
 .mob-dot.green { background: #7fb236; }
 .mob-lights { display: inline-flex; gap: 6px; flex: none; min-width: 44px; }
 .mob-light-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
@@ -334,11 +334,11 @@
 .mob-pct { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2, rgba(255, 255, 255, 0.12)); overflow: hidden; }
 .mob-pct i { display: block; height: 100%; border-radius: 4px; }
 .mob-pct.high i { background: #e5544b; }
-.mob-pct.moderate i { background: #e8b931; }
+.mob-pct.moderate i { background: #8fa3b0; }
 .mob-pct.low i { background: var(--brand); }
 .mob-pct-label { flex: none; font: 700 13px var(--display); }
 .mob-pct-label.high { color: #e5544b; }
-.mob-pct-label.moderate { color: #c99a12; }
+.mob-pct-label.moderate { color: var(--text-2); }
 .mob-pct-label.low { color: var(--brand-text); }
 .mob-rating { display: flex; flex-direction: column; gap: 8px; }
 .mob-rating p { margin: 0; }
@@ -355,7 +355,7 @@
 .mob-tpi-opt.on { opacity: 1; color: var(--text); font-weight: 600; background: var(--surface-2, rgba(255, 255, 255, 0.08)); }
 .mob-tpi-opt.on i { border: 0; background: var(--line-strong); }
 .mob-tpi-opt.on.pass i { background: var(--brand); }
-.mob-tpi-opt.on.limited i { background: #e8b931; }
+.mob-tpi-opt.on.limited i { background: #8fa3b0; }
 .mob-tpi-opt.on.fail i { background: #e5544b; }
 /* before – after: the physio's screen against the retest */
 .mob-cmp-sum { display: flex; flex-direction: column; gap: 8px; }
@@ -381,3 +381,17 @@
 .btn-secondary.btn-icon svg { color: var(--brand-text); }
 .sc-action:disabled { opacity: 0.5; }
 .mob-log-share { display: flex; flex-direction: column; gap: 8px; }
+
+/* Facelift 11.11.2026 (a1–a10): white SVG signs on colour, the trend arrows, the one line of a camera setup */
+.mob-grade svg { display: block; }
+.mob-grade.pain { color: #ffffff; }
+.mob-bar .small svg { display: inline-block; color: var(--bad); vertical-align: -2px; }
+.mob-cmp-change { display: inline-flex; align-items: center; gap: 4px; }
+.mob-trend { flex: none; }
+.mob-cmp-arrow { flex: none; color: var(--text-2); }
+.mob-physio-chev { flex: none; color: var(--text-2); }
+.mob-setup-line { margin: 0; text-align: center; }
+.mob-hold-screen > .mob-screening-status strong { display: flex; align-items: center; gap: 6px; }
+.mob-train-open .list-mark { align-self: center; }
+.mob-goal > .eyebrow + .chip-set { margin-top: -2px; }
+.mob-train-acts { margin-top: 4px; }

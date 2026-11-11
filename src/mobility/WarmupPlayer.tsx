@@ -184,13 +184,14 @@ export function RangeWarmup(props: { warmup: Warmup; onClose: () => void }) {
       <TopBar title={tr('Range warm-up', 'Range-Warmup')} onBack={close} backLabel={tr('Back', 'Zurück')} />
       {stage === 'setup' ? (
         <section className="tr-block mob-setup">
-          <h2>{tr(`About ${warmupMinutes(props.warmup)} min ${warmupFor(props.warmup.areas)}`, `Etwa ${warmupMinutes(props.warmup)} Min. ${warmupFor(props.warmup.areas)}`)}</h2>
-          <p className="muted small">
+          {/* one line, the moves, then Start – no intro (Facelift 11.11.2026, a9) */}
+          <p className="muted small mob-setup-line">
             {tr(
-              'Before the first ball: the moves for where your screening showed the biggest gap, then swings from half to full. A club is all you need. The app says every step and goes on by itself – the phone can stay in your hand or on the bag.',
-              'Vor dem ersten Ball: die Übungen für die Bereiche, in denen dein Screening den größten Abstand zeigt, dann Schwünge von halb bis voll. Du brauchst nur einen Schläger. Die App sagt jeden Schritt an und macht von selbst weiter – das Handy kann in der Hand bleiben oder auf dem Bag liegen.',
+              `About ${warmupMinutes(props.warmup)} min ${warmupFor(props.warmup.areas)}, then swings from half to full – a club is all you need, the app says every step.`,
+              `Etwa ${warmupMinutes(props.warmup)} Min. ${warmupFor(props.warmup.areas)}, dann Schwünge von halb bis voll – du brauchst nur einen Schläger, die App sagt jeden Schritt an.`,
             )}
           </p>
+          <span className="eyebrow">{tr('The moves', 'Die Übungen')}</span>
           <div className="list mob-train-list" aria-label={tr('The moves', 'Die Übungen')}>
             {moves.map((x, k) => (
               <div key={x.id} className="list-item mob-test-row">
@@ -217,9 +218,7 @@ export function RangeWarmup(props: { warmup: Warmup; onClose: () => void }) {
             <span className="muted small">{tr(`${moves.length} moves, about ${warmupMinutes(props.warmup)} min ${warmupFor(props.warmup.areas)}.`, `${moves.length} Übungen, etwa ${warmupMinutes(props.warmup)} Min. ${warmupFor(props.warmup.areas)}.`)}</span>
             <span className="small">{tr('Start with a few easy shots with a short iron.', 'Fang mit ein paar lockeren Schlägen mit einem kurzen Eisen an.')}</span>
           </section>
-          <button type="button" className="btn-primary" onClick={close}>
-            {tr('Done', 'Fertig')}
-          </button>
+          {/* no "Fertig" – back with ‹ in the TopBar (Facelift 11.11.2026, a10) */}
         </section>
       )}
     </main>

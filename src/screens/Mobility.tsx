@@ -10,7 +10,9 @@ import { PausedIcon } from '../components/PausedIcon';
 import { DeletedIcon } from '../components/RoundIcons';
 import { Bin } from '../components/Bin';
 import { RepeatIcon } from '../mobility/icons';
-import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
+import { ChoiceRow, SettingsList, StepPick } from '../components/Settings';
+import { FloatActions } from '../components/FloatActions';
+import { MobActionBar, PainIcon, TickIcon } from '../mobility/MobActions';
 import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
@@ -161,8 +163,8 @@ function sideGap(test: TestDef, r: TestResult): string | null {
 function ResultMark(props: { r: TestResult | undefined; test: TestDef; small?: boolean }) {
   if (hasPain(props.r))
     return (
-      <span className={`mob-grade fail pain${props.small ? ' small' : ''}`} aria-label={tr('pain', 'Schmerz')}>
-        !
+      <span className={`mob-grade fail pain${props.small ? ' small' : ''}`} role="img" aria-label={tr('pain', 'Schmerz')}>
+        <PainIcon size={props.small ? 15 : 18} />
       </span>
     );
   const pos = testPos(props.test, props.r);
@@ -471,7 +473,7 @@ function TestTab(props: { nav: Nav }) {
         {tr('For values you can compare: not warmed up, about the same time of day.', 'Für vergleichbare Werte: nicht aufgewärmt, etwa zur gleichen Tageszeit.')}
       </p>
       <section className="tr-block">
-        <h2>{tr('Single tests', 'Einzelne Tests')}</h2>
+        <span className="eyebrow">{tr('Single tests', 'Einzelne Tests')}</span>
         <div className="list">
           {FULL.map((id) => {
             const test = testById(id);
@@ -510,19 +512,17 @@ function TestView(props: { id: TestId; nav: Nav; tab?: 'how' | 'result' | 'drill
   return (
     <main className="screen training mobility">
       <TopBar title={t(test.name)} onBack={props.nav.back} />
-      <div className="segmented tr-tabs" role="tablist">
-        {(
-          [
-            ['how', tr('How it works', 'Ablauf')],
-            ['result', tr('Results', 'Ergebnisse')],
-            ['drills', tr('Drills', 'Übungen')],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* the views as the app's switch "‹ Ablauf ›" – no tab block (Facelift 11.11.2026, a1) */}
+      <StepPick<'how' | 'result' | 'drills'>
+        label={tr('View', 'Ansicht')}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'how', name: tr('How it works', 'Ablauf') },
+          { value: 'result', name: tr('Results', 'Ergebnisse') },
+          { value: 'drills', name: tr('Drills', 'Übungen') },
+        ]}
+      />
       {tab === 'how' && <TestBrief test={test} side={null} />}
       {tab === 'result' && (
         <section className="tr-block">
@@ -670,9 +670,9 @@ function HistoryChart(props: { test: TestDef; history: { s: Screening; r: TestRe
   const tgt = targetPos(props.test, goal);
   const tv = targetValue(props.test, goal);
   // the number above a bar: the value of the side with less movement
-  const shown = (r: TestResult): string => {
+  const shown = (r: TestResult): ReactNode => {
     const ms = [r.both, r.left, r.right].filter((m): m is Measurement => !!m && !m.pain);
-    if (!ms.length) return '!';
+    if (!ms.length) return <PainIcon size={13} />; // it hurt: the sign of pain, not a "!"
     const m = ms.reduce((x, y) => ((measurePos(props.test, x) ?? 1) <= (measurePos(props.test, y) ?? 1) ? x : y));
     return m.value != null ? String(Math.round(m.value)) : tr('self', 'selbst');
   };
@@ -704,7 +704,7 @@ function TrainedValues(props: { test: TestDef; values: { at: string; value: numb
   const tgt = targetPos(props.test, goal);
   return (
     <section className="mob-trained">
-      <h2>{tr('From your training', 'Aus deinem Training')}</h2>
+      <span className="eyebrow">{tr('From your training', 'Aus deinem Training')}</span>
       <div className="list">
         {props.values.slice(0, 6).map((x) => {
           const pos = measurePos(props.test, { value: x.value, grade: 'limited', source: 'camera', at: x.at });
@@ -823,18 +823,17 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
   }, []);
   return (
     <section className="tr-block mob-setup">
-      <h2>{tr('Set up the phone – once', 'Handy aufstellen – einmal')}</h2>
+      {/* the camera setup: a picture and one line, then Start – no intro with steps (Facelift 11.11.2026, a9) */}
       <PhoneSetup view="front" height="hip" />
-      <ol className="card tr-section tr-steps">
-        <li>{tr('Phone upright on a stand or against a bottle, at hip height, the screen towards you.', 'Handy hochkant auf ein Stativ oder an eine Flasche lehnen, auf Hüfthöhe, Bildschirm zu dir.')}</li>
-        <li>{tr('Step back 2.5–3 m, sound on. The app shows each test, then you copy it.', '2,5–3 m zurückgehen, Ton an. Die App macht jeden Test vor, dann machst du ihn nach.')}</li>
-        <li>{tr('It measures, says the result and goes on by itself – you only come back at the end.', 'Sie misst, sagt das Ergebnis und macht von selbst weiter – du kommst erst am Ende zurück.')}</li>
-      </ol>
+      <p className="muted small mob-setup-line">
+        {tr('Phone upright at hip height, 2.5–3 m away, sound on – the app shows each test, measures and goes on by itself.', 'Handy hochkant auf Hüfthöhe, 2,5–3 m entfernt, Ton an – die App macht jeden Test vor, misst und macht von selbst weiter.')}
+      </p>
       {needs.length > 0 && (
         <p className="muted small">
           {tr('You need', 'Du brauchst')}: {needs.join(', ')}
         </p>
       )}
+      <span className="eyebrow">{tr('The tests', 'Die Tests')}</span>
       <div className="mob-setup-tests" aria-label={tr('The tests', 'Die Tests')}>
         {cams.map((x) => (
           <TestThumb key={x.id} test={x} />
@@ -844,6 +843,7 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
       {/* the motion log for checking the measuring on a real body: only the body points, never a picture */}
       <LogSwitch />
       <p className={`small mob-model ${model}`} role="status">
+        {model === 'ready' && <TickIcon size={14} />}
         {model === 'ready'
           ? tr('Body tracking ready', 'Körpererkennung bereit')
           : model === 'loading'
@@ -876,14 +876,14 @@ function AnkleCheck(props: { onPick: (ok: boolean) => void }) {
       <Suspense fallback={<div className="mob-3d-wait" />}>
         <Anim3D clip={DRILL_CLIPS['mob-ankle-wall']} say={[ANKLE_STEPS[0], ANKLE_STEPS[1]].map(t)} />
       </Suspense>
+      <span className="eyebrow">{tr('Knee to the wall', 'Knie zur Wand')}</span>
       <section className="card tr-section">
-        <h2>{tr('Knee to the wall', 'Knie zur Wand')}</h2>
         <ol className="tr-steps">
           <li>{t(ANKLE_STEPS[0])}</li>
           <li>{t(ANKLE_STEPS[1])}</li>
         </ol>
       </section>
-      <h2>{tr('Which one is you?', 'Was passt zu dir?')}</h2>
+      <span className="eyebrow">{tr('Which one is you?', 'Was passt zu dir?')}</span>
       <button type="button" className="mob-option pass" onClick={() => props.onPick(true)}>
         <span className="mob-option-label">
           <span>{tr('The knee touches the wall on both sides, heel down', 'Das Knie berührt auf beiden Seiten die Wand, Ferse unten')}</span>
@@ -926,7 +926,7 @@ function FeelCheck(props: { test: TestDef; onPick: (where: Felt) => void }) {
   return (
     <section className="tr-block mob-self mob-feel">
       <SketchView sketch={props.test.sketch} label={t(props.test.name)} />
-      <h2>{tr('Where did you feel it most?', 'Wo hast du es vor allem gespürt?')}</h2>
+      <span className="eyebrow">{tr('Where did you feel it most?', 'Wo hast du es vor allem gespürt?')}</span>
       {opts.map(([id, label, g]) => (
         <button key={id} type="button" className={`mob-option ${g}`} onClick={() => props.onPick(id)}>
           <span className="mob-option-label">
@@ -1160,35 +1160,55 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       {stage === 'setup' ? (
         <CoachSetup screening={s} onStart={startCoach} onSelf={() => setStage('self')} single={single} />
       ) : stage === 'hold' ? (
+        // the pause: its status, one bar of icons – Pausieren, Es tut weh, Beenden red and last – then the green "Weiter"
+        // (Facelift 11.11.2026, a5: as the training's pause and the round's leave sheet)
         <section className="tr-block mob-hold-screen">
-          <h2>{tr('Paused', 'Pausiert')}</h2>
-          <p className="muted">{tr(`${doneCount} of ${s.tests.length} tests done. Continue goes on with the test where you stopped.`, `${doneCount} von ${s.tests.length} Tests erledigt. Weiter macht mit dem Test weiter, bei dem du aufgehört hast.`)}</p>
+          <section className="card mob-screening-status">
+            <strong>
+              {tr('Paused', 'Pausiert')} <PausedMark />
+            </strong>
+            <span className="muted small">{tr(`${doneCount} of ${s.tests.length} tests done – Continue goes on with the test where you stopped.`, `${doneCount} von ${s.tests.length} Tests erledigt – Weiter macht mit dem Test weiter, bei dem du aufgehört hast.`)}</span>
+          </section>
+          <MobActionBar
+            label={tr('The paused test', 'Der pausierte Test')}
+            actions={[
+              !single && {
+                label: tr('Pause', 'Pausieren'),
+                aria: tr('Pause – continue later', 'Pausieren – später fortsetzen'),
+                icon: 'pause',
+                onClick: () => {
+                  stopStream();
+                  saveScreening(s);
+                  props.onPause();
+                },
+              },
+              {
+                label: tr('It hurts', 'Es tut weh'),
+                aria: tr('It hurts – stop this test', 'Es tut weh – Test abbrechen'),
+                icon: 'hurt',
+                className: 'mob-pain-stop',
+                // pain is its own result (TPI): the test stops, the next one begins
+                onClick: () => {
+                  const m: Measurement = { value: null, grade: 'fail', source: 'self', pain: true, at: new Date().toISOString() };
+                  if (held === 'retest') retested(m);
+                  else save(m);
+                },
+              },
+              {
+                label: single ? tr('Leave', 'Verlassen') : tr('Finish', 'Beenden'),
+                aria: single ? tr('Leave the test', 'Test verlassen') : tr('Finish screening', 'Screening beenden'),
+                icon: 'finish',
+                danger: true,
+                onClick: () => {
+                  stopStream();
+                  if (single) leaveSingle();
+                  else setExit('end');
+                },
+              },
+            ]}
+          />
           <button type="button" className="btn-primary" onClick={() => setStage(held)}>
             {tr('Continue', 'Weiter')}
-          </button>
-          {!single && (
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                stopStream();
-                saveScreening(s);
-                props.onPause();
-              }}
-            >
-              {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              stopStream();
-              if (single) leaveSingle();
-              else setExit('end');
-            }}
-          >
-            {single ? tr('Leave the test', 'Test verlassen') : tr('Finish screening', 'Screening beenden')}
           </button>
         </section>
       ) : (
@@ -1355,23 +1375,28 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
                 ✕
               </button>
             </div>
+            {/* exactly the round's leave sheet (Facelift 11.11.2026, a6): the bar – Pausieren, Abbrechen red and last –
+                then the one main button; its finish question: Zurück, Löschen red – then "Beenden & Ergebnis zeigen" */}
             {exit === 'menu' ? (
               <div className="sheet-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    saveScreening(s);
-                    props.onPause();
-                  }}
-                >
-                  {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-                </button>
+                <MobActionBar
+                  label={tr('This screening', 'Dieses Screening')}
+                  actions={[
+                    {
+                      label: tr('Pause', 'Pausieren'),
+                      aria: tr('Pause – continue later', 'Pausieren – später fortsetzen'),
+                      icon: 'pause',
+                      onClick: () => {
+                        stopStream();
+                        saveScreening(s);
+                        props.onPause();
+                      },
+                    },
+                    { label: tr('Cancel', 'Abbrechen'), aria: tr('Cancel screening', 'Screening abbrechen'), icon: 'delete', danger: true, onClick: props.onDelete },
+                  ]}
+                />
                 <button type="button" className="btn-primary" onClick={() => setExit('end')}>
                   {tr('Finish screening', 'Screening beenden')}
-                </button>
-                <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-                  {tr('Cancel screening', 'Screening abbrechen')}
                 </button>
               </div>
             ) : (
@@ -1382,11 +1407,15 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
                     : tr('All tests done – see what your body says about your swing.', 'Alle Tests erledigt – sieh dir an, was dein Körper über deinen Schwung sagt.')}
                 </span>
                 <div className="sheet-actions">
+                  <MobActionBar
+                    label={tr('Or', 'Oder')}
+                    actions={[
+                      { label: tr('Back', 'Zurück'), icon: 'back', onClick: () => setExit(null) },
+                      { label: tr('Delete', 'Löschen'), aria: tr('Delete screening', 'Screening löschen'), icon: 'delete', danger: true, onClick: props.onDelete },
+                    ]}
+                  />
                   <button type="button" className="btn-primary" onClick={() => finish(s)}>
                     {tr('Finish & show the result', 'Beenden & Ergebnis zeigen')}
-                  </button>
-                  <button type="button" className="btn-secondary" onClick={() => setExit(null)}>
-                    {tr('Back', 'Zurück')}
                   </button>
                 </div>
               </>
@@ -1410,7 +1439,7 @@ function SelfCheck(props: { test: TestDef; onPick: (m: Measurement) => void; onB
     ] as { grade: Grade; label: L; picture?: () => ReactNode }[]);
   return (
     <section className="tr-block mob-self">
-      <h2>{tr('Which one looks like you?', 'Was passt zu dir?')}</h2>
+      <span className="eyebrow">{tr('Which one looks like you?', 'Was passt zu dir?')}</span>
       {opts.map((o) => (
         <button key={o.grade} type="button" className={`mob-option ${o.grade}`} onClick={() => props.onPick({ value: null, grade: o.grade, source: 'self', at: new Date().toISOString() })}>
           {'picture' in o && o.picture && <span className="mob-option-pic">{o.picture()}</span>}
@@ -1435,7 +1464,7 @@ function PainButton(props: { onPick: (m: Measurement) => void; value?: number | 
     <button type="button" className="mob-option mob-pain" onClick={() => props.onPick({ value: props.value ?? null, grade: 'fail', source: props.source ?? 'self', pain: true, at: new Date().toISOString() })}>
       <span className="mob-option-label">
         <span className="mob-grade fail pain small" aria-hidden="true">
-          !
+          <PainIcon size={15} />
         </span>
         <span>{tr('It hurts', 'Es tut weh')}</span>
       </span>
@@ -1496,14 +1525,16 @@ function ResultTab(props: { nav: Nav }) {
         </span>
       </section>
       <LogShare />
-      <div className="segmented tr-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'body'} aria-pressed={tab === 'body'} onClick={() => setTab('body')}>
-          {tr('Your body', 'Dein Körper')}
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'swing'} aria-pressed={tab === 'swing'} onClick={() => setTab('swing')}>
-          {tr('Your swing', 'Dein Schwung')}
-        </button>
-      </div>
+      {/* the two views as the app's switch "‹ Dein Körper ›" (Facelift 11.11.2026, a1) */}
+      <StepPick<'body' | 'swing'>
+        label={tr('View', 'Ansicht')}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'body', name: tr('Your body', 'Dein Körper') },
+          { value: 'swing', name: tr('Your swing', 'Dein Schwung') },
+        ]}
+      />
       {tab === 'swing' ? (
         <SwingResult patterns={patterns} misses={misses} tested={tested.length} nav={props.nav} />
       ) : (
@@ -1585,7 +1616,7 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
       {few}
       {props.misses.length > 0 && (
       <section className="tr-block">
-        <h2>{tr('Misses your body tends to', 'Fehlschläge, die dein Körper begünstigt')}</h2>
+        <span className="eyebrow">{tr('Misses your body tends to', 'Fehlschläge, die dein Körper begünstigt')}</span>
         <div className="chip-set mob-misses">
           {props.misses.slice(0, 6).map((m) => (
             <span key={m.miss} className="chip mob-miss">
@@ -1596,7 +1627,7 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
       </section>
       )}
       <section className="tr-block">
-        <h2>{tr('Swing patterns your body tends to', 'Schwungmuster, die dein Körper begünstigt')}</h2>
+        <span className="eyebrow">{tr('Swing patterns your body tends to', 'Schwungmuster, die dein Körper begünstigt')}</span>
         <p className="muted small">{tr('How likely each is from your tests – as the TPI app\'s "body swing connection".', 'Wie wahrscheinlich jedes ist, aus deinen Tests – wie die „Body Swing Connection“ der TPI-App.')}</p>
         {[...props.patterns].sort((a, b) => likelihood(b) - likelihood(a)).map((r) => (
           <button key={r.pattern.id} type="button" className="mob-pattern" onClick={() => props.nav.push({ name: 'pattern', id: r.pattern.id })}>
@@ -1650,16 +1681,19 @@ function PatternView(props: { id: string; nav: Nav }) {
         </div>
       </section>
       <section className="tr-block">
-        <h2>{tr('Playing with it today', 'So spielst du heute schon damit')}</h2>
+        <span className="eyebrow">{tr('Playing with it today', 'So spielst du heute schon damit')}</span>
         <ul className="card tr-section mob-play-now">
           {PLAY_NOW[p.id].map((x, i) => (
-            <li key={i}>{t(x)}</li>
+            <li key={i}>
+              <TickIcon className="mob-play-tick" size={16} />
+              {t(x)}
+            </li>
           ))}
         </ul>
         <span className="muted small">{tr('Until the drills work – then the full swing comes back.', 'Bis die Übungen wirken – danach kommt der volle Schwung zurück.')}</span>
       </section>
       <section className="tr-block">
-        <h2>{tr('Because of these tests', 'Wegen dieser Tests')}</h2>
+        <span className="eyebrow">{tr('Because of these tests', 'Wegen dieser Tests')}</span>
         <div className="list">
           {r.causes.map((c) => {
             const test = testById(c.test);
@@ -1682,7 +1716,7 @@ function PatternView(props: { id: string; nav: Nav }) {
         <span className="muted small">{tr(`${r.covered[0]} of ${r.covered[1]} related tests done.`, `${r.covered[0]} von ${r.covered[1]} zugehörigen Tests gemacht.`)}</span>
       </section>
       <section className="tr-block">
-        <h2>{tr('Drills that help', 'Übungen, die helfen')}</h2>
+        <span className="eyebrow">{tr('Drills that help', 'Übungen, die helfen')}</span>
         <DrillList drills={drills} nav={props.nav} />
       </section>
     </main>
@@ -1769,10 +1803,10 @@ function BodyAreas(props: { results: Partial<Record<TestId, TestResult>>; nav: N
         const st = areas.find((x) => x.area === a);
         return (
           <section key={a} className="tr-block">
-            <h2 className="mob-area-head">
-              <span>{t(AREA_NAMES[a])}</span>
+            <div className="mob-area-head">
+              <span className="eyebrow grow">{t(AREA_NAMES[a])}</span>
               {st && <LevelBar pos={st.now} target={st.target} />}
-            </h2>
+            </div>
             <div className="list">
               {tests.map((test) => (
                 <button key={test.id} type="button" className={`list-item mob-test-row${props.results[test.id] ? '' : ' untested'}`} onClick={() => props.nav.push({ name: 'test', id: test.id })}>
@@ -1841,7 +1875,7 @@ function PainNote(props: { tests: TestDef[] }) {
   return (
     <section className="card mob-pain-note" role="note">
       <span className="mob-grade fail pain" aria-hidden="true">
-        !
+        <PainIcon />
       </span>
       <span className="grow">
         <strong>{tr('Pain', 'Schmerz')}: {props.tests.map((x) => t(x.name)).join(', ')}</strong>
@@ -1933,7 +1967,7 @@ function WarmupCard(props: { nav: Nav }) {
   const w = buildWarmup(pillarPlan(loadMinutes()).areas);
   return (
     <section className="tr-block mob-warmup-card">
-      <h2>{tr('Range warm-up', 'Range-Warmup')}</h2>
+      <span className="eyebrow">{tr('Range warm-up', 'Range-Warmup')}</span>
       <span className="muted small">{tr(`About ${warmupMinutes(w)} min ${warmupFor(w.areas)} – before the first ball, standing, with a club. The app says each step.`, `Etwa ${warmupMinutes(w)} Min. ${warmupFor(w.areas)} – vor dem ersten Ball, im Stehen, mit Schläger. Die App sagt jeden Schritt an.`)}</span>
       <button type="button" className="btn-secondary mob-warmup-open" onClick={() => props.nav.push({ name: 'warmup' })}>
         {tr('Start the warm-up', 'Warmup starten')}
@@ -1973,35 +2007,37 @@ function DrillsTab(props: { nav: Nav }) {
     <>
       {physio}
       <GoalCard />
+      {/* the paused training as a paused row of every list – the status in its own column, a tap continues (Facelift
+          11.11.2026, a7: as the paused screening on the Screening tab) */}
       {paused && (
-        <section className="card mob-open mob-train-open">
-          <PausedIcon />
-          <span className="grow">
-            <strong>{tr('Training paused', 'Training pausiert')}</strong>
-            <span className="muted small">{tr(`${paused.done.length} of ${paused.drills.length} drills done`, `${paused.done.length} von ${paused.drills.length} Übungen erledigt`)}</span>
+        <button type="button" className="list-item mob-open mob-train-open" onClick={() => props.nav.train(paused)}>
+          <span className="list-mark">
+            <PausedMark />
           </span>
-          <button type="button" className="btn-secondary" onClick={() => props.nav.train(paused)}>
-            {tr('Continue', 'Fortsetzen')}
-          </button>
-        </section>
+          <span className="grow">
+            <span className="title">{tr('Training', 'Training')}</span>
+            <span className="muted small">{tr(`Paused · ${paused.done.length} of ${paused.drills.length} drills done`, `Pausiert · ${paused.done.length} von ${paused.drills.length} Übungen erledigt`)}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       {pain.length > 0 && <PainNote tests={pain} />}
       <section className="tr-block">
-        <h2>{tr('Your mobility pillar', 'Deine Säule Beweglichkeit')}</h2>
+        <span className="eyebrow">{tr('Your mobility pillar', 'Deine Säule Beweglichkeit')}</span>
         <p className="muted small">{tr('For your goal: the areas with the biggest gap first, with the drills for home.', 'Für dein Ziel: die Bereiche mit dem größten Abstand zuerst, mit den Übungen für zu Hause.')}</p>
       </section>
       {focus.length === 0 ? (
         <section className="tr-block">
-          <h2>{tr('Keep it', 'Erhalten')}</h2>
+          <span className="eyebrow">{tr('Keep it', 'Erhalten')}</span>
           <DrillList drills={keep} nav={props.nav} />
         </section>
       ) : (
         focus.map((x) => (
           <section key={x.area} className="tr-block mob-pillar-area">
-            <h2 className="mob-drill-head">
-              <span>{t(AREA_NAMES[x.area])}</span>
+            <div className="mob-drill-head">
+              <span className="eyebrow grow">{t(AREA_NAMES[x.area])}</span>
               <LevelBar pos={x.now} target={x.target} />
-            </h2>
+            </div>
             <span className="muted small">{x.tests.map((id) => `${t(testById(id).name)}: ${resultText(testById(id), results[id])}`).join(' · ')}</span>
             <DrillList drills={drillsFor(x)} nav={props.nav} />
           </section>
@@ -2009,7 +2045,7 @@ function DrillsTab(props: { nav: Nav }) {
       )}
       {rest.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('The other areas', 'Die anderen Bereiche')}</h2>
+          <span className="eyebrow">{tr('The other areas', 'Die anderen Bereiche')}</span>
           <div className="list">
             {rest.map((x) => (
               <div key={x.area} className="list-item mob-area-row">
@@ -2025,7 +2061,7 @@ function DrillsTab(props: { nav: Nav }) {
       )}
       <WarmupCard nav={props.nav} />
       <section className="tr-block mob-plan-time">
-        <h2>{tr('Your time a day', 'Deine Zeit am Tag')}</h2>
+        <span className="eyebrow">{tr('Your time a day', 'Deine Zeit am Tag')}</span>
         <div className="chip-set">
           {DAY_MINUTES.map((m) => (
             <button
@@ -2045,36 +2081,32 @@ function DrillsTab(props: { nav: Nav }) {
         <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn, other ones each training day`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten, jeden Trainingstag andere`)}</span>
         {minutes >= 30 && <span className="muted small mob-plan-blocks">{dayBlocksText(day, tr)}</span>}
       </section>
+      {/* the plan for Training as an action of the bar, the main button the last thing on the page (Facelift 11.11.2026, a7) */}
       <div className="sticky-cta">
+        <MobActionBar
+          label={tr('The plan of the day', 'Der Plan des Tages')}
+          actions={[
+            !saved && {
+              label: tr('Into Training', 'Ins Training'),
+              aria: tr(`Take the ${minutes}-minute plan into Training`, `${minutes}-Minuten-Plan ins Training übernehmen`),
+              icon: 'add',
+              onClick: () => {
+                saveOwnPlan({
+                  id: trainingId(),
+                  name: `Agility · ${minutes} ${tr('min', 'Min.')} · ${dateText(new Date().toISOString())}`,
+                  items: planDrills.map((d) => ({ drill: d.id, minutes: Math.max(1, Math.round(drillTime(d.id, day.extraSets[d.id]) / 60)) })),
+                  createdAt: new Date().toISOString(),
+                });
+                setSaved(true);
+              },
+            },
+            saved && !!props.nav.openTraining && { label: tr('Open Training', 'Training öffnen'), icon: 'open', onClick: props.nav.openTraining },
+          ]}
+        />
+        {saved && <span className="muted small mob-saved">{tr('The plan is in Training now, under “My plans”.', 'Der Plan liegt jetzt im Training unter „Meine Pläne“.')}</span>}
         <button type="button" className="btn-primary mob-train-start" onClick={() => props.nav.train(planSession())}>
           {tr(`Train now – ${planMinutes} min with the camera`, `Jetzt trainieren – ${planMinutes} Min. mit Kamera`)}
         </button>
-        {saved ? (
-          <>
-            <span className="good-text mob-saved">{tr('The plan is in Training › Practice › My plans.', 'Der Plan liegt in Training › Üben › Meine Pläne.')}</span>
-            {props.nav.openTraining && (
-              <button type="button" className="btn-secondary" onClick={props.nav.openTraining}>
-                {tr('Open Training', 'Training öffnen')}
-              </button>
-            )}
-          </>
-        ) : (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              saveOwnPlan({
-                id: trainingId(),
-                name: `Agility · ${minutes} ${tr('min', 'Min.')} · ${dateText(new Date().toISOString())}`,
-                items: planDrills.map((d) => ({ drill: d.id, minutes: Math.max(1, Math.round(drillTime(d.id, day.extraSets[d.id]) / 60)) })),
-                createdAt: new Date().toISOString(),
-              });
-              setSaved(true);
-            }}
-          >
-            {tr(`Take the ${minutes}-minute plan into Training`, `${minutes}-Minuten-Plan ins Training übernehmen`)}
-          </button>
-        )}
       </div>
     </>
   );
@@ -2097,58 +2129,80 @@ const GOAL_TEXT: Record<number, () => string> = {
  */
 function GoalCard() {
   const [goal, setGoal] = useState<MobilityGoal | null>(() => loadGoal());
-  const [edit, setEdit] = useState(!goal);
   const [hcp, setHcp] = useState<number | null>(goal?.hcp ?? null);
   const [focus, setFocus] = useState<Focus[]>(goal?.focus ?? []);
+  // the save rule (docs/DESIGN.md, Facelift 11.11.2026, a4): the first goal with the floating tick; a goal there already
+  // changed saves by itself a moment after the last change (and when the page closes), with the quiet line
+  const [saving, setSaving] = useState<'' | 'busy' | 'done'>('');
+  const pending = useRef<MobilityGoal | null>(null);
+  const timer = useRef(0);
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      if (pending.current) saveGoal(pending.current);
+    },
+    [],
+  );
+  const change = (h: number | null, f: Focus[]) => {
+    setHcp(h);
+    setFocus(f);
+    if (!goal || h == null) return;
+    pending.current = { ...goal, hcp: h, focus: f, at: new Date().toISOString() };
+    setSaving('busy');
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const g = pending.current;
+      pending.current = null;
+      if (g) {
+        saveGoal(g);
+        setGoal(g);
+      }
+      setSaving('done');
+    }, 900);
+  };
+  const create = () => {
+    if (hcp == null) return;
+    const g: MobilityGoal = { id: 'goal', hcp, focus, at: new Date().toISOString() };
+    saveGoal(g);
+    setGoal(g);
+    setSaving('');
+  };
   const now = profileIndex();
   const hcpName = (h: number) => (h === 0 ? 'Scratch' : String(h));
-  if (goal && !edit)
-    return (
-      // a setting as a row with ›, as in the round setup (docs/DESIGN.md) – no "Ändern" button
-      <section className="mob-goal">
-        <span className="eyebrow">{tr('Your goal', 'Dein Ziel')}</span>
-        <SettingsList>
-          <SettingsRow label={goal.hcp === 0 ? 'Scratch' : tr(`Handicap ${goal.hcp}`, `Handicap ${goal.hcp}`)} value={goal.focus.length ? goal.focus.map((f) => t(FOCUS_NAMES[f])).join(' · ') : tr('no focus', 'ohne Schwerpunkt')} onClick={() => setEdit(true)} />
-        </SettingsList>
-      </section>
-    );
   return (
-    <section className="card mob-goal edit">
-      <strong>{tr('What is your goal?', 'Was ist dein Ziel?')}</strong>
-      <span className="muted small">
-        {now != null ? tr(`Your handicap now: ${String(now).replace('-', '+')}. `, `Dein Handicap jetzt: ${String(now).replace('.', ',').replace('-', '+')}. `) : ''}
-        {tr('The values you need follow from it.', 'Daraus ergibt sich, welche Werte du brauchst.')}
-      </span>
+    <section className="mob-goal">
+      <span className="eyebrow">{tr('Your goal', 'Dein Ziel')}</span>
+      {!goal && (
+        <span className="muted small">
+          {now != null ? tr(`Your handicap now: ${String(now).replace('-', '+')}. `, `Dein Handicap jetzt: ${String(now).replace('.', ',').replace('-', '+')}. `) : ''}
+          {tr('The values you need follow from the handicap you want to reach.', 'Aus dem Handicap, das du erreichen willst, ergibt sich, welche Werte du brauchst.')}
+        </span>
+      )}
       {/* seven values: a row with its sheet, as "Format" in the round setup (docs/DESIGN.md) */}
       <SettingsList>
         <ChoiceRow<number | null>
           label={tr('Handicap to reach', 'Ziel-Handicap')}
           options={GOAL_STEPS.map((h) => ({ value: h, name: hcpName(h), text: GOAL_TEXT[h]?.() }))}
           value={hcp}
-          onChange={setHcp}
+          prompt={tr('Choose', 'Wählen')}
+          onChange={(h) => change(h, focus)}
         />
       </SettingsList>
-      <span className="small">{tr('What matters most to you (optional)', 'Was dir wichtig ist (optional)')}</span>
+      <span className="eyebrow">{tr('What matters most to you (optional)', 'Was dir wichtig ist (optional)')}</span>
       <div className="chip-set">
         {(Object.keys(FOCUS_NAMES) as Focus[]).map((f) => (
-          <button key={f} type="button" className={`chip${focus.includes(f) ? ' on' : ''}`} aria-pressed={focus.includes(f)} onClick={() => setFocus(focus.includes(f) ? focus.filter((x) => x !== f) : [...focus, f])}>
+          <button key={f} type="button" className={`chip${focus.includes(f) ? ' on' : ''}`} aria-pressed={focus.includes(f)} onClick={() => change(hcp, focus.includes(f) ? focus.filter((x) => x !== f) : [...focus, f])}>
             {t(FOCUS_NAMES[f])}
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className="btn-primary"
-        disabled={hcp == null}
-        onClick={() => {
-          const g: MobilityGoal = { id: 'goal', hcp: hcp!, focus, at: new Date().toISOString() };
-          saveGoal(g);
-          setGoal(g);
-          setEdit(false);
-        }}
-      >
-        {tr('Save the goal', 'Ziel speichern')}
-      </button>
+      {goal ? (
+        <span className="muted small autosave-note" role="status">
+          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
+      ) : (
+        hcp != null && <FloatActions save={{ label: tr('Save the goal', 'Ziel speichern'), onClick: create }} />
+      )}
     </section>
   );
 }
@@ -2162,19 +2216,17 @@ function DrillView(props: { id: string; nav: Nav }) {
   return (
     <main className="screen training mobility">
       <TopBar title={t(d.name)} onBack={props.nav.back} />
+      {/* the views as the app's switch "‹ Anleitung ›" (Facelift 11.11.2026, a1) */}
       {videos.length > 0 && (
-        <div className="segmented tr-tabs" role="tablist" aria-label={t(d.name)}>
-          {(
-            [
-              ['learn', tr('How to', 'Anleitung')],
-              ['videos', 'Videos'],
-            ] as const
-          ).map(([id, label]) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <StepPick<'learn' | 'videos'>
+          label={tr('View', 'Ansicht')}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'learn', name: tr('How to', 'Anleitung') },
+            { value: 'videos', name: 'Videos' },
+          ]}
+        />
       )}
       {tab === 'videos' ? (
         <>
@@ -2210,8 +2262,8 @@ function DrillValues(props: { id: string }) {
   const hi = Math.max(...vals);
   const pos = (v: number) => (hi === lo ? 1 : def.better === 'up' ? (v - lo) / (hi - lo) : (hi - v) / (hi - lo));
   return (
-    <section className="card tr-section mob-drill-values">
-      <h2>{tr('Your values', 'Deine Werte')}</h2>
+    <section className="tr-block mob-drill-values">
+      <span className="eyebrow">{tr('Your values', 'Deine Werte')}</span>
       <span className="muted small">{cap(t(def.name))}</span>
       <div className="list">
         {[...list].reverse().slice(0, 6).map((x) => (
@@ -2490,7 +2542,7 @@ function TrainHistory() {
   const days = daysThisWeek();
   return (
     <section className="tr-block mob-train-history">
-      <h2>{tr('Training', 'Training')}</h2>
+      <span className="eyebrow">{tr('Training', 'Training')}</span>
       <span className="muted small">{tr(`${days} ${days === 1 ? 'day' : 'days'} in the last 7`, `${days} ${days === 1 ? 'Tag' : 'Tage'} in den letzten 7`)}</span>
       <div className="list">
         {list.slice(0, 10).map((s) => {

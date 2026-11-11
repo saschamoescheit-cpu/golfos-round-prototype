@@ -88,7 +88,7 @@ await p.waitForTimeout(300);
 await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
 await p.waitForTimeout(300);
 const card = await p.locator('.mob-warmup-card').innerText();
-ok(/Range-Warmup/.test(card) && /Etwa [5-7] Min\./.test(card), `the warm-up card: ${card.split('\n').slice(1, 2).join('')}`);
+ok(/Range-Warmup/i.test(card) && /Etwa [5-7] Min\./.test(card), `the warm-up card: ${card.split('\n').slice(1, 2).join('')}`);
 ok(/Stabilität|Hüfte/.test(card), 'made for the areas with the biggest gap (balance, hips)');
 await shot('warmup-card');
 await p.locator('.mob-warmup-open').click();
@@ -127,9 +127,10 @@ while (Date.now() - t0 < 90000) {
 ok(await p.locator('.mob-warmup-done').isVisible(), `the warm-up ends by itself (${seen.size} of ${moves.length} moves seen)`);
 ok(seen.size >= moves.length - 1, 'every move came in turn');
 await shot('warmup-done');
-await p.getByRole('button', { name: 'Fertig' }).click();
+ok((await p.getByRole('button', { name: 'Fertig', exact: true }).count()) === 0, 'the end of the warm-up: no "Fertig" (Facelift a10)');
+await p.locator('.topbar .icon-btn').first().click();
 await p.waitForTimeout(300);
-ok(await p.locator('.mob-warmup-card').isVisible(), 'back to the drills');
+ok(await p.locator('.mob-warmup-card').isVisible(), 'back to the drills with ‹');
 
 ok(!errs.length, `no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
 await b.close();

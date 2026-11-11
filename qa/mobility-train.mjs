@@ -94,7 +94,7 @@ await p.waitForTimeout(400);
 await p.locator('.mob-plan-time .chip').filter({ hasText: '15' }).click();
 const startText = await p.locator('.mob-train-start').innerText();
 ok(/Jetzt trainieren – \d+ Min\. mit Kamera/.test(startText), `the pillar starts a guided session (${startText})`);
-ok((await p.locator('.sticky-cta .btn-secondary').filter({ hasText: 'ins Training' }).count()) === 1, 'the plan for Training is still there, as the second way');
+ok((await p.locator('.sticky-cta .sc-action').filter({ hasText: 'Ins Training' }).count()) === 1, 'the plan for Training is still there, as the second way ("Ins Training" in the bar)');
 await shot('pillar');
 await p.locator('.mob-train-start').click();
 await p.locator('.mob-setup').waitFor({ timeout: 10000 });
@@ -162,7 +162,7 @@ await shot('summary');
 const summary = await p.locator('.mob-train-summary').innerText();
 ok(/Training fertig/.test(summary) && /Tag/.test(summary), 'the summary: done, the days of the week');
 ok(/(Drehung|Oberschenkel|Zehen|Schienbein|Hüftstreckung|Arme|Außenrotation|Öffnung)/.test(summary), 'the summary shows what was measured');
-await p.locator('.mob-train-done').click();
+await p.locator('.topbar .icon-btn').first().click();
 await p.waitForTimeout(300);
 
 // the app's start page knows too
@@ -184,10 +184,11 @@ await shot("today-done");
 // the test page shows what the training measured for it (hip turns in golf posture → pelvic rotation)
 if (sess?.done.some((d) => d.drill === 'mob-pelvic-turn')) {
   await p.locator('.mob-test-row').filter({ hasText: 'Beckenrotation' }).first().click();
-  await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+  await p.locator('main .step-pick-now').click();
+  await p.getByRole('dialog').locator('.pick-option').filter({ hasText: 'Ergebnisse' }).click();
   await p.waitForTimeout(300);
   const trained = await p.locator('.mob-trained').innerText().catch(() => '');
-  ok(/Aus deinem Training/.test(trained) && /Hüfte drehen/.test(trained), `the test page shows the value from the training (${trained.split('\n').slice(1, 3).join(' · ')})`);
+  ok(/Aus deinem Training/i.test(trained) && /Hüfte drehen/.test(trained), `the test page shows the value from the training (${trained.split('\n').slice(1, 3).join(' · ')})`);
   await shot('test-trained');
   await p.locator('.topbar .icon-btn').first().click();
   await p.waitForTimeout(300);
@@ -235,7 +236,7 @@ ok(await p.locator('.mob-train-summary').isVisible(), 'a single drill with the c
 const single = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]')[0]?.done?.[0]);
 ok(!!single && single.sets.every((s) => s.reps === s.target && !s.seen), `the camera saw no rep: the app counted along to the end (${JSON.stringify(single)})`);
 await p.evaluate(() => ['golfos.mobility.fakeStill', 'golfos.mobility.fakeAway'].forEach((k) => localStorage.removeItem(k)));
-await p.locator('.mob-train-done').click();
+await p.locator('.topbar .icon-btn').first().click();
 await p.waitForTimeout(300);
 ok(await p.locator('.mob-drill-start').isVisible(), 'after the single drill: back on its page');
 await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
@@ -248,11 +249,11 @@ await p.locator('.mob-drill-result').waitFor({ timeout: 90000 });
 await p.locator('.mob-camera-actions .pause').waitFor({ timeout: 30000 });
 await p.locator('.mob-camera-actions .pause').click();
 await p.locator('.mob-hold-screen').waitFor({ timeout: 10000 });
-await p.locator('.mob-hold-screen .btn-secondary').filter({ hasText: 'Pausieren' }).click();
+await p.locator('.mob-hold-screen .sc-action').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(400);
 ok(await p.locator('.mob-train-open').isVisible(), 'the pillar shows the paused training');
 await shot('paused');
-await p.locator('.mob-train-open .btn-secondary').click();
+await p.locator('.mob-train-open').click();
 const names = (await p.locator('.mob-train-list .title').allInnerTexts()).map((x) => x.replace(/^\d+\.\s*/, '').trim());
 const resume = await p.locator('.mob-start-train').innerText();
 // the first drill went cleanly twice now (the session before and this one): a little more next time
@@ -310,7 +311,7 @@ const planNames = async () => {
   await p.locator('.mob-today-start').click();
   const names = await p.locator('.mob-train-list .title').allInnerTexts();
   await p.locator('.topbar .icon-btn').first().click();
-  await p.locator('.sheet .btn-secondary').filter({ hasText: 'Pausieren' }).click().catch(() => {});
+  await p.locator('.sheet .sc-action').filter({ hasText: 'Pausieren' }).click().catch(() => {});
   await p.waitForTimeout(300);
   return names.map((x) => x.replace(/^\d+\.\s*/, ''));
 };

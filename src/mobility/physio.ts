@@ -291,6 +291,12 @@ export function unlogSession(p: PhysioPlan, id: string): PhysioPlan {
   savePhysio(next);
   return next;
 }
+/** "Rückgängig" after a diary entry was swiped away: back into the diary of the plan, in its place (newest first). */
+export function relogSession(e: PhysioEntry): void {
+  const p = loadPhysio();
+  if (!p || (p.log ?? []).some((x) => x.id === e.id)) return;
+  savePhysio({ ...p, log: [...(p.log ?? []), e].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 500) });
+}
 export function setSchedule(p: PhysioPlan, schedule: PhysioSchedule): PhysioPlan {
   const next = { ...p, schedule };
   savePhysio(next);

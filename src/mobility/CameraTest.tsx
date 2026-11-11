@@ -10,6 +10,7 @@ import type { Clip } from './anim3d/scene';
 import { loadGoal, position, targetPos, targetValue } from './profile';
 import { logFrame, logItem, logResult } from './motionlog';
 import { FitVoice, fitOf, fitScreen, fitSpeech, type Fit } from './framing';
+import { TickIcon } from './MobActions';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -891,13 +892,13 @@ function trLang(): 'en' | 'de' {
   return tr('en', 'de') as 'en' | 'de';
 }
 
-/** The criteria of a test as the camera judged them – met (✓) or not yet (–), neutral, no red (measuring, not grading). */
+/** The criteria of a test as the camera judged them – met (a tick) or not yet (–), neutral, no red (measuring, not grading). */
 export function CheckList(props: { checks: Check[] }) {
   return (
     <ul className="mob-checks" aria-label={tr('The criteria', 'Die Prüfkriterien')}>
       {props.checks.map((c) => (
         <li key={c.id} className={c.ok ? 'ok' : 'no'} aria-label={`${tr(c.label.en, c.label.de)}: ${c.ok ? tr('met', 'erfüllt') : tr('not yet', 'noch nicht')}`}>
-          <span className="mob-check-mark" aria-hidden="true">{c.ok ? '✓' : '–'}</span>
+          <span className="mob-check-mark" aria-hidden="true">{c.ok ? <TickIcon size={13} /> : '–'}</span>
           <span>{tr(c.label.en, c.label.de)}</span>
         </li>
       ))}

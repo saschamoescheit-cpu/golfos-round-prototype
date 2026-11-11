@@ -73,6 +73,14 @@ export const loadSessions = (): TrainSession[] => read().sort((a, b) => b.starte
 export function saveSession(s: TrainSession): void {
   write([s, ...read().filter((x) => x.id !== s.id)]);
 }
+/** A session deleted by the player (the leave sheet's or the summary's "Löschen"): gone, "Rückgängig" in the toast
+ *  brings it back for a moment (Facelift 11.11.2026, a6/a10 – the guided sessions have no bin). */
+export function deleteSession(id: string, label: string): void {
+  const s = read().find((x) => x.id === id);
+  if (!s) return;
+  write(read().filter((x) => x.id !== id));
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'training', id, label, undo: () => saveSession(s) } }));
+}
 export function newSession(drills: string[], minutes: number, plan: { extraSets?: Record<string, number>; warm?: string[] } = {}): TrainSession {
   const extra = plan.extraSets && Object.keys(plan.extraSets).length ? { extraSets: plan.extraSets } : {};
   const warm = plan.warm?.length ? { warm: plan.warm } : {};
