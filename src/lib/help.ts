@@ -260,6 +260,26 @@ export const FAQ: FaqTopic[] = [
         video: 'score',
       },
       {
+        // Sascha 11.11.2026: "bei Aufgeben in einem Turnier wäre es No Return" – and after which hole
+        q: () => tr('Gave up in a series – what is "No Return"?', 'Aufgegeben in einer Serie – was heißt „No Return“?'),
+        a: () =>
+          tr(
+            'When giving up you choose after which hole, and how the holes missing count in the series\' total: double bogey, by handicap, par – or "No Return": the round does not count, the board shows "NR" and the total says "on 5 rounds" against "on 6 rounds"; whoever has an NR stands after those who played every round.',
+            'Beim Aufgeben wählst du, nach welchem Loch – und wie die fehlenden Löcher in der Gesamtwertung zählen: Doppelbogey, nach Vorgabe, Par – oder „No Return“: Die Runde zählt nicht, das Leaderboard zeigt „NR“, die Gesamtwertung „auf 5 Runden“ gegenüber „auf 6 Runden“; wer ein NR hat, steht hinter denen mit allen Runden.',
+          ),
+        video: 'score',
+      },
+      {
+        // Sascha 11.11.2026: "Loch 4 als Loch 5 gesetzt – wie korrigiere ich das?"; Moritz on Cypress
+        q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
+        a: () =>
+          tr(
+            'On the course or in "Check shots": "Hole drawn wrong? Mark tee and green again" – tap the tee and the green anew; it goes to everyone on the course. "Use the course map again" takes your own marking away – for one hole or every hole of the course.',
+            'Auf dem Platz oder in „Schläge prüfen“: „Loch falsch eingezeichnet? Abschlag und Grün neu markieren“ – Abschlag und Grün neu antippen; es geht an alle auf dem Platz. „Platzkarte verwenden“ nimmt deine eigene Markierung wieder weg – für ein Loch oder alle Löcher des Platzes.',
+          ),
+        video: 'map',
+      },
+      {
         // Sascha 29.10.2026: a scramble team on two phones, a tournament over several flights
         q: () => tr('Can my flight play on their phones too?', 'Kann mein Flight auf seinen Handys mitspielen?'),
         a: () =>
