@@ -110,8 +110,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('What is "Up now" on the start page?', 'Was ist „Jetzt dran“ auf der Startseite?'),
         a: () =>
           tr(
-            'Everything that is running or waiting for you, in one green card: a paused round, today’s tournament, rounds to check and sign, a pool on its days, results to confirm, a paused training, your Agility training of the day. A tap goes straight there. When nothing is up, the card is not there.',
-            'Alles, was gerade läuft oder auf dich wartet, in einer grünen Karte: eine pausierte Runde, das Turnier von heute, Runden zum Prüfen und Signieren, ein Pool an seinen Tagen, Ergebnisse zum Bestätigen, ein pausiertes Training, dein Agility-Training des Tages. Ein Tipp führt direkt dorthin. Ist nichts dran, fehlt die Karte.',
+            'Everything that is running or waiting for you, in one green card: a paused round, today’s tournament, rounds to check and sign, a pool on its days, results to confirm, a paused training, your Agility training of the day. A tap goes straight there. When nothing is up, the card is not there. A round of your bets settled shows below it as a row with what each one won or lost – a tap opens the pool on that round, swiped to the left it is put aside ("Undo" brings it back).',
+            'Alles, was gerade läuft oder auf dich wartet, in einer grünen Karte: eine pausierte Runde, das Turnier von heute, Runden zum Prüfen und Signieren, ein Pool an seinen Tagen, Ergebnisse zum Bestätigen, ein pausiertes Training, dein Agility-Training des Tages. Ein Tipp führt direkt dorthin. Ist nichts dran, fehlt die Karte. Eine abgerechnete Runde deiner Wetten steht darunter als Zeile mit dem, was jeder gewonnen oder verloren hat – ein Tipp öffnet den Pool auf dieser Runde, nach links gewischt ist sie ausgeblendet („Rückgängig“ holt sie zurück).',
           ),
         video: 'start',
       },
@@ -627,14 +627,14 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How do I delete a round, a game or a bet?', 'Wie lösche ich eine Runde, ein Spiel oder eine Wette?'),
         a: () =>
           tr(
-            'Swipe it to the left in its list, as an e-mail: the red bin shows – tap it. Swiped all the way across it goes at once. It goes into the bin: "Undo" right away, later "Restore" under the tile "deleted". A pool of bets or a tournament only its host deletes – for everyone. The same for training sessions and screenings.',
-            'In der Liste nach links wischen, wie eine E-Mail: Der rote Mülleimer erscheint – antippen. Ganz durchgewischt ist es sofort weg. Es landet im Papierkorb: gleich „Rückgängig“, später „Wiederherstellen“ unter der Kachel „gelöscht“. Einen Wett-Pool oder ein Turnier löscht nur, wer es angelegt hat – für alle. Genauso bei Trainingseinheiten und Screenings.',
+            'Swipe it to the left in its list, as an e-mail: the red bin shows – tap it. Swiped all the way across it goes at once. It goes into the bin: "Undo" right away, later "Restore" under the tile "deleted" – there "Select" ticks several at once, "Delete" in the bar removes them for good. A pool of bets or a tournament only its host deletes – for everyone. The same for training sessions and screenings.',
+            'In der Liste nach links wischen, wie eine E-Mail: Der rote Mülleimer erscheint – antippen. Ganz durchgewischt ist es sofort weg. Es landet im Papierkorb: gleich „Rückgängig“, später „Wiederherstellen“ unter der Kachel „gelöscht“ – dort hakt „Auswählen“ mehrere auf einmal ab, „Löschen“ in der Leiste entfernt sie endgültig. Einen Wett-Pool oder ein Turnier löscht nur, wer es angelegt hat – für alle. Genauso bei Trainingseinheiten und Screenings.',
           ),
         video: 'games',
       },
       {
         q: () => tr('How do I delete my account?', 'Wie lösche ich mein Konto?'),
-        a: () => tr('At the very bottom of the profile. The data on your phone stay.', 'Ganz unten im Profil. Die Daten auf deinem Handy bleiben.'),
+        a: () => tr('Profile → Account → "Delete account" (red, last in the bar beside "Sign out"), once more confirmed. The data on your phone stay. There too: your user name and password as rows – a new password is confirmed with the green tick.', 'Profil → Konto → „Konto löschen“ (rot, in der Leiste neben „Abmelden“), noch einmal bestätigt. Die Daten auf deinem Handy bleiben. Dort auch: Benutzername und Passwort als Zeilen – ein neues Passwort bestätigst du mit dem grünen Haken.'),
         video: 'profile',
       },
     ],

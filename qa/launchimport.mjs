@@ -75,8 +75,15 @@ await p.getByRole('region', { name: 'Launch-Monitor' }).locator('input[type=file
 await p.waitForTimeout(300);
 const s2 = p.getByRole('dialog', { name: 'Launch-Monitor-Daten' });
 ok((await s2.getByText('Die Datei nennt keine Einheit').count()) === 1, 'no unit in the file: asked');
-await s2.getByRole('button', { name: 'Meter' }).click();
+// a setting chosen seldom: the row "Weiten in der Datei · Yards ›" with its sheet (Facelift 11.11.2026, "einheit")
+const unitRow = s2.locator('.settings-row').filter({ hasText: 'Weiten in der Datei' });
+ok((await s2.locator('.segmented').count()) === 0 && /Yards/.test(await unitRow.innerText()), `the unit as a row: ${(await unitRow.innerText()).replace(/\s+/g, ' ')}`);
+await unitRow.click();
+const unitSheet = p.getByRole('dialog', { name: 'Weiten in der Datei' });
+ok((await unitSheet.locator('.pick-option').count()) === 2 && /in Meter umgerechnet/.test(await unitSheet.innerText()), 'its sheet: Yards and Meter, a line each');
+await unitSheet.locator('.pick-option').filter({ hasText: /^Meter/ }).click();
 await p.waitForTimeout(200);
+ok((await p.getByRole('dialog', { name: 'Weiten in der Datei' }).count()) === 0 && (await s2.isVisible()) && /Meter/.test(await unitRow.innerText()), 'picked: the sheet closed, the import still open, "Meter" in the row');
 ok(/9i 5× 120 m/.test((await s2.innerText()).replace(/\s+/g, ' ')), 'metres chosen: 120 m as in the file');
 await s2.getByRole('button', { name: 'Abbrechen' }).click();
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);

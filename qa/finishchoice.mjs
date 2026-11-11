@@ -50,7 +50,7 @@ const text = await sheet().innerText().catch(() => '');
 ok((await sheet().count()) === 1 && /Wie geht es weiter/.test(text), 'finished from the hole menu: the choice opens by itself');
 ok(/Jetzt prüfen & signieren/.test(text) && /Später prüfen & signieren/.test(text) && /Nur speichern/.test(text), 'now · later · saved only');
 ok((await capture()) === 'full' && (await sheet().getByRole('button', { name: /^Jetzt prüfen/ }).getAttribute('aria-pressed')) === 'true', 'chosen to start with: "Jetzt prüfen & signieren" (it waits under "prüfen & signieren")');
-ok(/Runde gespeichert ✓ Wie geht es weiter\?/.test(text), 'the heading without a dash, "Wie" with a capital');
+ok(/Runde gespeichert\. Wie geht es weiter\?/.test(text) && !/✓/.test(await sheet().locator('.sheet-head').innerText()), 'the heading without a dash, "Wie" with a capital – no ✓ glyph (Facelift 11.11.2026, O5)');
 await sheet().getByRole('button', { name: /^Nur speichern/ }).click();
 await p.waitForTimeout(400);
 ok((await capture()) === 'score' && (await sheet().count()) === 0, '"Nur speichern" chosen: saved only, the choice closes');

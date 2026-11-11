@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { Club, Flight } from '../types';
-import { Segmented, TopBar } from '../components/ui';
+import { TopBar } from '../components/ui';
+import { Block } from '../components/Block';
 import { clubCode, getLang, tr } from '../lib/i18n';
 import { clubName } from '../lib/caddie';
 import { CLUB_ORDER } from '../lib/clubs';
@@ -36,17 +37,21 @@ export function RangeSession(props: { session: LmSession; bag: { club: Club; car
       <span className="muted small range-sub">
         {[session.source, day ?? tr(`imported ${new Date(session.importedAt).toLocaleDateString(locale)}`, `importiert ${new Date(session.importedAt).toLocaleDateString(locale)}`), tr(`${session.shots.length} shots`, `${session.shots.length} Schläge`), temp != null ? `${yd ? fmt((temp * 9) / 5 + 32) + ' °F' : temp + ' °C'}` : null].filter(Boolean).join(' · ')}
       </span>
-      <Segmented<RangeTab>
-        label={tr('Session', 'Sitzung')}
-        value={tab}
-        onChange={(v) => v && setTab(v)}
-        options={[
-          { value: 'spread', label: tr('Spread', 'Streuung') },
-          { value: 'gaps', label: tr('Gaps', 'Abstände') },
-          { value: 'flight', label: tr('Flight', 'Flugbahn') },
-          { value: 'swing', label: tr('Swing', 'Schwung') },
-        ]}
-      />
+      {/* the four views as the app's green chips (Facelift 11.11.2026), not a block of four buttons */}
+      <div className="chip-row range-tabs" role="group" aria-label={tr('Session', 'Sitzung')}>
+        {(
+          [
+            ['spread', tr('Spread', 'Streuung')],
+            ['gaps', tr('Gaps', 'Abstände')],
+            ['flight', tr('Flight', 'Flugbahn')],
+            ['swing', tr('Swing', 'Schwung')],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v} type="button" aria-pressed={tab === v} onClick={() => setTab(v as RangeTab)}>
+            {label}
+          </button>
+        ))}
+      </div>
       {tab !== 'gaps' && clubs.length > 1 && (
         <div className="chip-row" role="group" aria-label={tr('Club', 'Schläger')}>
           {clubs.map((c) => (
@@ -104,13 +109,14 @@ function SpreadTab(props: { club: Club; shots: LmShot[]; dist: (m: number) => st
   const say = spreadSay(s, clubName(props.club), tr);
   return (
     <>
+      <Block title={tr('Every shot from above', 'Jeder Schlag von oben')}>
       <section className="card stats-card">
-        <h2>{tr('Every shot from above', 'Jeder Schlag von oben')}</h2>
         <RangeDots shots={props.shots} stats={s} yd={props.yd} />
         <p className="muted small" style={{ margin: 0 }}>
           {tr('Each dot a shot, red a clear mishit · the ellipse holds 8 of 10 balls – the same the map shows on the round.', 'Jeder Punkt ein Schlag, rot ein klarer Fehlschlag · in der Ellipse landen 8 von 10 Bällen – dieselbe zeigt die Karte auf der Runde.')}
         </p>
       </section>
+      </Block>
       <div className="range-tiles">
         <Tile num={props.dist(s.carry)} label={tr('carry (median)', 'Carry (Median)')} />
         <Tile num={s.total != null ? props.dist(s.total) : '–'} label={tr('with roll', 'mit Ausrollen')} />
@@ -118,10 +124,11 @@ function SpreadTab(props: { club: Club; shots: LmShot[]; dist: (m: number) => st
         <Tile num={props.dist(s.carryHi - s.carryLo)} label={tr('length (8 of 10)', 'Länge (8 von 10)')} />
       </div>
       {say && (
+        <Block title={tr('What stands out', 'Was auffällt')}>
         <section className="card stats-card">
-          <h2>{tr('What stands out', 'Was auffällt')}</h2>
           <p style={{ margin: 0 }}>{say}</p>
         </section>
+        </Block>
       )}
     </>
   );
@@ -184,8 +191,8 @@ function GapsTab(props: { session: LmSession; bag: { club: Club; carry: number }
   const close = closeGaps(carries);
   return (
     <>
+      <Block title={tr('Carry per club', 'Carry je Schläger')}>
       <section className="card stats-card">
-        <h2>{tr('Carry per club', 'Carry je Schläger')}</h2>
         <div className="range-gaps" role="table" aria-label={tr('Carry per club', 'Carry je Schläger')}>
           {rows.map((c) => {
             const m = measured.get(c);
@@ -207,9 +214,10 @@ function GapsTab(props: { session: LmSession; bag: { club: Club; carry: number }
           {tr('Green: measured in this session (the mark: 8 of 10). Grey: in your bag, entered by you. Red: does not fit the order of the measured clubs.', 'Grün: in dieser Sitzung gemessen (der Strich: 8 von 10). Grau: in deinem Bag, selbst eingetragen. Rot: passt nicht zur Reihenfolge der gemessenen Schläger.')}
         </p>
       </section>
+      </Block>
       {(close.length > 0 || wrong.size > 0) && (
+        <Block title={tr('What stands out', 'Was auffällt')}>
         <section className="card stats-card">
-          <h2>{tr('What stands out', 'Was auffällt')}</h2>
           {close.map((g) => {
             const a = medianOf(clubs.find((c) => c.club === g.long)!.shots, 'ballSpeed');
             const b = medianOf(clubs.find((c) => c.club === g.short)!.shots, 'ballSpeed');
@@ -231,6 +239,7 @@ function GapsTab(props: { session: LmSession; bag: { club: Club; carry: number }
             </p>
           )}
         </section>
+        </Block>
       )}
     </>
   );
@@ -275,8 +284,8 @@ function FlightTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: nu
   const deg = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${props.fmt(Math.abs(v), 1)}°`;
   return (
     <>
+      <Block title={tr(`${flights.length} shots · recognised by the device`, `${flights.length} Schläge · vom Gerät erkannt`)}>
       <section className="card stats-card">
-        <h2>{tr(`${flights.length} shots · recognised by the device`, `${flights.length} Schläge · vom Gerät erkannt`)}</h2>
         <div className="flight-picker" role="group" aria-label={tr('Flights', 'Flugbahnen')}>
           <div className="flight-grid">{FLIGHTS.filter((f) => !f.shape).map(tile)}</div>
           <div className="flight-grid two">{FLIGHTS.filter((f) => f.shape).map(tile)}</div>
@@ -287,9 +296,10 @@ function FlightTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: nu
             : tr(`No set pattern: ${sorted.slice(0, 3).map(([f, n]) => `${flightName(f)} ${n}×`).join(', ')}.`, `Kein festes Muster: ${sorted.slice(0, 3).map(([f, n]) => `${flightName(f)} ${n}×`).join(', ')}.`)}
         </p>
       </section>
+      </Block>
       {(path != null || face != null || f2p != null) && (
+        <Block title={tr('Why', 'Warum')}>
         <section className="card stats-card">
-          <h2>{tr('Why', 'Warum')}</h2>
           <div className="range-rows">
             {path != null && <Row label={tr('Club path', 'Schwungbahn')} value={deg(path)} />}
             {face != null && <Row label={tr('Face to target', 'Schlagfläche zum Ziel')} value={deg(face)} />}
@@ -305,6 +315,7 @@ function FlightTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: nu
             </p>
           )}
         </section>
+        </Block>
       )}
     </>
   );
@@ -359,8 +370,8 @@ function SwingTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: num
         <p className="muted small" style={{ margin: 0 }}>{t ? tr('Tour: PGA Tour average (TrackMan).', 'Tour: Schnitt der PGA Tour (TrackMan).') : tr('No tour average for this club.', 'Für diesen Schläger gibt es keinen Tour-Schnitt.')}</p>
       </section>
       {flagged.length > 0 && (
+        <Block title={tr('What stands out', 'Was auffällt')}>
         <section className="card stats-card">
-          <h2>{tr('What stands out', 'Was auffällt')}</h2>
           <p style={{ margin: 0 }}>
             {tr('Clearly different from the tour: ', 'Deutlich anders als auf der Tour: ')}
             {flagged.map((r) => `${r.label} (${r.show(mineOf(r.key)!)} ${tr('against', 'statt')} ${r.show(t![r.key])})`).join(', ')}.
@@ -369,16 +380,18 @@ function SwingTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: num
               : ''}
           </p>
         </section>
+        </Block>
       )}
       {tempo != null && (
+        <Block title={tr('Rhythm', 'Rhythmus')}>
         <section className="card stats-card">
-          <h2>{tr('Rhythm', 'Rhythmus')}</h2>
           <div className="range-rows">
             {back != null && down != null && <Row label={tr('Backswing / downswing', 'Rückschwung / Abschwung')} value={`${props.fmt(back, 2)} s / ${props.fmt(down, 2)} s`} />}
             <Row label="Tempo" value={`${props.fmt(tempo, 1)} : 1`} tour="Tour 3 : 1" />
           </div>
           <p className="muted small" style={{ margin: 0 }}>{tr('As the device measures it – telling as a trend over several sessions.', 'So misst es das Gerät – als Verlauf über mehrere Sitzungen aussagekräftiger als einzeln.')}</p>
         </section>
+        </Block>
       )}
     </>
   );

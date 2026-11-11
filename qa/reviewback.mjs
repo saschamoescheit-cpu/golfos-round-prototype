@@ -3,6 +3,7 @@
 // "Zurück" there goes to the course's statistics again – not to the list of the rounds. Sascha's round of 16.10.2026 on
 // Hetzenhof (local data, _data/). Usage: node qa/reviewback.mjs [url]
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -34,7 +35,7 @@ await p.waitForTimeout(1500);
 const title = async () => (await p.locator('main h1, main h2').first().innerText().catch(() => '')).trim();
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(800);
-await p.getByRole('button', { name: 'Plätze', exact: true }).first().click();
+await pickTopic(p, 'Plätze'); // the topics as the switch "‹ Abschlag ›" since the Facelift (11.11.2026)
 await p.waitForTimeout(500);
 await p.locator('button.list-item, button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1000);

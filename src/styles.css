@@ -2547,3 +2547,39 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* "Tee" a row of the golf list like the others (Sascha 11.11.2026, design round 3) */
 .settings-list > .std-tee { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .settings-list > .std-tee .std-tee-name { justify-self: end; }
+
+/* Facelift 11.11.2026 – prof */
+/* a block with its eyebrow above (Block.tsx): the title small over the card or the rows */
+.eb-block { display: flex; flex-direction: column; gap: 8px; }
+.eb-block > .eyebrow { padding-inline: 2px; }
+/* Mein Bag bearbeiten (P5): each club a row of its own, swiped away as a mail */
+.bag-edit-list { gap: 6px; }
+.swipe-front.bag-row.edit { background: var(--surface); border-top: 0; border-radius: 12px; padding: 6px 14px; min-height: 52px; }
+.swipe-front.bag-row.edit .bag-code { font-size: 16px; }
+/* Konto: one form with its heading, the other way a green line under the button (konto) */
+.account-title { font: 600 17px var(--display); }
+.account-switch { background: none; border: 0; padding: 6px 0; min-height: 44px; color: var(--brand-text); font: 500 15px var(--body); text-align: center; cursor: pointer; }
+.account-switch strong { font-weight: 700; }
+.account-problem { margin: 0; }
+/* Profil (P1–P4): the photo's bin beside it, the account card */
+.profile-photo .photo-remove { color: var(--muted); }
+.account-block .profile-account { gap: 2px; }
+.account-delete-msg { margin: 0; }
+.settings-list > .home-club { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.settings-list > .home-club .settings-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Statistik (R13): directions as SVG arrows – big in a tile, small beside a ring's label */
+.insight-num .dir-icon { display: block; }
+.dir-icon.small { display: inline-block; vertical-align: -2px; margin: 0 2px; }
+.ring-label { display: inline-flex; align-items: center; gap: 2px; }
+/* Papierkorb (O2): the select bar a full action bar, the ticks as TickRow, the title an eyebrow */
+.bin-bar > .sc-actions { flex: 1 1 100%; }
+.bin-pick .tick-mark.bin-check { width: 24px; height: 24px; margin-left: auto; }
+.eyebrow.bin-title { font: 600 12px var(--body); letter-spacing: 1px; margin: 4px 2px 0; }
+/* Rundenfazit (O5/O6): the headline beside the read-aloud button, "Im Training" with its tick */
+.round-summary > .row { display: flex; align-items: flex-start; gap: 10px; }
+.round-summary > .row .grow { flex: 1; min-width: 0; }
+.round-summary .btn-secondary svg { vertical-align: -3px; margin-right: 6px; }
+/* Freunde (O5): the tick before the sentence */
+.friend-done .done-tick { vertical-align: -2px; margin-right: 6px; }
+/* StepPick's sheet (O5): a round played with the SVG tick before its name */
+.pick-option strong .step-pick-tick { display: inline-block; vertical-align: -2px; margin-right: 6px; }

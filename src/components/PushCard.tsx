@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { OnOffRow } from './Settings';
+import { Block } from './Block';
 import { disablePush, enablePush, loadPush, pushAvailability, PushError, setPushKind, type PushKind } from '../lib/push';
 
 // Notifications in the profile (final list, Sascha 23.10.2026): a slider right of the heading turns them on for this
@@ -49,10 +50,11 @@ export function PushCard(props: { signedIn: boolean }) {
   };
 
   return (
+    // the title small above the card (Facelift 11.11.2026, P3)
+    <Block title={tr('Notifications', 'Mitteilungen')} className="push-block">
     <section className="card stats-card push-card">
       {/* rows with An/Aus, no sliders (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App"; before: the main
           slider right of the heading, 23.10.2026) */}
-      <h2>{tr('Notifications', 'Mitteilungen')}</h2>
       {can && (
         <div className="settings-list onoff-card-row">
           <OnOffRow label={tr('Notifications on this phone', 'Mitteilungen auf diesem Handy')} on={state.on} disabled={busy} onChange={(v) => void (v ? turnOn() : turnOff())} />
@@ -80,5 +82,6 @@ export function PushCard(props: { signedIn: boolean }) {
       )}
       {msg && <span className="muted small" role="status">{msg}</span>}
     </section>
+    </Block>
   );
 }

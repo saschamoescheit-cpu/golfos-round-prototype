@@ -1,5 +1,6 @@
 import { Component, useMemo, useState, type ReactNode } from 'react';
 import { KeyHint } from './KeyHint';
+import { Block } from './Block';
 import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
@@ -29,14 +30,15 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
   const tip = s.nextRound ? s.nextRound.replace(/^(Next round|Nächste Runde):\s*/, '') : null;
   return (
     <>
+    {/* the title small above the card (Facelift 11.11.2026, O6) – the headline beside the read-aloud button */}
+    <Block title={tr('Your round summary', 'Dein Rundenfazit')} className="round-summary-block">
     <section className="card stats-card round-summary">
       <div className="row">
-        <h2>{tr('Your round summary', 'Dein Rundenfazit')}</h2>
+        <p className="headline grow">{s.headline}</p>
         <button type="button" className="icon-btn" aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} aria-pressed={talking} onClick={read}>
           <SpeakerIcon />
         </button>
       </div>
-      <p className="headline">{s.headline}</p>
       <ul className="summary-lines">
         {s.lines.map((l, k) => (
           <li key={k} className={l.tone}>
@@ -72,12 +74,22 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
               setTaken(name ? tr(`Saved in Training as "${name}" (Practice → My plans).`, `Im Training gespeichert als „${name}“ (Üben → Meine Pläne).`) : tr('Training could not be opened.', 'Training ließ sich nicht öffnen.'));
             }}
           >
-            {taken ? tr('In Training ✓', 'Im Training ✓') : tr('Take it into Training', 'Ins Training übernehmen')}
+            {taken ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+                {tr('In Training', 'Im Training')}
+              </>
+            ) : (
+              tr('Take it into Training', 'Ins Training übernehmen')
+            )}
           </button>
           {taken && <span className="muted small">{taken}</span>}
         </>
       )}
     </section>
+    </Block>
     {tip && (
       <KeyHint title={tr('Tip for the next round', 'Tipp für die nächste Runde')}>{tip.charAt(0).toUpperCase() + tip.slice(1)}</KeyHint>
     )}

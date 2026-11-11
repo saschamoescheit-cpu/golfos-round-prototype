@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { lastSyncError, loadSession, signIn, syncConfigured } from '../lib/sync';
 import { tr } from '../lib/i18n';
 import { AccountForm } from './AccountForm';
+import { Block } from './Block';
 
 // "On all your devices" in the profile (feature 013): sign in with Google or a user name, then rounds, games, profile,
 // bag and friends are the same on iPhone, iPad and PC. Signed in, the card is gone for good (Sascha 23.10.2026: "the
@@ -23,13 +24,15 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
   }, []);
   if (!syncConfigured() || session) return null;
   return (
+    // the title small above the card (Facelift 11.11.2026, P3)
+    <Block title={tr('On all your devices', 'Auf allen Geräten')} className="sync-block">
     <section className="card stats-card">
-      <h2>{tr('On all your devices', 'Auf allen Geräten')}</h2>
       <p className="muted small" style={{ margin: 0 }}>
         {tr('Rounds, games and bag on iPhone, iPad and computer.', 'Runden, Spiele und Bag auf iPhone, iPad und Computer.')}
       </p>
       {/* why the player is signed out again (e.g. the sign-in ran out on the server) */}
-      {err && <span className="small bad-text">{err.text}</span>}
+      {/* in the app's green: the player did nothing wrong (Facelift 11.11.2026, O4) */}
+      {err && <span className="small good-text" role="status">{err.text}</span>}
       <button type="button" className="btn-secondary google-btn" onClick={signIn}>
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z" />
@@ -48,5 +51,6 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
         }}
       />
     </section>
+    </Block>
   );
 }

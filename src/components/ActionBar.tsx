@@ -51,6 +51,17 @@ export const ACTION_ICONS = {
   ),
   // the bin of the scorecard
   delete: svg(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />),
+  // signing out: the door with the arrow out (Facelift 11.11.2026, P4)
+  signout: svg(
+    <>
+      <path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8" />
+      <path d="M10 12h10M16.5 8.5L20 12l-3.5 3.5" />
+    </>,
+  ),
+  // ticking all of a list: the tick (Facelift 11.11.2026, O2)
+  all: svg(<path d="M5 12.5l4.5 4.5L19 7.5" />),
+  // leaving a mode without doing it: the cross (Facelift 11.11.2026, O2)
+  cancel: svg(<path d="M6 6l12 12M18 6L6 18" />),
   // the birdie book: an open book
   book: svg(<path d="M12 6c-2-1.3-4.7-1.8-8-1.5v13c3.3-.3 6 .2 8 1.5 2-1.3 4.7-1.8 8-1.5v-13c-3.3-.3-6 .2-8 1.5zM12 6v13" />),
   // the course preview: the eye

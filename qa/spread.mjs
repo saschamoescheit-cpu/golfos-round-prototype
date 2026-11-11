@@ -3,6 +3,7 @@
 // the ball, and a line "Streuung" in the caddie card. Data: the tutorial's example player (five signed rounds).
 // Usage: node qa/spread.mjs [url]   (SHOTS=<dir> keeps screenshots)
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -36,7 +37,7 @@ await p.waitForTimeout(1500);
 // 1 · the stats
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(600);
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
+await pickTopic(p, 'Schläger');
 await p.waitForTimeout(600);
 ok((await p.getByRole('heading', { name: 'Deine Streuung' }).count()) === 1, 'stats: "Deine Streuung" with the cone');
 const cone = p.getByRole('img', { name: 'Deine Streuung je Schläger' });

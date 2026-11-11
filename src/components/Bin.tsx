@@ -3,6 +3,8 @@ import { getLang, tr } from '../lib/i18n';
 import { DeletedIcon } from './RoundIcons';
 import { SwipeRow } from './SwipeRow';
 import { DateBlock } from './DateBlock';
+import { ActionBar } from './ActionBar';
+import { ConfirmSheet } from './ConfirmSheet';
 
 // The bin of deleted rounds and games (Sascha 15.10.2026) – the same in every module: folded under the list,
 // "Restore" with one tap, "Delete for good" only after a second tap. Since 03.11.2026 (Sascha: "the deleted rounds look
@@ -80,67 +82,51 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
           {open ? '▾' : '▸'} {props.title} ({items.length})
         </button>
       ) : (
-        open && <h2 className="bin-title">{props.title}</h2>
+        open && <span className="eyebrow bin-title">{props.title}</span>
       )}
+      {/* one bar of icon actions as everywhere (Facelift 11.11.2026, O2 – before text buttons "Alle/Keine", "Abbrechen",
+          "3 löschen"); deleting for good asked as everywhere (ConfirmSheet) */}
       {open && items.length > 1 && (
         <div className="bin-bar">
           {!picking ? (
             <button type="button" className="btn-secondary" onClick={() => setPicking(true)}>
               {tr('Select', 'Auswählen')}
             </button>
-          ) : confirmMany ? (
-            <>
-              <span className="muted small grow">{tr(`Delete ${chosen.length} for good? This cannot be undone.`, `${chosen.length} endgültig löschen? Das lässt sich nicht rückgängig machen.`)}</span>
-              <button type="button" className="btn-secondary" onClick={() => setConfirmMany(false)}>
-                {tr('Keep', 'Behalten')}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  chosen.forEach((id) => props.onPurge(id));
-                  endPicking();
-                }}
-              >
-                {tr('Delete for good', 'Endgültig löschen')}
-              </button>
-            </>
           ) : (
-            <>
-              <button
-                type="button"
-                className="btn-secondary"
-                aria-label={all ? tr('Select none', 'Keine auswählen') : tr('Select all', 'Alle auswählen')}
-                onClick={() => setPicked(all ? new Set() : new Set(items.map((t) => t.id)))}
-              >
-                {all ? tr('None', 'Keine') : tr('All', 'Alle')}
-              </button>
-              <button type="button" className="btn-secondary" onClick={endPicking}>
-                {tr('Cancel', 'Abbrechen')}
-              </button>
-              <button type="button" className="btn-secondary btn-danger" disabled={!chosen.length} onClick={() => setConfirmMany(true)}>
-                {tr(`Delete ${chosen.length}`, `${chosen.length} löschen`)}
-              </button>
-            </>
+            <ActionBar
+              label={tr('Selected', 'Ausgewählt')}
+              actions={[
+                { label: all ? tr('None', 'Keine') : tr('All', 'Alle'), aria: all ? tr('Select none', 'Keine auswählen') : tr('Select all', 'Alle auswählen'), icon: 'all', onClick: () => setPicked(all ? new Set() : new Set(items.map((t) => t.id))) },
+                { label: tr('Cancel', 'Abbrechen'), icon: 'cancel', onClick: endPicking },
+                { label: tr(`Delete ${chosen.length}`, `${chosen.length} löschen`), icon: 'delete', danger: true, disabled: !chosen.length, onClick: () => setConfirmMany(true) },
+              ]}
+            />
           )}
         </div>
+      )}
+      {confirmMany && picking && (
+        <ConfirmSheet
+          title={tr(`Delete ${chosen.length} for good?`, `${chosen.length} endgültig löschen?`)}
+          text={tr('This cannot be undone.', 'Das lässt sich nicht rückgängig machen.')}
+          confirmLabel={tr('Delete for good', 'Endgültig löschen')}
+          onClose={() => setConfirmMany(false)}
+          onConfirm={() => {
+            chosen.forEach((id) => props.onPurge(id));
+            endPicking();
+          }}
+        />
       )}
       {open && (
         <ul className="list">
           {items.map((t) => {
             // while picking the whole row ticks it – a big target with gloves on the course
             const row = (
-              <button type="button" className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={() => (picking ? toggle(t.id) : setSheet({ id: t.id }))}>
-                {picking && (
-                  <input
-                    type="checkbox"
-                    className="bin-check"
-                    checked={picked.has(t.id)}
-                    aria-label={`${t.title}, ${day(t.date)}`}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() => toggle(t.id)}
-                  />
-                )}
+              <button
+                type="button"
+                className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'}
+                {...(picking ? { role: 'checkbox', 'aria-checked': picked.has(t.id), 'aria-label': `${t.title}, ${day(t.date)}` } : {})}
+                onClick={() => (picking ? toggle(t.id) : setSheet({ id: t.id }))}
+              >
                 <DateBlock iso={t.date} />
                 {/* the mark of the tile "deleted", as a played or signed round carries its own – in its own column between
                     date and name (Sascha 11.11.2026, status mockups: variant A) */}
@@ -157,6 +143,16 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                   <span className="bin-score">
                     <strong>{t.score.big}</strong>
                     {t.score.small && <span className="muted small">{t.score.small}</span>}
+                  </span>
+                )}
+                {/* ticked as a TickRow: the round green tick on the right (Facelift 11.11.2026, O2 – before a native box) */}
+                {picking && (
+                  <span className={`tick-mark bin-check${picked.has(t.id) ? ' on' : ''}`} aria-hidden="true">
+                    {picked.has(t.id) && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                    )}
                   </span>
                 )}
               </button>
@@ -191,28 +187,36 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
         return (
           <div className="sheet-backdrop" onClick={() => setSheet(null)}>
             <section className="sheet" role="dialog" aria-label={t.title} onClick={(e) => e.stopPropagation()}>
-              <strong>{t.title}</strong>
+              {/* the sheet's head with ✕, the two actions in one bar (Facelift 11.11.2026, O2) */}
+              <div className="sheet-head">
+                <strong>{t.title}</strong>
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSheet(null)}>
+                  ✕
+                </button>
+              </div>
               <span className="muted small">{`${day(t.date)} · ${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  props.onRestore(t.id);
-                  setSheet(null);
-                }}
-              >
-                {tr('Restore', 'Wiederherstellen')}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  setSheet(null);
-                  purgeLater(t);
-                }}
-              >
-                {tr('Delete for good', 'Endgültig löschen')}
-              </button>
+              <ActionBar
+                label={t.title}
+                actions={[
+                  {
+                    label: tr('Restore', 'Wiederherstellen'),
+                    icon: 'reopen',
+                    onClick: () => {
+                      props.onRestore(t.id);
+                      setSheet(null);
+                    },
+                  },
+                  {
+                    label: tr('Delete for good', 'Endgültig löschen'),
+                    icon: 'delete',
+                    danger: true,
+                    onClick: () => {
+                      setSheet(null);
+                      purgeLater(t);
+                    },
+                  },
+                ]}
+              />
             </section>
           </div>
         );

@@ -3,6 +3,7 @@
 // with one tap); the stats say what they rest on, approaches by distance, how the putts miss, strikes per club.
 // Usage: node qa/postround2.mjs [url]
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -84,13 +85,13 @@ await p.waitForTimeout(1000);
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(800);
 ok(/Aus 1 geprüften Runde/.test(await p.locator('main').innerText()), 'the stats say what they rest on: "Aus 1 geprüften Runde"');
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: /Grün/ }).click();
+await pickTopic(p, /Grün/);
 await p.waitForTimeout(400);
 ok((await p.getByRole('heading', { name: 'Annäherung nach Entfernung' }).count()) === 1, 'approach by distance');
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Putten' }).click();
+await pickTopic(p, 'Putten');
 await p.waitForTimeout(400);
 ok((await p.getByRole('heading', { name: 'Wie deine Putts verfehlen' }).count()) === 1, 'how the putts miss');
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
+await pickTopic(p, 'Schläger');
 await p.waitForTimeout(400);
 const clubs = await p.locator('main').innerText();
 ok(/Treffer und Streuung je Schläger/.test(clubs) && /gute Treffer/.test(clubs) && /Slice/.test(clubs), 'strikes and spread per club: good strikes and the most frequent flight off line');

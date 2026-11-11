@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Segmented, TopBar } from '../components/ui';
+import { TopBar } from '../components/ui';
+import { Block } from '../components/Block';
 import { tr } from '../lib/i18n';
 import { FAQ, HELP_TOUR, HELP_VIDEOS, helpPosterUrl, helpSubsUrl, helpVideoUrl, loadSubs, saveSubs, type HelpVideo } from '../lib/help';
 import { sessionModule } from '../lib/gamestore';
@@ -56,15 +57,19 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
   return (
     <main className="screen help">
       <TopBar title={tr('Help', 'Hilfe')} onBack={props.onBack} backLabel={tr('Back to the profile', 'Zurück zum Profil')} />
-      <Segmented<HelpTab>
-        label={tr('Help', 'Hilfe')}
-        value={tab}
-        onChange={(v) => v && setTab(v)}
-        options={[
-          { value: 'videos', label: tr('Videos', 'Videos') },
-          { value: 'faq', label: tr('Questions', 'Häufige Fragen') },
-        ]}
-      />
+      {/* the two views as the app's green chips (Facelift 11.11.2026), not a block of two buttons */}
+      <div className="chip-row help-tabs" role="group" aria-label={tr('Help', 'Hilfe')}>
+        {(
+          [
+            ['videos', tr('Videos', 'Videos')],
+            ['faq', tr('Questions', 'Häufige Fragen')],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v} type="button" aria-pressed={tab === v} onClick={() => setTab(v)}>
+            {label}
+          </button>
+        ))}
+      </div>
       {tab === 'videos' && (
         <div className="help-videos">
           {videos.map((v) => (
@@ -82,9 +87,9 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
       {tab === 'faq' && (
         <div className="help-faq">
           {topics.map((t) => (
-            <section key={t.id} className="card stats-card">
-              <h2>{t.title()}</h2>
-              <div className="faq-list">
+            // the topic small above its questions (Facelift 11.11.2026: no heading inside the card)
+            <Block key={t.id} title={t.title()} className="faq-topic">
+              <div className="card faq-list">
                 {t.items.map((f) => {
                   const key = `${t.id}:${f.q()}`;
                   const isOpen = open === key;
@@ -109,7 +114,7 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
                   );
                 })}
               </div>
-            </section>
+            </Block>
           ))}
         </div>
       )}

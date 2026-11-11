@@ -3,6 +3,7 @@
 // statistics, the caddie and the tournament caddie. Screenshots only, plus checks that nothing runs off the screen.
 // Usage: SHOTS=<dir> node qa/visual.mjs [url]
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -96,9 +97,9 @@ for (const theme of ['sun', 'dark']) {
   await tab('Statistik');
   await p.waitForTimeout(600);
   for (const [label, name] of [[/Abschlag/, 'stats-tee'], [/Grün|kurzes Spiel/, 'stats-green']]) {
-    const t = p.locator('.section-chips button').filter({ hasText: label }).first();
-    if (await t.count()) {
-      await t.click();
+    // the topics as the switch "‹ Abschlag ›" since the Facelift (11.11.2026)
+    if (await p.getByRole('group', { name: 'Thema' }).count()) {
+      await pickTopic(p, label);
       await p.waitForTimeout(400);
     }
     await shot(name);

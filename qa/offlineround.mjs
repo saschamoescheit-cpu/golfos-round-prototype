@@ -9,6 +9,7 @@
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const { chromium, devices } = await import('playwright');
 const { mockNet } = await import('./netmock.mjs');
+const { pickTopic } = await import('./topic.mjs');
 
 const url = process.argv[2] ?? 'http://localhost:4173/';
 const [search = 'Hetzenhof', lat = '48.7808', lon = '9.689', loop = 'A · 9 Löcher'] = process.argv.slice(3);
@@ -100,7 +101,7 @@ ok((await p.locator('.sc-wrap').count()) === 1, 'offline: the scorecard after si
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click().catch(() => {});
 await p.waitForTimeout(1200);
 ok(/Aus 1 geprüften Runde/.test(await p.locator('main').innerText().catch(() => '')), 'offline: the stats count the round');
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click().catch(() => {});
+await pickTopic(p, 'Schläger').catch(() => {});
 await p.waitForTimeout(800);
 ok((await p.locator('.putter-row').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Streuung' }).count()) === 1, 'offline: the clubs with their spread and the putter');
 
