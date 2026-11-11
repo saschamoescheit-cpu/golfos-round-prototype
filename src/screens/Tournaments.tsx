@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { seriesStandings } from '../lib/seriesstandings';
 import { KeyHint } from '../components/KeyHint';
+import { ToggleList, ToggleRow } from '../components/Settings';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent,reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent,reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -434,8 +435,12 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
 /** A flight's scores entered afterwards by the host (Sascha 08.11.2026: "we also need to enter yesterday's scores
  *  afterwards"): its players one at a time, every hole a box with its par – the strokes typed, the total below. Saved,
  *  they are the card on every phone, in the leaderboard, the series and the bets. */
-function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave: (typed: Record<string, (number | null)[]>) => Promise<boolean>; onClose: () => void }) {
+function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave: (typed: Record<string, (number | null)[]>, retired: Record<string, number>, fill: Record<string, RetiredFill>) => Promise<boolean>; onClose: () => void }) {
   const { ev, flight } = props;
+  // gave up (Sascha 12.11.2026: "how do I record that Chris stopped after hole 8"): from the first hole without a score;
+  // the holes missing count as set – double bogey, by the handicap (net par) or par
+  const [out, setOut] = useState<Record<string, number>>(() => ({ ...(flight.retired ?? {}) }));
+  const [fill, setFill] = useState<Record<string, RetiredFill>>(() => ({ ...(flight.retiredFill ?? {}) }));
   const [typed, setTyped] = useState<Record<string, (number | null)[]>>(() => Object.fromEntries(flight.players.map((p) => [p.id, ev.holes.map((_, i) => flight.scores[p.id]?.[i]?.s ?? null)])));
   const [who, setWho] = useState(flight.players[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
@@ -484,6 +489,34 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
             </label>
           ))}
         </div>
+        <ToggleList>
+          <ToggleRow
+            inList
+            label={tr('Gave up', 'Aufgegeben')}
+            text={
+              out[who] != null
+                ? tr(`after hole ${ev.holes[out[who] - 1]?.label ?? out[who]} – the holes missing in the series' total:`, `nach Loch ${ev.holes[out[who] - 1]?.label ?? out[who]} – die fehlenden Löcher zählen in der Gesamtwertung als:`)
+                : tr('Stopped during the round – from the first hole without a score', 'Während der Runde abgebrochen – ab dem ersten Loch ohne Score')
+            }
+            on={out[who] != null}
+            onChange={(v) => {
+              const first = row.findIndex((x) => x == null);
+              const rest = { ...out };
+              if (v) rest[who] = first < 0 ? ev.holes.length : first;
+              else delete rest[who];
+              setOut(rest);
+            }}
+          />
+        </ToggleList>
+        {out[who] != null && (
+          <div className="chip-set retire-fill" role="group" aria-label={tr('The holes missing count as', 'Fehlende Löcher zählen als')}>
+              {(['double', 'net', 'par'] as const).map((v) => (
+                <button key={v} type="button" className={`chip${(fill[who] ?? 'double') === v ? ' on' : ''}`} aria-pressed={(fill[who] ?? 'double') === v} onClick={() => ((v) => setFill({ ...fill, [who]: v }))(v)}>
+                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : 'Par'}
+                </button>
+              ))}
+            </div>
+        )}
         <span className="muted small">
           {filled
             ? tr(`${filled} of ${ev.holes.length} holes · ${total} strokes · ${total - par === 0 ? 'level' : total - par > 0 ? `+${total - par}` : total - par} to par`, `${filled} von ${ev.holes.length} Löchern · ${total} Schläge · ${total - par === 0 ? 'Par' : total - par > 0 ? `+${total - par}` : `−${par - total}`}`)
@@ -500,7 +533,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            const ok = await props.onSave(typed);
+            const ok = await props.onSave(typed, out, Object.fromEntries(Object.keys(out).map((id) => [id, fill[id] ?? 'double'])));
             setBusy(false);
             if (ok) props.onClose();
             else setMsg(NO_NET());
@@ -572,7 +605,7 @@ export function LiveBoard(props: { label: string; title: string; live: boolean; 
  *  confusing" – the PGA app's build, in GolfOS' look): one line a player – place, name, total, the hole he is on in
  *  the round played now ("F" once in), that round's score. Tapped: a sheet with his total and each round's scorecard,
  *  the rounds as one switch (as the bets' standing). */
-export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; out?: boolean; parts: { k: number; text: string; thru: number; finished: boolean; card: () => Round | null }[] };
+export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; out?: boolean; parts: { k: number; text: string; thru: number; finished: boolean; retired?: boolean; card: () => Round | null }[] };
 export function SeriesBoard(props: { label: string; title: string; live: boolean; rounds: { date: string; name?: string }[]; rows: SeriesBoardRow[]; note?: string; cutAfter?: number }) {
   const [who, setWho] = useState<string | null>(null);
   const [pick, setPick] = useState<number | null>(null);
@@ -582,7 +615,7 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
   const partNow = (r: SeriesBoardRow) => r.parts.find((p) => p.k === cur);
   const thru = (r: SeriesBoardRow) => {
     const p = partNow(r);
-    return !p ? '–' : p.finished ? 'F' : String(p.thru);
+    return !p ? '–' : p.retired ? tr('WD', 'Aufg.') : p.finished ? 'F' : String(p.thru);
   };
   const shown = row ? (row.parts.find((p) => p.k === pick) ?? row.parts[row.parts.length - 1]) : undefined;
   const card = shown ? shown.card() : null;
@@ -666,7 +699,7 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
             </div>
             <span className="muted small">
               {[dm(props.rounds[shown.k]?.date ?? ''), props.rounds[shown.k]?.name].filter(Boolean).join(' ')} · {shown.text}
-              {shown.finished ? '' : tr(` · thru ${shown.thru}`, ` · nach ${shown.thru}`)}
+              {shown.retired ? tr(` · WD after ${shown.thru}`, ` · aufg. nach ${shown.thru}`) : shown.finished ? '' : tr(` · thru ${shown.thru}`, ` · nach ${shown.thru}`)}
             </span>
             {card ? <ScoreTable round={card} /> : <span className="muted small">{tr('No scorecard for this round.', 'Keine Scorekarte zu dieser Runde.')}</span>}
           </section>
@@ -862,7 +895,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
                 pos: out(r.name) ? 'CUT' : r.pos,
                 name: r.name,
                 total: fmtSum(r.sum),
-                parts: r.parts.map((p) => ({ k: p.k, text: fmtSum(p.sort), thru: p.thru, finished: p.finished, card: () => cardByName(evs[p.k], r.name) })),
+                parts: r.parts.map((p) => ({ k: p.k, text: fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, card: () => cardByName(evs[p.k], r.name) })),
                 out: out(r.name),
               }))
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, total: '–', parts: [] }))
@@ -1364,8 +1397,8 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           flight={(live ?? ev).flights[scoring]}
           n={flightsOf(live ?? ev).findIndex((x) => x.id === scoring) + 1}
           onClose={() => setScoring(null)}
-          onSave={async (typed) => {
-            const r = await writeScores(props.code, scoring, typed);
+          onSave={async (typed, retired, fill) => {
+            const r = await writeScores(props.code, scoring, typed, retired, fill);
             if (r) setLive(r);
             return !!r;
           }}

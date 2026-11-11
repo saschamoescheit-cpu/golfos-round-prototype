@@ -374,6 +374,19 @@ ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 1
 const back = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1') ?? '[]'));
 ok(back.length === 1 && back[0].me === shared.get(code).game.players.find((p) => p.name === 'Sascha').id && back[0].pool.wagers.length === 7, 'storage emptied: Sascha found again by his account, all 7 bets there');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab-tiles.png' });
+// the tile "geschafft" lists the bets made one by one (Sascha 12.11.2026: "the tiles have no function")
+{
+  const tile = H.locator('.tile').filter({ hasText: 'geschafft' });
+  const n = Number((await tile.locator('.tile-num').innerText()).trim());
+  if (n > 0) {
+    await tile.click();
+    await H.waitForTimeout(300);
+    const rows = (await H.locator('.made-bets .list-item').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+    ok(rows.length === n && rows.every((t) => /^[^:]+: /.test(t) && /USA 2026/.test(t)), `tile "geschafft": the ${n} bets made, each whose, which, the pool (${rows.slice(0, 2).join(' | ')})`);
+    await tile.click();
+    await H.waitForTimeout(300);
+  } else ok(true, 'tile "geschafft": none made yet');
+}
 const erikFree = shared.get(code).game.wagers.find((w) => w.kind === 'free').id;
 ok(pushes.some((x) => x.phone === 'Sascha' && x.body.action === 'bet' && x.body.wager === erikFree), "push: Erik's free bet decided as made – Sascha's phone told of it");
 
@@ -540,10 +553,15 @@ await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', {
   ok(ps.length === 1 && ps[0].amount > 0 && (ps[0].paidAt || ps[0].receivedAt) && (await open.count()) === before - 1 && (await paid.count()) === 1, `payments: kept on the server, off the open ones, under "Bezahlt" (${JSON.stringify(ps)})`);
   if (process.env.SHOTS) await H.locator('.pool-settle').screenshot({ path: process.env.SHOTS + '/wagers-paid.png' });
   if (!ps[0]?.receivedAt) {
-    await paid.first().locator('.paid-mark').click();
-    // only paid and received – not how (Sascha 11.11.2026: "PayPal we do not need for now, nor the details")
-    await H.waitForTimeout(1500);
-    ok(!!shared.get(code).game.payments?.[0]?.receivedAt && !shared.get(code).game.payments?.[0]?.how && (await H.getByRole('dialog', { name: 'Wie erhalten?' }).count()) === 0 && /erhalten/i.test((await paid.first().innerText()).replace(/\s+/g, ' ')), 'payments: the receiver confirms – received, no "how"');
+    // the payer's own payment: "Erhalten" is the receiver's, on his phone (Sascha 12.11.2026: "only the ones that
+    // concern me") – the host's phone waits for it, the take-back stays his
+    const rec = shared.get(code).game.players.find((x) => x.id === ps[0].to);
+    if (rec?.joined) ok((await paid.first().locator('.paid-mark').count()) === 0 && /bestätigt noch/.test(await paid.first().innerText()), 'payments: paid – the receiver confirms on his phone, no "Erhalten" here');
+    else {
+      await paid.first().locator('.paid-mark').click();
+      await H.waitForTimeout(1500);
+      ok(!!shared.get(code).game.payments?.[0]?.receivedAt && !shared.get(code).game.payments?.[0]?.how, 'payments: for a player without the app the host confirms – received, no "how"');
+    }
   }
   await paid.first().getByRole('button', { name: /^Zurücknehmen/ }).click();
   await H.waitForTimeout(1500);

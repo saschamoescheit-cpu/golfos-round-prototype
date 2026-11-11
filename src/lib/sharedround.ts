@@ -71,6 +71,9 @@ export interface Flight {
   /** a player who gave up (Sascha 12.11.2026: "a player had to stop after 8 holes"): the hole index from which on he
    *  plays no more – his card is complete up to there, Stableford counts his points, stroke play ranks him without */
   retired?: Record<string, number>;
+  /** what a player who gave up gets on the holes missing (Sascha 12.11.2026: "double bogey" – "set it, e.g. by the
+   *  handicap"): a double bogey (the default), his net par (par + his strokes received), or par */
+  retiredFill?: Record<string, RetiredFill>;
   /** the holes set up by hand on a phone of the flight – tee → green, "loop#number" (Sascha 12.11.2026, Cypress: "we had
    *  to set every tee and green by hand" – each of us): the other phones of the event take them */
   lines?: Record<string, LngLat[]>;
@@ -357,15 +360,22 @@ export function sharedLines(ev: RoundEvent | null | undefined, own?: string): Re
 
 /** A player gave up from a hole on – or, from null, plays on (Sascha 12.11.2026: "a player had to stop after 8 holes").
  *  Written into the flight, so the leaderboard, the signing and the other phones know. False when offline. */
-export async function setRetired(round: Round, pid: string, from: number | null): Promise<boolean> {
+export type RetiredFill = 'double' | 'net' | 'par';
+export async function setRetired(round: Round, pid: string, from: number | null, fill?: RetiredFill): Promise<boolean> {
   const s = round.shared;
   if (!s) return true;
   const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => {
-    if (!f || !f.players.some((p) => p.id === pid) || (f.retired?.[pid] ?? null) === from) return null;
+    if (!f || !f.players.some((p) => p.id === pid) || ((f.retired?.[pid] ?? null) === from && (from == null || (f.retiredFill?.[pid] ?? 'double') === (fill ?? 'double')))) return null;
     const retired = { ...(f.retired ?? {}) };
-    if (from == null) delete retired[pid];
-    else retired[pid] = from;
-    return { ...f, retired };
+    const retiredFill = { ...(f.retiredFill ?? {}) };
+    if (from == null) {
+      delete retired[pid];
+      delete retiredFill[pid];
+    } else {
+      retired[pid] = from;
+      retiredFill[pid] = fill ?? 'double';
+    }
+    return { ...f, retired, retiredFill };
   });
   return (ev?.flights[s.flight]?.retired?.[pid] ?? null) === from;
 }
@@ -680,6 +690,9 @@ export interface Standing {
   signed: boolean;
   /** gave up during the round – "Aufg. nach 8" (Sascha 12.11.2026) */
   retired?: boolean;
+  /** given up: the holes played and the holes missing filled as set (double bogey, net par or par) – what the series'
+   *  total counts (Sascha 12.11.2026: he stays in the total with every round) */
+  filled?: number;
 }
 /** the names of the net classes, A to J (Sascha 03.11.2026: "there can be more than four – freely configurable") */
 export const CLASS_NAMES = 'ABCDEFGHIJ'.split('');
@@ -696,13 +709,13 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const fmt = ev.format ?? DEFAULT_FORMAT;
   const players: Player[] = [];
   const entries: Round['entries'] = {};
-  const meta: Record<string, { flight: string; cls: string; signed: boolean; retired: boolean }> = {};
+  const meta: Record<string, { flight: string; cls: string; signed: boolean; retired: boolean; fill?: RetiredFill; ph?: number | null }> = {};
   for (const f of liveFlights(ev)) {
     for (const p of f.players) {
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
       entries[id] = ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, p.id, i)));
-      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, netClasses(ev)), signed: isSigned(f, p.id), retired: f.retired?.[p.id] != null };
+      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, netClasses(ev)), signed: isSigned(f, p.id), retired: f.retired?.[p.id] != null, fill: f.retiredFill?.[p.id], ph: p.playingHandicap };
     }
   }
   const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
@@ -736,6 +749,23 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
     return { p, per, sort: xs.length && !(out && !hb) ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per), out };
   });
   const better = (a: number, b: number) => (hb ? b - a : a - b);
+  // a hole missing of one who gave up, in this standing's terms (to par, or Stableford points): double bogey, his net par
+  // (par + strokes received) or par – the strokes from his playing handicap, net with the format's share
+  const fillAt = (id: string, i: number): number => {
+    const m = meta[id];
+    const si = ev.holes[i]?.strokeIndex ?? 0;
+    const rec = (ph: number | null | undefined) => {
+      if (ph == null || !si || si < 1) return 0;
+      const p = Math.max(0, Math.round(ph));
+      return Math.floor(p / 18) + (si <= p % 18 ? 1 : 0);
+    };
+    const full = rec(m?.ph);
+    const share = gross ? 0 : rec(m?.ph == null ? null : (m.ph * (fmt.allowance ?? 100)) / 100);
+    const fill = m?.fill ?? 'double';
+    // Stableford: points = 2 + strokes received in this standing − (score − par); a double bogey (net) brings none
+    if (hb) return fill === 'double' ? 0 : fill === 'net' ? Math.max(0, 2 + share - full) : 2 + share;
+    return fill === 'double' ? 2 : fill === 'net' ? full - share : -share;
+  };
   const everyoneIn = all.length > 0 && all.every((x) => x.thru === n || x.out);
   const cmp = (a: (typeof all)[number], b: (typeof all)[number]): number => {
     if (a.sort == null || b.sort == null) return a.sort == null ? (b.sort == null ? 0 : 1) : -1;
@@ -759,7 +789,7 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
       sort: x.sort,
       thru: x.thru,
       finished: x.thru === n || x.out,
-      ...(x.out ? { retired: true } : {}),
+      ...(x.out ? { retired: true, filled: x.per.reduce<number>((s, v, i) => s + (v ?? fillAt(x.p.id, i)), 0) } : {}),
       pos: x.sort == null ? '–' : `${tied ? 'T' : ''}${first + 1}`,
       countback: everyoneIn && sameScore && !tied,
       signed: meta[x.p.id].signed,
@@ -1241,8 +1271,9 @@ export function withScores(f: Flight, typed: Record<string, (number | null)[]>):
 }
 /** The host's scores of a flight written into its row (the leaderboard, the series, the spectators – and the bets, from
  *  the tournaments in a pool's days: lib/wagerstore tourRounds). The event, or null. */
-export function writeScores(code: string, fid: string, typed: Record<string, (number | null)[]>): Promise<RoundEvent | null> {
-  return changeFlight(code, fid, true, (f) => (f ? withScores(f, typed) : null));
+export function writeScores(code: string, fid: string, typed: Record<string, (number | null)[]>, retired?: Record<string, number>, retiredFill?: Record<string, RetiredFill>): Promise<RoundEvent | null> {
+  // gave up – set by the host afterwards too (Sascha 12.11.2026: "how do I record that Chris stopped after hole 8")
+  return changeFlight(code, fid, true, (f) => (f ? { ...withScores(f, typed), ...(retired ? { retired, retiredFill: retiredFill ?? {} } : {}) } : null));
 }
 
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */

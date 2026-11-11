@@ -1983,7 +1983,10 @@ export function HoleScreen(props: {
               setOwnDetails(round.id, on);
               setOwnOn(on);
             }}
-            details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
+            // the scorer of all ("Einer für alle") enters everyone in full – putts, sand, penalties, tee shot (Sascha 12.11.2026: "Erik
+            // could enter only the scores for Cedric and Moritz, not the putts") – but not who keeps his own details; the
+            // marker in a tournament as before when a bet counts the round
+            details={(pid) => (withBets && views[pid]?.role === 'mark') || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer && !(round.format?.ownDetails ?? []).some((n) => n.trim().toLowerCase() === (round.players.find((p) => p.id === pid)?.name ?? '').trim().toLowerCase()))}
             shared={{
               ...Object.fromEntries(Object.entries(props.game?.keptBy ?? {}).map(([pid, by]) => [pid, { keptBy: by }])),
               ...Object.fromEntries(
@@ -2005,12 +2008,12 @@ export function HoleScreen(props: {
             onRetire={
               round.preview
                 ? undefined
-                : (pid, from) => {
+                : (pid, from, fill) => {
                     const retired = { ...(round.retired ?? {}) };
                     if (from == null) delete retired[pid];
                     else retired[pid] = from;
                     props.onChange({ ...round, retired });
-                    if (round.shared) void setRetired(round, pid, from).then(() => setShareEvent(cachedEvent(round.shared!.code)));
+                    if (round.shared) void setRetired(round, pid, from, fill).then(() => setShareEvent(cachedEvent(round.shared!.code)));
                   }
             }
             onPlacePutts={() => setPuttEditor(true)}
