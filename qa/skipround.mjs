@@ -1,9 +1,10 @@
 // QA (Sascha 12.11.2026: "remove these two rounds at last" – Celebration and Reunion on the 08.11. in the pool's
-// standing): the host picks a round in the standing, "Runde nicht werten", confirms – the round is gone from the switch
-// on his phone and on the server (pool.skip), no bet counts it (inPool); the pool's pencil lists it under "Nicht
-// gewertete Runden", "Wieder werten" brings it back. A player who is not the host has no such button.
+// standing; 11.11.2026: "eine andere Lösung"): the host picks a round in the standing, "Runde werten · Aus" – the round
+// stays in the switch, "nicht gewertet", on the server in pool.skip, no bet counts it (inPool); "An" brings it back. A
+// player who is not the host has no such row.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/skipround.mjs [url]
 import { webkit } from 'playwright';
+import { onOff, isOn, flip } from './onoff.mjs';
 import { sharedServer } from './sharesim.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
@@ -66,43 +67,42 @@ const listRounds = async () => {
   const names = await dlg.locator('.pick-option strong').allInnerTexts();
   return { dlg, names };
 };
+// since 11.11.2026 (Sascha: "eine andere Lösung") a row "Runde werten · An/Aus" under the round shown – rounds taken out
+// stay in the switch, "nicht gewertet"; no list in the pencil any more
 let { dlg, names } = await listRounds();
 ok(names.length === 4, `the switch lists Gesamt + 3 rounds (${names.join(' | ')})`);
-ok((await stand.getByRole('button', { name: 'Runde nicht werten' }).count()) === 0, 'on "Gesamt": no "Runde nicht werten"');
+const countRow = () => onOff(stand, 'Runde werten');
+ok((await countRow().count()) === 0, 'on "Gesamt": no "Runde werten"');
 await dlg.locator('.pick-option').filter({ hasText: 'Reunion' }).click();
 await H.waitForTimeout(300);
-await stand.getByRole('button', { name: 'Runde nicht werten' }).click();
-const ask = stand.getByRole('group', { name: 'Runde nicht werten' });
-ok(/Reunion Resort Golf Course am .* zählt dann für keine Wette mehr/.test(await ask.innerText()), 'asked first: "… zählt dann für keine Wette mehr – für alle im Pool. Die Scores bleiben."');
-await ask.getByRole('button', { name: 'Nicht werten' }).click();
+ok((await countRow().count()) === 1 && (await isOn(countRow())), 'a round: the row "Runde werten · An"');
+await flip(countRow());
 await H.waitForTimeout(800);
 const server = sim.shared.get(code)?.game ?? sim.shared.get(code);
 const skip = (server?.skip ?? server?.pool?.skip ?? []).map((x) => `${x.day}|${x.course}`);
 ok(skip.length === 1 && skip[0] === `${d2}|Reunion Resort Golf Course`, `on the server: pool.skip = ${JSON.stringify(skip)}`);
+ok(!(await isOn(countRow())) && /zählt für keine Wette/.test(await stand.innerText()), 'Reunion "Runde werten · Aus" – it counts for no bet, said so');
 ({ dlg, names } = await listRounds());
-ok(names.length === 3 && !names.some((n) => n.includes('Reunion')) && names.some((n) => n.includes('Celebration')), `Reunion gone from the switch, Celebration of the same day stays (${names.join(' | ')})`);
+const texts = (await dlg.locator('.pick-option').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(names.length === 4 && texts.some((t) => /Reunion.*nicht gewertet/.test(t)) && texts.some((t) => /Celebration/.test(t) && !/nicht gewertet/.test(t)), `Reunion stays in the switch, "nicht gewertet"; Celebration of the same day counts (${texts.join(' | ')})`);
 await dlg.locator('.pick-option').filter({ hasText: 'Celebration' }).click();
-await stand.getByRole('button', { name: 'Runde nicht werten' }).click();
-await stand.getByRole('group', { name: 'Runde nicht werten' }).getByRole('button', { name: 'Nicht werten' }).click();
-await H.waitForTimeout(800);
-({ dlg, names } = await listRounds());
-ok(names.length === 2 && names[1].includes('Cypress'), `both rounds of the day out – the Cypress left (${names.join(' | ')})`);
-await H.keyboard.press('Escape');
-await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
 await H.waitForTimeout(300);
-
-// the pencil: "Nicht gewertete Runden" – "Wieder werten" (saved by itself) brings Celebration back
+await flip(countRow());
+await H.waitForTimeout(800);
+const skip2 = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).length;
+ok(skip2 === 2, `both rounds of the day out (${skip2})`);
+// counted again with the same row
+await flip(countRow());
+await H.waitForTimeout(800);
+const skip3 = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).map((x) => x.course);
+ok(skip3.length === 1 && skip3[0].includes('Reunion') && (await isOn(countRow())), `Celebration counted again, Reunion still out (${skip3.join(', ')})`);
+// the pencil: no list of rounds not counted any more
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.waitFor();
-const skippedRows = edit.locator('.skip-list .list-item');
-ok((await skippedRows.count()) === 2, `the pencil lists ${await skippedRows.count()} rounds not counted`);
-await skippedRows.filter({ hasText: 'Celebration' }).getByRole('button', { name: 'Wieder werten' }).click();
+ok((await edit.locator('.skip-list').count()) === 0, 'the pencil: no list "Nicht gewertete Runden"');
 await edit.getByRole('button', { name: 'Schließen' }).click();
-await H.waitForTimeout(800);
-({ dlg, names } = await listRounds());
-ok(names.length === 3 && names.some((n) => n.includes('Celebration')) && !names.some((n) => n.includes('Reunion')), `Celebration counted again, Reunion still out (${names.join(' | ')})`);
-await H.keyboard.press('Escape');
+await H.waitForTimeout(500);
 
 // a phone that is not the host's (the pool set up by another account) has no such button
 {
@@ -121,7 +121,7 @@ await H.getByText('USA-Wetten').first().click();
 await stand.waitFor({ timeout: 15000 });
 await sw.getByRole('button', { name: 'Nächste' }).click();
 await H.waitForTimeout(300);
-ok((await stand.getByRole('button', { name: 'Runde nicht werten' }).count()) === 0, 'not the host: no "Runde nicht werten"');
+ok((await onOff(stand, 'Runde werten').count()) === 0, 'not the host: no "Runde werten"');
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
