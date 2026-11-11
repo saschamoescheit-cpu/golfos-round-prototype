@@ -115,8 +115,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A hole has no map – what now?', 'Ein Loch hat keine Karte – was tun?'),
         a: () =>
           tr(
-            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Set up the hole" at the top still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own.',
-            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Loch einrichten“ oben zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben.',
+            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Set up the hole" at the top still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own. Afterwards too: in "Check the shots" a hole without a map offers "Set up the hole".',
+            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Loch einrichten“ oben zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben. Auch nachträglich: In „Schläge prüfen“ bietet ein Loch ohne Karte „Loch einrichten“.',
           ),
         video: 'start',
       },

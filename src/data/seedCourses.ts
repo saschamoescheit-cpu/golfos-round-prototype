@@ -1,3 +1,4 @@
+import { withAliases } from './seedAliases';
 // Snapshot of OpenStreetMap hole data for the test course (© OpenStreetMap contributors, ODbL),
 // taken 2026-10-10 via Overpass. Bundled so the course works even when the OSM servers are busy.
 export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[] }> = {
@@ -575,3 +576,4 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
     ],
   },
 };
+withAliases(SEED_COURSES); // the same course under an OpenGolfAPI id (12.11.2026)

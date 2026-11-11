@@ -229,7 +229,8 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   }
   // an OpenGolfAPI entry carries no map (in Germany not even holes): the OSM course at its place instead – with map,
   // greens and holes (night check 22.10.2026: with Photon down the search found only these entries, the round had no map)
-  if (summary.source === 'opengolfapi' && !forceRefresh) {
+  // a bundled course under its OpenGolfAPI id (seedAliases, 12.11.2026): its own bundled data, no detour
+  if (summary.source === 'opengolfapi' && !forceRefresh && !seed) {
     const osm = await osmCourseAt(summary).catch(() => null);
     if (osm) {
       const course = await loadCourse(osm).catch(() => null);

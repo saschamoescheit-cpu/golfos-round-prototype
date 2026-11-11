@@ -1,3 +1,4 @@
+import { withAliases } from './seedAliases';
 // All bundled course geometry at once – for tests, the caddie audit and data scripts. The app itself loads one
 // course at a time (seedLoaders.ts). Sources and notes: courses/README.md.
 import type { CourseGeometry } from '../types';
@@ -46,3 +47,4 @@ export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'osm:relation/4040123': unpackGeometry(legendsclermont as unknown as CourseGeometry),
   'osm:relation/4039887': unpackGeometry(orangelakelegends as unknown as CourseGeometry),
 };
+withAliases(SEED_GEOMETRY); // the same course under an OpenGolfAPI id (12.11.2026)
