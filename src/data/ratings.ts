@@ -1,3 +1,4 @@
+import { withAliases } from './seedAliases';
 // Course rating and slope per tee (men) for the bundled courses – needed for the handicap played today
 // (WHS score differential). Only values whose tee length matches our tee data (src/data/tees.ts) are used;
 // the player can correct them on the scorecard.
@@ -45,3 +46,4 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
     'White@AC': { cr: 74.0, slope: 136, par: 72 }, 'Yellow@AC': { cr: 72.6, slope: 132, par: 72 }, 'Blue@AC': { cr: 69.3, slope: 125, par: 72 }, 'Red@AC': { cr: 67.9, slope: 122, par: 71 },
   },
 };
+withAliases(RATINGS); // the same course under an OpenGolfAPI id (12.11.2026)

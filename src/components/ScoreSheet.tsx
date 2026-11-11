@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { ToggleRow } from './Settings';
-import { cellOf, sameScore } from '../lib/sharedround';
+import { cellOf, sameScore, type RetiredFill } from '../lib/sharedround';
 import { formatToPar } from './ui';
 import { drivesShort, type TexasDrives } from '../lib/games';
 import { FairwayPicker } from './FairwayPicker';
@@ -155,10 +155,11 @@ export function ScoreSheet(props: {
   /** players who gave up: the hole index from which on each plays no more (Sascha 12.11.2026) */
   retired?: Record<string, number>;
   /** a player's name tapped: he gives up from a hole on – null: he plays on */
-  onRetire?: (playerId: string, from: number | null) => void;
+  onRetire?: (playerId: string, from: number | null, fill?: RetiredFill) => void;
 }) {
   const h = props.hole;
   const [ask, setAsk] = useState<string | null>(null);
+  const [askFill, setAskFill] = useState<RetiredFill>('double');
   const at = props.holeIndex ?? 0;
   const gone = (pid: string) => props.retired?.[pid] != null && at >= props.retired[pid];
   const asked = ask ? props.players.find((p) => p.id === ask) : undefined;
@@ -404,17 +405,25 @@ export function ScoreSheet(props: {
             </span>
             <span className="muted small">
               {tr(
-                'His holes up to there stay and can be signed; Stableford counts his points, in stroke play he stands below without a total. "Plays on" takes it back.',
-                'Seine Löcher bis dahin bleiben und lassen sich unterschreiben; Stableford zählt seine Punkte, im Zählspiel steht er ohne Wertung unten. „Spielt weiter“ nimmt es zurück.',
+                'His holes up to there stay and can be signed; in this round\'s board he stands below without a place. In a series\' total the holes missing count as:',
+                'Seine Löcher bis dahin bleiben und lassen sich unterschreiben; im Leaderboard der Runde steht er ohne Platz unten. In der Gesamtwertung einer Serie zählen die fehlenden Löcher als:',
               )}
             </span>
+            <div className="chip-set retire-fill" role="group" aria-label={tr('The holes missing count as', 'Fehlende Löcher zählen als')}>
+              {(['double', 'net', 'par'] as const).map((v) => (
+                <button key={v} type="button" className={`chip${askFill === v ? ' on' : ''}`} aria-pressed={askFill === v} onClick={() => setAskFill(v)}>
+                  {v === 'double' ? tr('Double bogey', 'Doppelbogey') : v === 'net' ? tr('By handicap', 'Nach Vorgabe') : 'Par'}
+                </button>
+              ))}
+            </div>
+            <span className="muted small">{tr('"Plays on" takes it back.', '„Spielt weiter“ nimmt es zurück.')}</span>
             <div className="sc-actions" role="group" aria-label={asked.name}>
               <button
                 type="button"
                 className="sc-action danger"
                 aria-label={tr(`${asked.name} gives up`, `${asked.name} gibt auf`)}
                 onClick={() => {
-                  props.onRetire!(asked.id, askFrom);
+                  props.onRetire!(asked.id, askFrom, askFill);
                   setAsk(null);
                 }}
               >

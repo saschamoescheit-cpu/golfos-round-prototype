@@ -157,6 +157,13 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
   // "made": the running pools with a bet made in them (Sascha 02.11.2026: "the tile has a number but cannot be tapped")
   const withMade = running.filter((e) => e.pool.wagers.some((w) => stateOf(w, e.pool, today) === 'done'));
   const shown = filter === 'running' ? running : filter === 'made' ? withMade : filter === 'over' ? over : pools;
+  // "geschafft" lists the bets made one by one (Sascha 12.11.2026: "the tiles have no function" – with one pool every tile
+  // showed the same pool): whose, which bet, where, in which pool – a tap opens the pool
+  const madeBets = withMade.flatMap((e) =>
+    e.pool.wagers
+      .filter((w) => stateOf(w, e.pool, today) === 'done')
+      .map((w) => ({ e, w, who: e.pool.players.find((p) => p.id === w.player)?.name ?? '?', where: progressOf(e.pool, w)?.where })),
+  );
   return (
     <>
       <h1 className="tab-title">{tr('Bets', 'Wetten')}</h1>
@@ -213,7 +220,26 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
           {msg}
         </span>
       )}
-      {filter !== 'bin' &&
+      {filter === 'made' && madeBets.length > 0 && (
+        <ul className="list made-bets">
+          {madeBets.map(({ e, w, who, where }) => (
+            <li key={`${e.code}:${w.id}`}>
+              <button type="button" className="list-item" onClick={() => props.onOpen(e.code)}>
+                <span className="grow">
+                  <span className="title">
+                    {who}: {wagerLabel(w)}
+                  </span>
+                  <span className="muted small one-line">{[where, e.pool.name].filter(Boolean).join(' · ')}</span>
+                </span>
+                <span className="good-text" aria-hidden="true">
+                  <SignedIcon />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {filter !== 'bin' && filter !== 'made' &&
         (shown.length ? (
           <ul className="list">
             {shown.map((e) => (
@@ -1353,7 +1379,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     const share = shareOf(w);
     return (
       <span key={w.id} className={`bet-cell ${verdict === 'made' ? 'done' : verdict === 'missed' ? 'miss' : 'open'}`} title={wagerLabel(w)}>
-        <strong>{share != null ? parText(share) : targetOf(w)}</strong>
+        {/* a round's share of a total in whole strokes (Sascha 12.11.2026: "18,2 does not work – only whole strokes") */}
+        <strong>{share != null ? parText(Math.round(share)) : targetOf(w)}</strong>
         <small className="bet-made" title={r?.unknown ? tr('not entered (putts missing)', 'nicht erfasst (Putts fehlen)') : undefined}>{valueOf(w, r?.value ?? null, !!r?.unknown)}</small>
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
@@ -1372,6 +1399,18 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       );
     });
   const players = pool.players.filter((p) => pool.wagers.some((w) => w.player === p.id || w.opponent === p.id));
+  // one round: only the bets that round counts for (Sascha 12.11.2026: "bets in there that do not belong") – a 5+5+10 of
+  // another day, a total over n rounds this round is not part of; the others as ever
+  const inRound = (w: Wager): boolean => {
+    if (!one) return true;
+    const p = pool.progress[w.id];
+    if (shapeOf(w.kind) === 'duel') return !!p?.duels?.some((x) => `${x.day}|${x.course}` === one.key);
+    if (shapeOf(w.kind) === 'sum') return !!p?.perRound?.some((x) => `${x.day}|${x.course}` === one.key && x.value != null);
+    return true;
+  };
+  const rowsShown = rows
+    .map((r) => ({ ...r, cells: Object.fromEntries(Object.entries(r.cells).map(([id, cs]) => [id, cs.filter(({ w }) => inRound(w))])) }))
+    .filter((r) => Object.values(r.cells).some((cs) => cs.length));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
   return (
@@ -1411,7 +1450,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rowsShown.map((r) => (
                 <tr key={r.key}>
                   <th scope="row">{r.name}</th>
                   {players.map((p) => (

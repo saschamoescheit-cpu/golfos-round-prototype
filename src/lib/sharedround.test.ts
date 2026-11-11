@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { seriesStandings } from './seriesstandings';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
 import { classOf, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
@@ -457,6 +458,23 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     expect(erik.thru).toBe(2);
     expect(erik.sort).toBeNull();
     expect(st[st.length - 1].key).toBe('f1/e'); // stroke play: below everyone
+  });
+  it('the holes missing in the series total: double bogey, by the handicap or par – he stays in it (Sascha 12.11.2026)', () => {
+    let { ev } = host(withScorer());
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    for (const pid of ['me', 'c']) for (let i = 0; i < 3; i++) chris = set(chris, pid, i, { strokes: 4 });
+    for (let i = 0; i < 2; i++) chris = set(chris, 'e', i, { strokes: 5 });
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    const stroke = { ...ev, format: { ...(ev.format ?? {}), scoring: 'stroke' } as RoundEvent['format'] };
+    const with_ = (fill?: 'double' | 'net' | 'par') => ({ ...stroke, flights: { ...stroke.flights, f1: { ...stroke.flights.f1, retired: { e: 2 }, ...(fill ? { retiredFill: { e: fill } } : {}) } } });
+    const erik = (e: RoundEvent) => eventStandings(e).rows.find((r) => r.key === 'f1/e')!;
+    const dbl = erik(with_()).filled!;
+    expect(erik(with_('double')).filled).toBe(dbl);
+    expect(dbl - erik(with_('par')).filled!).toBe(2);
+    expect(erik(with_('net')).filled!).toBeGreaterThanOrEqual(erik(with_('par')).filled!);
+    const total = seriesStandings([with_()]).rows.find((r) => r.name === 'Erik')!;
+    expect(total.sum).toBe(dbl);
+    expect(total.parts[0].retired).toBe(true);
   });
 });
 

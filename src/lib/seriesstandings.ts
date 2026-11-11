@@ -8,6 +8,8 @@ export interface SeriesPart {
   sort: number;
   thru: number;
   finished: boolean;
+  /** given up in that round – the holes missing counted as set (double bogey, net par or par) */
+  retired?: boolean;
 }
 export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[] }[] } {
   const by = new Map<string, { name: string; sum: number; rounds: number; parts: SeriesPart[] }>();
@@ -16,13 +18,15 @@ export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; row
     const st = eventStandings(ev, { gross: (ev.format?.scoring ?? 'net') === 'stroke' });
     hb = st.higherBetter;
     for (const r of st.rows) {
-      if (r.sort == null || !r.thru) continue;
+      // given up: the holes missing filled as set – double bogey, net par or par (Sascha 12.11.2026) – he stays in the total
+      const sort = r.retired && r.filled != null ? r.filled : r.sort;
+      if (sort == null || !r.thru) continue;
       const key = r.name.trim().toLowerCase();
       const x = by.get(key) ?? { name: r.name, sum: 0, rounds: 0, parts: [] };
-      x.sum += r.sort;
+      x.sum += sort;
       x.rounds++;
       // what each round added (Sascha 03.11.2026: "a live leaderboard for the series too") – a running one with its holes
-      x.parts.push({ k, sort: r.sort, thru: r.thru, finished: r.finished });
+      x.parts.push({ k, sort, thru: r.thru, finished: r.finished, ...(r.retired ? { retired: true } : {}) });
       by.set(key, x);
     }
   });

@@ -4,7 +4,9 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
-import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
+import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit, saveHoleLine } from '../lib/storage';
+import { HoleSetup } from '../components/HoleSetup';
+import { shareLine } from '../lib/sharedround';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { flightName, flightOf, fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
 import { shotChecks } from '../lib/reviewchecks';
@@ -52,6 +54,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const me = round.players.find((p) => p.isMe)!;
   // a round looked at later whose course map made room when the storage was full: the map comes again (22.10.2026)
   const [geoTick, setGeoTick] = useState(0);
+  // a hole without a map checked afterwards (Sascha 12.11.2026: "Stefan cannot check today's round – the people must be
+  // able to set the shots by hand afterwards"): its tee and green set on the aerial photo, then the shots
+  const [setupHole, setSetupHole] = useState(false);
   useEffect(() => {
     ensureCourseMap(round.courseId).then((came) => came && setGeoTick((t) => t + 1));
   }, [round.courseId]);
@@ -906,6 +911,38 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           />
         </div>
       )}
+      {!data && hole && (
+        <section className="card review-nomap">
+          <span>
+            {tr(`Hole ${hole.label} has no map yet – tap its tee and green on the aerial photo, then set the shots.`, `Loch ${hole.label} hat noch keine Karte – Abschlag und Grün auf dem Luftbild antippen, dann die Schläge setzen.`)}
+          </span>
+          <button type="button" className="btn-primary" onClick={() => setSetupHole(true)}>
+            {tr('Set up the hole', 'Loch einrichten')}
+          </button>
+        </section>
+      )}
+      {setupHole && hole && (
+        <div className="review-setup-layer">
+          <HoleSetup
+            holeLabel={hole.label}
+            par={hole.par}
+            geometry={geometry}
+            center={imageryAt}
+            nearPlayer={false}
+            player={null}
+            imagery={imagery}
+            courseCenter={imageryAt}
+            onCancel={() => setSetupHole(false)}
+            onSave={(line) => {
+              saveHoleLine(round.courseId, hole.loop, hole.number, line);
+              // the round's other phones take it too, as on the course
+              if (round.shared) void shareLine(round, hole.loop, hole.number, line);
+              setGeoTick((t) => t + 1);
+              setSetupHole(false);
+            }}
+          />
+        </div>
+      )}
       {data && (
         <div className="review-map">
           {/* aerial image or 2D – the same tool as on the course (Sascha 17.10.2026: "looks different again") */}
@@ -1153,7 +1190,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       {!d || d.shots.length === 0 ? (
         <>
-          <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
+          {data && <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>}
           {data && (
             <button type="button" className="link-text" onClick={() => setPuttEdit(true)}>
               {tr('Set the flag and the putts ›', 'Fahne und Putts setzen ›')}

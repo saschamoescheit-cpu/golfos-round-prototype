@@ -1,3 +1,4 @@
+import { withAliases } from './seedAliases';
 import { tr } from '../lib/i18n';
 // Tee lengths per hole (metres) for the bundled courses – from the clubs' scorecards / course guides 2026
 // (Son Quint, Son Vida, Son Muntaner, Alcanada) and the Hetzenhof scorecards. null = no tee of that colour on this hole.
@@ -84,3 +85,4 @@ export function profileTee(offered: { tees: string[]; known: boolean }, tee: str
   }
   return offered.tees.includes(tee) ? tee : null;
 }
+withAliases(TEES); // the same course under an OpenGolfAPI id (12.11.2026)

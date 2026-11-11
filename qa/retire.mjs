@@ -45,18 +45,24 @@ const block = (name) => H.locator('.score-player').filter({ has: H.locator('.sco
 await H.locator('.map-score').click();
 await H.waitForTimeout(300);
 await block('Sascha').getByRole('button', { name: /Schläge plus eins/ }).click();
+// the scorer of all enters Chris in full – putts too (Sascha 12.11.2026: "Erik could enter only the scores, not the putts")
+ok((await block('Chris').getByRole('group', { name: 'Putts' }).count()) === 1, 'the scorer: Chris in full – putts, sand, penalties');
 await block('Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
 // Chris's name: his sheet – "Gibt nach diesem Loch auf" (hole 1 has his score)
 await H.getByRole('button', { name: 'Chris – aufgeben' }).click();
 const sheet = H.getByRole('dialog', { name: 'Chris' });
-ok(/nach diesem Loch auf/.test(await sheet.innerText()) && /Stableford zählt/.test(await sheet.innerText()), 'Chris tapped: his sheet – gives up after this hole, what follows');
+ok(/nach diesem Loch auf/.test(await sheet.innerText()) && /Gesamtwertung/.test(await sheet.innerText()), 'Chris tapped: his sheet – gives up after this hole, what follows');
+// the holes missing in a series' total: double bogey by default, chosen here "Nach Vorgabe" (Sascha 12.11.2026)
+const fills = (await sheet.locator('.retire-fill .chip').allInnerTexts()).map((t) => t.trim());
+ok(fills.join('|') === 'Doppelbogey|Nach Vorgabe|Par' && /Doppelbogey/.test(await sheet.locator('.retire-fill .chip.on').innerText()), `the holes missing count as: ${fills.join(' · ')} – Doppelbogey to start`);
+await sheet.locator('.retire-fill .chip').filter({ hasText: 'Nach Vorgabe' }).click();
 if (process.env.SHOTS) await H.screenshot({ path: `${process.env.SHOTS}/retire-sheet.png` });
 await sheet.getByRole('button', { name: 'Chris gibt auf' }).click();
 ok((await H.getByRole('dialog', { name: 'Chris' }).count()) === 0, 'the sheet closes');
 ok((await block('Chris').getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'on hole 1 his score stays to enter');
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await H.waitForTimeout(8000);
-ok(flight().retired?.[chrisId] === 1, `server: Chris gave up from hole 2 on (${JSON.stringify(flight().retired)})`);
+ok(flight().retired?.[chrisId] === 1 && flight().retiredFill?.[chrisId] === 'net', `server: Chris gave up from hole 2 on, the rest by his handicap (${JSON.stringify(flight().retired)} ${JSON.stringify(flight().retiredFill)})`);
 ok(H.evaluate !== undefined && (await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => !r.finishedAt)?.retired)) != null, 'the round on the phone keeps it');
 
 // hole 2: Chris without a score – "aufgegeben nach 1 Loch", "Spielt weiter"
