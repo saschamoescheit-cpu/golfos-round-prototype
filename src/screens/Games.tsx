@@ -801,17 +801,7 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
               {head}
               <SwipeRow className="paused-row" label={`${f.name()} ${g.courseName}`} onDelete={() => remove(g)}>
               {row}
-              <button
-                type="button"
-                className="icon-btn paused-delete"
-                aria-label={tr(`Delete the paused game at ${g.courseName}`, `Pausiertes Spiel ${g.courseName} löschen`)}
-                title={tr('Delete', 'Löschen')}
-                onClick={() => remove(g)}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-                </svg>
-              </button>
+              {/* deleted as every row: swiped left (Sascha 11.11.2026, design round 2) – no bin icon in the row */}
               </SwipeRow>
             </li>
           );

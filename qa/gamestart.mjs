@@ -118,10 +118,11 @@ await closeScores();
 ok((await p.locator('.map-hole-no').innerText()).trim().startsWith('3A'), 'continue: back on hole 3A');
 await pause();
 
-// 3 · the list: the paused row with its delete button, one line
+// 3 · the list: the paused row, swiped to delete, one line
 await tab('Spiele');
 const prow = p.locator('.paused-row').first();
-ok((await prow.count()) === 1 && (await prow.getByRole('button', { name: /Pausiertes Spiel .* löschen/ }).count()) === 1, 'list: the paused game with a delete button, as a paused round');
+// deleted by swiping as every row (Sascha 11.11.2026, design round 2) – no bin icon in the row
+ok((await prow.count()) === 1 && (await prow.locator('.swipe-bin').count()) === 1 && (await prow.locator('.paused-delete').count()) === 0, 'list: the paused game deleted by swiping, as a paused round – no bin icon');
 ok(/Pausiert · Loch 3A/.test(await prow.innerText()), 'list: "Pausiert · Loch 3A"');
 ok((await p.locator('.tile').filter({ hasText: 'pausiert' }).locator('.tile-num').innerText()).trim() === '1', 'tile "pausiert": 1');
 

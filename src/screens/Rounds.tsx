@@ -155,20 +155,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     <span className="muted small" style={{ display: 'block' }}>{t.holesPlayed ? formatToPar(t.toPar) : tr('no score yet', 'noch kein Score')}</span>
                   </span>
                 </button>
-                {/* carry on (tap the row) or delete – into the bin, "Undo" brings it back */}
-                <button
-                  type="button"
-                  className="icon-btn paused-delete"
-                  aria-label={tr(`Delete the paused round at ${r.courseName}`, `Pausierte Runde ${r.courseName} löschen`)}
-                  title={tr('Delete', 'Löschen')}
-                  onClick={() => {
-                    remove(r);
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-                  </svg>
-                </button>
+                {/* carry on (tap the row) or delete as every row: swiped left (Sascha 11.11.2026, design round 2: "Löschen wie
+                    aktuell – mit nach links wischen", no bin icon in the row) – into the bin, "Undo" brings it back */}
                 </SwipeRow>
               </li>
             );

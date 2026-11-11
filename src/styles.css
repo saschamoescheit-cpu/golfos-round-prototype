@@ -974,8 +974,10 @@ button.tile:disabled { opacity: 1; }
   display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--surface-2);
 }
-.pick-option .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.pick-option[aria-pressed='true'] { border: 2px solid var(--brand); }
+.pick-option .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+/* the chosen one exactly as big as the others (Sascha 11.11.2026, design round 2: "Skins genauso breit, nicht größer"):
+   the same 1px frame, only green, a hint of green behind it and the tick */
+.pick-option[aria-pressed='true'] { border-color: var(--brand); background: var(--brand-soft); }
 .pick-check { color: var(--brand-text); font: 700 20px var(--body); }
 /* game forms: favourites on top, a star beside each (23.10.2026) */
 .pick-group { display: flex; flex-direction: column; gap: 8px; }
@@ -2422,6 +2424,11 @@ button.balance-item-row { cursor: pointer; }
 .module-sheet .module-card strong { font-size: 19px; }
 .module-sheet .module-icon { width: 44px; height: 44px; }
 .module-sheet .module-home .module-icon svg { width: 28px; height: 28px; } /* the house as big as the module icons */
+/* "Startseite" set off in green (Sascha 11.11.2026, design round 3: "Startseite in grün, um es hervorzuheben") */
+.module-sheet .module-home { background: var(--brand-soft); } /* no green frame: that marks the module one is in */
+.module-sheet .module-home strong { color: var(--brand-text); }
+.module-sheet .module-home .module-icon { background: var(--brand); color: #fff; }
+.module-sheet .module-home > span:last-child { color: var(--brand-text); }
 .module-card.on { border: 2px solid var(--brand); }
 /* the host takes a round out of a pool's standing (Sascha 12.11.2026) */
 .skip-round { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-2); }

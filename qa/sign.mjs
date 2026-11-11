@@ -107,8 +107,19 @@ await pTile.click();
 await p.waitForTimeout(300);
 ok((await p.locator('ul.list button.list-item').count()) === 1 && (await p.locator('ul.list .paused-mark').count()) === 1, 'the tile shows only the paused round');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/rounds-paused-filter.png' });
-// carry on or delete (Sascha 18.10.2026): the bin icon next to it deletes – into the bin, "Undo" brings it back
-await p.getByRole('button', { name: /Pausierte Runde .* löschen/ }).click();
+// carry on or delete (Sascha 18.10.2026; since 11.11.2026 swiped left as every row – no bin icon in the row): into the
+// bin, "Undo" brings it back
+ok((await p.locator('.paused-delete').count()) === 0, 'no bin icon in the paused row (deleted by swiping)');
+{
+  // swiped all the way to the left, as a finger does
+  const box = await p.locator('ul.list li').filter({ has: p.locator('.paused-mark') }).locator('.swipe-front').boundingBox();
+  const x = box.x + box.width * 0.8;
+  const y = box.y + box.height / 2;
+  await p.mouse.move(x, y);
+  await p.mouse.down();
+  for (let i = 1; i <= 8; i++) await p.mouse.move(x - (box.width * 0.75 * i) / 8, y);
+  await p.mouse.up();
+}
 await p.waitForTimeout(500);
 const gone = (await p.locator('ul.list .paused-mark').count()) === 0 && /^0/.test((await pTile.innerText()).trim()) && (await pTile.isDisabled());
 ok(gone, 'paused round deleted: gone from the list, the tile shows 0 and stays');
