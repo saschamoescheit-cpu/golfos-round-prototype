@@ -16,7 +16,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, flipDuel, type BetRound, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -928,7 +928,20 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         </section>
       )}
       {/* 5+5+10 challenged – answered here, the own ones waiting with a clock (Sascha 09.11.2026) */}
-      <Standings pool={pool} today={today} me={entry.me} />
+      <Standings
+        pool={pool}
+        today={today}
+        me={entry.me}
+        onSkip={
+          host
+            ? async (r) => {
+                const ok = await change((p) => ({ ...p, skip: [...(p.skip ?? []).filter((x) => !skipped([x], r)), r] }));
+                if (ok) void reportWagers(); // the bets anew, without this round
+                return !!ok;
+              }
+            : undefined
+        }
+      />
       {/* the standing on top, the 5+5+10 challenges below it (Sascha 10.11.2026) */}
       <Challenges entry={entry} />
       {pool.players.map((p) => {
@@ -1147,7 +1160,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               // what is played for changed between money and not money (audit 09.11.2026: 20 $ became "20 × Getränk"): the
               // stakes start again – 20 in money, 1 of a thing or a point; the 5+5+10's parts alike (5/5/10 or 1/1/2)
               const restaked = restake(wagers, isMoney(prizeOf(p)), isMoney(x.prize));
-              return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, settle: x.settle, players };
+              return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, ...(x.skip.length ? { skip: x.skip } : { skip: undefined }), counted: x.counted, oneScorer: x.oneScorer, settle: x.settle, players };
             });
             if (ok) {
               setSheet(null);
@@ -1242,12 +1255,12 @@ export function valueOf(w: Wager, n: number | null, unknown = false): string {
   return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
 }
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
-export function standingRounds(pool: Pick<WagerPool, 'progress'> & Partial<Pick<WagerPool, 'wagers' | 'from' | 'to' | 'rounds'>>): { key: string; day: string; course: string }[] {
+export function standingRounds(pool: Pick<WagerPool, 'progress'> & Partial<Pick<WagerPool, 'wagers' | 'from' | 'to' | 'rounds' | 'skip'>>): { key: string; day: string; course: string }[] {
   const seen = new Map<string, { key: string; day: string; course: string }>();
   // only the bets still in the pool, only rounds that count (Sascha 10.11.2026: "Hetzenhof is in it though it is not
   // there" – the progress of bets deleted and a round outside the trip's rounds)
   const ids = pool.wagers ? new Set(pool.wagers.map((w) => w.id)) : null;
-  const counts = (r: { day: string; course: string }) => !pool.from || !pool.to || inPool({ day: r.day, course: r.course }, { from: pool.from, to: pool.to, rounds: pool.rounds });
+  const counts = (r: { day: string; course: string }) => !skipped(pool.skip, r) && (!pool.from || !pool.to || inPool({ day: r.day, course: r.course }, { from: pool.from, to: pool.to, rounds: pool.rounds }));
   for (const [id, p] of Object.entries(pool.progress ?? {})) {
     if (ids && !ids.has(id)) continue;
     for (const r of [...(p?.perRound ?? []), ...(p?.duels ?? [])]) {
@@ -1280,8 +1293,9 @@ const rowName = (w: Wager) => {
  *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
  *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
-export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean; /** in a round's leaderboard: this round shown first, not the total (Sascha 12.11.2026) – else the latest */ round?: { day: string; course?: string } }) {
+export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean; /** in a round's leaderboard: this round shown first, not the total (Sascha 12.11.2026) – else the latest */ round?: { day: string; course?: string }; /** the host: a round out of the pool (Sascha 12.11.2026) */ onSkip?: (r: { day: string; course: string }) => Promise<boolean> }) {
   const { pool } = props;
+  const [skipAsk, setSkipAsk] = useState<string | null>(null);
   // "Gesamt" (null) or one round (Sascha 08.11.2026: "a bet holds for one round – an overview over all rounds for a
   // total, and then per round")
   // opened from a round (Sascha 11.11.2026: "it jumps to the total – it should be the round, Erik's in Kissimmee")
@@ -1435,6 +1449,40 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           ]}
         />
       )}
+      {/* the host takes a round out (Sascha 12.11.2026: "remove these two rounds at last") – no bet counts it, its scores
+          stay; "Wieder werten" in the pool's pencil */}
+      {one && props.onSkip && (skipAsk === one.key ? (
+        <div className="skip-ask" role="group" aria-label={tr('Do not count this round', 'Runde nicht werten')}>
+          <span className="small">
+            {tr(`${one.course} on ${one.day.slice(8, 10)}.${one.day.slice(5, 7)}. counts for no bet any more – for everyone in the pool. The scores stay.`, `${one.course} am ${one.day.slice(8, 10)}.${one.day.slice(5, 7)}. zählt dann für keine Wette mehr – für alle im Pool. Die Scores bleiben.`)}
+          </span>
+          <div className="skip-ask-btns">
+            <button type="button" className="btn-secondary" onClick={() => setSkipAsk(null)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+            <button
+              type="button"
+              className="btn-danger-fill"
+              onClick={async () => {
+                if (await props.onSkip!({ day: one.day, course: one.course })) {
+                  setSkipAsk(null);
+                  setShown(null);
+                }
+              }}
+            >
+              {tr('Do not count', 'Nicht werten')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="btn-ghost skip-round" onClick={() => setSkipAsk(one.key)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M6 18L18 6" />
+          </svg>
+          {tr('Do not count this round', 'Runde nicht werten')}
+        </button>
+      ))}
       {rows.length > 0 && (
         <div className="matrix-wrap">
           {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}
@@ -2506,7 +2554,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
 /** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
  *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
 
-function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean; settle: 'net' | 'single' }) => void; onDelete: () => void; onClose: () => void }) {
+function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; skip: PoolSkip[]; counted: boolean; oneScorer: boolean; settle: 'net' | 'single' }) => void; onDelete: () => void; onClose: () => void }) {
   const { pool } = props;
   const [name, setName] = useState(pool.name);
   const [from, setFrom] = useState(pool.from);
@@ -2514,6 +2562,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
   const [players, setPlayers] = useState<PoolPlayer[]>(pool.players);
   const [prize, setPrize] = useState<Prize>(prizeOf(pool));
   const [rounds, setRounds] = useState<PoolRound[]>(pool.rounds ?? []);
+  const [skip, setSkip] = useState<PoolSkip[]>(pool.skip ?? []);
   const [poolEntry, setPoolEntry] = useState<ScoreEntry>(entryOf({ counted: poolCounted(pool), oneScorer: pool.oneScorer }));
   const [settle, setSettle] = useState<'net' | 'single'>(pool.settle ?? 'net');
   const counted = poolEntry !== 'own';
@@ -2549,6 +2598,24 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
               <DateRow id="pool-edit-to" label={tr('To', 'Bis')} value={to} min={from} onChange={setTo} />
             </SettingsList>
             <TripRounds from={from} to={to} rounds={rounds} onChange={setRounds} />
+            {skip.length > 0 && (
+              <>
+                <span className="eyebrow">{tr('Rounds not counted', 'Nicht gewertete Runden')}</span>
+                <ul className="list skip-list">
+                  {skip.map((x) => (
+                    <li key={`${x.day}|${x.course}`} className="list-item">
+                      <span className="grow">
+                        <strong>{x.course}</strong>
+                        <span className="muted small">{`${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.day.slice(0, 4)}`}</span>
+                      </span>
+                      <button type="button" className="btn-secondary" onClick={() => setSkip(skip.filter((y) => y !== x))}>
+                        {tr('Count again', 'Wieder werten')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             <span className="eyebrow">{tr('Players', 'Spieler')}</span>
             {players.map((p, k) => (
               <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: np.name, ...(np.hcp.trim() ? { hcp: np.hcp } : { hcp: undefined }) } : x)))} onRemove={p.id !== props.me ? () => (p.joined || betsOf(p) ? setAsking(p) : remove(p)) : undefined} />
@@ -2584,7 +2651,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { n
               {setsOff(prize) && <SettleRow value={settle} onChange={setSettle} />}
             </SettingsList>
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, skip, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
             </button>
           </>

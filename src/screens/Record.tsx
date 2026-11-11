@@ -14,7 +14,7 @@ import { Avatar } from '../components/Avatar';
 
 // in the app's colours (Sascha 17.10.2026): greens for under par, greys for par and over – lighter is better
 // dark enough for white numbers in both themes – numbers are white everywhere in the app (Sascha 21.10.2026)
-export const RESULT_COLOURS = { eaglePlus: '#3d7012', birdie: '#5a8c1c', par: '#7d8c96', bogey: '#5f6e78', doublePlus: '#46535d' } as const;
+export const RESULT_COLOURS = { eaglePlus: '#4f7a0a', birdie: '#79a128', par: '#7d8c96', bogey: '#5f6e78', doublePlus: '#46535d' } as const;
 
 export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void; /** the rounds to sign */ onToSign?: () => void; /** no round yet: start one */ onNew?: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);

@@ -18,7 +18,7 @@ const C = {
   white: '#ffffff',
   ink: '#0e1418',
   relief: 'rgba(255,255,255,0.28)',
-  brand: '#c6f24e',
+  brand: '#9bc53d',
 };
 
 function Frame(props: { children: ReactNode; label: string; bg?: string }) {

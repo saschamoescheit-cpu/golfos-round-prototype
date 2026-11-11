@@ -61,7 +61,11 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; tours?: { today: string[]; planned: number }; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility') => void }) {
+/** what the module cards say (the same on the start page and in the module sheet) */
+export type ModuleCardInfo = { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; tours?: { today: string[]; planned: number }; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number };
+export type ModulePick = 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility';
+
+function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void }) {
   return (
     <>
       {/* GOLFOS only top left, the claim small below it (Sascha 02.11.2026: "saves a lot of room") – the claim the
@@ -76,7 +80,18 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         <TopTools />
       </div>
       <div className="home-hero">
-      <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
+        <ModuleCardList {...props} />
+      </div>
+    </>
+  );
+}
+
+/** the five module cards with what is to do on each – the start page and the module sheet (Sascha 12.11.2026: mock-up
+ *  A, the sheet from below); `current` marks the module one is in */
+export function ModuleCardList(props: ModuleCardInfo & { current?: ModulePick | null; onPick: (m: ModulePick) => void }) {
+  return (
+    <>
+      <button type="button" className={`module-card${props.current === 'rounds' ? ' on' : ''}`} aria-current={props.current === 'rounds' ? 'true' : undefined} onClick={() => props.onPick('rounds')}>
         <span className="module-icon" aria-hidden="true">
           {props.toCheck > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -95,7 +110,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         </span>
         <span aria-hidden="true">›</span>
       </button>
-      <button type="button" className="module-card" onClick={() => props.onPick('games')}>
+      <button type="button" className={`module-card${props.current === 'games' ? ' on' : ''}`} aria-current={props.current === 'games' ? 'true' : undefined} onClick={() => props.onPick('games')}>
         <span className="module-icon" aria-hidden="true">
           {props.gamesToConfirm > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +139,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         <span aria-hidden="true">›</span>
       </button>
       {/* the tournaments a module of their own, below Games & Bets (Sascha 03.11.2026) – planned here, played in Rounds */}
-      <button type="button" className="module-card" onClick={() => props.onPick('tournaments')}>
+      <button type="button" className={`module-card${props.current === 'tournaments' ? ' on' : ''}`} aria-current={props.current === 'tournaments' ? 'true' : undefined} onClick={() => props.onPick('tournaments')}>
         <span className="module-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
@@ -146,7 +161,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         <span aria-hidden="true">›</span>
       </button>
       {/* the third module (Sascha 15.10.2026): the golf knowledge base for practice */}
-      <button type="button" className="module-card" onClick={() => props.onPick('training')}>
+      <button type="button" className={`module-card${props.current === 'training' ? ' on' : ''}`} aria-current={props.current === 'training' ? 'true' : undefined} onClick={() => props.onPick('training')}>
         <span className="module-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="8.5" />
@@ -166,7 +181,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         <span aria-hidden="true">›</span>
       </button>
       {/* the fourth module "Agility" (Sascha 17.10.2026): the mobility screen with the camera – what the body allows the swing */}
-      <button type="button" className="module-card" onClick={() => props.onPick('mobility')}>
+      <button type="button" className={`module-card${props.current === 'mobility' ? ' on' : ''}`} aria-current={props.current === 'mobility' ? 'true' : undefined} onClick={() => props.onPick('mobility')}>
         <span className="module-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="4.2" r="2" />
@@ -199,7 +214,6 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
         </span>
         <span aria-hidden="true">›</span>
       </button>
-      </div>
     </>
   );
 }

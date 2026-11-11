@@ -1,3 +1,4 @@
+import { openModuleSheet } from './components/ModuleSheet';
 import { tr } from './lib/i18n';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NAV_EVENT, type NavTarget } from './lib/nav';
@@ -24,7 +25,7 @@ import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
 import { CourseStats } from './screens/CourseStats';
 import { GamesApp, type GamesTab } from './screens/Games';
-import { Home, type HomeTab } from './screens/Home';
+import { Home, type HomeTab, type ModuleCardInfo, type ModulePick } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 import { roundsInPlay } from './lib/poolround';
 import type { TrainingTab } from './screens/Training';
@@ -201,6 +202,7 @@ export function App() {
       /* storage blocked – this visit only */
     }
   };
+  const pickModuleRef = useRef<(m: ModulePick) => void>(() => undefined);
   const [rounds, setRounds] = useState<Round[]>(() => {
     restoreLostRounds(); // rounds whose GPS track is still there (lost by the tidy-up of 14.10.)
     closeStaleRounds(24);
@@ -350,11 +352,19 @@ export function App() {
     };
   }, []);
 
+  // the module sheet picked (Sascha 12.11.2026: switching modules quickly – mock-up A)
+  useEffect(() => {
+    const on = (e: Event) => pickModuleRef.current((e as CustomEvent<AppModule>).detail);
+    window.addEventListener('golfos:pick-module', on);
+    return () => window.removeEventListener('golfos:pick-module', on);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // a link into another module remembers where it came from – "Zurück" there goes back (Sascha 12.11.2026: "back goes
   // to the main menu instead of one level")
   const [cameFrom, setCameFrom] = useState<AppModule | null>(null);
   // the module now – the link handlers are set up once, so they read it here, not from their first look
   const moduleNow = useRef(module);
+  // the module one is in picked again on the module sheet: opened afresh, as from the start page (a paused session at once)
+  const [moduleRun, setModuleRun] = useState(0);
   moduleNow.current = module;
   const returnTo = (here: AppModule) =>
     cameFrom && cameFrom !== here
@@ -463,49 +473,58 @@ export function App() {
   const toCheck = roundsToSign(rounds).length; // the rounds to check & sign – the same number on the home card, the dot and the tile
   const profileDot = carryToReview(rounds, loadCarryBag()).length > 0;
   if (module !== 'rounds' && bagFrom) return <MyBag rounds={rounds} part={bagFrom.part} onBack={() => setBagFrom(null)} />;
+  // what the module cards say – the start page and the module sheet the same (Sascha 12.11.2026: mock-up A)
+  const cardInfo = (): ModuleCardInfo => ({
+    roundOpen: rounds.some((r) => !r.finishedAt),
+    toCheck,
+    gameOpen: loadGames().some((g) => !g.finishedAt),
+    gamesToConfirm: loadGames().filter((g) => g.finishedAt && !g.signedAt).length,
+    betsRunning: runningPools().map((e) => e.pool.name),
+    tours: toursSoon(),
+    trainingOpen: trainingPaused(),
+    mobilityOpen: mobilityPaused(),
+    mobilityToday: mobilityToday(),
+  });
+  const pickModule = (m: ModulePick) => {
+    // the card's line says what is to do – a tap goes there (night 10./11.11.2026: "click paths"): the rounds to
+    // sign (a round open is paused here – it waits on Spielen), today's one tournament
+    if (m === 'rounds' && toCheck > 0) setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' });
+    if (m === 'tournaments') {
+      const today = toursTodayCodes();
+      if (today.length === 1) {
+        openTour(today[0]);
+        return;
+      }
+    }
+    if (m === 'games') setGamesTab(undefined);
+    if (m === 'tournaments') setToursTab(undefined);
+    if (m === 'training') setTrainingTab(undefined);
+    if (m === 'mobility') setMobilityTab(undefined);
+    if (m === moduleNow.current) setModuleRun((n) => n + 1);
+    setModule(m);
+  };
+  pickModuleRef.current = pickModule;
+  const sheet = () => openModuleSheet(module, cardInfo());
   if (!module)
     return (
       <Home
         tab={homeTab}
         onTab={setHomeTab}
-        roundOpen={rounds.some((r) => !r.finishedAt)}
-        toCheck={toCheck}
+        {...cardInfo()}
         profileDot={profileDot}
-        gameOpen={loadGames().some((g) => !g.finishedAt)}
-        gamesToConfirm={loadGames().filter((g) => g.finishedAt && !g.signedAt).length}
-        betsRunning={runningPools().map((e) => e.pool.name)}
-        tours={toursSoon()}
-        trainingOpen={trainingPaused()}
-        mobilityOpen={mobilityPaused()}
-        mobilityToday={mobilityToday()}
-        onPick={(m) => {
-          // the card's line says what is to do – a tap goes there (night 10./11.11.2026: "click paths"): the rounds to
-          // sign (a round open is paused here – it waits on Spielen), today's one tournament
-          if (m === 'rounds' && toCheck > 0) setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' });
-          if (m === 'tournaments') {
-            const today = toursTodayCodes();
-            if (today.length === 1) {
-              openTour(today[0]);
-              return;
-            }
-          }
-          if (m === 'games') setGamesTab(undefined);
-          if (m === 'tournaments') setToursTab(undefined);
-          if (m === 'training') setTrainingTab(undefined);
-          if (m === 'mobility') setMobilityTab(undefined);
-          setModule(m);
-        }}
+        onPick={pickModule}
         profile={profile}
       />
     );
   // the tournaments a module of their own (Sascha 03.11.2026) – the same screens of a tournament as before
-  if (module === 'tournaments') return <GamesApp key="tours" kind="tours" returnTo={returnTo('tournaments')} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
-  if (module === 'games') return <GamesApp key="games" returnTo={returnTo('games')} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} onOpenRounds={() => { setScreen(HOME); setModule('rounds'); }} />;
+  if (module === 'tournaments') return <GamesApp key="tours" kind="tours" returnTo={returnTo('tournaments')} onModules={sheet} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
+  if (module === 'games') return <GamesApp key="games" returnTo={returnTo('games')} onModules={sheet} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} onOpenRounds={() => { setScreen(HOME); setModule('rounds'); }} />;
   if (module === 'mobility')
     return (
       <Suspense fallback={<Waiting />}>
         <MobilityApp
-          onModules={() => setModule(null)}
+          key={`mobility-${moduleRun}`}
+          onModules={sheet}
           profile={profile}
           profileDot={profileDot}
           tab={mobilityTab}
@@ -522,9 +541,10 @@ export function App() {
     return (
       <Suspense fallback={<Waiting />}>
         <TrainingApp
+          key={`training-${moduleRun}`}
           rounds={statRounds(rounds)}
           unsignedRounds={unsignedRounds(rounds).length}
-          onModules={() => setModule(null)}
+          onModules={sheet}
           profile={profile}
           profileDot={profileDot}
           tab={trainingTab}
@@ -588,10 +608,10 @@ export function App() {
                 setRounds(loadRounds());
               }}
               onSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })}
-              onModules={() => setModule(null)}
+              onModules={sheet}
             />
           )}
-          {tab !== 'play' && <RoundsTopBar onModules={() => setModule(null)} />}
+          {tab !== 'play' && <RoundsTopBar onModules={sheet} />}
           {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => {
             // the rounds to sign: a tap opens the check straight away (night 10./11.11.2026: four taps were one too many)
             if (screen.filter === 'sign' && !round.signedAt) {

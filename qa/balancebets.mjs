@@ -59,7 +59,7 @@ const look = async () => {
 const before = await look();
 ok(before != null && /WETTEN USA-Wetten läuft 0 \$/i.test(before.text), `Bilanz opened: the pool as its card, "0 $" in the pool's currency (${before?.text})`);
 const money = (await p.locator('.balance-totals .tile-num').allInnerTexts()).slice(3).map((t) => t.trim());
-ok(money.length === 3 && money.every((t) => t === '0 $'), `Gewinn, Verlust, Geld of a $ pool only: "0 $" (${money.join(' | ')})`);
+ok(money.length === 3 && money.every((t) => t === '0 $'), `Gewinn, Verlust, Bilanz of a $ pool only: "0 $" (${money.join(' | ')})`);
 const tile = p.locator('.balance-totals button.tile').filter({ hasText: 'Wetten' });
 await tile.click();
 await p.waitForTimeout(500);

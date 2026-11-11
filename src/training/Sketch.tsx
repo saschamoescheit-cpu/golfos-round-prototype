@@ -253,9 +253,9 @@ function Badge(props: { jx: number; jy: number; mx: number; my: number; no: numb
   const d = Math.hypot(mx - jx, my - jy) || 1;
   return (
     <g>
-      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
-      <line x1={jx + ((mx - jx) / d) * 4} y1={jy + ((my - jy) / d) * 4} x2={mx - ((mx - jx) / d) * 8.5} y2={my - ((my - jy) / d) * 8.5} stroke="#5e8a14" strokeWidth={1.6} />
-      <circle cx={mx} cy={my} r={8.5} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
+      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#79a128" strokeWidth={2} />
+      <line x1={jx + ((mx - jx) / d) * 4} y1={jy + ((my - jy) / d) * 4} x2={mx - ((mx - jx) / d) * 8.5} y2={my - ((my - jy) / d) * 8.5} stroke="#79a128" strokeWidth={1.6} />
+      <circle cx={mx} cy={my} r={8.5} fill="#79a128" stroke="#ffffff" strokeWidth={1.4} />
       <MText x={mx} y={my + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
         {no}
       </MText>
@@ -551,7 +551,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
       case 'flight': {
         const p = it.pts;
         const d = p.length === 3 ? `M${X(p[0][0])},${Y(p[0][1])} Q${X(p[1][0])},${Y(p[1][1])} ${X(p[2][0])},${Y(p[2][1])}` : `M${p.map((q) => `${X(q[0])},${Y(q[1])}`).join(' L')}`;
-        return <path key={i} d={d} fill="none" stroke="#4f7a14" strokeWidth={2.4} strokeDasharray={it.dashed ? '3 4' : undefined} />;
+        return <path key={i} d={d} fill="none" stroke="#79a128" strokeWidth={2.4} strokeDasharray={it.dashed ? '3 4' : undefined} />;
       }
       case 'arrow': {
         const ang = (Math.atan2(Y(it.to[1]) - Y(it.from[1]), X(it.to[0]) - X(it.from[0])) * 180) / Math.PI;
@@ -612,9 +612,9 @@ function Grip(props: { label?: string; thumb?: boolean }) {
   const skinLine = '#b88a63';
   const badge = (n: number, x: number, y: number, jx: number, jy: number) => (
     <g key={n}>
-      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
-      <line x1={jx} y1={jy} x2={x} y2={y} stroke="#5e8a14" strokeWidth={1.6} />
-      <circle cx={x} cy={y} r={9} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
+      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#79a128" strokeWidth={2} />
+      <line x1={jx} y1={jy} x2={x} y2={y} stroke="#79a128" strokeWidth={1.6} />
+      <circle cx={x} cy={y} r={9} fill="#79a128" stroke="#ffffff" strokeWidth={1.4} />
       <MText x={x} y={y + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
         {n}
       </MText>
@@ -639,8 +639,8 @@ function Grip(props: { label?: string; thumb?: boolean }) {
       <line x1={168} y1={70} x2={182} y2={300} stroke="#c3cbd2" strokeWidth={5} />
       <path d="M156,64 L180,62 L186,236 L170,238 z" fill="#25313a" />
       {/* the V lines to the trail shoulder */}
-      <line x1={184} y1={118} x2={292} y2={34} stroke="#5e8a14" strokeWidth={2} strokeDasharray="5 4" />
-      <line x1={178} y1={176} x2={286} y2={92} stroke="#5e8a14" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={184} y1={118} x2={292} y2={34} stroke="#79a128" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={178} y1={176} x2={286} y2={92} stroke="#79a128" strokeWidth={2} strokeDasharray="5 4" />
       {/* lead hand (glove): back of the hand, knuckles, thumb down the right side of the grip */}
       <path d="M118,100 Q114,84 132,80 L190,74 Q206,74 206,92 L204,132 Q202,146 186,148 L134,152 Q118,152 118,138 z" fill={glove} stroke={gloveLine} strokeWidth={1.5} />
       {[0, 1, 2, 3].map((i) => (
@@ -715,7 +715,7 @@ function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?
         <line key={y} x1={70} x2={285} y1={y} y2={y - 2} stroke="#9aa4ab" strokeWidth={1} />
       ))}
       <line x1={10} y1={30} x2={44} y2={78} stroke="#8b959d" strokeWidth={6} strokeLinecap="round" />
-      <circle cx={175} cy={86} r={14} fill="none" stroke="#46c46e" strokeWidth={2} strokeDasharray="3 3" />
+      <circle cx={175} cy={86} r={14} fill="none" stroke="#79a128" strokeWidth={2} strokeDasharray="3 3" />
       {props.marks.map((m, i) => (
         <g key={i}>
           <ellipse cx={175 + m.x * 95} cy={86 - m.y * 40} rx={8} ry={6} fill="#1d5fa8" opacity={0.75} />

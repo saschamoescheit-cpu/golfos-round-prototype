@@ -353,6 +353,13 @@ export interface PoolPlayer {
 
 /** A round of the trip (Sascha 01.11.2026: "a bet can be tied to a course and to the day it is played – six rounds"):
  *  its day and course – from the list, a tournament planned in Games (its code), or a round started in Rounds. */
+/** a round taken out of a pool: its day and course */
+export interface PoolSkip {
+  day: string;
+  course: string;
+}
+export const skipped = (skip: PoolSkip[] | undefined, r: { day: string; course: string }): boolean => !!skip?.some((s) => s.day === r.day && s.course.trim().toLowerCase() === r.course.trim().toLowerCase());
+
 export interface PoolRound {
   id: string;
   /** YYYY-MM-DD */
@@ -394,6 +401,9 @@ export interface WagerPool {
   prize?: Prize;
   /** the rounds of the trip – set: only rounds on these days on these courses count (02.11.2026) */
   rounds?: PoolRound[];
+  /** rounds the host took out (Sascha 12.11.2026: "remove these two rounds at last" – Celebration and Reunion on the
+   *  08.11.): a round on that day on that course counts for no bet; its scores stay where they are */
+  skip?: PoolSkip[];
   /** "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense") –
    *  set: every bet of the pool follows it (withCounted); unset (pools from before): each bet as it was set */
   counted?: boolean;
@@ -700,8 +710,9 @@ export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'c
   x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || x.allDay || !r.holeKey || x.holes === r.holeKey);
 /** Does a played round count for a bet of the pool: in the period; with rounds of the trip set, one of them; a bet of
  *  one round only on that one; one of one day only on that day. */
-export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round' | 'from' | 'until' | 'picks'>): boolean {
+export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[]; skip?: PoolSkip[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round' | 'from' | 'until' | 'picks'>): boolean {
   if (r.day < pool.from || r.day > pool.to) return false;
+  if (skipped(pool.skip, r)) return false;
   // a bet over some days only: from, up to, or the days chosen
   if (w?.attempts === 'any' || !w?.attempts) {
     if (w?.from && r.day < w.from) return false;

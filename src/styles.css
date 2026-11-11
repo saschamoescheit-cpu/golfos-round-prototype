@@ -12,7 +12,7 @@
   --brand: #79a128;
   --brand-text: #9bc53d;
   --brand-soft: #24331b;
-  --ok: #46c46e;
+  --ok: #79a128; /* the CI green, as --brand (Sascha 12.11.2026: "the green is not the green of GolfOS") */
   --bad: #ff6b5e;
   --warn: #ff8a7f; /* no yellow anywhere (Sascha 16.10.2026): hints are the brand green, warnings red like --bad */
   --team-b: #5bb4f0;
@@ -214,7 +214,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-score .small { color: var(--muted); }
 .map-hint, .map-shot { align-self: center; background: rgba(14, 20, 24, 0.9); border-radius: 10px; padding: 6px 12px; font-size: 13px; }
 .map-shot strong { font: 700 18px var(--display); color: var(--brand-text); }
-.map-hint { color: #b9e98f; }
+.map-hint { color: var(--brand-text); }
 .map-hint.detected { display: flex; align-items: center; gap: 12px; color: var(--text); padding: 2px 4px 2px 12px; }
 .map-hint.detected .btn-ghost { min-height: 44px; color: var(--brand-text); }
 .screen > .map-hint.detected { align-self: stretch; justify-content: space-between; }
@@ -363,9 +363,9 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .caddie-card .club { font: 700 20px var(--display); color: var(--brand-text); }
 .caddie-card .why { color: var(--text-2); }
 .caddie-card .alt { color: var(--muted); font-size: 12px; }
-.map-slope-chip { margin-top: 2px; font-size: 11px; color: #b9e98f; text-align: center; }
+.map-slope-chip { margin-top: 2px; font-size: 11px; color: var(--brand-text); text-align: center; }
 .map-miss { align-self: flex-end; min-height: 36px; padding: 0 12px; font-size: 13px; }
-.map-shot-dot.good { background: #7ee04a; }
+.map-shot-dot.good { background: var(--brand-text); }
 .map-shot-dot.bad { background: #ff8a7f; }
 .map-slope { display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: none; }
 .map-slope span { background: rgba(14, 20, 24, 0.85); color: #fff; border-radius: 8px; padding: 1px 6px; font: 600 11px var(--body); }
@@ -408,7 +408,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .tee-row button small { color: var(--muted); font-weight: 500; }
 .tee-row button[aria-pressed='true'] { border: 2px solid var(--brand); background: var(--brand-soft); }
 .tee-dot { width: 14px; height: 14px; border-radius: 7px; border: 1px solid rgba(0, 0, 0, 0.4); }
-.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px; border-radius: 50%/40%; background: radial-gradient(ellipse at center, #3f7a2c, #2a5a1e); }
+.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px; border-radius: 50%/40%; background: radial-gradient(ellipse at center, #3f7a2c, #2a5a1e); } /* ci-allow: grass of the green */
 .pin-grid button { min-height: 56px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(14, 20, 24, 0.35); color: #fff; font: 600 13px var(--body); }
 .pin-grid button:active { background: #ff6b5e; }
 
@@ -570,7 +570,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
   --brand: #4f7a0a;
   --brand-text: #3a6300;
   --brand-soft: #e1eecb;
-  --ok: #1d8a43;
+  --ok: #4f7a0a; /* the CI green of the sun theme, as --brand */
   --bad: #c2362b;
   --warn: #c2362b;
   --team-b: #1d6fae;
@@ -923,7 +923,7 @@ button.tile:disabled { opacity: 1; }
 /* the dragged putt's length, large and above the finger (Sascha 16.10.2026) */
 .putt-readout { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1; padding: 6px 14px; border-radius: 999px; background: rgba(14, 20, 24, 0.88); color: #fff; font: 700 20px var(--display); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
 .putt-zoom .chip { min-width: 44px; justify-content: center; }
-.putt-line { fill: none; stroke: #c4ef6a; }
+.putt-line { fill: none; stroke: #9bc53d; }
 .putt-ball, .putt-pin { cursor: grab; }
 .putt-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
 .putt-list li { display: flex; justify-content: space-between; gap: 8px; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
@@ -1249,7 +1249,7 @@ button.tile:disabled { opacity: 1; }
 .bet-pays li > span { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 :root[data-theme='sun'] .undo-toast { background: #1f2a31; color: #ffffff; }
 :root[data-theme='sun'] .undo-toast .muted { color: #c9d3cc; }
-:root[data-theme='sun'] .undo-toast button { color: #b5e06a; }
+:root[data-theme='sun'] .undo-toast button { color: #9bc53d; }
 
 /* open tasks on the start page (the green dot as in the menus) */
 .module-icon { position: relative; }
@@ -2415,3 +2415,15 @@ button.balance-item-row { cursor: pointer; }
 .review-nomap { display: flex; flex-direction: column; gap: 10px; }
 .review-setup-layer { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; }
 .review-setup-layer > .map-screen { flex: 1; min-height: 0; }
+/* switching modules quickly: the sheet from below (Sascha 12.11.2026, mock-up A) */
+.module-sheet { display: flex; flex-direction: column; gap: 10px; max-height: 88vh; }
+.module-sheet-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.module-sheet .module-card { padding: 12px 14px; }
+.module-sheet .module-card strong { font-size: 19px; }
+.module-sheet .module-icon { width: 44px; height: 44px; }
+.module-card.on { border: 2px solid var(--brand); }
+/* the host takes a round out of a pool's standing (Sascha 12.11.2026) */
+.skip-round { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-2); }
+.skip-ask { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.skip-ask-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.skip-list .list-item { display: flex; align-items: center; gap: 10px; }

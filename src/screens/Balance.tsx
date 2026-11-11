@@ -6,7 +6,7 @@ import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { newId } from '../lib/storage';
 import { changePool, isLive, loadPools } from '../lib/wagerstore';
-import { balances, dayOf, withDuels } from '../lib/wagers';
+import { balances, dayOf, ledger, withDuels } from '../lib/wagers';
 import { isMoney, paidWord, prizeOf, prizeSym } from '../lib/prize';
 import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
@@ -124,6 +124,10 @@ interface Entry {
   day: string;
   sym: string;
   mine: number;
+  /** what I won and what I lost in it, each on its own (Sascha 12.11.2026: "Verlust 30 $, Gewinn 320 $") – a game: its
+   *  result on one side; a pool: the bets I won and the bets I lost */
+  plus: number;
+  minus: number;
   won: boolean;
 }
 
@@ -180,10 +184,14 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         day,
         sym: prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize })),
         mine: st.money?.[me.id] ?? 0,
+        plus: Math.max(0, st.money?.[me.id] ?? 0),
+        minus: Math.min(0, st.money?.[me.id] ?? 0),
         won: top.includes(me.id) || (top.length === 1 && top[0] === 'A'),
       };
     }),
-    ...pools.map((e): Entry => ({
+    ...pools.map((e): Entry => {
+      const lines = ledger(e.pool, today, true)[e.me] ?? [];
+      return {
       kind: 'pool',
       ref: e.code,
       head: e.pool.name,
@@ -191,8 +199,11 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       day: e.pool.from,
       sym: prizeSym(prizeOf(e.pool)),
       mine: balances(e.pool, today, true)[e.me] ?? 0,
+      plus: lines.filter((l) => l.amount > 0).reduce((n, l) => n + l.amount, 0),
+      minus: lines.filter((l) => l.amount < 0).reduce((n, l) => n + l.amount, 0),
       won: false,
-    })),
+      };
+    }),
   ].sort((a, b) => b.day.localeCompare(a.day));
   const wins = entries.filter((x) => x.won).length;
   // nothing won or lost yet: 0 in the one currency all games and bets are in (a $ pool only: "0 $")
@@ -202,8 +213,8 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     games: { title: tr('Your games', 'Deine Spiele'), keep: (x) => x.kind === 'game' },
     wins: { title: tr('Your wins', 'Deine Siege'), keep: (x) => x.won },
     bets: { title: tr('Your bets', 'Deine Wetten'), keep: (x) => x.kind === 'pool' },
-    won: { title: tr('Where you won', 'Wo du gewonnen hast'), keep: (x) => x.mine > 0.004 },
-    lost: { title: tr('Where you lost', 'Wo du verloren hast'), keep: (x) => x.mine < -0.004 },
+    won: { title: tr('Where you won', 'Wo du gewonnen hast'), keep: (x) => x.plus > 0.004 },
+    lost: { title: tr('Where you lost', 'Wo du verloren hast'), keep: (x) => x.minus < -0.004 },
   };
   const shown = filter ? entries.filter(FILTERS[filter].keep) : [];
   const counts = Object.fromEntries(Object.entries(FILTERS).map(([k, v]) => [k, entries.filter(v.keep).length])) as Record<keyof typeof FILTERS, number>;
@@ -218,7 +229,12 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     else loss[sym] = (loss[sym] ?? 0) + v;
   };
   for (const g of done) book(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize })), standingOf(g).money?.[meIn(g).id] ?? 0);
-  for (const e of pools) book(prizeSym(prizeOf(e.pool)), balances(e.pool, today, true)[e.me] ?? 0);
+  // a pool: each bet on its own – won on "Gewinn", lost on "Verlust", both in "Bilanz" (Sascha 12.11.2026: "Verlust 30 $,
+  // Gewinn 320 $ – and Geld renamed Bilanz, there the 290 are right")
+  for (const e of entries) if (e.kind === 'pool') {
+    book(e.sym, e.plus);
+    book(e.sym, e.minus);
+  }
   const owe = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v < -0.004));
   const owed = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v > 0.004));
   // paid by him, not confirmed by me yet – and paid by me, not confirmed by him
@@ -332,7 +348,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
               <strong className="tile-num"><Amounts m={total} zero={zero} /></strong>
               <span className="tile-mark">{TILE_ICONS.money}</span>
             </span>
-            <span className="muted small">{tr('money', 'Geld')}</span>
+            <span className="muted small">{tr('balance', 'Bilanz')}</span>
           </div>
         </section>
       )}
@@ -354,7 +370,11 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                       <span className="muted small">{x.line}</span>
                     </span>
                     <span className="balance-item-end">
-                      <strong className={cls(x.mine)}>{formatEuro(x.mine, x.sym)}</strong>
+                      {/* "Gewinn" and "Verlust": that side of it; else what it came to */}
+                      {(() => {
+                        const v = filter === 'won' ? x.plus : filter === 'lost' ? x.minus : x.mine;
+                        return <strong className={cls(v)}>{formatEuro(v, x.sym)}</strong>;
+                      })()}
                       {x.won && <span className="small good-text">{tr('won', 'gewonnen')}</span>}
                     </span>
                     {go && (

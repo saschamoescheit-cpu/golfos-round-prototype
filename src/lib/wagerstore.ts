@@ -441,11 +441,13 @@ function keptFor(r: Round, name: string): boolean {
 }
 /** Another player's bet: this phone's judgement only when it knows more – more rounds, or a better result from as many
  *  (his own phone may have reported from rounds this one does not have). His own phone's always. */
-export function takes(w: Wager, me: string, old: Progress | undefined, now: Progress, pool?: Pick<WagerPool, 'from' | 'to' | 'rounds'>): boolean {
+export function takes(w: Wager, me: string, old: Progress | undefined, now: Progress, pool?: Pick<WagerPool, 'from' | 'to' | 'rounds' | 'skip'>): boolean {
   if (w.player === me || !old) return true;
   // a round counted before that no longer counts – the host narrowed the pool's rounds (Sascha 10.11.2026: a test round
   // on the Hetzenhof made Moritz's bets, "nobody has made a bet yet"): the judgement anew
-  if (pool && old.perRound?.some((r) => !inPool({ day: r.day, course: r.course }, pool, w))) return true;
+  // – not for a round the host took out (pool.skip, Sascha 12.11.2026): that one is only left out where shown and judged
+  // (countedOnly, inPool); judged anew here, a phone without the others' rounds would wipe their bets
+  if (pool && old.perRound?.some((r) => !inPool({ day: r.day, course: r.course }, { from: pool.from, to: pool.to, rounds: pool.rounds }, w))) return true;
   if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
