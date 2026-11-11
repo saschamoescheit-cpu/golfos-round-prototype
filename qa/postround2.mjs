@@ -60,7 +60,7 @@ await p.getByRole('button', { name: /Schläge prüfen/ }).first().click();
 await p.waitForTimeout(2500);
 let last = '';
 for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
-  const btn = p.locator('.sticky-cta .btn-primary');
+  const btn = p.locator('.fab-save');
   last = (await btn.innerText().catch(() => '')).trim();
   await btn.click().catch(() => {});
   await p.waitForTimeout(600);

@@ -36,6 +36,7 @@ export function FloatActions(props: { plus?: FloatAction | null; pen?: FloatActi
       {props.save && (
         <button type="button" className="fab fab-save" aria-label={props.save.label} title={props.save.label} disabled={props.save.disabled} onClick={props.save.onClick}>
           <Tick />
+          <span className="sr-only">{props.save.label}</span>
         </button>
       )}
       {props.pen && (

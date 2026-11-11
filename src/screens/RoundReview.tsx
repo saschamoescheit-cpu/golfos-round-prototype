@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { FloatActions } from '../components/FloatActions';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
@@ -1060,7 +1061,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             ]}
             onTargetsChange={() => {}}
             onTargetRemove={() => {}}
-            onPinChange={(p) => d && saveDetail(k, { ...d, pin: p })}
+            // the flag moved on the map: the putts' flag too (Sascha 11.11.2026: "woanders positioniert, nicht in den Putteditor übernommen")
+            onPinChange={(p) => d && saveDetail(k, { ...d, pin: p }, undefined, e?.puttsAt ? { puttsAt: { ...e.puttsAt, pin: p } } : {})}
             onTrackHold={(id) => {
               if (!d || !id.startsWith('shot-')) return;
               const n = Number(id.slice(5));
@@ -1521,10 +1523,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </section>
       )}
 
-      <span className="spacer" />
-      <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={confirmHole}>
-          {reachedEnd && !openHoles.length
+      {/* "Loch passt" floating bottom right as a round button with its tick (Sascha 11.11.2026: "Loch bestätigen sollte
+          auch schwebend sein als Button mit einem Icon") – what it does said in its label */}
+      <FloatActions
+        save={{
+          onClick: confirmHole,
+          label: reachedEnd && !openHoles.length
             ? tr(`Hole ${hole.label} fits ✓`, `Loch ${hole.label} passt ✓`)
             : onlyOpen && openHoles.length
             ? tr(`Hole ${hole.label} fits ✓ → next open one`, `Loch ${hole.label} passt ✓ → nächstes offenes`)
@@ -1534,9 +1538,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ? tr(`Hole ${hole.label} fits ✓ → check the open ones`, `Loch ${hole.label} passt ✓ → offene prüfen`)
               : round.signedAt || round.capture === 'score'
                 ? tr(`Hole ${hole.label} fits ✓ · round done`, `Loch ${hole.label} passt ✓ · Runde fertig`)
-                : tr(`Hole ${hole.label} fits ✓ · sign the round`, `Loch ${hole.label} passt ✓ · Runde signieren`)}
-        </button>
-      </div>
+                : tr(`Hole ${hole.label} fits ✓ · sign the round`, `Loch ${hole.label} passt ✓ · Runde signieren`),
+        }}
+      />
 
       {askDone && (
         <div className="sheet-backdrop" onClick={() => setAskDone(false)}>

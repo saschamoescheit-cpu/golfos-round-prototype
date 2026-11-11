@@ -126,6 +126,7 @@ await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click
 await p.waitForTimeout(300);
 // a shot dragged out of bounds (Sascha 16.10.2026, 6C): penalty stroke and a new shot from the same spot
 const before1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots.length);
+await p.locator('.review-map').scrollIntoViewIfNeeded(); // the page longer since the floating "Loch passt" (11.11.2026)
 await p.waitForTimeout(1200); // the map at rest before a mark is taken
 const m2 = p.locator('.map-shot-dot').filter({ hasText: /^2/ }).first();
 const b2 = await m2.boundingBox();
@@ -165,7 +166,7 @@ ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
   // the lies: semi rough next to rough (Sascha 18.10.2026), all on the screen
   const lies = await p.locator('.sheet .segmented').first().locator('button').allInnerTexts();
   const fits = await p.locator('.sheet .segmented').first().evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
-  ok(lies.includes('Semi Rough') && lies.indexOf('Semi Rough') === lies.indexOf('Fairway') + 1 && lies.includes('Vorgrün') && fits, `lie: "Semi Rough" after fairway, "Vorgrün" too, nothing cut off (${lies.join(' · ')})`);
+  ok(lies.includes('Semi Rough') && lies.indexOf('Semi Rough') === lies.indexOf('Fairway') + 1 && lies.includes('Vorgrün') && lies.includes('Grün') && fits, `lie: "Semi Rough" after fairway, "Vorgrün" too, nothing cut off (${lies.join(' · ')})`);
   ok((await p.locator('.sheet .club-grid').getByRole('button', { name: /Texas Wedge/ }).count()) === 1, 'club: the putter from off the green (Texas wedge) to choose');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/shot-sheet.png' });
 }
@@ -272,7 +273,7 @@ ok(!/Dein Score war/.test(notices), 'no false score difference on hole 7');
 ok((await p.locator('.review-list li').filter({ hasText: /Putts/ }).count()) === 1, 'putts in the list');
 // confirming the hole keeps the score from the course (the detection may miss a shot, the penalty is not placed yet)
 const before = e7.strokes;
-await p.locator('.btn-primary').filter({ hasText: /passt/ }).click();
+await p.locator('.fab-save').filter({ hasText: /passt/ }).click(); // floating since 11.11.2026
 await p.waitForTimeout(600);
 const after = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][6].strokes);
 ok(after === before, `confirming hole 7 keeps the score from the course (${before} → ${after})`);

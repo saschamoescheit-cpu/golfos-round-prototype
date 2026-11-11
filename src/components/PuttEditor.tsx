@@ -140,7 +140,18 @@ export function PuttEditor(props: {
   const vh = half / view.zoom;
   const vb = `${view.cx - vh} ${view.cy - vh} ${vh * 2} ${vh * 2}`;
   const r = vh / 26; // markers keep their size on the screen at every zoom
-  const metresPerPx = () => (svg.current ? (vh * 2) / svg.current.clientWidth : 0);
+  // the green as drawn: the square view fitted into the element (iPad landscape: wider than high – centred, letterboxed;
+  // Sascha 11.11.2026: "the flag cannot be moved at all, the putts hang" – the finger was read against the width)
+  const fit = () => {
+    const box = svg.current?.getBoundingClientRect();
+    if (!box) return null;
+    const side = Math.min(box.width, box.height) || 1;
+    return { px: side / (vh * 2), left: box.left + (box.width - side) / 2, top: box.top + (box.height - side) / 2 };
+  };
+  const metresPerPx = () => {
+    const f = fit();
+    return f ? 1 / f.px : 0;
+  };
   const zoomBy = (k: number) => setView((v) => clampView(v.zoom * k, v.cx, v.cy));
   // onto the putts: flag and balls with a little room around them
   const toPutts = () => {
@@ -159,8 +170,9 @@ export function PuttEditor(props: {
   const nearest = (cx: number, cy: number): number | 'pin' | null => {
     const el = svg.current;
     if (!el) return null;
-    const box = el.getBoundingClientRect();
-    const px = ([x, y]: [number, number]) => [box.left + ((x - (view.cx - vh)) / (vh * 2)) * box.width, box.top + ((y - (view.cy - vh)) / (vh * 2)) * box.height];
+    const f = fit();
+    if (!f) return null;
+    const px = ([x, y]: [number, number]) => [f.left + (x - (view.cx - vh)) * f.px, f.top + (y - (view.cy - vh)) * f.px];
     let best: number | 'pin' | null = null;
     let bestD = GRAB_PX;
     // every spot the marker is drawn at (metres of the view from its point; r = a marker's unit)
@@ -227,7 +239,8 @@ export function PuttEditor(props: {
       const [a, b] = [...touches.current.values()];
       const zoom = g.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / g.dist);
       // the fingers' middle moves the view along
-      const k = (half / g.zoom) * 2 / (svg.current?.clientWidth || 1);
+      const box = svg.current?.getBoundingClientRect();
+      const k = ((half / g.zoom) * 2) / (Math.min(box?.width ?? 1, box?.height ?? 1) || 1);
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       setView(clampView(zoom, g.cx - (mid.x - g.mid.x) * k, g.cy - (mid.y - g.mid.y) * k));
       return;

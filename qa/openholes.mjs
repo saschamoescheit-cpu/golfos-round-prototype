@@ -90,7 +90,7 @@ while ((await p.getByRole('button', { name: /passt ✓ → nächstes offenes/ })
   await p.waitForTimeout(400);
 }
 const lastHole = await holeNow();
-const lastBtn = p.locator('.sticky-cta .btn-primary');
+const lastBtn = p.locator('.fab-save');
 ok(/^Loch \w+ passt ✓$/.test((await lastBtn.innerText()).trim()), `the last open hole: "${(await lastBtn.innerText()).trim()}" – no signing on the button`);
 await lastBtn.click();
 await p.waitForTimeout(500);
@@ -106,7 +106,7 @@ ok((await ask.count()) === 0 && !(await p.evaluate(() => JSON.parse(localStorage
 await p.getByRole('button', { name: 'Voriges Loch' }).click().catch(() => {});
 await p.waitForTimeout(300);
 // any hole confirmed again: the question again – "Runde bestätigen" signs
-await p.locator('.sticky-cta .btn-primary').click();
+await p.locator('.fab-save').click();
 await p.waitForTimeout(500);
 await p.getByRole('dialog', { name: 'Alle Löcher geprüft' }).getByRole('button', { name: 'Runde bestätigen' }).click();
 await p.waitForTimeout(1500);

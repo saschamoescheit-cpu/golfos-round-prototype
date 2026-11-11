@@ -152,7 +152,7 @@ await p.locator('.sc-actions').getByRole('button', { name: /Schläge prüfen/ })
 await p.waitForTimeout(2000);
 let lastLabel = '';
 for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
-  const btn = p.locator('.sticky-cta .btn-primary');
+  const btn = p.locator('.fab-save');
   lastLabel = (await btn.innerText().catch(() => '')).trim();
   await btn.click().catch(() => {});
   await p.waitForTimeout(700);

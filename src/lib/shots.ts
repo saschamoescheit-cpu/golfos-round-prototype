@@ -14,6 +14,8 @@ export const LIES: { value: Lie; label: string }[] = [
   { value: 'semirough', label: 'Semi Rough' },
   { value: 'rough', label: 'Rough' },
   { value: 'fringe', label: tr('Fringe', 'Vorgrün') },
+  // a chip from the green (Sascha 11.11.2026: "auf dem Grün kann man auch einen Chip spielen")
+  { value: 'green', label: tr('Green', 'Grün') },
   { value: 'bunker', label: 'Bunker' },
   { value: 'recovery', label: tr('Trees', 'Bäume') },
 ];

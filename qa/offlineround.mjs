@@ -88,7 +88,7 @@ await p.waitForTimeout(2500);
 ok((await p.getByRole('heading', { name: 'Schläge prüfen' }).count()) + (await p.locator('.review-nav').count()) > 0, 'offline: "Schläge prüfen" opens (loaded from the phone)');
 let last = '';
 for (let k = 0; k < 24 && (await p.locator('.sc-wrap').count()) === 0; k++) {
-  const btn = p.locator('.sticky-cta .btn-primary');
+  const btn = p.locator('.fab-save');
   last = (await btn.innerText().catch(() => '')).trim();
   await btn.click().catch(() => {});
   await p.waitForTimeout(600);

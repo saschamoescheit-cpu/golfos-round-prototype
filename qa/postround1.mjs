@@ -109,7 +109,7 @@ const rows = (await p.locator('.review-list li').allInnerTexts()).join(' | ');
 ok(/Ball verloren/.test(rows) && /provisorischer Ball/.test(rows), 'the list says "Ball verloren" and "provisorischer Ball"');
 
 // 3 · "Loch passt", then the next hole: one point twice
-await p.locator('.sticky-cta .btn-primary').click();
+await p.locator('.fab-save').click();
 await p.waitForTimeout(800);
 ok((await mine(0)).checked === true, '"Loch 1C passt" marks the hole as checked');
 ok(/1\/9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "1/9 geprüft"');
@@ -121,7 +121,7 @@ e = await mine(1);
 ok(e.detail.shots.length === 2 && e.detail.shots[0].club === '4i' && e.detail.shots[0].lie === 'tee', 'merged: one tee shot, the club kept');
 
 // 4 · the score that does not add up: one tap
-await p.locator('.sticky-cta .btn-primary').click();
+await p.locator('.fab-save').click();
 await p.waitForTimeout(800);
 const fix = p.getByRole('button', { name: /Score auf 5 setzen/ });
 ok((await fix.count()) === 1, 'hole 3C: "Score auf 5 setzen" offered');
@@ -151,7 +151,7 @@ if (await len.count()) {
 
 // 7 · the last hole while holes are still open: no signing yet
 for (let k = 0; k < 6; k++) { await p.getByRole('button', { name: 'Nächstes Loch' }).click().catch(() => {}); await p.waitForTimeout(250); }
-ok(/offene prüfen/.test(await p.locator('.sticky-cta .btn-primary').innerText()), `last hole with open ones: "${(await p.locator('.sticky-cta .btn-primary').innerText()).trim()}"`);
+ok(/offene prüfen/.test(await p.locator('.fab-save').innerText()), `last hole with open ones: "${(await p.locator('.fab-save').innerText()).trim()}"`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

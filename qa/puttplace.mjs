@@ -10,7 +10,7 @@ import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const sim = JSON.parse(readFileSync(new URL('./simtrack.json', import.meta.url), 'utf-8'));
 const b = await webkit.launch();
-const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+const ctx = await b.newContext({ ...devices[process.env.DEVICE ?? 'iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
