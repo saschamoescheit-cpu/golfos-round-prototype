@@ -1095,9 +1095,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           wager={sheet.edit}
           own={!host}
           onClose={() => setSheet(null)}
-          onSave={async (w) => {
+          onSave={async (w, auto) => {
             if (await change((p) => ({ ...p, wagers: p.wagers.some((x) => x.id === w.id) ? p.wagers.map((x) => (x.id === w.id ? w : x)) : [...p.wagers, w] }))) {
-              setSheet(null);
+              if (!auto) setSheet(null); // saved by itself: the sheet stays open
               void reportWagers();
             }
           }}
@@ -2127,7 +2127,8 @@ export function WagerSheet(props: {
   wager: Wager | null;
   /** the challenger's own duel, not the host: whose and against whom stay, no deleting */
   own?: boolean;
-  onSave: (w: Wager) => void;
+  /** auto: saved by itself while the sheet stays open (Sascha 12.11.2026) */
+  onSave: (w: Wager, auto?: boolean) => Promise<unknown> | void;
   onDelete: (id: string) => void;
   onJudge: (id: string, done: boolean | null) => void;
   onClose: () => void;
@@ -2144,12 +2145,34 @@ export function WagerSheet(props: {
     if (w.kind === 'custom') keepMyBet(myBetOf(w));
     props.onSave(w.kind === 'custom' ? { ...w, text: wagerLabel(w) } : w);
   };
+  // a bet there already: every change saved by itself (Sascha 12.11.2026: "changes saved automatically instead of
+  // having to press Speichern") – a moment after the last change and when the sheet closes; a new bet: "Wette anlegen"
+  const key = JSON.stringify(w);
+  const saved = useRef(key);
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const flush = async () => {
+    if (!props.wager || !ok || saved.current === key) return;
+    saved.current = key;
+    setSaving('busy');
+    if (w.kind === 'custom') keepMyBet(myBetOf(w));
+    await props.onSave(w.kind === 'custom' ? { ...w, text: wagerLabel(w) } : w, true);
+    setSaving('done');
+  };
+  useEffect(() => {
+    if (!props.wager || !ok || saved.current === key) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [key, ok]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    void flush();
+    props.onClose();
+  };
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet wager-sheet" role="dialog" aria-label={props.wager ? tr('Bet', 'Wette') : tr('New bet', 'Neue Wette')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.wager ? wagerLabel(props.wager) : tr('New bet', 'Neue Wette')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>
@@ -2220,9 +2243,15 @@ export function WagerSheet(props: {
             )}
           </>
         )}
-        <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
-          {props.wager ? tr('Save', 'Speichern') : tr('Add the bet', 'Wette anlegen')}
-        </button>
+        {props.wager ? (
+          <span className="muted small autosave-note" role="status">
+            {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          </span>
+        ) : (
+          <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
+            {tr('Add the bet', 'Wette anlegen')}
+          </button>
+        )}
       </section>
     </div>
   );

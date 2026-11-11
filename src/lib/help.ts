@@ -478,6 +478,16 @@ export const FAQ: FaqTopic[] = [
         video: 'balance',
       },
       {
+        // Sascha 12.11.2026: "what if we play for euros? A standard currency in the profile – converted at the cut-off day"
+        q: () => tr('We play in dollars – can I see my balance in euros?', 'Wir spielen in Dollar – kann ich meine Bilanz in Euro sehen?'),
+        a: () =>
+          tr(
+            'Profile → "Standard currency" → Euro. "Bilanz" then shows games and bets in dollars in euros: a pool that has ended at the rate of its last day (European Central Bank), one still running at today\'s rate – marked "≈", final on its last day. The pool itself and its payments stay in dollars. Without a standard currency nothing is converted.',
+            'Profil → „Standardwährung“ → Euro. „Bilanz“ zeigt Spiele und Wetten in Dollar dann in Euro: einen beendeten Pool zum Kurs seines letzten Tages (Europäische Zentralbank), einen laufenden zum heutigen Kurs – mit „≈“, fest an seinem letzten Tag. Der Pool selbst und seine Zahlungen bleiben in Dollar. Ohne Standardwährung wird nichts umgerechnet.',
+          ),
+        video: 'balance',
+      },
+      {
         // Sascha 09.11.2026, USA: 5+5+10 one against one, also across flights
         // 10.11.2026: against anyone – friends, players made, who keeps the score, the round of the day, net with its share
         q: () => tr('How do I play 5+5+10 – also against someone in another flight?', 'Wie spiele ich 5+5+10 – auch gegen jemanden aus einem anderen Flight?'),

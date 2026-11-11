@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { convert, fetchRate, homeMoney, moneyOfSym, rateFinal, rateKept, symOf, type Money } from '../lib/fx';
 import { FloatActions } from '../components/FloatActions';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import { formDef, formatEuro, money, standingOf, type Game } from '../lib/gameforms';
 import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
 import { loadGames, saveGame } from '../lib/gamestore';
@@ -130,6 +131,9 @@ interface Entry {
   plus: number;
   minus: number;
   won: boolean;
+  /** the cut-off day (Sascha 12.11.2026): a game the day it ended, a pool its last day – its amounts in the standard
+   *  currency at that day's rate */
+  until: string;
 }
 
 export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (code: string) => void; /** a game of the list tapped: its result */ onOpenGame?: (g: Game) => void; /** the games still to confirm, tapped */ onConfirm?: (gs: Game[]) => void }) {
@@ -150,6 +154,11 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const toSign = props.games.filter((g) => g.finishedAt && !g.signedAt);
   const unconfirmed = toSign.length;
   const ps = people(props.games, pools, today);
+  // the games and pools in another currency than the standard one, with their cut-off day
+  const entriesFx = [
+    ...done.map((g) => ({ m: moneyOfSym(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize }))), until: (g.finishedAt ?? g.createdAt).slice(0, 10) })),
+    ...pools.map((e) => ({ m: moneyOfSym(prizeSym(prizeOf(e.pool))), until: e.pool.to })),
+  ].filter((x): x is { m: Money; until: string } => !!x.m && !!homeMoney() && x.m !== homeMoney());
   // the shared games' payments from the other phones when the balance opens (he marked it paid, or confirmed)
   useEffect(() => {
     let gone = false;
@@ -167,6 +176,19 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       gone = true;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // the rates for the entries in another currency (once per day and pair; offline: the last known)
+  useEffect(() => {
+    const h = homeMoney();
+    if (!h) return;
+    const need = [...new Set(entriesFx.map((x) => `${x.m}|${x.until}`))];
+    let gone = false;
+    void Promise.all(need.map((k) => { const [m, until] = k.split('|'); return fetchRate(m as Money, h, until); })).then((news) => {
+      if (!gone && news.some(Boolean)) setTick((t) => t + 1);
+    });
+    return () => {
+      gone = true;
+    };
+  }, [entriesFx.map((x) => `${x.m}|${x.until}`).join()]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!done.length && !unconfirmed && !pools.length) return props.inTab ? <p className="muted">{tr('No confirmed games or bets yet – they show here once played.', 'Noch keine bestätigten Spiele oder Wetten – sie erscheinen hier, sobald gespielt.')}</p> : null;
 
   const total: Record<string, number> = {};
@@ -184,6 +206,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         head: formDef(g.form).name(),
         line: [dm(day), g.courseName, others.length ? tr(`with ${others.join(', ')}`, `mit ${others.join(', ')}`) : null].filter(Boolean).join(' · '),
         day,
+        until: day,
         sym: prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize })),
         mine: st.money?.[me.id] ?? 0,
         plus: Math.max(0, st.money?.[me.id] ?? 0),
@@ -199,6 +222,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       head: e.pool.name,
       line: [dm(e.pool.from), tr('Bets', 'Wetten'), isLive(e, today) ? tr('running', 'läuft') : tr('finished', 'beendet')].join(' · '),
       day: e.pool.from,
+      until: e.pool.to,
       sym: prizeSym(prizeOf(e.pool)),
       mine: balances(e.pool, today, true)[e.me] ?? 0,
       plus: lines.filter((l) => l.amount > 0).reduce((n, l) => n + l.amount, 0),
@@ -224,18 +248,29 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   // and each pool as it came out for me
   const gain: Record<string, number> = {};
   const loss: Record<string, number> = {};
-  const book = (sym: string, v: number) => {
+  // another currency than the standard one (Sascha 12.11.2026): converted at the cut-off day's rate – kept as it is
+  // while the rate is not known (offline, first time)
+  const home = homeMoney();
+  const conv = (sym: string, v: number, until: string): [string, number] => {
+    const m = moneyOfSym(sym);
+    if (!m || !home || m === home) return [sym, v];
+    const c = convert(v, m, home, until);
+    return c == null ? [sym, v] : [symOf(home), c];
+  };
+  const converted = home ? entries.filter((x) => { const m = moneyOfSym(x.sym); return !!m && m !== home; }) : [];
+  const book = (sym0: string, v0: number, until = today) => {
+    const [sym, v] = conv(sym0, v0, until);
     if (Math.abs(v) < 0.005) return;
     total[sym] = (total[sym] ?? 0) + v;
     if (v > 0) gain[sym] = (gain[sym] ?? 0) + v;
     else loss[sym] = (loss[sym] ?? 0) + v;
   };
-  for (const g of done) book(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize })), standingOf(g).money?.[meIn(g).id] ?? 0);
+  for (const e of entries) if (e.kind === 'game') book(e.sym, e.mine, e.until);
   // a pool: each bet on its own – won on "Gewinn", lost on "Verlust", both in "Bilanz" (Sascha 12.11.2026: "Verlust 30 $,
   // Gewinn 320 $ – and Geld renamed Bilanz, there the 290 are right")
   for (const e of entries) if (e.kind === 'pool') {
-    book(e.sym, e.plus);
-    book(e.sym, e.minus);
+    book(e.sym, e.plus, e.until);
+    book(e.sym, e.minus, e.until);
   }
   const owe = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v < -0.004));
   const owed = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v > 0.004));
@@ -354,6 +389,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           </div>
         </section>
       )}
+      {converted.length > 0 && <FxNote entries={converted} />}
 
       {/* a tile tapped: the games and bets behind it, each with what it came to for me – a tap opens it */}
       {filter === 'bets' && pools.map(poolCard)}
@@ -669,5 +705,28 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
         )}
       </section>
     </div>
+  );
+}
+
+/** Which rate the totals used (Sascha 12.11.2026): "1 $ = 0,86 € · Kurs vom 17.11." – a day to come: "heute, bis zum
+ *  17.11. noch offen". Not known yet: "noch nicht umgerechnet". */
+function FxNote(props: { entries: Entry[] }) {
+  const home = homeMoney();
+  if (!home) return null;
+  const lines = [...new Map(props.entries.map((e) => [`${e.sym}|${e.until}`, e])).values()].map((e) => {
+    const m = moneyOfSym(e.sym)!;
+    const r = rateKept(m, home, e.until);
+    const fmt = (x: number) => x.toLocaleString(getLang() === 'de' ? 'de-DE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    const d = `${e.until.slice(8, 10)}.${e.until.slice(5, 7)}.`;
+    if (r == null) return tr(`${e.head}: not converted yet (no rate)`, `${e.head}: noch nicht umgerechnet (kein Kurs)`);
+    return rateFinal(m, home, e.until)
+      ? tr(`${e.head}: 1 ${e.sym} = ${fmt(r)} ${symOf(home)} · rate of ${d}`, `${e.head}: 1 ${e.sym} = ${fmt(r)} ${symOf(home)} · Kurs vom ${d}`)
+      : tr(`${e.head}: 1 ${e.sym} ≈ ${fmt(r)} ${symOf(home)} · today's rate, final on ${d}`, `${e.head}: 1 ${e.sym} ≈ ${fmt(r)} ${symOf(home)} · heutiger Kurs, fest am ${d}`);
+  });
+  return (
+    <p className="muted small fx-note" role="note">
+      {tr(`In ${symOf(home)} (your standard currency): `, `In ${symOf(home)} (deine Standardwährung): `)}
+      {lines.join(' · ')}
+    </p>
   );
 }

@@ -86,7 +86,7 @@ ok(await rows.nth(0).isDisabled(), 'a fourth cannot be switched on');
 if (process.env.SHOTS) await dlg.screenshot({ path: `${process.env.SHOTS}/pickrounds.png` });
 await dlg.getByRole('button', { name: 'Schließen' }).click();
 ok(/3 von 3 ausgewählt/.test(await row.innerText()), `the row: "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
-await sheet.getByRole('button', { name: 'Speichern', exact: true }).click();
+await sheet.getByRole('button', { name: 'Schließen' }).click(); // a bet there already saves by itself (12.11.2026)
 await H.waitForTimeout(1500);
 const w4 = shared.get(code).game.wagers.find((w) => w.id === 'w4');
 ok(w4?.picks?.length === 3 && w4.rounds === 3, `on the server: 3 rounds chosen, over 3 rounds (${w4?.picks?.length} · ${w4?.rounds})`);
