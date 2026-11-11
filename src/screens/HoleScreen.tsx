@@ -42,6 +42,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
+import { fetchCourseLines, shareCourseLine } from '../lib/courselines';
 import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareLine, sharedLines, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
@@ -215,6 +216,11 @@ export function HoleScreen(props: {
 
   // ---------- Map view ----------
   const [geoVersion, setGeoVersion] = useState(0); // bumps after the player set up a hole
+  // the holes other players set up on this course (12.11.2026): read once, the map gets them where it has none
+  useEffect(() => {
+    if (round.preview && !round.courseId) return;
+    void fetchCourseLines(round.courseId).then((changed) => changed && setGeoVersion((v) => v + 1));
+  }, [round.courseId]); // eslint-disable-line react-hooks/exhaustive-deps
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
   // the course map gone (storage full, the round was finished then): it comes again (22.10.2026)
   useEffect(() => {
@@ -1515,8 +1521,10 @@ export function HoleScreen(props: {
         }
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
-          // the flight's other phones take it (Sascha 12.11.2026, Cypress: "each of us had to set tees and greens")
+          // the flight's other phones take it (Sascha 12.11.2026, Cypress: "each of us had to set tees and greens") – and
+          // every GolfOS player on this course (courselines)
           if (round.shared) void shareLine(round, hole.loop, hole.number, line);
+          void shareCourseLine(round.courseId, hole.loop, hole.number, line);
           setGeoVersion((v) => v + 1);
           setSetupOpen(false);
           setView('map');

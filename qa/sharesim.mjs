@@ -27,6 +27,7 @@ export const teeSoon = (min) => {
 
 export function sharedServer(b, url, o = {}) {
   const shared = new Map(); // code → { game, updated_at, owner, members, requests, near }
+  const courseLines = []; // golfos_course_lines: { course_id, hole_key, line, by, at }
   // the server's clock: the real one – or, for a trip over days (qa/usatrip.mjs, the phones on a fake clock), shifted by o.offset() ms
   const now = () => new Date(Date.now() + (o.offset?.() ?? 0));
   const pushes = []; // { action, code, ref, from }
@@ -52,6 +53,18 @@ export function sharedServer(b, url, o = {}) {
     const uid = accountOf((req.headers()['authorization'] ?? '').replace(/^Bearer /, '')); // each phone its account
     const body = () => JSON.parse(req.postData() ?? '{}');
     if (u.pathname.endsWith('/golfos_items')) return json(200, []);
+    // the holes set up by hand, for every player of a course (12.11.2026)
+    if (u.pathname.endsWith('/golfos_course_lines')) {
+      if (req.method() === 'POST') {
+        const r = body();
+        const k = courseLines.findIndex((x) => x.course_id === r.course_id && x.hole_key === r.hole_key && x.by === uid);
+        const row = { ...r, by: uid, at: r.at ?? now().toISOString() };
+        if (k >= 0) courseLines[k] = row; else courseLines.push(row);
+        return json(201, null);
+      }
+      const cid = decodeURIComponent((u.searchParams.get('course_id') ?? '').replace(/^eq./, ''));
+      return json(200, courseLines.filter((x) => x.course_id === cid).sort((a, b) => (a.at < b.at ? 1 : -1)).map(({ hole_key, line, at }) => ({ hole_key, line, at })));
+    }
     if (u.pathname.endsWith('/rpc/golfos_friend_card_save')) {
       if (!uid) return json(401, { message: 'not_signed_in' });
       const a = body();
@@ -363,5 +376,5 @@ export function sharedServer(b, url, o = {}) {
     shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: now().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}), ...(o2.multi !== undefined ? { multi: o2.multi } : {}) }, updated_at: now().toISOString(), owner, members: [], requests: {} });
     return code;
   }
-  return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, serve, refused: () => refused, flightReads: () => flightReads };
+  return { courseLines, cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, serve, refused: () => refused, flightReads: () => flightReads };
 }
