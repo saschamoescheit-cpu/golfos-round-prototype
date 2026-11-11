@@ -1621,9 +1621,11 @@ button.tile:disabled { opacity: 1; }
 .segmented:has(> button:nth-child(7)):not(:has(> button:nth-child(8))) button:nth-child(7) { grid-column: span 2; }
 
 /* a long course name is cut, its mark stays (small iPhone, Sascha 18.10.2026: every row shows its symbol) */
-.list-item .title.with-mark { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.list-item .title.with-mark > .title-text { overflow-wrap: break-word; hyphens: auto; min-width: 0; }
-.list-item .title.with-mark > :not(.title-text) { flex: none; }
+/* the status of a row (signed, played, check & sign, paused, to confirm, deleted) in its own narrow column between date and
+   name – every mark of a list one under the other, every name starting at the same place (Sascha 11.11.2026, status
+   mockups: variant A) */
+.list-item > .list-mark { flex: none; width: 20px; display: grid; place-items: center; margin-inline: -4px -2px; color: var(--brand-text); }
+.list-item > .list-mark > .signed-mark, .list-item > .list-mark > .paused-mark { margin: 0; vertical-align: 0; }
 
 /* a field's label with its pencil at the right (the putts in the shot check, Sascha 20.10.2026) */
 .field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }

@@ -433,10 +433,12 @@ function TestTab(props: { nav: Nav }) {
       {Object.keys(results).length > 0 && <TodayCard nav={props.nav} />}
       {open.map((s) => (
         <button key={s.id} type="button" className="list-item mob-open" onClick={() => props.nav.run(s)}>
+          {/* the status in its own column before the name, as in every list (Sascha 11.11.2026, status mockups: variant A) */}
+          <span className="list-mark">
+            <PausedMark />
+          </span>
           <span className="grow">
-            <span className="title">
-              {kindName(s.kind)} <PausedMark />
-            </span>
+            <span className="title">{kindName(s.kind)}</span>
             <span className="muted small">
               {tr(`Paused · ${Object.keys(s.results).length} of ${s.tests.length} tests done`, `Pausiert · ${Object.keys(s.results).length} von ${s.tests.length} Tests erledigt`)}
             </span>
@@ -2410,14 +2412,18 @@ function HistoryTab(props: { nav: Nav }) {
       <div className="list">
         {rows.map((s) => {
           const n = Object.keys(s.results).length;
+          const anyPaused = rows.some((x) => !x.finishedAt && x.kind !== 'single');
           return (
             // swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back
             <SwipeRow key={s.id} label={screeningName(s)} onDelete={() => deleteScreening(s.id, `${kindName(s.kind)} · ${dateText(s.createdAt)}`)}>
             <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'screening', id: s.id })}>
+              {/* the status in its own column before the name – kept free on the other rows while one is paused, so the
+                  names start one under the other (Sascha 11.11.2026, status mockups: variant A) */}
+              {anyPaused && <span className="list-mark">{!s.finishedAt && s.kind !== 'single' && <PausedMark />}</span>}
               <span className="grow">
                 <span className="title">
                   {screeningName(s)}
-                  {s.kind === 'single' && s.tests[0] ? ` · ${t(testById(s.tests[0]).name)}` : ''} {!s.finishedAt && s.kind !== 'single' && <PausedMark />}
+                  {s.kind === 'single' && s.tests[0] ? ` · ${t(testById(s.tests[0]).name)}` : ''}
                 </span>
                 <span className="muted small">
                   {dateText(s.createdAt)} · {tr(`${n} tests measured`, `${n} Tests gemessen`)}
@@ -2491,10 +2497,10 @@ function TrainHistory() {
           const done = s.done.filter((d) => !d.skipped);
           return (
             <div key={s.id} className="list-item mob-train-row">
+              {/* the status in its own column, kept free on the other rows while one is paused (variant A, 11.11.2026) */}
+              {list.slice(0, 10).some((x) => !x.finishedAt) && <span className="list-mark">{!s.finishedAt && <PausedMark />}</span>}
               <span className="grow">
-                <span className="title">
-                  {dateText(s.startedAt)} {!s.finishedAt && <PausedMark />}
-                </span>
+                <span className="title">{dateText(s.startedAt)}</span>
                 <span className="muted small">{done.map((d) => `${t(drillById(d.drill)?.name ?? { en: d.drill, de: d.drill })} (${doneText(d)})`).join(' · ')}</span>
               </span>
             </div>

@@ -145,13 +145,15 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                 <SwipeRow className="paused-row" label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" aria-label={tr(`${r.courseName}, paused – continue`, `${r.courseName}, pausiert – fortsetzen`)} onClick={() => props.onContinue(r)}>
                   <DateBlock iso={r.createdAt} />
-                  <span className="grow">
-                    <span className="title with-mark">
-                      <span className="title-text">{r.courseName}</span>
-                      <span className="paused-mark" aria-hidden="true" title={tr('paused', 'pausiert')}>
-                        <PausedIcon size={16} />
-                      </span>
+                  {/* the status in its own column between date and name – every mark of the list one under the other
+                      (Sascha 11.11.2026, status mockups: variant A) */}
+                  <span className="list-mark">
+                    <span className="paused-mark" aria-hidden="true" title={tr('paused', 'pausiert')}>
+                      <PausedIcon size={16} />
                     </span>
+                  </span>
+                  <span className="grow">
+                    <span className="title">{r.courseName}</span>
                     <span className="muted small">{tr(`Paused · hole ${r.currentHole + 1} of ${r.holes.length}`, `Pausiert · Loch ${r.currentHole + 1} von ${r.holes.length}`)}</span>
                   </span>
                   <span style={{ textAlign: 'right' }}>
@@ -185,10 +187,9 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                 <SwipeRow label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" onClick={() => props.onOpen(r)}>
                   <DateBlock iso={r.createdAt} />
-                  <span className="grow">
-                    <span className="title with-mark">
-                      <span className="title-text">{r.courseName}</span>
-                      {/* one mark per round, the same as on the tile above: check & sign (pen) or signed (seal) */}
+                  {/* one mark per round, the same as on the tile above: check & sign (pen), played or signed (seal) – in its
+                      own column between date and name (Sascha 11.11.2026, status mockups: variant A) */}
+                  <span className="list-mark">
                       {r.signedAt ? (
                         <span className="signed-mark" role="img" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>
                           <SignedIcon size={16} />
@@ -202,7 +203,9 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                           <ToSignIcon size={16} />
                         </span>
                       )}
-                    </span>
+                  </span>
+                  <span className="grow">
+                    <span className="title">{r.courseName}</span>
                     <span className="muted small">{[r.kind && r.kind !== 'social' ? kindName(r.kind) : null, loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
                   </span>
                   <span style={{ textAlign: 'right' }}>

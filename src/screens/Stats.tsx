@@ -1,13 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type { Club, Flight, Round, Strike } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
-import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { CoursesCard } from '../components/HistoryCards';
 import { comparisonGroup, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
-import { OnOffRow } from '../components/Settings';
+import { OnOffRow, StepPick } from '../components/Settings';
 import { statRounds, unsignedRounds } from '../lib/signing';
 import { clubReports, corridorText } from '../lib/clubstats';
 import { approachBands, puttMisses } from '../lib/approachstats';
@@ -123,14 +122,16 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
           <span aria-hidden="true">›</span>
         </button>
       )}
-      <Segmented<Range>
+      {/* the rounds the numbers rest on – the app's switch "‹ Runden ›" as in the pool and the live view, not a block of
+          three buttons (Sascha 11.11.2026: "Reihenfolge: Alle, letzte 10, letzte 5 … passt optisch nicht zum Facelift") */}
+      <StepPick<Range>
         label={tr('Rounds', 'Runden')}
         value={range}
-        onChange={(v) => v != null && setRange(v)}
+        onChange={setRange}
         options={[
-          { value: 5, label: tr('Last 5', 'Letzte 5') },
-          { value: 10, label: tr('Last 10', 'Letzte 10') },
-          { value: 0, label: tr('All', 'Alle') },
+          { value: 0, name: tr('All', 'Alle'), text: tr(`${finished.length} ${finished.length === 1 ? 'round' : 'rounds'}`, `${finished.length} ${finished.length === 1 ? 'Runde' : 'Runden'}`), uncounted: true },
+          { value: 10, name: tr('Last 10', 'Letzte 10'), uncounted: true },
+          { value: 5, name: tr('Last 5', 'Letzte 5'), uncounted: true },
         ]}
       />
       {a.holes === 0 ? (

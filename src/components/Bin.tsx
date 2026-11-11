@@ -142,14 +142,15 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                   />
                 )}
                 <DateBlock iso={t.date} />
-                <span className="grow">
-                  <span className="title with-mark">
-                    <span className="title-text">{t.title}</span>
-                    {/* the mark of the tile "deleted", as a played or signed round carries its own */}
-                    <span className="signed-mark" role="img" aria-label={tr('deleted', 'gelöscht')} title={tr('deleted', 'gelöscht')}>
-                      <DeletedIcon size={16} />
-                    </span>
+                {/* the mark of the tile "deleted", as a played or signed round carries its own – in its own column between
+                    date and name (Sascha 11.11.2026, status mockups: variant A) */}
+                <span className="list-mark">
+                  <span className="signed-mark" role="img" aria-label={tr('deleted', 'gelöscht')} title={tr('deleted', 'gelöscht')}>
+                    <DeletedIcon size={16} />
                   </span>
+                </span>
+                <span className="grow">
+                  <span className="title">{t.title}</span>
                   <span className="muted small">{`${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
                 </span>
                 {t.score && (

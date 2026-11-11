@@ -665,11 +665,12 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
         // a paused session like a paused round (Rounds 17.10.2026): the same row as the finished ones, a pause mark at the name,
         // the whole row opens it – no "Weiter ›" text link
         <button key={s.id} type="button" className="list-item" onClick={() => props.nav.push({ name: 'session', id: s.id })}>
+          {/* the status in its own column before the name, as in every list (Sascha 11.11.2026, status mockups: variant A) */}
+          <span className="list-mark">
+            <PausedMark />
+          </span>
           <span className="grow">
-            <span className="title">
-              {s.name}
-              <PausedMark />
-            </span>
+            <span className="title">{s.name}</span>
             <span className="muted small">
               {tr(`Paused · drill ${s.current + 1} of ${s.items.length}`, `Pausiert · Übung ${s.current + 1} von ${s.items.length}`)}
             </span>

@@ -745,10 +745,9 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
           const row = (
             <button type="button" className="list-item" aria-label={g.finishedAt ? undefined : tr(`${f.name()} at ${g.courseName}, paused – continue`, `${f.name()} ${g.courseName}, pausiert – fortsetzen`)} onClick={() => props.onOpen(g)}>
               <DateBlock iso={g.createdAt} />
-              <span className="grow">
-                <span className="title with-mark">
-                  <span className="title-text">{f.name()}</span>
-                  {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), paused (pause) */}
+              {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), paused (pause) – in their own column
+                  between date and name (Sascha 11.11.2026, status mockups: variant A) */}
+              <span className="list-mark">
                   {!g.finishedAt ? (
                     <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')} title={tr('paused', 'pausiert')}>
                       <PausedIcon size={16} />
@@ -762,7 +761,9 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
                       <ToSignIcon size={16} />
                     </span>
                   )}
-                </span>
+              </span>
+              <span className="grow">
+                <span className="title">{f.name()}</span>
                 {/* one line as on the rounds list (Sascha 25.10.2026: Games like Rounds) */}
                 <span className="muted small one-line">
                   {g.finishedAt

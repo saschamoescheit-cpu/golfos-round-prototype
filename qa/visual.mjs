@@ -51,9 +51,12 @@ for (const theme of ['sun', 'dark']) {
   await shot('rounds');
   await fits('rounds and tiles');
   ok((await p.locator('.tile').count()) === (await p.locator('.tile .tile-mark svg').count()), `${theme} · every tile with its symbol`);
-  // every row's mark is on the screen, also when the course name is cut
-  const marks = await p.locator('ul.list .list-item').evaluateAll((rows) => rows.map((r) => { const m = r.querySelector('.signed-mark, .paused-mark'); if (!m) return 'none'; const a = m.getBoundingClientRect(); const t = r.querySelector('.title').getBoundingClientRect(); return a.width > 0 && a.right <= t.right + 1 ? 'ok' : 'cut'; }));
-  ok(marks.every((m) => m === 'ok'), `${theme} · every round's mark visible next to a cut name (${marks.join(' ')})`);
+  // every row's mark in its own column between date and name (Sascha 11.11.2026, status mockups: variant A) – on the
+  // screen, all at the same x, every name starting at the same place
+  const marks = await p.locator('ul.list .list-item').evaluateAll((rows) => rows.map((r) => { const m = r.querySelector('.list-mark .signed-mark, .list-mark .paused-mark'); if (!m) return null; const a = m.getBoundingClientRect(); const d = r.querySelector('.date-block').getBoundingClientRect(); const t = r.querySelector('.title').getBoundingClientRect(); return { ok: a.width > 0 && a.left >= d.right - 1 && a.right <= t.left + 1, x: Math.round(a.left), name: Math.round(t.left) }; }));
+  const inCol = marks.filter(Boolean);
+  ok(inCol.length === marks.length && inCol.every((m) => m.ok), `${theme} · every round's mark between date and name (${inCol.map((m) => (m.ok ? 'ok' : 'off')).join(' ')})`);
+  ok(new Set(inCol.map((m) => m.x)).size === 1 && new Set(inCol.map((m) => m.name)).size === 1, `${theme} · the marks one under the other, the names at one place (${[...new Set(inCol.map((m) => m.x))]} / ${[...new Set(inCol.map((m) => m.name))]})`);
   // the round with a missing score: the pencil and the action row
   // the date block shows only the day (12.11.2026) – its full date is in its label
   await p.locator('ul.list button.list-item').filter({ has: p.locator('.date-block[aria-label*="17. Oktober"], .date-block[aria-label*="October 17"]') }).first().click();
