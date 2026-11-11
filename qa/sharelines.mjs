@@ -67,7 +67,10 @@ ok(JSON.stringify(flight().lines?.['A#3']) === JSON.stringify(L3) && !!flight().
 // Chris's phone, in the round: takes 3A, keeps his own 4A
 await G.waitForTimeout(15000);
 const got = await linesOf(G, cid);
-ok(JSON.stringify(got['A#3']) === JSON.stringify(L3), `Chris's phone took 3A from the flight (${JSON.stringify(got['A#3'])})`);
+// kept apart from his own since 11.11.2026 (Moritz on Cypress: taken as his own they hid the course map for good)
+const flightGot = await G.evaluate((id) => JSON.parse(localStorage.getItem('golfos.flightlines.v1.' + id) ?? '{}'), cid);
+ok(!got['A#3'], 'not taken as his own');
+ok(JSON.stringify(flightGot['A#3']) === JSON.stringify(L3), `Chris's phone took 3A from the flight (${JSON.stringify(flightGot['A#3'])})`);
 ok(JSON.stringify(got['A#4']) === JSON.stringify(L4C), "Chris's own 4A stays");
 // the map of 3A on Chris's phone draws Sascha's line: its tee where Sascha put it
 const geo = await G.evaluate((id) => import('/src/lib/storage.ts').then((S) => S.loadGeometry(id).holes.find((h) => h.ref === '3' || h.ref === '3A')?.line?.[0] ?? null), cid);

@@ -4,7 +4,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
-import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit, saveHoleLine } from '../lib/storage';
+import { hasOwnHoleLine, loadCachedCourse, loadCarryBag, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadUnit, removeAllHoleLines, removeHoleLine, saveHoleLine } from '../lib/storage';
 import { HoleSetup } from '../components/HoleSetup';
 import { shareLine } from '../lib/sharedround';
 import { fetchCourseLines, shareCourseLine } from '../lib/courselines';
@@ -953,6 +953,24 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             imagery={imagery}
             courseCenter={imageryAt}
             onCancel={() => setSetupHole(false)}
+            onReset={
+              hasOwnHoleLine(round.courseId, hole.loop, hole.number)
+                ? () => {
+                    removeHoleLine(round.courseId, hole.loop, hole.number);
+                    setGeoTick((t) => t + 1);
+                    setSetupHole(false);
+                  }
+                : undefined
+            }
+            onResetAll={
+              Object.keys(loadHoleLines(round.courseId)).length > 1
+                ? () => {
+                    removeAllHoleLines(round.courseId);
+                    setGeoTick((t) => t + 1);
+                    setSetupHole(false);
+                  }
+                : undefined
+            }
             onSave={(line) => {
               saveHoleLine(round.courseId, hole.loop, hole.number, line);
               // the round's other phones take it too, as on the course
@@ -963,6 +981,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             }}
           />
         </div>
+      )}
+      {/* a hole marked wrong, marked anew or back to the course map (Sascha 11.11.2026) */}
+      {data && hole && !setupHole && (
+        <button type="button" className="btn-ghost review-resetup" onClick={() => setSetupHole(true)}>
+          {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
+        </button>
       )}
       {data && (
         <div className="review-map">

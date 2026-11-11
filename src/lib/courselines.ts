@@ -5,16 +5,39 @@
 // holes, never over the player's own. Only the line and the course id are stored, no name.
 import type { LngLat } from '../types';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
+import { loadHoleLines } from './storage';
 
 const KEY = 'golfos.communitylines.v1.';
+/** the lines other phones of the event set up (the flight's exchange) – kept apart from the player's own, so they never
+ *  win over the course map and a correction of them comes through (Sascha 11.11.2026, Moritz on Cypress) */
+const FLIGHT = 'golfos.flightlines.v1.';
 const table = () => `${SUPABASE_URL}/rest/v1/golfos_course_lines`;
 
 /** The lines of the course as other players set them, kept from the last read: "loop#number" → tee … green. */
 export function loadCommunityLines(courseId: string): Record<string, LngLat[]> {
+  const read = (k: string): Record<string, LngLat[]> => {
+    try {
+      return JSON.parse(localStorage.getItem(k + courseId) ?? '{}') as Record<string, LngLat[]>;
+    } catch {
+      return {};
+    }
+  };
+  // the flight's lines, the server's latest over them
+  return { ...read(FLIGHT), ...read(KEY) };
+}
+/** The lines of the event's other phones taken – replacing what came before (a hole marked anew comes through). True
+ *  when something changed. */
+export function keepFlightLines(courseId: string, lines: Record<string, LngLat[]>): boolean {
+  const ok: Record<string, LngLat[]> = {};
+  for (const [k, line] of Object.entries(lines)) if (/^.+#\d+$/.test(k) && sane(line)) ok[k] = line;
   try {
-    return JSON.parse(localStorage.getItem(KEY + courseId) ?? '{}') as Record<string, LngLat[]>;
+    const before = localStorage.getItem(FLIGHT + courseId) ?? '{}';
+    const now = JSON.stringify(ok);
+    if (before === now) return false;
+    localStorage.setItem(FLIGHT + courseId, now);
+    return true;
   } catch {
-    return {};
+    return false;
   }
 }
 
@@ -39,9 +62,29 @@ export async function shareCourseLine(courseId: string, loop: string, number: nu
   }
 }
 
+/** The holes this phone marked on the course, sent (again) – once a session per course: lines set before the table was
+ *  there, or offline, reach the others too (Sascha 11.11.2026: "manuell gesetzte Abschläge und Grüns automatisch für
+ *  alle"). The server keeps one line per player and hole – sending it again changes nothing. */
+const sentOwn = new Set<string>();
+export async function shareOwnLines(courseId: string): Promise<void> {
+  if (!courseId || sentOwn.has(courseId)) return;
+  const own = loadHoleLines(courseId);
+  const keys = Object.keys(own);
+  if (!keys.length) return;
+  sentOwn.add(courseId);
+  const ok = await Promise.all(
+    keys.map((k) => {
+      const [loop, num] = k.split('#');
+      return shareCourseLine(courseId, loop, Number(num), own[k]);
+    }),
+  );
+  if (ok.some((x) => !x)) sentOwn.delete(courseId); // offline, signed out: next time again
+}
+
 /** The course's lines from everyone, the latest of each hole, kept on the phone. True when something new came. */
 export async function fetchCourseLines(courseId: string): Promise<boolean> {
   if (!courseId) return false;
+  void shareOwnLines(courseId);
   try {
     const t = await authToken();
     if (!t) return false;

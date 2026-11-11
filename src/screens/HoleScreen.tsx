@@ -18,7 +18,7 @@ import { SpecialsAtHole } from '../components/Specials';
 import { betLinked } from '../lib/betlinked';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
-import { loadCachedCourse, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
+import { hasOwnHoleLine, removeAllHoleLines, loadCachedCourse, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, removeHoleLine, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { ensureCourseMap } from '../lib/courses';
 import { IMAGERY, loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
@@ -42,7 +42,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { fetchCourseLines, shareCourseLine } from '../lib/courselines';
+import { fetchCourseLines, keepFlightLines, shareCourseLine } from '../lib/courselines';
 import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareLine, sharedLines, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
@@ -231,6 +231,16 @@ export function HoleScreen(props: {
   const woods = useMemo(() => woodsOf(geometry), [geometry]);
   const landmarks = useMemo(() => landmarksOf(geometry), [geometry]);
   const mapData = useMemo(() => forTee(holeMapData(geometry, hole.loop, hole.number), hole.label), [geometry, hole.loop, hole.number, round.tee]);
+  // a hole without a map: the others' marking of it fetched again on every hole and every minute while it has none – one
+  // player marks tee and green, the others get it during the round (Sascha 11.11.2026: "automatisch für alle")
+  const noMap = !mapData;
+  useEffect(() => {
+    if (!noMap || (round.preview && !round.courseId)) return;
+    const get = () => void fetchCourseLines(round.courseId).then((changed) => changed && setGeoVersion((v) => v + 1));
+    get();
+    const t = window.setInterval(() => document.visibilityState === 'visible' && get(), 60 * 1000);
+    return () => window.clearInterval(t);
+  }, [round.courseId, i, noMap]); // eslint-disable-line react-hooks/exhaustive-deps
   // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
   const [view, setView] = useState<'map' | 'score'>('map');
   const [setupOpen, setSetupOpen] = useState(false);
@@ -975,20 +985,12 @@ export function HoleScreen(props: {
     return () => window.removeEventListener('golfos:event-changed', on);
   }, [shareCode]);
   const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
-  // holes set up by hand on another phone of the event (Sascha 12.11.2026: "only one has to set them"): taken where this
-  // phone has none of its own – its own stay
+  // holes set up by hand on another phone of the event (Sascha 12.11.2026: "only one has to set them"): kept apart from
+  // this phone's own – they fill the holes the course map lacks, never win over the map, and a hole marked anew comes
+  // through (Sascha 11.11.2026, Moritz on Cypress: taken as his own, they hid the course map for good)
   useEffect(() => {
     if (!shareEvent || shareEvent.course?.id !== round.courseId) return;
-    const got = sharedLines(shareEvent, round.shared?.flight);
-    const mine = loadHoleLines(round.courseId);
-    let took = false;
-    for (const [key, line] of Object.entries(got)) {
-      const [loop, n] = [key.slice(0, key.lastIndexOf('#')), Number(key.slice(key.lastIndexOf('#') + 1))];
-      if (mine[key] || !loop || !Number.isFinite(n) || !Array.isArray(line) || line.length < 2) continue;
-      saveHoleLine(round.courseId, loop, n, line);
-      took = true;
-    }
-    if (took) setGeoVersion((v) => v + 1);
+    if (keepFlightLines(round.courseId, sharedLines(shareEvent, round.shared?.flight))) setGeoVersion((v) => v + 1);
   }, [shareEvent, round.courseId]); // eslint-disable-line react-hooks/exhaustive-deps
   /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
   const myScoreElsewhere = views[me.id]?.role === 'view' || props.game?.keptBy?.[me.id] != null;
@@ -1518,6 +1520,26 @@ export function HoleScreen(props: {
                 setView('score');
                 setScoreOnly(true);
               }
+        }
+        onReset={
+          hasOwnHoleLine(round.courseId, hole.loop, hole.number)
+            ? () => {
+                removeHoleLine(round.courseId, hole.loop, hole.number);
+                setGeoVersion((v) => v + 1);
+                setSetupOpen(false);
+                setView('map');
+              }
+            : undefined
+        }
+        onResetAll={
+          Object.keys(loadHoleLines(round.courseId)).length > 1
+            ? () => {
+                removeAllHoleLines(round.courseId);
+                setGeoVersion((v) => v + 1);
+                setSetupOpen(false);
+                setView('map');
+              }
+            : undefined
         }
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
@@ -2672,6 +2694,13 @@ export function HoleScreen(props: {
       {!mapData && (
         <button type="button" className="btn-secondary" onClick={() => setSetupOpen(true)}>
           {tr('Set up the hole (tee + green)', 'Loch einrichten (Abschlag + Grün)')}
+        </button>
+      )}
+      {/* a hole marked wrong – e.g. hole 4 as hole 5 – marked again at any time (Sascha 11.11.2026: "wie kann ich sowas
+          nachträglich korrigieren?") */}
+      {mapData && !needsData && !editHole && (
+        <button type="button" className="btn-ghost" onClick={() => setSetupOpen(true)}>
+          {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
         </button>
       )}
 

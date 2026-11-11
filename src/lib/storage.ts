@@ -147,6 +147,22 @@ export function saveHoleLine(courseId: string, loop: string, number: number, lin
   else linesKept.set(courseId, all);
 }
 
+/** The player's own marking of a hole taken away, asked for by him (Sascha 11.11.2026, Moritz on Cypress: a hole set by
+ *  hand wrongly wins over the course map – "Platzkarte verwenden"): the course's map (or the others' line) again. */
+export function removeHoleLine(courseId: string, loop: string, number: number): void {
+  const all = { ...loadHoleLines(courseId) };
+  delete all[`${loop}#${number}`];
+  if (write(LINES + courseId, all)) linesKept.delete(courseId);
+  else linesKept.set(courseId, all);
+}
+/** All the player's own markings of a course taken away, asked for by him: the course map (or the others' lines) again. */
+export function removeAllHoleLines(courseId: string): void {
+  if (write(LINES + courseId, {})) linesKept.delete(courseId);
+  else linesKept.set(courseId, {});
+}
+/** Has the player marked this hole himself? */
+export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean => !!loadHoleLines(courseId)[`${loop}#${number}`];
+
 function holeLabel(loop: string, number: number): string {
   if (loop === 'Main') return String(number);
   return loop.length === 1 ? `${number}${loop}` : `${loop} ${number}`;
@@ -185,7 +201,8 @@ export function loadGeometry(courseId: string): CourseGeometry {
     base = { ...base, holes: COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })) };
   }
   // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
-  const community = read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {});
+  // …and the lines the event's other phones set up (kept apart from the own since 11.11.2026), the server's latest over them
+  const community = { ...read<Record<string, LngLat[]>>('golfos.flightlines.v1.' + courseId, {}), ...read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {}) };
   if (Object.keys(community).length) {
     const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
     const add = Object.entries(community)

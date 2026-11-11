@@ -22,6 +22,10 @@ export function HoleSetup(props: {
   onScoreOnly?: () => void;
   onSave: (line: LngLat[]) => void;
   onCancel: () => void;
+  /** the hole marked by the player himself: take his marking away – the course's map again (Sascha 11.11.2026) */
+  onReset?: () => void;
+  /** …and every hole of the course he marked */
+  onResetAll?: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -163,6 +167,16 @@ export function HoleSetup(props: {
                 {tr('Set tee again', 'Abschlag neu setzen')}
               </button>
             </>
+          )}
+          {props.onReset && step < 3 && (
+            <button type="button" className="btn-ghost" onClick={props.onReset}>
+              {tr('Use the course map again (remove my marking)', 'Platzkarte verwenden (meine Markierung entfernen)')}
+            </button>
+          )}
+          {props.onResetAll && step < 3 && (
+            <button type="button" className="btn-ghost" onClick={props.onResetAll}>
+              {tr('Course map for every hole (remove all my markings here)', 'Platzkarte für alle Löcher (alle meine Markierungen hier entfernen)')}
+            </button>
           )}
           {props.onScoreOnly && step < 3 && (
             <button type="button" className="btn-ghost" onClick={props.onScoreOnly}>
