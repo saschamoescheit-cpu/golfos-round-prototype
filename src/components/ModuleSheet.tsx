@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import type { AppModule } from '../lib/gamestore';
 import { ModuleCardList, type ModuleCardInfo } from '../screens/Home';
+import { MENU_ICONS } from './TabBar';
 
 type Open = { current: AppModule | null; info: ModuleCardInfo };
 
@@ -29,6 +30,12 @@ export function ModuleSheetHost() {
     setOpen(null);
     window.dispatchEvent(new CustomEvent<AppModule>('golfos:pick-module', { detail: m }));
   };
+  // back to the start page (Sascha 13.11.2026: "one does not get back to the start page any more" – the old module
+  // button went there; the pill opens this sheet, so the start page is its first row)
+  const home = () => {
+    setOpen(null);
+    window.dispatchEvent(new CustomEvent('golfos:go-home'));
+  };
   return createPortal(
     <div className="sheet-backdrop" onClick={() => setOpen(null)}>
       <section className="sheet module-sheet" role="dialog" aria-label={tr('Switch module', 'Modul wechseln')} onClick={(e) => e.stopPropagation()}>
@@ -41,6 +48,15 @@ export function ModuleSheetHost() {
           </button>
         </div>
         <div className="module-sheet-list">
+          <button type="button" className="module-card module-home" onClick={home}>
+            <span className="module-icon" aria-hidden="true">
+              {MENU_ICONS.home}
+            </span>
+            <span className="grow">
+              <strong>{tr('Start page', 'Startseite')}</strong>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
           <ModuleCardList {...open.info} current={open.current} onPick={pick} />
         </div>
       </section>
