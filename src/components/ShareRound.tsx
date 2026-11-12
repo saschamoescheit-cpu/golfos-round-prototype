@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
 import { shareView, type ShareView } from '../lib/sharedround';
-import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -17,6 +17,7 @@ import { ScanCodeButton } from './QrScan';
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
 import { Avatar } from './Avatar';
+import { ConfirmSheet } from './ConfirmSheet';
 import { leaderText } from './Specials';
 import { specialName } from '../lib/specials';
 
@@ -926,6 +927,9 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
             </button>
           )}
         </div>
+        {/* a card handed in with a mistake (Sascha 12.11.2026, Moritz on the Cypress): its correction asked for here – the
+            host confirms it (push), then the card is open again, corrected and signed anew */}
+        <ReopenRows round={props.round} f={f} pids={f.players.map((p) => p.id)} onEv={setEv} />
         {msg && <span className="small bad-text">{msg}</span>}
       </section>
     );
@@ -990,7 +994,95 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
           </div>
         );
       })}
+        {/* a card handed in with a mistake (Sascha 12.11.2026, Moritz on the Cypress): its correction asked for here – the
+            host confirms it (push), then the card is open again, corrected and signed anew */}
+        <ReopenRows round={props.round} f={f} pids={cards.map((c) => c.pid)} onEv={setEv} />
       {msg && <span className="small bad-text">{msg}</span>}
     </section>
+  );
+}
+
+/** Correcting a card handed in (Sascha 12.11.2026: "wenn jemand die unterschriebene Scorekarte zurücknehmen will, muss
+ *  der Host das bestätigen und bekommt eine Push-Benachrichtigung"): a card of this phone (its own, one it marks or keeps
+ *  as scorer) signed – "Zur Korrektur öffnen" asks for it; asked – it waits for the host; the host's phone confirms every
+ *  card of the flight asked for. Confirmed, the card's signatures are gone: the hole is corrected, the card signed anew. */
+function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev: RoundEvent) => void }) {
+  const s = props.round.shared!;
+  const f = props.f;
+  const [owner, setOwner] = useState<string | null>(null);
+  const [ask, setAsk] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    let on = true;
+    void eventOwner(s.code).then((o) => on && setOwner(o));
+    return () => {
+      on = false;
+    };
+  }, [s.code]);
+  const host = amHost(owner);
+  const nameOf = (pid: string) => f.players.find((p) => p.id === pid)?.name ?? props.round.players.find((p) => p.id === pid)?.name ?? '';
+  const signedAny = (pid: string) => !!f.signed?.[pid]?.player || !!f.signed?.[pid]?.marker;
+  const mine = props.pids.filter((pid) => signedAny(pid) || reopenAsked(f, pid));
+  const toConfirm = host ? f.players.map((p) => p.id).filter((pid) => reopenAsked(f, pid)) : [];
+  if (!mine.length && !toConfirm.length) return null;
+  return (
+    <div className="reopen-rows">
+      {mine.map((pid) =>
+        reopenAsked(f, pid) ? (
+          host ? null : (
+            <span key={pid} className="muted small reopen-wait">
+              {tr(`${nameOf(pid)}: correction asked by ${f.reopen![pid].by} – waiting for the host`, `${nameOf(pid)}: Korrektur beantragt von ${f.reopen![pid].by} – wartet auf den Host`)}
+            </span>
+          )
+        ) : (
+          <button key={pid} type="button" className="link-btn small reopen-ask" onClick={() => setAsk(pid)}>
+            {pid === props.round.players.find((p) => p.isMe)?.id ? tr('Open my card for a correction', 'Meine Karte zur Korrektur öffnen') : tr(`Open ${nameOf(pid)}'s card for a correction`, `Karte von ${nameOf(pid)} zur Korrektur öffnen`)}
+          </button>
+        ),
+      )}
+      {toConfirm.map((pid) => (
+        <div key={'c' + pid} className="sign-row reopen-confirm">
+          <span className="grow">
+            <strong>{tr(`Correct ${nameOf(pid)}'s card?`, `Karte von ${nameOf(pid)} korrigieren?`)}</strong>
+            <span className="muted small">{tr(`${f.reopen![pid].by} asks to open it again – its signatures are taken back, then it is corrected and signed anew.`, `${f.reopen![pid].by} möchte sie wieder öffnen – die Unterschriften werden zurückgenommen, danach wird korrigiert und neu unterschrieben.`)}</span>
+          </span>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              const ev = await confirmReopen(s.code, s.flight, !!s.tournament, pid);
+              setBusy(false);
+              if (ev) props.onEv(ev);
+              setMsg(ev ? null : tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+            }}
+          >
+            {tr('Confirm', 'Bestätigen')}
+          </button>
+        </div>
+      ))}
+      {msg && <span className="small good-text">{msg}</span>}
+      {ask && (
+        <ConfirmSheet
+          title={tr(`Open ${nameOf(ask)}'s card for a correction?`, `Karte von ${nameOf(ask)} zur Korrektur öffnen?`)}
+          text={host ? tr('As the host you confirm it right after.', 'Als Host bestätigst du es gleich danach.') : tr('The host confirms it – he gets a notification. Then the hole is corrected and the card signed anew.', 'Der Host bestätigt es – er bekommt eine Mitteilung. Danach wird das Loch korrigiert und die Karte neu unterschrieben.')}
+          confirmLabel={tr('Ask for the correction', 'Korrektur beantragen')}
+          danger={false}
+          busy={busy}
+          onClose={() => setAsk(null)}
+          onConfirm={async () => {
+            setBusy(true);
+            const ok = await askReopen(props.round, ask, myName() || nameOf(props.round.players.find((p) => p.isMe)?.id ?? ''));
+            setBusy(false);
+            setAsk(null);
+            const ev = cachedEvent(s.code);
+            if (ev) props.onEv(ev);
+            setMsg(ok ? null : tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+          }}
+        />
+      )}
+    </div>
   );
 }

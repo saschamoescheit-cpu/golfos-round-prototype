@@ -331,6 +331,13 @@ export function tourResultNote(o: { name: string; code: string; rows: ResultRow[
 
 /** 3 · a card of the tournament: the player signed – his marker is asked to countersign; the marker signed – the
  *  player hears his card is in. */
+/** A card asked to be opened for a correction – to the host (12.11.2026). A tournament opens its page, a round the app. */
+export const reopenNote = (by: string, player: string, lang?: string | null, tour: string | null = null): Note => ({
+  title: T(lang, 'Correct a scorecard?', 'Scorekarte korrigieren?'),
+  body: T(lang, `${by || 'A player'} asks to open ${player ? player + "'s" : 'a'} card again for a correction – confirm it as the host.`, `${by || 'Ein Spieler'} möchte ${player ? 'die Karte von ' + player : 'eine Karte'} zur Korrektur öffnen – bestätige es als Host.`),
+  tag: `golfos-reopen-${player}`.slice(0, 64),
+  url: tour ? `./#tour=${tour}` : './',
+});
 export const signNote = (as: 'player' | 'marker', who: string, lang?: string | null, waits = false): Note =>
   // his card confirmed by the scorer, his own signature still missing (Sascha 11.11.2026: "Cedric and Stefan get a push,
   // see their card and sign on their own device")
@@ -742,6 +749,8 @@ interface EvFlight extends SpecialFlight {
   markers?: Record<string, string>;
   scorer?: string;
   signed?: Record<string, { player?: string; marker?: string }>;
+  /** a card asked to be opened again for a correction – the host confirms (12.11.2026) */
+  reopen?: Record<string, { by?: string; at?: string; ok?: string }>;
   finishedAt?: string | null;
 }
 interface EvGame {
@@ -1119,6 +1128,28 @@ export async function handle(req: Request): Promise<Response> {
         if (await send(s, signNote(as, who, s.lang, as === 'marker' && !s0.player), 12 * 3600, 'high')) n++;
       }
       if (uids.length) await d.insertIgnore('golfos_push_sent', uids.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
+    }
+    // 3b · a card handed in asked to be opened for a correction (Sascha 12.11.2026: "der Host muss das bestätigen und
+    // bekommt eine Push-Benachrichtigung"): the host hears it – once per request
+    if (action === 'reopen-ask') {
+      const code = codeOf(body.code);
+      const fid = String(body.flight ?? '').slice(0, 64);
+      const pid = String(body.player ?? '').slice(0, 64);
+      const ev = await eventRow(code);
+      if (!ev || (ev.owner !== user && !ev.members.includes(user))) return json({ error: 'not in this round' }, 403);
+      const f = ev.flights.find((x) => x.id === fid);
+      const r = f?.reopen?.[pid];
+      if (!f || !r?.at || r.ok) return json({ error: 'nothing asked' }, 409);
+      if (ev.owner === user) return json({ ok: true, sent: 0 }); // the host asked himself – he confirms on his phone
+      const name = f.players?.find((x) => x.id === pid)?.name ?? '';
+      const key = `reopen:${code}:${fid}:${pid}:${r.at}`;
+      let n = 0;
+      for (const s of await subsOf([ev.owner])) {
+        if (await wasSent(s.user_id, key)) continue;
+        if (await send(s, reopenNote(String(r.by ?? ''), name, s.lang, ev.game.tournament ? code : null), 24 * 3600, 'high')) n++;
+      }
+      await d.insertIgnore('golfos_push_sent', [{ user_id: ev.owner, key }]);
       return json({ ok: true, sent: n });
     }
     // 4 · new bets in a pool: the player whose target it is, and the one it is against, hear of it – once per bet

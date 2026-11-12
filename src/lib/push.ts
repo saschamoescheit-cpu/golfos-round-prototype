@@ -297,6 +297,8 @@ export async function pushTourResult(code: string, o: { rows: { name: string; po
 }
 /** 3 · a card signed – as the player (his marker is asked) or as the marker (the player hears it is in). */
 export const pushSigned = (code: string, flight: string, player: string, as: 'player' | 'marker'): void => tell({ action: 'signed', code, flight, player, as });
+/** 3b · a card handed in asked to be opened for a correction: the host hears it and confirms (Sascha 12.11.2026). */
+export const pushReopen = (code: string, flight: string, player: string): void => tell({ action: 'reopen-ask', code, flight, player });
 /** 4 · new bets in a pool: the player and the one it is against hear of it. */
 export const pushWagers = (code: string, wagers: string[]): void => tell({ action: 'wager-new', code, wagers });
 /** 5 · a pool over: the open transfers (the app judges the bets) – the settlement, and a day later what is open. */

@@ -8,7 +8,7 @@ import { authToken, SUPABASE_KEY, SUPABASE_URL, userId } from './sync';
 import { tr } from './i18n';
 import { linkBase } from './native';
 import type { Special, SpecialEntries, SpecialEntry } from './specials';
-import { pushSigned, pushSpecial } from './push';
+import { pushReopen, pushSigned, pushSpecial } from './push';
 
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
 // it must also be possible to set up a kind of tournament over several flights, with a live leaderboard").
@@ -68,6 +68,10 @@ export interface Flight {
   keeper?: Record<string, string>;
   /** a tournament: the card signed – by the player and by his marker (when) */
   signed?: Record<string, { player?: string; marker?: string }>;
+  /** a card handed in, asked to be opened again for a correction (Sascha 12.11.2026: Moritz's card on the Cypress had a
+   *  wrong score and won him a bet – "wenn jemand die unterschriebene Scorekarte zurücknehmen will, muss der Host das
+   *  bestätigen"): who asked (name) and when; ok – when the host confirmed, the card's signatures were taken back then */
+  reopen?: Record<string, { by: string; at: string; ok?: string }>;
   /** a player who gave up (Sascha 12.11.2026: "a player had to stop after 8 holes"): the hole index from which on he
    *  plays no more – his card is complete up to there, Stableford counts his points, stroke play ranks him without */
   retired?: Record<string, number>;
@@ -317,6 +321,53 @@ export function isSigned(f: Flight, pid: string): boolean {
   const s = f.signed?.[pid];
   return !!s?.player && (!!s.marker || !markerOf(f, pid));
 }
+/** A correction of a card handed in asked for, the host not yet confirmed (Sascha 12.11.2026). */
+export const reopenAsked = (f: Flight, pid: string): boolean => !!f.reopen?.[pid] && !f.reopen[pid].ok;
+/** The card of a player, handed in (or signed by one of the two), asked to be opened again for a correction – by its
+ *  player, his marker or the scorer; the host confirms it and hears of it (push). False when offline. */
+export async function askReopen(round: Round, pid: string, who: string): Promise<boolean> {
+  const s = round.shared;
+  if (!s) return false;
+  const at = new Date().toISOString();
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => {
+    const sg = f?.signed?.[pid];
+    if (!f || (!sg?.player && !sg?.marker) || reopenAsked(f, pid)) return null;
+    return { ...f, reopen: { ...f.reopen, [pid]: { by: who.slice(0, 60), at } } };
+  });
+  const ok = !!ev?.flights[s.flight]?.reopen?.[pid] && !ev.flights[s.flight].reopen![pid].ok;
+  if (ev) keepEvent(s.code, ev);
+  if (ok) pushReopen(s.code, s.flight, pid);
+  return ok;
+}
+/** The host confirms the correction: the card's signatures taken back – the one who keeps it corrects the hole, then
+ *  scorer (or marker) and player sign it anew. The event, or null (offline, or nothing asked). */
+export async function confirmReopen(code: string, fid: string, tournament: boolean, pid: string): Promise<RoundEvent | null> {
+  const at = new Date().toISOString();
+  const ev = await changeFlight(code, fid, tournament, (f) => {
+    if (!f || !reopenAsked(f, pid)) return null;
+    const signed = { ...f.signed };
+    delete signed[pid];
+    return { ...f, signed, reopen: { ...f.reopen, [pid]: { ...f.reopen![pid], ok: at } } };
+  });
+  if (ev) keepEvent(code, ev);
+  return ev;
+}
+/** The account that set the event up – its host (a tournament's host, the round's creator). Null offline. */
+export async function eventOwner(code: string): Promise<string | null> {
+  const h = await headers();
+  if (!h) return null;
+  try {
+    const r = await fetch(`${table()}?select=owner&code=eq.${encodeURIComponent(code)}`, { headers: h });
+    if (!r.ok) return null;
+    const rows = (await r.json()) as { owner?: string }[];
+    return rows[0]?.owner ?? null;
+  } catch {
+    return null;
+  }
+}
+/** This phone's account hosts the event. */
+export const amHost = (owner: string | null): boolean => !!owner && owner === userId();
+
 /** May the card be signed now: every hole with the own score and the marker's count, none differing. */
 export function signable(f: Flight, pid: string, holes: number): { ok: true } | { ok: false; missing: number[]; differ: number[] } {
   const own = f.scores[pid] ?? [];
