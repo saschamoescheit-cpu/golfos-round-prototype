@@ -152,8 +152,9 @@ export function NotifyBell() {
     <>
       <button type="button" className="lang-btn bell-btn" aria-label={n ? tr(`Inbox – ${n} waiting`, `Inbox – ${n} offen`) : 'Inbox'} onClick={() => setOpen(true)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block', margin: 'auto' }}>
-          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
-          <path d="M10 20.5a2.2 2.2 0 0 0 4 0" />
+          {/* an inbox tray, not a bell (Sascha 13.11.2026: "nicht als Glocke, sondern als Inbox darstellen") */}
+          <path d="M3.5 13.5 6 5.5h12l2.5 8V19a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z" />
+          <path d="M3.5 13.5h5l1.2 2.5h4.6l1.2-2.5h5" />
         </svg>
         {n > 0 && (
           <span className="bell-count" aria-hidden="true">
