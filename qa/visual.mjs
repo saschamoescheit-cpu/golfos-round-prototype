@@ -72,8 +72,8 @@ for (const theme of ['sun', 'dark']) {
   await p.locator('.sc-actions').scrollIntoViewIfNeeded();
   await shot('scorecard-actions');
   const row = await p.locator('.sc-actions .sc-action').evaluateAll((bs) => bs.map((x) => Math.round(x.getBoundingClientRect().top)));
-  ok(row.length === 4 && new Set(row).size === 1, `${theme} · Teilen · Prüfen · Export · Löschen in one row on 375 px`);
-  await p.locator('.sc-actions').getByRole('button', { name: /Schläge prüfen/ }).click();
+  ok(row.length === 3 && new Set(row).size === 1 && (await p.locator('.fab-stack').getByRole('button', { name: /Schläge prüfen/ }).count()) === 1, `${theme} · Teilen · Export · Löschen in one row on 375 px, "Schläge prüfen" floating (12.11.2026)`);
+  await p.locator('.fab-stack').getByRole('button', { name: /Schläge prüfen/ }).click();
   await p.waitForTimeout(2500);
   await shot('review');
   await fits('shot check');

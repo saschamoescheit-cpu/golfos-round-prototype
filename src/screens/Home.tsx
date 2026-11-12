@@ -123,8 +123,8 @@ const RUN_ICONS: Record<RunningItem['kind'], JSX.Element> = {
 function RunningCard(props: { items: RunningItem[]; onOpen: (r: RunningItem) => void }) {
   if (!props.items.length) return null;
   return (
-    <section className="card running-card" aria-label={tr('Up now', 'Jetzt dran')}>
-      <span className="eyebrow">{tr('Up now', 'Jetzt dran')}</span>
+    <section className="card running-card" aria-label={tr('Running now', 'Läuft gerade')}>
+      <span className="eyebrow">{tr('Running now', 'Läuft gerade')}</span>
       {props.items.map((r) => (
         <button key={r.key} type="button" className="running-row" onClick={() => props.onOpen(r)}>
           <span className="running-icon">{RUN_ICONS[r.kind]}</span>

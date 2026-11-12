@@ -6,6 +6,7 @@ import type { Round } from '../types';
 import { checksShots, fmtHcp, playerTotals, playing18, roundStats, finishRound } from '../lib/scoring';
 import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
+import { FloatActions } from '../components/FloatActions';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
@@ -26,7 +27,7 @@ import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
 import { sign, unsign } from '../lib/signing';
 import { SignedIcon } from '../components/SignedIcon';
-import { CheckShotsIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
+import { PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 import { profileIndex } from '../lib/profile';
 import { roundWeatherText } from '../lib/weather';
 import { betLinked } from '../lib/betlinked';
@@ -367,14 +368,11 @@ export function Scorecard(props: {
 
       <span className="spacer" />
       {/* the round's actions in one row with their symbols (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete */}
+      {/* "Schläge prüfen" floating bottom right (Sascha 12.11.2026: "Hier wäre ein Schwebebalken für Schläge prüfen gut") –
+          the round's other actions stay in the row below */}
+      {finished && canReview && editHole == null && <FloatActions pen={{ label: tr('Check shots', 'Schläge prüfen'), onClick: () => props.onReview({ ...round, capture: 'full' }) }} />}
       {finished && (
         <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
-          {canReview && (
-            <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-              <CheckShotsIcon size={22} />
-              <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
-            </button>
-          )}
           <button
             type="button"
             className="sc-action"

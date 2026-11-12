@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
-import { ChoiceRow, OnOffRow, SettingsList, TickRow, ToggleList, ToggleRow } from '../components/Settings';
+import { ChoiceRow, OnOffRow, SettingsList, SettingsRow, TickRow, ToggleList, ToggleRow } from '../components/Settings';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
@@ -951,7 +951,6 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
               setSheet('rename');
             },
           }}
-          plus={lastRound && !multi ? { label: tr('Add a round', 'Runde hinzufügen'), onClick: addRound } : null}
         />
       )}
       <span className="muted small">
@@ -1022,10 +1021,15 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       </ul>
       {/* a tournament set up on its own – played already too – taken in afterwards (Sascha 08.11.2026: "yesterday's
           Celebration into The Orlando Invitational, with its scores and the leaderboard") */}
-      {host && adoptable.length > 0 && (
-        <button type="button" className="btn-secondary" onClick={() => setSheet('adopt')}>
-          {multi ? tr('Take in a tournament as a round', 'Turnier als Runde aufnehmen') : tr('Take in a tournament', 'Vorhandenes Turnier aufnehmen')}
-        </button>
+      {/* a round more as a row, not a floating "+" (Sascha 12.11.2026: "Den Button + brauchen wir hier nicht") – beside
+          taking in a tournament set up on its own */}
+      {host && ((!!lastRound && !multi) || adoptable.length > 0) && (
+        <SettingsList>
+          {!!lastRound && !multi && <SettingsRow label={tr('Add a round', 'Runde hinzufügen')} onClick={addRound} />}
+          {adoptable.length > 0 && (
+            <SettingsRow label={multi ? tr('Take in a tournament as a round', 'Turnier als Runde aufnehmen') : tr('Take in a tournament', 'Vorhandenes Turnier aufnehmen')} onClick={() => setSheet('adopt')} />
+          )}
+        </SettingsList>
       )}
       {host && <TourInvite code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} />}
       {/* the live leaderboard for people outside (Sascha 08.11.2026) */}

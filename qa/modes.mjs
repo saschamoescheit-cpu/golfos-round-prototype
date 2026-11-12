@@ -166,7 +166,7 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
       if ((await hero.locator('.sc-other').count()) > 0) ok((await name.count()) === 1 && (await y(name)) < (await y(hero.locator('.sc-hero-main'))) && (await y(hero.locator('.sc-hero-main'))) < (await y(hero.locator('.sc-other').first())), `${label}: the own name on top of the figures, the partners below`);
     }
     if (!c.team) {
-      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row of actions: check shots, share, delete`);
+      ok((await p.locator('.fab-stack').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row of actions: check shots, share, delete`);
       // right after finishing the choice is open by itself (Sascha 22.10.2026)
       const sheet = p.getByRole('dialog', { name: 'Status der Runde' });
       ok((await sheet.count()) === 1 && /Wie geht es weiter/.test(await sheet.innerText()), `${label}: the choice opens by itself after finishing`);

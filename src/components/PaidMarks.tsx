@@ -6,6 +6,10 @@ import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize'
 import { ACTION_ICONS } from './ActionBar';
 import { SwipeRow } from './SwipeRow';
 
+/** An open payment's button says what a tap does – "Als bezahlt markieren" – in a neutral outline; green only once done
+ *  (Sascha 12.11.2026: "Bezahlt ist grün, aber ich habe noch nicht bezahlt – in grün wirkt es, als hätte ich schon bezahlt"). */
+export const markWord = (w: string): string => tr(`Mark as ${w.toLowerCase()}`, `Als ${w.toLowerCase()} markieren`);
+
 type Transfer = { from: string; to: string; amount: number };
 /** one line of what a payment is made of: a bet (+), what the other owes back and is set off (−), what was paid already */
 export type WhyLine = { label: string; amount: number; off?: boolean };
@@ -82,7 +86,7 @@ export function PaidMarks(props: {
                     aria-label={as === 'received' ? tr(`Received ${money(t.amount, props.sym)} from ${props.name(t.from)}`, `${money(t.amount, props.sym)} von ${props.name(t.from)} erhalten`) : tr(`${props.name(t.from)} paid ${money(t.amount, props.sym)} to ${props.name(t.to)}`, `${props.name(t.from)} hat ${money(t.amount, props.sym)} an ${props.name(t.to)} bezahlt`)}
                     onClick={() => (as === 'received' && isMoney(prize) && PAY_DETAILS ? setAsking({ t, amount: t.amount, from: t.from }) : props.onMark(t, as))}
                   >
-                    {as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize)}
+                    {markWord(as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize))}
                   </button>
                 )}
                 {(() => {
@@ -141,7 +145,7 @@ export function PaidMarks(props: {
                   <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>
                   {!p.receivedAt && mine(p.to) && (
                     <button type="button" className="chip paid-mark mark-received" aria-label={tr(`Received ${money(p.amount, props.sym)} from ${props.name(p.from)}`, `${money(p.amount, props.sym)} von ${props.name(p.from)} erhalten`)} onClick={() => (isMoney(prize) && PAY_DETAILS ? setAsking({ id: p.id, amount: p.amount, from: p.from }) : props.onConfirm(p.id))}>
-                      {tr('Received', 'Erhalten')}
+                      {markWord(tr('Received', 'Erhalten'))}
                     </button>
                   )}
                 </>

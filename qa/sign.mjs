@@ -76,7 +76,7 @@ ok((await sheet.locator('.pick-option').allInnerTexts()).map((t) => t.split(Stri
 await sheet.getByRole('button', { name: /^Signieren/ }).click();
 await p.waitForTimeout(400);
 ok(/Signiert/.test(await state.innerText()) && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'signed: the state says so, the round keeps the time');
-ok((await p.locator('.sign-card').count()) === 0 && (await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1, 'no card at the bottom any more, the row of actions with "Schläge prüfen"');
+ok((await p.locator('.sign-card').count()) === 0 && (await p.locator('.fab-stack').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1, 'no card at the bottom any more, the row of actions with "Schläge prüfen"');
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(600);
 ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 1, 'rounds list: the seal on the signed round');
@@ -148,7 +148,7 @@ await tab('Runden');
 await p.waitForTimeout(400);
 await p.locator('ul.list .list-item').first().click();
 await p.waitForTimeout(1000);
-await p.locator('.sc-actions').getByRole('button', { name: /Schläge prüfen/ }).click();
+await p.locator('.fab-stack').getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2000);
 let lastLabel = '';
 for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {

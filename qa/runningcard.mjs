@@ -53,7 +53,7 @@ ok((await p.locator('.running-card').count()) === 0, 'nothing running: no "Läuf
 await seed([{ code: 'USA1', pool, me: 'p0' }]);
 const card = p.locator('.running-card');
 ok((await card.count()) === 1, 'a pool on its days: the card "Jetzt dran"');
-ok((await card.locator('.eyebrow').innerText()).trim().toLowerCase() === 'jetzt dran', 'its title "Jetzt dran"');
+ok((await card.locator('.eyebrow').innerText()).trim().toLowerCase() === 'läuft gerade', 'its title "Läuft gerade" (12.11.2026)');
 const frame = await card.evaluate((el) => [getComputedStyle(el).borderTopColor, getComputedStyle(el).borderTopWidth]);
 const brand = await p.evaluate(() => { const d = document.createElement('i'); d.style.color = 'var(--brand)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
 ok(frame[0] === brand && parseFloat(frame[1]) >= 1, `a green frame (${frame.join(' ')})`);

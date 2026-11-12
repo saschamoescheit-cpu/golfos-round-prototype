@@ -2183,8 +2183,9 @@ button.tile:disabled { opacity: 1; }
 .pays-why > div.sum { color: var(--text); font-weight: 700; border-top: 1px dashed var(--line); padding-top: 2px; }
 .paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
 /* "Bezahlt" green, "Erhalten" red – filled, white words (Sascha 11.11.2026) */
-.paid-mark.mark-paid { background: var(--brand); border-color: var(--brand); color: #fff; }
-.paid-mark.mark-received { background: var(--bad); border-color: var(--bad); color: #fff; }
+/* an open payment: a neutral outline saying what a tap does ("Als bezahlt markieren") – green only once it is done, as the
+   tick of the "Bezahlt" list (Sascha 12.11.2026, replacing "Bezahlt grün, Erhalten rot" of 11.11.) */
+.paid-mark.mark-paid, .paid-mark.mark-received { background: transparent; border: 1px solid var(--line-strong); color: var(--text); white-space: normal; max-width: 140px; line-height: 1.15; text-align: center; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
 .friend-code .qr-box { width: min(200px, 56vw); }
@@ -2512,6 +2513,14 @@ body:has(.fab-stack:not(.over-sheet)) .screen { padding-bottom: calc(env(safe-ar
 body .fab-stack.over-sheet { z-index: 75; bottom: calc(env(safe-area-inset-bottom) + 20px); }
 body:has(.fab-stack.over-sheet) .sheet { padding-bottom: calc(env(safe-area-inset-bottom) + 92px); }
 body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
+/* a wide screen (iPad, Sascha 12.11.2026: "Der Button schwebt nicht unten rechts – alle Buttons immer unten rechts"):
+   the buttons in the screen's corner, not at the edge of the centred column – beside the menu bar, not above it */
+@media (min-width: 700px) {
+  .fab-stack, body:has(.tabbar) .fab-stack, body .fab-stack.over-sheet {
+    right: calc(env(safe-area-inset-right) + 24px); bottom: calc(env(safe-area-inset-bottom) + 24px);
+  }
+  body:has(.fab-stack:not(.over-sheet)) .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 110px); }
+}
 
 /* the module pill top left (Sascha 12.11.2026) – "▦ Rounds ▾" */
 .module-pill { gap: 7px; min-height: 44px; padding: 0 12px 0 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }

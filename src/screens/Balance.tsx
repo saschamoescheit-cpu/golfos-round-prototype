@@ -13,7 +13,7 @@ import { isMoney, paidWord, prizeOf, prizeSym } from '../lib/prize';
 import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
 import { SwipeRow } from '../components/SwipeRow';
-import { TAKE_BACK } from '../components/PaidMarks';
+import { markWord, TAKE_BACK } from '../components/PaidMarks';
 import { loadProfile, shownName } from '../lib/profile';
 
 // The menu "Bilanz" (Sascha 03.11.2026): what I won and lost, against each player – which games and bets make it up –,
@@ -457,7 +457,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                     setBusy(false);
                     setTick((t) => t + 1);
                   }}>
-                    {tr('Received', 'Erhalten')}
+                    {markWord(tr('Received', 'Erhalten'))}
                   </button>
                 </li>
               ))}
@@ -476,7 +476,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                       <Amounts m={Object.fromEntries(Object.entries(sums(p.items, (i) => i.open)).filter(([, v]) => v < 0))} plain />
                     </strong>
                     <button type="button" className="chip paid-mark mark-paid" disabled={busy} aria-label={tr(`Paid ${p.name}`, `${p.name} bezahlt`)} onClick={() => void settleAll(p, 'paid')}>
-                      {word(p, 'paid')}
+                      {markWord(word(p, 'paid'))}
                     </button>
                   </li>
                 ))}
@@ -496,7 +496,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                       <Amounts m={Object.fromEntries(Object.entries(sums(p.items, (i) => i.open)).filter(([, v]) => v > 0))} plain />
                     </strong>
                     <button type="button" className="chip paid-mark mark-received" disabled={busy} aria-label={tr(`Received from ${p.name}`, `Von ${p.name} erhalten`)} onClick={() => void settleAll(p, 'received')}>
-                      {word(p, 'received')}
+                      {markWord(word(p, 'received'))}
                     </button>
                   </li>
                 ))}

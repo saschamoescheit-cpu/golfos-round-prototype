@@ -1,5 +1,6 @@
 // Sun mode: light panels with black type for bright sunshine on the course (dark screens are hard to read at noon).
-// The choice is kept on the device (and synced to the others) and applied before the first paint.
+// The choice is kept on this device only (12.11.2026: synced, an older value from the server switched it back) and
+// applied before the first paint.
 
 const KEY = 'golfos.sun.v1';
 
@@ -28,5 +29,3 @@ export function setSun(on: boolean): void {
   applyTheme(on);
 }
 
-// synced with the other devices (29.10.2026): switched on another device, it shows here once the sync brings it
-if (typeof window !== 'undefined') window.addEventListener('golfos:pulled', () => applyTheme());

@@ -45,7 +45,7 @@ const SETTINGS = [
   // every other setting of the app too (Sascha 29.10.2026: "all settings in the app synced between all devices – the
   // caddie and the notification settings etc."): the test switches, the look, the map, the notifications chosen (their
   // switch stays per device: every phone allows them itself), the own course ratings, Training and Mobility
-  'golfos.testmode.v1', 'golfos.sun.v1', 'golfos.spread.v1', 'golfos.mapview.v1', 'golfos.imagery.v1',
+  'golfos.testmode.v1', 'golfos.spread.v1', 'golfos.mapview.v1', 'golfos.imagery.v1',
   'golfos.tip.shots.v1', 'golfos.help.subs.v1', 'golfos.pushkinds.v1', 'golfos.stats.range.v1', 'golfos.ratings.v1',
   'golfos.training.reviewmode.v1', 'golfos.training.review.v1', 'golfos.training.bpm.v1', 'golfos.training.swingtempo.v1', 'golfos.mobility.minutes.v1',
   // the drills opened last (Sascha 01.11.2026: "everything kept in the profile" – the app starts where the website was)
@@ -58,7 +58,9 @@ const SETTINGS = [
 /** Per device again (Sascha 30.10.2026: "switched on in the profile yesterday, off again today" – off on the other
  *  device came over): shot by sound and pocket mode are the phone's own, as the push switch. Rows of them still on the
  *  server (synced 29./30.10.) are left alone. */
-const DEVICE_ONLY = new Set(['golfos.soundtest.v1', 'golfos.pockettest.v1']);
+// the sun mode too (Sascha 12.11.2026: "Tag/Nacht springt nach kurzer Zeit wieder zurück" – an older value pulled from the
+// server switched it back; the iPad indoors and the phone in the sun want their own)
+const DEVICE_ONLY = new Set(['golfos.soundtest.v1', 'golfos.pockettest.v1', 'golfos.sun.v1']);
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [
   { kind: 'track', prefix: 'golfos.track.v1.' },
