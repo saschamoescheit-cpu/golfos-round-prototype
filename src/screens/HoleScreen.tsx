@@ -54,7 +54,7 @@ import { move } from '../lib/aimpoint';
 import { clubSpread, spreadShape } from '../lib/spread';
 import { loadCaddieSettings, loadCarryBag, newId } from '../lib/storage';
 import { holdGeometry } from '../lib/storageguard';
-import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
+import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, shotHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Chips, Stepper, TopBar, formatToPar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -1382,7 +1382,7 @@ export function HoleScreen(props: {
           return;
         }
         const base = s.hole >= 0 && s.hole < r.holes.length ? s.hole : holeRef.current;
-        const hole = pos ? (detectHole(pos, allMaps, base, { start: r.startHole, open }) ?? base) : base;
+        const hole = pos ? shotHole(pos, allMaps, base, { start: r.startHole, open }) : base;
         const next = addWatchShot(r, s, hole, fb);
         if (next === r) return;
         latestRound.current = next;

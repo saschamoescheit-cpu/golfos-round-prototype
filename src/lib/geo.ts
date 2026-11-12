@@ -421,6 +421,29 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
 }
 
 /**
+ * The hole of a shot the watch felt (Sascha 12.11.2026: Erik's watch – 45 "shots" on hole 5, the holes after it piled on
+ * it while his phone stayed there): as the player's hole is found ("detectHole", the next three holes) – and a swing far
+ * off that hole (more than 120 m from its line) lying in another hole's corridor (35 m) goes to that hole, the nearest,
+ * a later one before an earlier one. Else the hole it came with.
+ */
+export function shotHole(pos: LngLat, holes: (HoleMapData | null)[], base: number, opt: { start?: number; open?: (k: number) => boolean } = {}): number {
+  const found = detectHole(pos, holes, base, opt);
+  if (found != null) return found;
+  const cur = holes[base];
+  if (!cur || distToLine(pos, cur.line) <= 120) return base;
+  const n = holes.length;
+  const ahead = (k: number) => (k - base + n) % n; // 1 … n-1 in the order played
+  let best: { k: number; d: number } | null = null;
+  holes.forEach((h, k) => {
+    if (!h || k === base) return;
+    const d = distToLine(pos, h.line);
+    if (d > 35) return;
+    if (!best || d < best.d - 5 || (Math.abs(d - best.d) <= 5 && ahead(k) < ahead(best.k))) best = { k, d };
+  });
+  return best ? (best as { k: number }).k : base;
+}
+
+/**
  * Which hole is the player on? Used when the app is opened again after the phone was in the pocket.
  * Only looks forward (the next 3 holes), so walking past an earlier hole never jumps back.
  * Returns the index of the hole to switch to, or null to stay on the current hole.
