@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { answerJoin, hostedCodes, joinRequests, type JoinRequest } from '../lib/sharedround';
+import { hostedCodes, joinRequests } from '../lib/sharedround';
+import { answerJoins, inboxJoins, setInboxJoins, type JoinAsk } from '../lib/inboxstore';
 import { tr } from '../lib/i18n';
 
 // "Cedric wants to join – Let in / Decline" on the host's phone, wherever it is in the app (Sascha 29.10.2026: "the host
@@ -8,12 +9,21 @@ import { tr } from '../lib/i18n';
 // code), not while it is locked – the push brings the host back. Once let in, the player's name goes into the host's
 // flight if it is not there yet (golfos:join-approved – the setup and the hole map add him).
 
-type Ask = JoinRequest & { code: string };
+// in the inbox too, with "Zulassen" (Sascha 13.11.2026, Inbox-Mockups: "falls du das Blatt weggetippt hast")
+type Ask = JoinAsk;
 
 export function JoinRequests() {
-  const [asks, setAsks] = useState<Ask[]>([]);
+  const [asks, setAsks] = useState<Ask[]>(inboxJoins);
+  useEffect(() => {
+    const on = () => setAsks(inboxJoins());
+    window.addEventListener('golfos:inbox', on);
+    return () => window.removeEventListener('golfos:inbox', on);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState(false);
+  // "Später": the notice gone for these – they wait in the inbox (Sascha 13.11.2026, Inbox-Mockups: "falls du das Blatt
+  // weggetippt hast"); a new one shows it again
+  const [later, setLater] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     let gone = false;
     let seen = new Set<string>();
@@ -21,7 +31,7 @@ export function JoinRequests() {
       if (document.hidden) return;
       const codes = hostedCodes();
       if (!codes.length) {
-        if (!gone) setAsks([]);
+        if (!gone) setInboxJoins([]);
         return;
       }
       const all = (await Promise.all(codes.map(async (code) => (await joinRequests(code)).map((r) => ({ ...r, code }))))).flat();
@@ -29,7 +39,7 @@ export function JoinRequests() {
       // a new one: a short buzz – the phone may be in the pocket
       if (all.some((a) => !seen.has(a.code + a.id))) navigator.vibrate?.(60);
       seen = new Set(all.map((a) => a.code + a.id));
-      setAsks(all);
+      setInboxJoins(all);
     };
     void look();
     const t = window.setInterval(() => void look(), 4000);
@@ -48,13 +58,12 @@ export function JoinRequests() {
   }, [asks.length]);
   const answer = async (some: Ask[], yes: boolean) => {
     setBusy(true);
-    const done = await Promise.all(some.map(async (a) => ((await answerJoin(a.code, a.id, yes)) ? a : null)));
+    await answerJoins(some, yes);
     setBusy(false);
-    const ok = done.filter((a): a is Ask => a != null);
-    if (yes) for (const a of ok) window.dispatchEvent(new CustomEvent('golfos:join-approved', { detail: { code: a.code, name: a.name, hcp: a.hcp } }));
-    setAsks((x) => x.filter((y) => !ok.some((a) => a.code === y.code && a.id === y.id)));
   };
-  if (!asks.length) return null;
+  const shown = asks.filter((a) => !later.has(a.code + a.id));
+  const putOff = () => setLater(new Set(asks.map((a) => a.code + a.id)));
+  if (!shown.length) return null;
   const hcp = (a: Ask) => (a.hcp ? ` · HCP ${a.hcp}` : '');
   // several: the overview – one by one or all at once
   if (list || asks.length > 1)
@@ -95,6 +104,9 @@ export function JoinRequests() {
           <span className="muted small"> · {asks.map((a) => a.name).join(', ')}</span>
         </span>
         <span className="join-request-actions">
+          <button type="button" className="join-no" disabled={busy} onClick={putOff}>
+            {tr('Later', 'Später')}
+          </button>
           <button type="button" className="join-no" disabled={busy} onClick={() => setList(true)}>
             {tr('Show', 'Ansehen')}
           </button>
@@ -112,6 +124,9 @@ export function JoinRequests() {
         {a.hcp && <span className="muted small">{hcp(a)}</span>}
       </span>
       <span className="join-request-actions">
+        <button type="button" className="join-no" disabled={busy} onClick={putOff}>
+          {tr('Later', 'Später')}
+        </button>
         <button type="button" className="join-no" disabled={busy} onClick={() => void answer([a], false)}>
           {tr('Decline', 'Ablehnen')}
         </button>

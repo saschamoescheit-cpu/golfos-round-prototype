@@ -53,6 +53,35 @@ if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/bell-she
 await sheet.locator('.bell-row').first().click();
 await p.waitForTimeout(1200);
 ok((await sheet.count()) === 0 && /Runden|Rounds/.test(await p.locator('main').first().innerText()), 'a row: straight to Rounds');
+// more in the inbox (Sascha 13.11.2026, Inbox-Mockups 8–10): the scorer signed – "Bitte deine Scorekarte unterschreiben";
+// a new bet against you; a payment to you marked paid, with "Erhalten"
+await p.evaluate(() => {
+  const holes = Array.from({ length: 9 }, (_, i) => ({ number: i + 1, par: 4, strokeIndex: i + 1, label: String(i + 1) }));
+  const at = new Date().toISOString();
+  const round = { id: 'r2', courseName: 'StoneGate – Cypress', createdAt: at, finishedAt: at, signedAt: at, holes, players: [{ id: 'me', name: 'Sascha', isMe: true, playingHandicap: 10 }, { id: 'e', name: 'Erik', isMe: false }], entries: { me: holes.map(() => ({ strokes: 4 })), e: holes.map(() => ({ strokes: 4 })) }, capture: 'full', loopOrder: ['A'], courseId: 'test-course', kind: 'social', shared: { code: 'SGNASK', flight: 'f1', phone: 'ph1', base: {} } };
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([round]));
+  localStorage.setItem('golfos.event.v1.SGNASK', JSON.stringify({ kind: 'round-event', id: 'r2', name: 'Cypress', tournament: false, course: { id: 'test-course', name: 'StoneGate – Cypress' }, loopOrder: ['A'], holes, createdAt: at, flights: { f1: { id: 'f1', players: [{ id: 'me', name: 'Sascha' }, { id: 'e', name: 'Erik' }], scorer: 'e', scores: {}, signed: { me: { marker: at }, e: { player: at } } } } }));
+  const pool = { kind: 'wager-pool', id: 'pl', name: 'USA-Wetten', from: at.slice(0, 10), to: at.slice(0, 10), createdAt: at, currency: 'USD', players: [{ id: 's', name: 'Sascha' }, { id: 'm', name: 'Moritz' }, { id: 'c', name: 'Cedric' }], wagers: [{ id: 'w1', player: 'm', opponent: 's', kind: 'birdieRun', target: 3, stake: 20, payout: 'opponent', attempts: 'any' }], progress: {}, payments: [{ id: 'pay1', from: 'c', to: 's', amount: 40, paidAt: at }] };
+  localStorage.setItem('golfos.pools.v1', JSON.stringify([{ code: 'POOL1', me: 's', pool }]));
+  localStorage.setItem('golfos.inbox.betsseen.v1', '[]');
+});
+await p.reload();
+await p.waitForTimeout(1500);
+await p.locator('.bell-btn').first().click();
+const more = (await sheet.locator('.bell-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+ok(more.some((r) => /Bitte deine Scorekarte unterschreiben/.test(r) && /Erik hat als Schreiber unterschrieben/.test(r)), `the scorer signed: "Bitte deine Scorekarte unterschreiben" (${more.join(' | ')})`);
+ok(more.some((r) => /Moritz hat eine Wette gegen dich angelegt/.test(r) && /USA-Wetten/.test(r)), 'a new bet against you: "Moritz hat eine Wette gegen dich angelegt"');
+const paidRow = sheet.getByRole('group', { name: /Cedric hat dir 40 \$ bezahlt/ });
+ok((await paidRow.count()) === 1 && (await paidRow.getByRole('button', { name: /40 \$ von Cedric erhalten/ }).count()) === 1, 'a payment to you: "Cedric hat dir 40 $ bezahlt" with "Erhalten"');
+ok((await sheet.locator('.bell-group > .eyebrow').first().innerText()).toLowerCase() === 'anfragen an dich', 'asked of you: "Anfragen an dich" on top');
+if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/bell-more.png` });
+// the bet tapped: the pool – and not again
+await sheet.locator('.bell-row').filter({ hasText: 'Wette gegen dich' }).click();
+await p.waitForTimeout(1200);
+await p.locator('.bell-btn').first().click().catch(() => {});
+await p.waitForTimeout(400);
+ok((await p.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Wette gegen dich' }).count()) === 0, 'the bet seen: not in the inbox again');
+
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

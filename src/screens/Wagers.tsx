@@ -1250,8 +1250,9 @@ export function roundVerdict(w: Wager, r: RoundResult | undefined, inPlay = fals
   // live on the round nothing red – green only once made (Sascha 12.11.2026 on the course: "Live auf der Runde muss man
   // nichts rot anzeigen, nur wenn was erfüllt ist grün"): still played on a phone of the pool, never 'missed'
   if (inPlay) return roundVerdict(w, r) === 'made' ? 'made' : null;
-  const share = shareOf(w);
-  if (share != null) return r.open ? null : r.value <= share + 1e-9 ? 'made' : 'missed';
+  // a score over N rounds: never coloured in one round – it is decided once all are played, in the total (Sascha
+  // 12.11.2026: "Ergebnis brutto in 6 Runden kann bei niemandem grün sein nach 4 gespielten Runden"); its share stays shown
+  if (shareOf(w) != null) return null;
   if (!perRoundBet(w)) return null;
   if (reached(w, r.value) && (!r.open || !lower(w))) return 'made';
   return r.open ? null : 'missed';

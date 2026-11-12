@@ -420,6 +420,13 @@ export function App() {
       const t = (e as CustomEvent<NavTarget>).detail;
       if (t?.pool) openPool(t.pool, t.day);
       else if (t?.tour) openTour(t.tour);
+      else if (t?.round) {
+        // a round's card to sign (the inbox): its scorecard, as a tapped push opens it
+        const r = loadRounds().find((x) => x.id === t.round);
+        if (!r) return;
+        setModule('rounds');
+        setScreen(r.signedAt ? { name: 'scorecard', round: r, back: ROUNDS } : { name: 'review', round: r });
+      }
     };
     window.addEventListener(NAV_EVENT, on);
     return () => window.removeEventListener(NAV_EVENT, on);

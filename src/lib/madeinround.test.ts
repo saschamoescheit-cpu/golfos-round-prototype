@@ -35,14 +35,14 @@ describe('a round decided', () => {
     expect(roundVerdict(bet({}), r(2), true)).toBe('made');
     expect(roundVerdict(bet({}), r(1), true)).toBe(null);
     expect(roundVerdict(bet({ kind: 'scoreSum', target: 35, rounds: 7 }), r(6), true)).toBe(null);
-    expect(roundVerdict(bet({ kind: 'scoreSum', target: 35, rounds: 7 }), r(4), true)).toBe('made');
+    expect(roundVerdict(bet({ kind: 'scoreSum', target: 35, rounds: 7 }), r(4), true)).toBe(null);
   });
-  it('a score over 7 rounds: its share of the round', () => {
+  it('a score over 7 rounds: its share of the round shown, never coloured in one round (Sascha 12.11.2026)', () => {
     const w = bet({ kind: 'scoreSum', target: 35, rounds: 7 });
     expect(shareOf(w)).toBe(5);
     expect(parText(shareOf(w)!)).toBe('+5');
-    expect(roundVerdict(w, r(4))).toBe('made');
-    expect(roundVerdict(w, r(6))).toBe('missed');
+    expect(roundVerdict(w, r(4))).toBe(null);
+    expect(roundVerdict(w, r(6))).toBe(null);
     expect(roundVerdict(w, r(6, true))).toBe(null);
   });
   it('in the total: the rounds added up, decided once all are played', () => {
