@@ -465,6 +465,8 @@ await p.evaluate(() => document.documentElement.removeAttribute('data-theme'));
 await p.evaluate(() => localStorage.setItem('golfos.lang.v1', 'en'));
 await p.reload();
 await p.waitForTimeout(1500);
+// (under load the app takes longer than 1.5 s to draw its menu after the reload)
+await p.locator('.tabbar button').first().waitFor({ timeout: 30000 }).catch(() => {});
 const enTabs = await p.locator('.tabbar button').allInnerTexts();
 ok(enTabs.map((x) => x.trim()).join('|') === 'Screening|Result|Drills|History|Profile', `English menu: ${enTabs.join(' · ')}`);
 

@@ -205,7 +205,7 @@ await p.locator('.mob-physio .step-pick-now').click();
 await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Ergebnisse$/ }) }).click();
 await p.locator('.mob-cmp-sum').waitFor({ timeout: 5000 }).catch(() => {});
 const cmp = await p.locator('.mob-cmp-sum').innerText().catch(() => '');
-ok(/Vorher – nachher/.test(cmp) && /besser 1/.test(cmp) && /schlechter 1/.test(cmp) && /2 Einheiten/.test(cmp), `before – after: one better, one worse, the sessions in between (${cmp.replace(/\n/g, ' · ').slice(0, 140)})`);
+ok(/Vorher – nachher/.test(cmp) && /besser\s+1/.test(cmp) && /schlechter\s+1/.test(cmp) && /2 Einheiten/.test(cmp), `before – after: one better, one worse, the sessions in between (${cmp.replace(/\n/g, ' · ').slice(0, 140)})`);
 const toe = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Zehen berühren' }).innerText();
 ok(/besser/.test(toe), 'the toe touch: red at the physio, yellow now – better');
 const legDots = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Einbeinstand' }).locator('.mob-cmp-side .mob-dot').evaluateAll((xs) => xs.map((x) => x.classList[1]).join(' '));

@@ -1730,7 +1730,7 @@ const lightOf = (m: Measurement | undefined): Light => measuredLight(m) ?? 'none
 const LIGHT_RANK: Record<Light, number> = { red: 0, yellow: 1, green: 2, none: 3 };
 /** the lights of a test: one, or left and right */
 const lightsOf = (test: TestDef, r: TestResult | undefined): { side: Side | null; light: Light }[] =>
-  test.sides ? (['left', 'right'] as Side[]).map((side) => ({ side, light: lightOf(r?.[side]) })) : [{ side: null, light: lightOf(r?.both ?? r?.left ?? r?.right) }];
+  test.sides ? (['left', 'right'] as Side[]).map((side) => ({ side, light: lightOf(r?.[side] ?? r?.both) })) : [{ side: null, light: lightOf(r?.both ?? r?.left ?? r?.right) }];
 const worstLight = (test: TestDef, r: TestResult | undefined): Light => lightsOf(test, r).reduce<Light>((w, x) => (LIGHT_RANK[x.light] < LIGHT_RANK[w] ? x.light : w), 'none');
 
 function Lights(props: { test: TestDef; r: TestResult | undefined }) {

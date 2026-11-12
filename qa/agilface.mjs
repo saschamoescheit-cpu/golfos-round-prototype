@@ -168,6 +168,9 @@ await back();
 await tab('Ergebnis');
 ok((await p.locator('main .segmented').count()) === 0 && /^Dein Körper 1 von 2$/.test(await stepNow()), `the result: "‹ Dein Körper ›" instead of a tab block (${await stepNow()})`);
 await noH2('the result');
+// a sided test judged by oneself as "it hurts" (one result for both sides): its lights red, counted as poor
+const painLights = await p.locator('.mob-light-row').filter({ hasText: 'Handgelenk beugen' }).locator('.mob-dot').evaluateAll((xs) => xs.map((x) => x.classList[1]).join(' '));
+ok(painLights === 'red red' && /1 schlecht/.test(await p.locator('.mob-light-sum').innerText()), `pain on a sided test: both lights red, one poor (${painLights})`);
 // a4: the first time – no "Ziel speichern" button in the page, the floating tick once a handicap is chosen
 const goal = p.locator('.mob-goal');
 ok((await goal.locator('.eyebrow').filter({ hasText: 'Dein Ziel' }).count()) === 1 || (await p.locator('.eyebrow').filter({ hasText: 'Dein Ziel' }).count()) >= 1, 'the goal under the eyebrow "Dein Ziel"');
