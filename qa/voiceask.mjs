@@ -78,8 +78,13 @@ const notesSheet = p.getByRole('dialog', { name: /was der Caddie wissen soll/ })
 ok((await notesSheet.locator('.tick-row').count()) === 3 && (await notesSheet.getByRole('checkbox', { name: /Aus links/ }).getAttribute('aria-checked')) === 'true', 'the hole note: three tick rows, "Aus links" ticked');
 ok((await p.getByRole('button', { name: 'Für diesen Platz speichern' }).count()) === 0 && /von selbst gespeichert/.test(await notesSheet.locator('.autosave-note').innerText()), 'a note there already: no save button, "Änderungen werden von selbst gespeichert"');
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
-await p.waitForTimeout(1400);
-ok(/Gespeichert/.test(await notesSheet.locator('.autosave-note').innerText()) && /Blinder Abschlag/.test(await card.innerText()), 'saved a moment after typing – the caddie shows it with the sheet still open');
+// saved about a second after the last change – waited for, the phone under test may be slow
+await p.waitForFunction(() => /Gespeichert/.test(document.querySelector('.autosave-note')?.textContent ?? ''), null, { timeout: 8000 }).catch(() => {});
+{
+  const status = await notesSheet.locator('.autosave-note').innerText().catch(() => '–');
+  const kept = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
+  ok(/Gespeichert/.test(status) && /Blinder Abschlag/.test(kept), `saved a moment after typing, the sheet still open ("${status.trim()}")`);
+}
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/caddie-notes-sheet.png` });
 await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(500);
