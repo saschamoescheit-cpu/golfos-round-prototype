@@ -61,6 +61,25 @@ await P.waitForTimeout(1500);
   ok(/^HCP-Vorgabe 100 %$/.test(set[0] ?? ''), `r9: Einstellungen – ${set.join(' | ')}`);
   ok(/^Wer erfasst/.test((await rowsOf('Score-Erfassung'))[0] ?? '') && /^Sidebet/.test((await rowsOf('Worum'))[0] ?? ''), 'r9: "Wer erfasst" after the invitation, the side bet under "Worum"');
 }
+// the add row: its plus and its words on one line; the course rating form: both fields wide enough (12.11.2026, night
+// screens: the plus stood on its own line, the course rating field showed "7'")
+{
+  const add = P.locator('.add-row').filter({ hasText: 'Spieler hinzufügen' }).first();
+  const g = await add.evaluate((b) => {
+    const s = b.querySelector('svg').getBoundingClientRect();
+    const l = b.querySelector('span').getBoundingClientRect();
+    return { dy: Math.abs((s.top + s.bottom) / 2 - (l.top + l.bottom) / 2), right: s.right <= l.left + 1 };
+  });
+  ok(g.dy < 6 && g.right, `add row: plus and "Spieler hinzufügen" on one line (${Math.round(g.dy)} px)`);
+  const rl = P.locator('.rating-line').first();
+  if (await rl.count()) {
+    await rl.click();
+    await P.waitForTimeout(300);
+    const w = await P.locator('#setup-cr').evaluate((e) => e.getBoundingClientRect().width).catch(() => 0);
+    ok(w > 100, `course rating form: the field wide enough (${Math.round(w)} px)`);
+    await P.locator('.rating-form .sheet-head').getByRole('button', { name: 'Schließen' }).click();
+  }
+}
 // the course row leads back to the course search
 await P.locator('.settings-row').filter({ hasText: /^Platz/ }).click();
 await P.locator('#course-search').waitFor({ timeout: 10000 });

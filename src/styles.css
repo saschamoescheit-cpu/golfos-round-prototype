@@ -2702,3 +2702,10 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 /* the own flight in words, no frame (Sascha 12.11.2026) */
 .lb-rows li.lb-mine { box-shadow: none; }
 .lb-flight { display: block; }
+
+/* the course rating form opened (scorecard, setups): its head and its note across, the two fields side by side – the
+   field was squeezed to "7'" (12.11.2026, the night's screens) */
+.card.rating-form { grid-template-columns: 1fr 1fr; align-items: start; }
+.card.rating-form > :not(.field) { grid-column: 1 / -1; }
+/* the add row: the plus and its words on one line – the rule "a lone first child spans" put the plus on its own line */
+.settings-row.add-row > :first-child:nth-last-child(2) { grid-column: auto; }
