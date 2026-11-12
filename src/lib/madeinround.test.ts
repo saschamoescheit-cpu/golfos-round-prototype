@@ -31,6 +31,12 @@ describe('a round decided', () => {
     expect(roundVerdict(bet({}), r(1, true))).toBe(null);
     expect(roundVerdict(bet({}), r(null))).toBe(null);
   });
+  it('live on the round (a phone of the pool still plays it): green once made, never red (Sascha 12.11.2026)', () => {
+    expect(roundVerdict(bet({}), r(2), true)).toBe('made');
+    expect(roundVerdict(bet({}), r(1), true)).toBe(null);
+    expect(roundVerdict(bet({ kind: 'scoreSum', target: 35, rounds: 7 }), r(6), true)).toBe(null);
+    expect(roundVerdict(bet({ kind: 'scoreSum', target: 35, rounds: 7 }), r(4), true)).toBe('made');
+  });
   it('a score over 7 rounds: its share of the round', () => {
     const w = bet({ kind: 'scoreSum', target: 35, rounds: 7 });
     expect(shareOf(w)).toBe(5);

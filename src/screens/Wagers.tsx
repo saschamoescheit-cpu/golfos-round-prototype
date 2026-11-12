@@ -1245,8 +1245,11 @@ export const parText = (x: number): string => {
 /** A bet in one round, once it is decided (Sascha 10.11.2026: "a round played – green when made, else red"): 'made',
  *  'missed' – or null while it is played, without a figure, or a bet not of single rounds (the trip as one). A score over
  *  N rounds by its share of the round. */
-export function roundVerdict(w: Wager, r: RoundResult | undefined): 'made' | 'missed' | null {
+export function roundVerdict(w: Wager, r: RoundResult | undefined, inPlay = false): 'made' | 'missed' | null {
   if (!r || r.value == null) return null;
+  // live on the round nothing red – green only once made (Sascha 12.11.2026 on the course: "Live auf der Runde muss man
+  // nichts rot anzeigen, nur wenn was erfüllt ist grün"): still played on a phone of the pool, never 'missed'
+  if (inPlay) return roundVerdict(w, r) === 'made' ? 'made' : null;
   const share = shareOf(w);
   if (share != null) return r.open ? null : r.value <= share + 1e-9 ? 'made' : 'missed';
   if (!perRoundBet(w)) return null;
@@ -1404,9 +1407,11 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     );
   };
   // one round: each bet as it went in that round – made green, else its figure; no figure from that round: a dash
+  // the round still played on a phone of the pool: nothing red in it yet (roundVerdict)
+  const roundInPlay = !!one && Object.values(pool.progress ?? {}).some((p) => p?.perRound?.some((x) => `${x.day}|${x.course}` === one.key && x.open));
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
-    const verdict = roundVerdict(w, r);
+    const verdict = roundVerdict(w, r, roundInPlay);
     const share = shareOf(w);
     return (
       <span key={w.id} className={`bet-cell ${verdict === 'made' ? 'done' : verdict === 'missed' ? 'miss' : 'open'}`} title={wagerLabel(w)}>
