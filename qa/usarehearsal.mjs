@@ -167,7 +167,7 @@ await ld('Sascha', 245, true);
   const sheet = p.getByRole('dialog', { name: 'Long Drive' });
   await sheet.waitFor({ timeout: 5000 });
   const back = sheet.locator('.sc-action.danger');
-  ok((await p.locator('.fab-stack.over-sheet').count()) === 0 && (await sheet.locator('.autosave-note').count()) === 1 && (await back.count()) === 1 && (await back.getAttribute('aria-label')) === 'Meinen Wert zurücknehmen' && (await back.locator('svg').count()) === 1, 'Long Drive, corrected: no tick – "Änderungen werden von selbst gespeichert", "Zurücknehmen" red with its icon');
+  ok((await p.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Fertig', exact: true }).count()) === 1 && (await sheet.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 0 && (await sheet.locator('.autosave-note').count()) === 1 && (await back.count()) === 1 && (await back.getAttribute('aria-label')) === 'Meinen Wert zurücknehmen' && (await back.locator('svg').count()) === 1, 'Long Drive, corrected: no tick – "Änderungen werden von selbst gespeichert", "Zurücknehmen" red with its icon');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/special-edit.png' });
   // the phone in front – a page in the background has its timers held back by the browser, a phone in the hand does not
   await p.bringToFront();
