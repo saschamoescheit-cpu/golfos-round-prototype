@@ -171,8 +171,9 @@ await ld('Sascha', 245, true);
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/special-edit.png' });
   await sheet.locator('#special-m').fill('247');
   await sheet.locator('.autosave-note', { hasText: 'Gespeichert' }).waitFor({ timeout: 15000 }).catch(() => {});
-  const said = await sheet.locator('.autosave-note').innerText().catch(() => '');
-  ok(mine() === 247 && /Gespeichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, "${said}")`);
+  const said = (await sheet.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-160);
+  const typed = await sheet.locator('#special-m').inputValue().catch(() => '?');
+  ok(mine() === 247 && /Gespeichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, typed ${typed}, "${said}")`);
   await sheet.locator('#special-m').fill('245');
   await sheet.getByRole('button', { name: 'Schließen' }).click(); // closed at once: saved on closing
   await p.waitForTimeout(1500);

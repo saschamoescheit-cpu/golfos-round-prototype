@@ -82,10 +82,21 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
     if (ok) {
       saved.current = cur.key;
       setMsg(null);
-    } else noNet();
+    } else {
+      noNet();
+      // on the course the connection comes back: tried again by itself while the sheet is open
+      if (open.current) window.setTimeout(() => open.current && void flush(), 3000);
+    }
     setSaving(ok ? 'done' : 'idle');
   };
-  const flush = () => (chain.current = chain.current.then(saveNow, saveNow));
+  const flush = (): Promise<void> => (chain.current = chain.current.then(saveNow, saveNow));
+  const open = useRef(true);
+  useEffect(() => {
+    open.current = true;
+    return () => {
+      open.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!editing || saved.current === key) return;
     const t = window.setTimeout(() => void flush(), 900);
