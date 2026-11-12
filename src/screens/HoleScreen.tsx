@@ -2026,7 +2026,9 @@ export function HoleScreen(props: {
             // reichen Score und Putts – vllt abhängig, welche Wetten laufen"), in full – sand, penalties, tee shot – when a bet
             // counts the round; not who keeps his own details (he enters them himself); the marker in a tournament as before
             details={(pid) => (withBets && views[pid]?.role === 'mark') || (withBets && scoredForAll(pid))}
-            putts={(pid) => scoredForAll(pid)}
+            // the putts for everyone in the flight – also one who enters his own details; his own count wins on his phone
+            // (Sascha 13.11.2026: "beide dürfen")
+            putts={(pid) => views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
             shared={{
               ...Object.fromEntries(Object.entries(props.game?.keptBy ?? {}).map(([pid, by]) => [pid, { keptBy: by }])),
               ...Object.fromEntries(

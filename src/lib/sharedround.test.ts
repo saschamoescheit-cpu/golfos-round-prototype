@@ -522,6 +522,19 @@ describe("a player's own analysis beside the scorer's card (Sascha 02.11.2026)",
     ({ ev, r: sascha } = exchange(ev, sascha));
     expect(sascha.entries.me[0]).toMatchObject({ strokes: 6, penalties: 1, putts: 2, fairway: 'hit' });
   });
+  it("the scorer's putts come over where he entered none of his own – his own count wins (Sascha 13.11.2026: \"beide dürfen\")", () => {
+    const r0 = round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Chris' }]);
+    let { ev, r: sascha } = host({ ...r0, format: { ...r0.format!, scorer: 'c' } });
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    // hole 1: the scorer's 4 strokes, 2 putts; hole 2: 5 strokes, 3 putts – Sascha typed 1 putt on hole 2 himself
+    chris = { ...chris, entries: { ...chris.entries, me: chris.entries.me.map((e, k) => (k === 0 ? { ...e, strokes: 4, putts: 2 } : k === 1 ? { ...e, strokes: 5, putts: 3 } : e)) } };
+    ({ ev, r: chris } = exchange(ev, chris));
+    sascha = { ...sascha, entries: { ...sascha.entries, me: sascha.entries.me.map((e, k) => (k === 1 ? { ...e, putts: 1 } : e)) } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.entries.me[0]).toMatchObject({ strokes: 4, putts: 2 });
+    expect(sascha.entries.me[1]).toMatchObject({ strokes: 5, putts: 1 });
+  });
 });
 
 import { tournamentOver } from './sharedround';

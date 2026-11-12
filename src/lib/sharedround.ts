@@ -592,10 +592,13 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
       // a scorer keeps the cards – this player's own analysis stays on his phone (Sascha 02.11.2026: "each player can
       // still do his round analysis on his phone"): the scorer's strokes and penalties, his own putts, sand, tee shot
       if (role === 'view' && p.id === me && f.scorer) {
-        if (!sameScore(there, local) || (there?.d?.pe ?? 0) !== (local?.d?.pe ?? 0)) {
-          const own = list[i] ?? emptyEntry();
+        // the putts: both may enter them – his own count when he entered one, else the scorer's (Sascha 13.11.2026:
+        // "ich erfasse für den ganzen Flight, Cedric zusätzlich seine eigenen – ich kann seine Putts nicht eingeben")
+        const own = list[i] ?? emptyEntry();
+        const theirPutts = there?.d?.pu ?? null;
+        if (!sameScore(there, local) || (there?.d?.pe ?? 0) !== (local?.d?.pe ?? 0) || (own.putts == null && theirPutts != null)) {
           const w = withCell(own, there);
-          list[i] = { ...w, penalties: there?.d?.pe ?? 0, putts: own.putts, fairway: own.fairway, sandShots: own.sandShots, greensideBunker: own.greensideBunker, upAndDown: own.upAndDown, ...(own.puttsAt ? { puttsAt: own.puttsAt } : {}) };
+          list[i] = { ...w, penalties: there?.d?.pe ?? 0, putts: own.putts ?? theirPutts, fairway: own.fairway, sandShots: own.sandShots, greensideBunker: own.greensideBunker, upAndDown: own.upAndDown, ...(own.puttsAt ? { puttsAt: own.puttsAt } : {}) };
           changedThere = true;
         }
         return there;

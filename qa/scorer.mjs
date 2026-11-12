@@ -71,8 +71,8 @@ await G.locator('.map-score').click();
 await G.waitForTimeout(300);
 ok((await G.locator('.score-player.kept-elsewhere').count()) === 0, "Chris: steppers for Sascha's and his own card");
 const rows = (await block(G, 'Sascha').locator('.stepper-label').allInnerTexts()).map((x) => x.trim());
-// the strokes incl. penalty strokes only – nothing apart (Sascha 02.11.2026)
-ok(!rows.some((r) => /^(Putts|Strafschläge)/.test(r)), `Chris enters Sascha's score – the strokes incl. penalty strokes only (${rows.map((r) => r.split('\n')[0]).join(', ')})`);
+// the strokes incl. penalty strokes and the putts – Sascha's own count wins on his phone (Sascha 13.11.2026: "beide dürfen")
+ok(rows.some((r) => /^Putts/.test(r)) && !rows.some((r) => /^Strafschläge/.test(r)), `Chris enters Sascha's score and putts – no penalty strokes apart (${rows.map((r) => r.split('\n')[0]).join(', ')})`);
 await block(G, 'Sascha').getByRole('button', { name: /Schläge plus eins/ }).click();
 await block(G, 'Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
 await block(G, 'Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
