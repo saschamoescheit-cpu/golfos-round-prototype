@@ -29,10 +29,10 @@ const at = (x) => eyebrows.indexOf(x);
 // Facelift 11.11.2026 (r9): Wer (Spieler → Mitspieler einladen → Score-Erfassung) → Worum (the side bet) → Einstellungen
 const wer = Math.max(at('SPIELER'), at('MITSPIELER EINLADEN'), at('SCORE-ERFASSUNG'));
 ok(at('WORUM') === wer + 1 && at('EINSTELLUNGEN') === at('WORUM') + 1 && at('SPIELER') < at('WORUM'), `the setup: the side bet under "Worum", after the players and the invitation (${eyebrows.join(' · ')})`);
-const row = P.locator('.settings-row').filter({ hasText: /^Sidebet/ });
-ok(/Hinzufügen/.test(await row.innerText()), 'its row: "Sidebet · Hinzufügen"');
+const row = P.locator('.settings-row').filter({ hasText: /^Side-Bet/ });
+ok(/Hinzufügen/.test(await row.innerText()), 'its row: "Side-Bet · Hinzufügen"');
 await row.click();
-const sheet = P.getByRole('dialog', { name: 'Sidebet' });
+const sheet = P.getByRole('dialog', { name: 'Side-Bet' });
 // the game form first (Sascha 10.11.2026: "choose the game forms – the list fits")
 await sheet.locator('.settings-row').filter({ hasText: /^Spielform/ }).click();
 const forms = (await P.getByRole('dialog', { name: 'Spielform wählen' }).locator('.pick-option strong').allInnerTexts()).join('|');
@@ -62,11 +62,11 @@ ok((await sheet.count()) === 0 && /Skins/.test(await row.innerText()), `Skins ke
 await P.getByText('Runde starten').click();
 await P.waitForTimeout(4000);
 await P.locator('.hole-bar-handle').click();
-const item = P.locator('.hole-drawer').getByRole('button', { name: /^Sidebet/ });
-ok((await item.count()) === 1, 'the round\'s menu: "Sidebet"');
+const item = P.locator('.hole-drawer').getByRole('button', { name: /^Side-Bet/ });
+ok((await item.count()) === 1, 'the round\'s menu: "Side-Bet"');
 await item.click();
-ok((await P.getByRole('dialog', { name: 'Sidebet' }).count()) === 1, 'its sheet opens in the round');
-await P.getByRole('dialog', { name: 'Sidebet' }).getByRole('button', { name: 'Schließen' }).first().click();
+ok((await P.getByRole('dialog', { name: 'Side-Bet' }).count()) === 1, 'its sheet opens in the round');
+await P.getByRole('dialog', { name: 'Side-Bet' }).getByRole('button', { name: 'Schließen' }).first().click();
 const bound = await P.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((x) => !x.finishedAt);
   return (JSON.parse(localStorage.getItem('golfos.sidegames.v1') ?? '[]')).map((s) => s.round === r.id);

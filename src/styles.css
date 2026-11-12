@@ -2718,3 +2718,7 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .card.rating-form > :not(.field) { grid-column: 1 / -1; }
 /* the add row: the plus and its words on one line – the rule "a lone first child spans" put the plus on its own line */
 .settings-row.add-row > :first-child:nth-last-child(2) { grid-column: auto; }
+/* a button's label in two lines: the question, then what to do – never cut off (Sascha 13.11.2026) */
+.btn-ghost:has(.btn-2l) { white-space: normal; border-radius: 16px; padding: 8px 16px; }
+.btn-2l { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; line-height: 1.25; }
+.btn-2l > span { font-weight: 500; font-size: 13px; color: var(--muted); }

@@ -404,9 +404,9 @@ export function SideBetSheet(props: { preset: SideBetPreset; /** the round it be
   const [form, setForm] = useState<FormId>('fivefiveten');
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet sidebet-sheet" role="dialog" aria-label={tr('Side bet', 'Sidebet')} onClick={(e) => e.stopPropagation()}>
+      <section className="sheet sidebet-sheet" role="dialog" aria-label={tr('Side bet', 'Side-Bet')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{tr('Side bet', 'Sidebet')}</strong>
+          <strong>{tr('Side bet', 'Side-Bet')}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
@@ -513,7 +513,7 @@ export function SideBetRow(props: { preset: SideBetPreset }) {
     <section className="setup-part">
       <span className="eyebrow">{tr('Played for', 'Worum')}</span>
       <SettingsList>
-        <SettingsRow label={tr('Side bet', 'Sidebet')} value={value || tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
+        <SettingsRow label={tr('Side bet', 'Side-Bet')} value={value || tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
       </SettingsList>
       {open && (
         <SideBetSheet

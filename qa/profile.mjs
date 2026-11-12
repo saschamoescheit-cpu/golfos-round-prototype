@@ -209,16 +209,12 @@ ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1'))
   await sh.waitFor();
   const codes = await sh.locator('.pick-option[data-code]').evaluateAll((els) => els.map((e) => e.dataset.code));
   ok(codes.length >= 150 && codes.slice(0, 4).join('|') === 'EUR|USD|GBP|CHF' && /^Keine/.test((await sh.locator('.pick-option').first().innerText()).trim()), `the catalogue: ${codes.length} currencies, ${codes.slice(0, 4).join(', ')} first, "Keine" before them`);
-  await sh.getByRole('searchbox', { name: 'Währung suchen' }).fill('pfund');
-  await p.waitForTimeout(200);
-  const found = await sh.locator('.pick-option[data-code]').evaluateAll((els) => els.map((e) => e.dataset.code));
-  ok(found.includes('GBP') && found.length < 15, `searched "pfund": ${found.join(', ')}`);
+  // no search field any more (Sascha 13.11.2026: "Entferne die Suche")
+  ok((await sh.getByRole('searchbox').count()) === 0, 'the currency sheet: a list, no search field');
   await sh.locator('.pick-option[data-code="GBP"]').click();
   await p.waitForTimeout(200);
   ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).currency)) === 'GBP' && /Pfund/.test(await row.innerText()) && /£/.test(await row.innerText()), `GBP chosen and kept: ${(await row.innerText()).replace(/\s+/g, ' ')}`);
   await row.click();
-  await p.getByRole('dialog', { name: 'Währung' }).getByRole('searchbox').fill('usd');
-  await p.waitForTimeout(200);
   await p.getByRole('dialog', { name: 'Währung' }).locator('.pick-option[data-code="USD"]').click();
   await p.waitForTimeout(200);
   ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).currency)) === 'USD' && /\$/.test(await row.innerText()), 'a value as before (USD) still works');

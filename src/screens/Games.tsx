@@ -846,7 +846,7 @@ function RunningGame(props: { game: Game; onContinue: () => void; onFinish: () =
             </button>
             <button type="button" className="sc-action danger" aria-label={tr('Cancel game', 'Spiel abbrechen')} onClick={() => setConfirm('abort')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                <circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" />
               </svg>
               <span>{tr('Cancel', 'Abbrechen')}</span>
             </button>
@@ -1628,7 +1628,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
                   </button>
                   <button type="button" className="sc-action danger" aria-label={tr('Cancel game', 'Spiel abbrechen')} onClick={() => props.onDelete(g)}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                      <circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" />
                     </svg>
                     <span>{tr('Cancel', 'Abbrechen')}</span>
                   </button>

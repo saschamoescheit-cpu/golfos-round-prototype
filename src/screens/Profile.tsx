@@ -216,10 +216,10 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               value={p.gender ?? ''}
               onChange={(v) => set({ gender: (v || undefined) as Profile['gender'] })}
               options={[
-                { value: 'm', name: tr('male', 'männlich'), text: tr("The men's course rating, the yellow tee to start with", 'Course Rating der Herren, Start von Gelb') },
-                { value: 'f', name: tr('female', 'weiblich'), text: tr("The ladies' course rating, the red tee to start with", 'Course Rating der Damen, Start von Rot') },
-                { value: 'd', name: tr('diverse', 'divers'), text: tr("The men's course rating, the yellow tee to start with", 'Course Rating der Herren, Start von Gelb') },
-                { value: '', name: tr('Not stated', 'Keine Angabe'), text: tr("The men's course rating, the yellow tee to start with", 'Course Rating der Herren, Start von Gelb') },
+                { value: 'm', name: tr('male', 'männlich') },
+                { value: 'f', name: tr('female', 'weiblich') },
+                { value: 'd', name: tr('diverse', 'divers') },
+                { value: '', name: tr('Not stated', 'Keine Angabe') },
               ]}
             />
           </SettingsList>
@@ -313,7 +313,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                   {t ? <span className="tee-dot" style={{ background: TEE_COLOURS[t] ?? '#999' }} /> : <span className="tee-dot none" />}
                   <span className="grow">
                     <strong>{t ? teeName(t) : tr('None', 'Keins')}</strong>
-                    {!t && <span className="muted small">{tr('yellow for men, red for ladies', 'Herren Gelb, Damen Rot')}</span>}
                   </span>
                   {(p.tee ?? '') === t && <span className="pick-check" aria-hidden="true">✓</span>}
                 </button>

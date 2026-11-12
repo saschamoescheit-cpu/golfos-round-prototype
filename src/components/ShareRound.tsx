@@ -1043,20 +1043,25 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
   const mine = props.pids.filter((pid) => signedAny(pid) || reopenAsked(f, pid));
   const toConfirm = host ? f.players.map((p) => p.id).filter((pid) => reopenAsked(f, pid)) : [];
   if (!mine.length && !toConfirm.length) return null;
+  // the cards to open again as rows of a list, not as green text links (Sascha 13.11.2026: "die Texte links sind nicht schön")
+  const openable = mine.filter((pid) => !reopenAsked(f, pid));
+  const waiting = host ? [] : mine.filter((pid) => reopenAsked(f, pid));
   return (
     <div className="reopen-rows">
-      {mine.map((pid) =>
-        reopenAsked(f, pid) ? (
-          host ? null : (
-            <span key={pid} className="muted small reopen-wait">
-              {tr(`${nameOf(pid)}: correction asked by ${f.reopen![pid].by} – waiting for the host`, `${nameOf(pid)}: Korrektur beantragt von ${f.reopen![pid].by} – wartet auf den Host`)}
-            </span>
-          )
-        ) : (
-          <button key={pid} type="button" className="link-btn small reopen-ask" onClick={() => setAsk(pid)}>
-            {pid === props.round.players.find((p) => p.isMe)?.id ? tr('Open my card for a correction', 'Meine Karte zur Korrektur öffnen') : tr(`Open ${nameOf(pid)}'s card for a correction`, `Karte von ${nameOf(pid)} zur Korrektur öffnen`)}
-          </button>
-        ),
+      {waiting.map((pid) => (
+        <span key={pid} className="muted small reopen-wait">
+          {tr(`${nameOf(pid)}: correction asked by ${f.reopen![pid].by} – waiting for the host`, `${nameOf(pid)}: Korrektur beantragt von ${f.reopen![pid].by} – wartet auf den Host`)}
+        </span>
+      ))}
+      {openable.length > 0 && (
+        <SettingsList label={tr('Correction', 'Korrektur')}>
+          {openable.map((pid) => (
+            <button key={pid} type="button" className="settings-row reopen-ask" onClick={() => setAsk(pid)}>
+              <span>{pid === props.round.players.find((p) => p.isMe)?.id ? tr('Correct my card', 'Meine Karte korrigieren') : tr(`Correct ${nameOf(pid)}'s card`, `Karte von ${nameOf(pid)} korrigieren`)}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+        </SettingsList>
       )}
       {toConfirm.map((pid) => (
         <div key={'c' + pid} className="sign-row reopen-confirm">

@@ -89,11 +89,11 @@ if (process.env.ONLY !== '2') {
   await tiles.nth(2).click();
 
   // r1 – Grünbunker and Aufgehoben as An/Aus rows; Up & Down as chips
-  const bunker = p.locator('.onoff-row').filter({ hasText: 'Grünbunker' });
+  const bunker = p.locator('.onoff-row').filter({ hasText: 'Bunker' });
   const pickedUp = p.locator('.onoff-row').filter({ hasText: 'Aufgehoben' });
   ok((await bunker.count()) === 1 && (await pickedUp.count()) === 1 && (await p.locator('main .toggle').count()) === 0, 'Grünbunker and Aufgehoben as An/Aus rows, no "○/✓" buttons');
   await bunker.click();
-  await p.getByRole('dialog', { name: 'Grünbunker' }).locator('.pick-option').filter({ hasText: /^An/ }).click();
+  await p.getByRole('dialog', { name: 'Bunker' }).locator('.pick-option').filter({ hasText: /^An/ }).click();
   await p.waitForTimeout(300);
   ok((await bunker.getAttribute('data-on')) === 'true' && (await mine()).greensideBunker === true, 'Grünbunker: An');
   const ud = p.getByRole('group', { name: 'Up & Down' });

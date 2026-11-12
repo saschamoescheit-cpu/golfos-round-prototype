@@ -2106,7 +2106,7 @@ export function HoleScreen(props: {
                   ? [
                       // a side bet in the round – in a tournament too (Sascha 10.11.2026: "in the menu by the code, the bag
                       // and the caddie")
-                      { label: tr('Side bet', 'Sidebet'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
+                      { label: tr('Side bet', 'Side-Bet'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
                       ...(round.shared || canShareRound
                         ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
                         : []),
@@ -2722,7 +2722,7 @@ export function HoleScreen(props: {
           nachträglich korrigieren?") */}
       {mapData && !needsData && !editHole && (
         <button type="button" className="btn-ghost" onClick={() => setSetupOpen(true)}>
-          {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
+          <span className="btn-2l"><strong>{tr('Hole drawn wrong?', 'Loch falsch eingezeichnet?')}</strong><span>{tr('Mark tee and green again', 'Abschlag und Grün neu markieren')}</span></span>
         </button>
       )}
 
@@ -2739,7 +2739,7 @@ export function HoleScreen(props: {
           </div>
           {mapData && (
             <button type="button" className="btn-ghost" onClick={() => setSetupOpen(true)}>
-              {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
+              <span className="btn-2l"><strong>{tr('Hole drawn wrong?', 'Loch falsch eingezeichnet?')}</strong><span>{tr('Mark tee and green again', 'Abschlag und Grün neu markieren')}</span></span>
             </button>
           )}
         </section>
@@ -2816,7 +2816,7 @@ export function HoleScreen(props: {
           <p className="muted small" style={{ margin: 0 }}>
             {hole.par >= 4 && `Fairway: ${myEntry.fairway ? fairwayName(myEntry.fairway) : '–'} · `}
             {tr('Penalties', 'Strafschläge')}: {myEntry.penalties}
-            {myEntry.greensideBunker && tr(` · Greenside bunker${myEntry.upAndDown ? ' – sand save' : ''}`, ` · Grünbunker${myEntry.upAndDown ? ' – Sand Save' : ''}`)}
+            {myEntry.greensideBunker && tr(` · Greenside bunker${myEntry.upAndDown ? ' – sand save' : ''}`, ` · Bunker${myEntry.upAndDown ? ' – Sand Save' : ''}`)}
           </p>
         )}
 
@@ -2838,10 +2838,10 @@ export function HoleScreen(props: {
         <SettingsList>
           {!hasShots && (
             <OnOffRow
-              label={tr('Greenside bunker', 'Grünbunker')}
+              label={tr('Greenside bunker', 'Bunker')}
               on={!!myEntry.greensideBunker}
               onText={tr('In a bunker next to the green on this hole', 'Auf diesem Loch in einem Bunker am Grün')}
-              offText={tr('No greenside bunker', 'Kein Grünbunker')}
+              offText={tr('No greenside bunker', 'Kein Bunker')}
               onChange={(on) => update(me.id, { greensideBunker: on, upAndDown: null })}
             />
           )}

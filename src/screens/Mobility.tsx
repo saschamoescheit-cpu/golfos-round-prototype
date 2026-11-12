@@ -1392,7 +1392,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
                         props.onPause();
                       },
                     },
-                    { label: tr('Cancel', 'Abbrechen'), aria: tr('Cancel screening', 'Screening abbrechen'), icon: 'delete', danger: true, onClick: props.onDelete },
+                    { label: tr('Cancel', 'Abbrechen'), aria: tr('Cancel screening', 'Screening abbrechen'), icon: 'abort', danger: true, onClick: props.onDelete },
                   ]}
                 />
                 <button type="button" className="btn-primary" onClick={() => setExit('end')}>

@@ -663,7 +663,7 @@ export async function poolForDuel(day: string, o: { me: string; currency?: 'EUR'
   const pool: WagerPool = {
     kind: 'wager-pool',
     id: newId(),
-    name: o.own ? `5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.` : tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Sidebets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
+    name: o.own ? `5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.` : tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Side-Bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
     from: day,
     to: day,
     createdAt: at,

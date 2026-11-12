@@ -16,6 +16,8 @@ const barIcon = (d: string) => (
 const PAUSE = barIcon('M9 5v14M15 5v14');
 const BIN = barIcon('M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6');
 const BACK = barIcon('M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11');
+// "Abbrechen": a stop sign, not the bin (Sascha 13.11.2026)
+const STOP = barIcon('M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM9 9l6 6M15 9l-6 6');
 
 // A practice session in play – built like a round and a game (Sascha 15.10.2026: the same usability in every
 // module): the drill bar at the bottom with ‹ ›, the overview pulled up from it, and leaving = pause, finish or
@@ -281,7 +283,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                     <span>{tr('Pause', 'Pausieren')}</span>
                   </button>
                   <button type="button" className="sc-action danger" aria-label={tr('Cancel session', 'Einheit abbrechen')} onClick={props.onDelete}>
-                    {BIN}
+                    {STOP}
                     <span>{tr('Cancel', 'Abbrechen')}</span>
                   </button>
                 </div>

@@ -62,6 +62,8 @@ export const ACTION_ICONS = {
   all: svg(<path d="M5 12.5l4.5 4.5L19 7.5" />),
   // leaving a mode without doing it: the cross (Facelift 11.11.2026, O2)
   cancel: svg(<path d="M6 6l12 12M18 6L6 18" />),
+  // cancelling something running (a round, a game, a screening): a stop sign, not the bin (Sascha 13.11.2026)
+  abort: svg(<path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM9 9l6 6M15 9l-6 6" />),
   // the birdie book: an open book
   book: svg(<path d="M12 6c-2-1.3-4.7-1.8-8-1.5v13c3.3-.3 6 .2 8 1.5 2-1.3 4.7-1.8 8-1.5v-13c-3.3-.3-6 .2-8 1.5zM12 6v13" />),
   // the course preview: the eye

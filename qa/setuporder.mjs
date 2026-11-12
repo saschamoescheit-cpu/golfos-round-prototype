@@ -62,7 +62,7 @@ await P.waitForTimeout(1500);
   ok(/^Platz Golfclub Hetzenhof/.test(wo[0] ?? '') && (await P.getByRole('group', { name: 'Löcher' }).locator('.choice-loop').count()) > 0, `r9: Wo – "${wo[0]}", the holes below`);
   const set = await rowsOf('Einstellungen');
   ok(/^HCP-Vorgabe 100 %$/.test(set[0] ?? ''), `r9: Einstellungen – ${set.join(' | ')}`);
-  ok((!entry || /^Wer erfasst/.test((await rowsOf('Score-Erfassung'))[0] ?? '')) && /^Sidebet/.test((await rowsOf('Worum'))[0] ?? ''), `r9: "Wer erfasst" after the invitation, the side bet under "Worum"${entry ? '' : ' (no sharing here – score entry not shown)'}`);
+  ok((!entry || /^Wer erfasst/.test((await rowsOf('Score-Erfassung'))[0] ?? '')) && /^Side-Bet/.test((await rowsOf('Worum'))[0] ?? ''), `r9: "Wer erfasst" after the invitation, the side bet under "Worum"${entry ? '' : ' (no sharing here – score entry not shown)'}`);
 }
 // the add row: its plus and its words on one line; the course rating form: both fields wide enough (12.11.2026, night
 // screens: the plus stood on its own line, the course rating field showed "7'")

@@ -3,11 +3,10 @@ import { AddRow } from './Settings';
 import { FloatActions } from './FloatActions';
 import { tr } from '../lib/i18n';
 import { loadFriends, saveFriends, type Friend } from '../lib/friends';
-import { acceptFriend, appFriendLink, canLink, codeFromText, friendLink, friendPreview, isLeaving, myFriendCode, pendingAsk, publishCard, refreshFriends, renewFriendCode, setPendingAsk, unfriendLater, type FriendPreview } from '../lib/friendlinks';
+import { acceptFriend, canLink, codeFromText, friendLink, friendPreview, isLeaving, myFriendCode, pendingAsk, publishCard, refreshFriends, renewFriendCode, setPendingAsk, unfriendLater, type FriendPreview } from '../lib/friendlinks';
 import { showCode } from '../lib/sharedgame';
 import { loadProfile, shownName } from '../lib/profile';
 import { newId } from '../lib/storage';
-import { isNative } from '../lib/native';
 import { Avatar } from './Avatar';
 import { InviteCard, InviteIcon } from './InviteCard';
 import { QrScan } from './QrScan';
@@ -400,14 +399,10 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
                   </>
                 )}
                 {state === 'failed' && <span className="small good-text">{failed}</span>}
-                {/* the website on an iPhone with the app: open the request there */}
-                {!isNative() && /iPhone|iPad/.test(navigator.userAgent) && (
-                  <a className="link-btn small" href={appFriendLink(props.code)}>
-                    {tr('Open in the GolfOS app', 'In der GolfOS-App öffnen')}
-                  </a>
-                )}
-                <button type="button" className="link-btn small" onClick={close}>
-                  {tr('Not now', 'Jetzt nicht')}
+                {/* "Ablehnen" as a neutral button under "Annehmen" – no text links (Sascha 13.11.2026: "In der GolfOS-App öffnen
+                    verstehe ich nicht, weg damit; statt Jetzt nicht einen Button Ablehnen in Weiß"); nothing is kept */}
+                <button type="button" className="btn-secondary" onClick={close}>
+                  {tr('Decline', 'Ablehnen')}
                 </button>
               </>
             )}

@@ -992,7 +992,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       {/* a hole marked wrong, marked anew or back to the course map (Sascha 11.11.2026) */}
       {data && hole && !setupHole && (
         <button type="button" className="btn-ghost review-resetup" onClick={() => setSetupHole(true)}>
-          {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
+          <span className="btn-2l"><strong>{tr('Hole drawn wrong?', 'Loch falsch eingezeichnet?')}</strong><span>{tr('Mark tee and green again', 'Abschlag und Grün neu markieren')}</span></span>
         </button>
       )}
       {data && (

@@ -97,7 +97,7 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void; /**
               const g = sideGameView(s, props.round);
               return (
                 <div key={s.id} className="board-pool">
-                  <span className="eyebrow">{`${tr('Side bet', 'Sidebet')} · ${g.players.map((p) => p.name).join(', ')}`}</span>
+                  <span className="eyebrow">{`${tr('Side bet', 'Side-Bet')} · ${g.players.map((p) => p.name).join(', ')}`}</span>
                   <StandingCard game={g} />
                 </div>
               );
