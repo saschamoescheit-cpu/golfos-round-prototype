@@ -42,7 +42,7 @@ export function PaidMarks(props: {
   /** a player's PayPal.me name – the payer pays him by PayPal right from here (Sascha 10.11.2026) */
   paypalOf?: (id: string) => string | null | undefined;
   /** the money's currency, for the PayPal link */
-  currency?: 'EUR' | 'USD';
+  currency?: string;
   onUndo: (id: string) => void | boolean | Promise<void | boolean>;
   /** what each payment is made of, right below it (Sascha 11.11.2026, design round 2: "der Rechenweg muss von der Logik
    *  her anders" – no separate "Rechenweg", each payment says where it comes from and what is set off) */

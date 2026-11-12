@@ -1,4 +1,5 @@
 import { dec, tr } from './i18n';
+import { symOf } from './fx';
 
 // The "Games" module (Sascha 15.10.2026): side games among friends as a product of its own, not tied to the round
 // analysis – skins, Nassau, wolf, Chicago, Bingo Bango Bongo, Las Vegas, sixes, snake, dots, Stableford, match play
@@ -222,8 +223,9 @@ const stake = stakeNow;
 const played = (g: Game, i: number) => g.players.every((p) => g.scores[p.id]?.[i] != null);
 const holesDone = (g: Game) => g.holes.filter((_, i) => played(g, i)).length;
 /** Euro or dollar (Sascha 01.11.2026: "besides the euro the dollar should be there to choose") – per game and per pool. */
-export type Currency = 'EUR' | 'USD';
-export const currencySymbol = (c?: unknown): string => (c === 'USD' ? '$' : '€');
+/** any ISO 4217 code (Sascha 13.11.2026: "wie in der gesamten App alle möglichen Währungen") – before euro or dollar */
+export type Currency = string;
+export const currencySymbol = (c?: unknown): string => (typeof c === 'string' && /^[A-Z]{3}$/.test(c) ? symOf(c) : '€');
 let SYMBOL = '€';
 /** The money on screen is in this currency – the game's being shown (Games sets it before drawing a game). */
 export function setCurrency(c?: unknown): void {

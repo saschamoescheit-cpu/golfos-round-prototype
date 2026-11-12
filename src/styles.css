@@ -2721,3 +2721,10 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .btn-ghost:has(.btn-2l) { white-space: normal; border-radius: 16px; padding: 8px 16px; }
 .btn-2l { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; line-height: 1.25; }
 .btn-2l > span { font-weight: 500; font-size: 13px; color: var(--muted); }
+/* "Runde abgerechnet" as "Läuft gerade": a card with a green edge, the title inside, its rows divided by a line (Sascha 13.11.2026) */
+.settle-card { gap: 4px; padding: 12px 14px; border: 1.5px solid var(--brand); }
+.settle-card > .eyebrow { color: var(--brand-text); }
+.settle-card > .list { gap: 0; }
+.settle-card > .list > li + li { border-top: 1px solid var(--line); }
+.settle-card .swipe { border-radius: 0; }
+.settle-card .list-item { background: var(--surface); border-radius: 0; padding: 6px 0; min-height: 56px; }

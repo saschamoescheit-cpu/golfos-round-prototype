@@ -33,7 +33,9 @@ export function CurrencyRow(props: { value: string | undefined; onChange: (code:
   );
 }
 
-function CurrencySheet(props: { value: string | undefined; onPick: (code: string | undefined) => void; onClose: () => void }) {
+/** The whole catalogue to pick from – the profile's standard currency ("Keine" first) and the money of a game or a bet
+ *  (Sascha 13.11.2026: "auch hier alle möglichen Währungen", without "Keine"). */
+export function CurrencySheet(props: { value: string | undefined; onPick: (code: string | undefined) => void; onClose: () => void; title?: string; none?: boolean }) {
   // the whole catalogue as a list, no search field (Sascha 13.11.2026: "Entferne die Suche")
   const shown = useMemo(currencyCatalogue, []);
   const tick = (
@@ -46,16 +48,16 @@ function CurrencySheet(props: { value: string | undefined; onPick: (code: string
   const text = (code: string) => (ECB.has(code) ? code : `${code} · ${tr('no daily rate of the ECB – amounts stay as they are', 'kein Tageskurs der EZB – Beträge bleiben, wie sie sind')}`);
   return createPortal(
     <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet currency-sheet" role="dialog" aria-label={tr('Currency', 'Währung')} onClick={(e) => e.stopPropagation()}>
+      <section className="sheet currency-sheet" role="dialog" aria-label={props.title ?? tr('Currency', 'Währung')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{tr('Currency', 'Währung')}</strong>
+          <strong>{props.title ?? tr('Currency', 'Währung')}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
-        <span className="muted small">{tr('"Bilanz" converts games and bets in another currency to it – at the rate of the day they end.', '„Bilanz“ rechnet Spiele und Wetten in einer anderen Währung hierhin um – zum Kurs des Tages, an dem sie enden.')}</span>
+        {props.none !== false && <span className="muted small">{tr('"Bilanz" converts games and bets in another currency to it – at the rate of the day they end.', '„Bilanz“ rechnet Spiele und Wetten in einer anderen Währung hierhin um – zum Kurs des Tages, an dem sie enden.')}</span>}
         <div className="pick-list">
-          {(
+          {props.none !== false && (
             <button type="button" className="pick-option" aria-pressed={!props.value} onClick={() => props.onPick(undefined)}>
               <span className="grow">
                 <strong>{tr('None', 'Keine')}</strong>

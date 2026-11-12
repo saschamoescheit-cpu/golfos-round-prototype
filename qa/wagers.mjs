@@ -216,7 +216,7 @@ const choose = async (label, option, inside = H) => {
   await row.click();
   await ps.getByRole('button', { name: /^Geld/ }).click();
   await H.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /^Dollar/ }).click();
-  ok(/Geld · Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
+  ok(/Geld · US-Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
 }
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker; chosen as in "Neue Runde":
 // "Wer erfasst ›" and its sheet (Sascha 04.11.2026: "the score entry as in the rest of the app"), no hint "Der Erste bist du"

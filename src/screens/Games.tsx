@@ -937,7 +937,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   // (10.11.2026: "against linked friends or players made as in a round")
   const duel = d.formChosen !== false && d.form === 'fivefiveten' && !!props.onDuel;
   // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
-  const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
+  const currency: Currency = typeof d.settings.currency === 'string' && /^[A-Z]{3}$/.test(d.settings.currency) ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
   // what is played for (Sascha 03.11.2026) – money in its currency, a thing, nothing; the stakes shown in it
   const prize = d.prize ?? null;
   setMoneySym(prize ? prizeSym(prize) : currencySymbol(currency));

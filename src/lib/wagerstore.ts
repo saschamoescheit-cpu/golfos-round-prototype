@@ -655,7 +655,7 @@ export const takeBackDuel = (code: string, id: string): Promise<WagerPool | null
 /** The pool a duel of `day` goes into (Sascha 10.11.2026: "a side bet from Rounds into the pool of the day – without one
  *  the app makes one"): the first one running then with this phone's owner in it – else a new one of that day, he its
  *  host and its only player ("Sidebets 10.11."). Null offline. */
-export async function poolForDuel(day: string, o: { me: string; currency?: 'EUR' | 'USD'; /** "without a pool of bets" (Sascha 10.11.2026): a pool of its own for these duels, named "5+5+10 · 10.11." */ own?: boolean }): Promise<PoolEntry | null> {
+export async function poolForDuel(day: string, o: { me: string; currency?: string; /** "without a pool of bets" (Sascha 10.11.2026): a pool of its own for these duels, named "5+5+10 · 10.11." */ own?: boolean }): Promise<PoolEntry | null> {
   const there = o.own ? null : duelPoolsOn(day)[0];
   if (there) return there;
   const uid = myAccount();
@@ -765,7 +765,7 @@ export function earlierBets(): EarlierBet[] {
 /** My balance in every pool on this phone, for the "Bilanz" (Sascha 03.11.2026: the balances of the games and the bets in
  *  one place): what I won or lost (provisional results counted, as in the settlement) and what of it is still open once
  *  the payments marked are off – positive: owed to me, negative: I owe. Deleted pools left out; the latest first. */
-export function myPoolBalances(today = dayOf(new Date())): { code: string; name: string; running: boolean; amount: number; open: number; currency: 'EUR' | 'USD'; sym: string; prize: Prize }[] {
+export function myPoolBalances(today = dayOf(new Date())): { code: string; name: string; running: boolean; amount: number; open: number; currency: string; sym: string; prize: Prize }[] {
   return loadPools()
     .filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me))
     .sort((a, b) => b.pool.from.localeCompare(a.pool.from))

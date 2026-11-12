@@ -1062,7 +1062,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
           onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
           paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
-          currency={pool.currency === 'USD' ? 'USD' : 'EUR'}
+          currency={(() => { const pz = prizeOf(pool); return isMoney(pz) ? pz.currency : (pool.currency ?? 'EUR'); })()}
           onUndo={(id) => change((p) => ({ ...p, payments: (p.payments ?? []).filter((x) => x.id !== id) }))}
           {...(setsOff(prizeOf(pool)) ? settleWhy(pool, owed, pays, name) : {})}
         />}

@@ -1,5 +1,6 @@
 import { tr } from './i18n';
 import { currencySymbol, money } from './gameforms';
+import { currencyName } from './currencies';
 
 // What is played for (Sascha 03.11.2026: "games and bets are always about money – we also like to play for drinks after
 // the round, a meal or cleaning the clubs; a fixed choice and the user's own stake"; then: "no value by default, money
@@ -11,7 +12,7 @@ import { currencySymbol, money } from './gameforms';
 export type PrizeWho = 'each' | 'loserAll' | 'loserWinner';
 export type Thing = 'drinks' | 'meal' | 'clubs';
 export type Prize =
-  | { kind: 'money'; currency: 'EUR' | 'USD' }
+  | { kind: 'money'; currency: string }
   | { kind: Thing; who?: PrizeWho }
   | { kind: 'custom'; label: string; who?: PrizeWho }
   | { kind: 'none' };
@@ -20,12 +21,12 @@ export type PrizeKind = Prize['kind'];
 export const MONEY_EUR: Prize = { kind: 'money', currency: 'EUR' };
 
 /** A pool's or a game's prize – from before (only the currency): money in it. */
-export function prizeOf(o: { prize?: Prize | null; currency?: 'EUR' | 'USD' | string } | null | undefined): Prize {
+export function prizeOf(o: { prize?: Prize | null; currency?: string } | null | undefined): Prize {
   if (o?.prize && (o.prize.kind !== 'custom' || o.prize.label.trim())) return o.prize;
-  return { kind: 'money', currency: o?.currency === 'USD' ? 'USD' : 'EUR' };
+  return { kind: 'money', currency: o?.currency && /^[A-Z]{3}$/.test(o.currency) ? o.currency : 'EUR' };
 }
 
-export const isMoney = (p: Prize): p is { kind: 'money'; currency: 'EUR' | 'USD' } => p.kind === 'money';
+export const isMoney = (p: Prize): p is { kind: 'money'; currency: string } => p.kind === 'money';
 /** "Ohne Einsatz – um die Ehre": nothing to pay, only who won. */
 export const isNone = (p: Prize): boolean => p.kind === 'none';
 /** Who buys for whom – a thing only; money and "each" are counted pair by pair. */
@@ -67,7 +68,7 @@ export function prizeName(p: Prize): string {
   const who = (x: PrizeWho | undefined) => (x && x !== 'each' ? ` · ${WHO()[x].name}` : '');
   switch (p.kind) {
     case 'money':
-      return p.currency === 'USD' ? tr('Money · dollar ($)', 'Geld · Dollar ($)') : tr('Money · euro (€)', 'Geld · Euro (€)');
+      return `${tr('Money', 'Geld')} · ${currencyName(p.currency)} (${currencySymbol(p.currency)})`;
     case 'drinks':
       return tr('Drinks', 'Getränke') + who(p.who);
     case 'meal':

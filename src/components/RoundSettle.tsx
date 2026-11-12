@@ -68,7 +68,8 @@ export function RoundSettleCards() {
     );
   };
   return (
-    <section className="eb-block round-settle" aria-label={tr('Round settled', 'Runde abgerechnet')}>
+    // the same look as "Läuft gerade" – a card with a green edge, its title inside, rows with a line between (Sascha 13.11.2026)
+    <section className="card round-settle settle-card" aria-label={tr('Round settled', 'Runde abgerechnet')}>
       <span className="eyebrow">{tr('Round settled', 'Runde abgerechnet')}</span>
       <ul className="list">
         {list.slice(0, 2).map(({ e, day, money: m }) => {

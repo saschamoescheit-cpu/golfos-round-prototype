@@ -399,7 +399,7 @@ export interface WagerPool {
   wagers: Wager[];
   progress: Record<string, Progress>;
   /** the pool's money: euro (default) or dollar (Sascha 01.11.2026) */
-  currency?: 'EUR' | 'USD';
+  currency?: string;
   /** what is played for (Sascha 03.11.2026: "drinks, a meal, cleaning the clubs – or one's own"); unset: money in `currency` */
   prize?: Prize;
   /** the rounds of the trip – set: only rounds on these days on these courses count (02.11.2026) */
@@ -461,7 +461,7 @@ export const PAY_DETAILS = false;
 /** A PayPal.me name as typed: the link's last part, only its letters and digits. */
 export const paypalName = (s: string): string => s.trim().replace(/^.*paypal\.me\//i, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40);
 /** The link to pay one by PayPal: his name, the amount and the currency (paypal.me/SaschaM/40USD). */
-export const paypalLink = (name: string, amount: number, currency: 'EUR' | 'USD'): string => `https://paypal.me/${encodeURIComponent(name)}/${(Math.round(amount * 100) / 100).toFixed(2)}${currency}`;
+export const paypalLink = (name: string, amount: number, currency: string): string => `https://paypal.me/${encodeURIComponent(name)}/${(Math.round(amount * 100) / 100).toFixed(2)}${currency}`;
 
 /** The balances once the payments are off: what the payer paid he owes no more, what the receiver got he is owed no
  *  more – the open transfers follow from them. */
@@ -1441,7 +1441,7 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency
 }
 
 /** The standing of a bet in words: "best 2 (target 3)", "best round +3 (target −5)", "so far 7 (target 10)". */
-export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR' | 'USD' | Prize): string {
+export function progressText(w: Wager, p: Progress | undefined, currency?: string | Prize): string {
   if (w.kind === 'free') return '';
   // each round on its own (Sascha 09.11.2026)
   const t = tally(w, p);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { PRIZE_CHOICES, WHO_CHOICES, prizeName, whoOf, type Prize, type PrizeKind, type PrizeWho } from '../lib/prize';
 import { PickSheet, SettingsRow } from './Settings';
+import { CurrencySheet } from './CurrencyRow';
 
 /** "Worum wird gespielt ›" (Sascha 03.11.2026): no value until chosen – in green, a required field. The first step:
  *  Geld, Getränke, Essen, Schläger putzen, Eigener Einsatz …, Ohne Einsatz; the second: the currency for money, who buys
@@ -40,15 +41,13 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
         <PickSheet<PrizeKind> title={label} current={current?.kind as PrizeKind} options={PRIZE_CHOICES().map((c) => ({ value: c.kind, name: c.name, text: c.text }))} onPick={pickKind} onClose={close} />
       )}
       {step === 'currency' && (
-        <PickSheet<'EUR' | 'USD'>
+        // the whole catalogue as in the profile – euro, dollar, pound, franc first (Sascha 13.11.2026)
+        <CurrencySheet
           title={tr('Money – the currency', 'Geld – die Währung')}
-          current={(current?.kind === 'money' ? current.currency : null) as 'EUR' | 'USD'}
-          options={[
-            { value: 'EUR', name: 'Euro (€)' },
-            { value: 'USD', name: 'Dollar ($)', text: tr('For a trip to the USA', 'Für eine Reise in die USA') },
-          ]}
+          none={false}
+          value={current?.kind === 'money' ? current.currency : undefined}
           onPick={(c) => {
-            props.onChange({ kind: 'money', currency: c });
+            if (c) props.onChange({ kind: 'money', currency: c });
             close();
           }}
           onClose={close}
