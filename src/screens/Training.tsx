@@ -7,7 +7,8 @@ import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
-import { TopBar } from '../components/ui';
+import { Stepper, TopBar } from '../components/ui';
+import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
 import { CATEGORIES, DRILLS, catById, drillById, drillsOf } from '../training/content';
@@ -79,6 +80,7 @@ import {
   unitText,
   higherBetter,
   t,
+  TR_GLYPH,
   VideoCard,
   VideoNote,
 } from '../training/ui';
@@ -194,6 +196,23 @@ const ACT_ICONS = {
   ),
 };
 
+/** A block's title – a small eyebrow above the block, never a heading inside a card (docs/DESIGN.md; Facelift
+ *  11.11.2026, o6/tr2); `aside` a quiet figure on the right of it (the minutes of a plan). */
+function Eyebrow(props: { children: ReactNode; aside?: ReactNode }) {
+  if (props.aside == null) return <span className="eyebrow">{props.children}</span>;
+  return (
+    <div className="tr-eb-row">
+      <span className="eyebrow">{props.children}</span>
+      <span className="muted small">{props.aside}</span>
+    </div>
+  );
+}
+
+/** The parts of a topic or a drill – one shown at a time, as the switch "‹ Runden ›" of the statistics and the pool
+ *  (Facelift 11.11.2026, tr1: no block of tabs). */
+function ViewPick<T>(props: { options: StepChoice<T>[]; value: T; onChange: (v: T) => void }) {
+  return <StepPick<T> label={tr('View', 'Ansicht')} options={props.options} value={props.value} onChange={props.onChange} />;
+}
 
 /** Plan items with existing drills only. */
 const planItems = (p: { items: { drill: string; minutes: number }[] }) => p.items.filter((i) => drillById(i.drill));
@@ -446,7 +465,7 @@ function FaultFinder(props: { nav: Nav }) {
   const shown = all ? list : [0, 1].flatMap((k) => top.map((id) => list.find((x) => x.c.id === id && x.index === k)).filter((x): x is (typeof list)[number] => !!x)).slice(0, 12);
   return (
     <section className="tr-block">
-      <h2>{tr('What is your problem?', 'Was ist dein Problem?')}</h2>
+      <Eyebrow>{tr('What is your problem?', 'Was ist dein Problem?')}</Eyebrow>
       <div className="chip-set">
         {shown.map(({ c, f, index }) => (
           <button key={`${c.id}-${index}`} type="button" className="chip" onClick={() => props.nav.push({ name: 'fault', cat: c.id, index })}>
@@ -495,7 +514,7 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
           <SketchView sketch={drills[0].sketch} label={t(drills[0].name)} />
         </>
       )}
-      <h2>{tr('Drills for it', 'Übungen dafür')}</h2>
+      <Eyebrow>{tr('Drills for it', 'Übungen dafür')}</Eyebrow>
       <DrillList drills={drills} nav={props.nav} />
       {drills.length > 0 && (
         <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(t(f.name), drills.map((d) => ({ drill: d.id, minutes: Math.min(12, d.minutes) }))))}>
@@ -548,7 +567,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
       <SearchField nav={props.nav} />
       {recent.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Recently opened', 'Zuletzt angesehen')}</h2>
+          <Eyebrow>{tr('Recently opened', 'Zuletzt angesehen')}</Eyebrow>
           <div className="tr-hscroll">
             {recent.map((d) => (
               <DrillMini key={d.id} d={d} nav={props.nav} />
@@ -559,7 +578,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
       <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
       {advice.length === 0 && unsignedCount > 0 && (
         <section className="tr-advice">
-          <h2>{tr('From your rounds', 'Aus deinen Runden')}</h2>
+          <Eyebrow>{tr('From your rounds', 'Aus deinen Runden')}</Eyebrow>
           <button type="button" className="list-item" onClick={() => props.nav.openRounds?.('rounds')} disabled={!props.nav.openRounds}>
             <span className="grow">
               <span className="title">{tr('Sign your finished rounds', 'Signiere deine beendeten Runden')}</span>
@@ -576,7 +595,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
       )}
       {advice.length > 0 && (
         <section className="tr-advice">
-          <h2>{tr('From your rounds', 'Aus deinen Runden')}</h2>
+          <Eyebrow>{tr('From your rounds', 'Aus deinen Runden')}</Eyebrow>
           {advice.map((a) => {
             const c = catById(a.cat);
             if (!c) return null;
@@ -596,7 +615,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
       <FaultFinder nav={props.nav} />
       {favs.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Your favourites', 'Deine Favoriten')}</h2>
+          <Eyebrow>{tr('Your favourites', 'Deine Favoriten')}</Eyebrow>
           <div className="tr-hscroll">
             {favs.map((d) => (
               <DrillMini key={d.id} d={d} nav={props.nav} />
@@ -605,7 +624,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
         </section>
       )}
       <section className="tr-block">
-        <h2>{tr('Topics', 'Themen')}</h2>
+        <Eyebrow>{tr('Topics', 'Themen')}</Eyebrow>
         <div className="tr-cat-grid">
           {CATEGORIES.map((c) => (
             <button key={c.id} type="button" className="tr-cat" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
@@ -695,9 +714,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
         </button>
       )}
       <section className="tr-block">
-        <div className="row">
-          <h2>{tr('Ready-made plans', 'Fertige Pläne')}</h2>
-        </div>
+        <Eyebrow>{tr('Ready-made plans', 'Fertige Pläne')}</Eyebrow>
         <div className="chip-set" role="group" aria-label={tr('Level', 'Niveau')}>
           {([0, 1, 2, 3] as const).map((l) => (
             <button key={l} type="button" className={`chip${level === l ? ' on' : ''}`} aria-pressed={level === l} onClick={() => setLevel(l)}>
@@ -724,7 +741,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
       </section>
       {weeks.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Goals and weekly plans', 'Ziel- und Wochenpläne')}</h2>
+          <Eyebrow>{tr('Goals and weekly plans', 'Ziel- und Wochenpläne')}</Eyebrow>
           <ul className="list">
             {weeks.map((p) => (
               <li key={p.id}>
@@ -741,9 +758,9 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
           </ul>
         </section>
       )}
-      <section className="tr-block">
-        <h2>{tr('My plans', 'Meine Pläne')}</h2>
-        {own.length > 0 && (
+      {own.length > 0 && (
+        <section className="tr-block">
+          <Eyebrow>{tr('My plans', 'Meine Pläne')}</Eyebrow>
           <ul className="list">
             {own.map((p) => (
               <li key={p.id}>
@@ -759,11 +776,10 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
               </li>
             ))}
           </ul>
-        )}
-        <button type="button" className="btn-secondary" onClick={() => props.nav.push({ name: 'builder', plan: { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() } })}>
-          {tr('+ Build your own session', '+ Eigene Einheit zusammenstellen')}
-        </button>
-      </section>
+        </section>
+      )}
+      {/* something new – the round green "+" bottom right, as a new round or game (Facelift 11.11.2026, tr7) */}
+      <FloatActions plus={{ label: tr('Own session', 'Eigene Einheit'), onClick: () => props.nav.push({ name: 'builder', plan: { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() } }) }} />
     </>
   );
 }
@@ -873,7 +889,7 @@ function LogTab(props: { nav: Nav }) {
       )}
       {shows('results') && drillIds.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Your drills', 'Deine Übungen')}</h2>
+          <Eyebrow>{tr('Your drills', 'Deine Übungen')}</Eyebrow>
           <ul className="list">
             {drillIds.map((id) => {
               const d = drillById(id)!;
@@ -900,7 +916,7 @@ function LogTab(props: { nav: Nav }) {
                       </span>
                     )}
                     <span className={`tr-goal-dot${ok ? ' ok' : ''}`} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
-                      {ok ? '✓' : ''}
+                      {ok ? TR_GLYPH.tick() : ''}
                     </span>
                   </button>
                 </li>
@@ -912,7 +928,7 @@ function LogTab(props: { nav: Nav }) {
       {shows('results') && log.length > 0 && <RecentResults log={log} nav={props.nav} band={band} />}
       {shows('sessions') && sessions.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Sessions', 'Einheiten')}</h2>
+          <Eyebrow>{tr('Sessions', 'Einheiten')}</Eyebrow>
           <ul className="list">
             {sessions.map((s) => (
               <li key={s.id}>
@@ -958,7 +974,7 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
   const days = [...new Set(list.map((e) => dayKey(e.at)))];
   return (
     <section className="tr-block">
-      <h2>{tr('Latest results', 'Letzte Ergebnisse')}</h2>
+      <Eyebrow>{tr('Latest results', 'Letzte Ergebnisse')}</Eyebrow>
       {days.map((k) => (
         <div key={k} className="tr-day">
           <span className="eyebrow">{dayName(k)}</span>
@@ -977,9 +993,9 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
                         <span className="title">{t(d.name)}</span>
                         <span className="muted small">{scored ? unitText(d.scoring) : tr('done', 'erledigt')}</span>
                       </span>
-                      <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : '✓'}</strong>
+                      <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : <span className="tr-done-mark" role="img" aria-label={tr('done', 'erledigt')}>{TR_GLYPH.tick()}</span>}</strong>
                       <span className={`tr-goal-dot${ok ? ' ok' : ''}`} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
-                        {ok ? '✓' : ''}
+                        {ok ? TR_GLYPH.tick() : ''}
                       </span>
                     </button>
                   </li>
@@ -1042,11 +1058,12 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const places = [...new Set(all.map((d) => d.place))];
   const drills = all.filter((d) => (lvl === 0 || d.level === lvl) && (!place || d.place === place));
   // Sascha 16.10.2026: no one-pager – one part at a time; the gear only at the drill it belongs to
-  const tabs: { id: typeof tab; label: string }[] = [
-    { id: 'drills', label: tr('Drills', 'Übungen') },
-    { id: 'basics', label: tr('Basics', 'Grundlagen') },
-    ...(c.faults?.length ? [{ id: 'faults' as const, label: tr('Faults', 'Fehler') }] : []),
-    ...(c.videos?.length ? [{ id: 'videos' as const, label: 'Videos' }] : []),
+  // (Facelift 11.11.2026, tr1: the parts as the switch "‹ Übungen ›", each with a line what it holds)
+  const tabs: StepChoice<typeof tab>[] = [
+    { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
+    { value: 'basics', name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') },
+    ...(c.faults?.length ? [{ value: 'faults' as const, name: tr('Faults', 'Fehler'), text: tr(`${c.faults.length} common faults`, `${c.faults.length} typische Fehler`) }] : []),
+    ...(c.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: tr(`${c.videos.length} videos`, `${c.videos.length} Videos`) }] : []),
   ];
   return (
     <main className="screen training">
@@ -1055,13 +1072,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         <span className="tr-cat-icon large">{CAT_ICON[c.id]}</span>
         <p>{t(c.short)}</p>
       </div>
-      <div className="segmented tr-tabs" role="tablist" aria-label={t(c.name)}>
-        {tabs.map((x) => (
-          <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)}>
-            {x.label}
-          </button>
-        ))}
-      </div>
+      <ViewPick options={tabs} value={tab} onChange={setTab} />
 
       {tab === 'drills' && (
         <>
@@ -1087,7 +1098,6 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
 
       {tab === 'basics' && (
         <>
-          <p className="tr-intro-text">{t(c.intro)}</p>
           {c.facts?.length ? (
             <section className="card tr-facts">
               <span className="eyebrow">{tr('Good to know', 'Gut zu wissen')}</span>
@@ -1126,8 +1136,8 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
                 .map(catById)
                 .filter((x): x is Category => !!x)
                 .map((x) => (
-                  <button key={x.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'cat', id: x.id })}>
-                    {t(x.name)} ›
+                  <button key={x.id} type="button" className="chip tr-chip-go" onClick={() => props.nav.push({ name: 'cat', id: x.id })}>
+                    {t(x.name)} {TR_GLYPH.next()}
                   </button>
                 ))}
             </div>
@@ -1244,7 +1254,7 @@ function RuleLinks(props: { id: CategoryId }) {
   if (!list?.length) return null;
   return (
     <section className="tr-rules">
-      <h2>{tr('The rules for it', 'Die Regeln dazu')}</h2>
+      <Eyebrow>{tr('The rules for it', 'Die Regeln dazu')}</Eyebrow>
       <ul className="list tr-rounds-links">
         {list.map((r) => {
           const rule = RULES_OF_GOLF.find((x) => x.n === r.n);
@@ -1292,7 +1302,7 @@ function TopicRow(props: { id: CategoryId; nav: Nav }) {
   );
 }
 
-function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => void; added?: string[] }) {
+function DrillList(props: { drills: Drill[]; nav: Nav }) {
   if (!props.drills.length) return <p className="muted">{tr('No drills for this filter.', 'Keine Übungen für diesen Filter.')}</p>;
   const favs = loadFavs();
   const review = reviewOn();
@@ -1318,13 +1328,8 @@ function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => voi
                 {levelName(d.level)} · {d.minutes} min · {placeName(d.place)}
               </span>
             </span>
-            {!props.onAdd && <span aria-hidden="true">›</span>}
+            <span aria-hidden="true">›</span>
           </button>
-          {props.onAdd && (
-            <button type="button" className={`icon-btn tr-add${props.added?.includes(d.id) ? ' on' : ''}`} aria-label={tr(`Add ${t(d.name)}`, `${t(d.name)} hinzufügen`)} onClick={() => props.onAdd!(d)}>
-              {props.added?.includes(d.id) ? '✓' : '+'}
-            </button>
-          )}
         </li>
       ))}
     </ul>
@@ -1352,7 +1357,7 @@ function Sources(props: { list?: { label: string; url: string }[] }) {
                 <span>{s.label}</span>
                 <span className="muted small">{host(s.url)}</span>
               </span>
-              <span aria-hidden="true">↗</span>
+              <span className="tr-ext" aria-hidden="true">{TR_GLYPH.external()}</span>
             </a>
           </li>
         ))}
@@ -1402,13 +1407,14 @@ function DrillView(props: { id: string; nav: Nav }) {
   const plainNeeds = (d.needs ?? []).filter((n): n is L => typeof n !== 'string');
   const gear = gearForDrill(d);
   // Sascha 17.10.2026: no one-pager – the drill page in tabs like the topic pages; a tab only when it has something
-  const tabs: { id: DrillTab; label: string }[] = [
-    { id: 'learn', label: tr('How to', 'Anleitung') },
-    ...(scored ? [{ id: 'result' as const, label: tr('Result', 'Ergebnis') }] : []),
-    ...(d.videos?.length ? [{ id: 'videos' as const, label: 'Videos' }] : []),
-    ...(gear.length ? [{ id: 'gear' as const, label: tr('Gear', 'Zubehör') }] : []),
+  // (Facelift 11.11.2026, tr1: the parts as the switch "‹ Anleitung ›")
+  const tabs: StepChoice<DrillTab>[] = [
+    { value: 'learn', name: tr('How to', 'Anleitung'), text: tr('Set-up, steps, tips', 'Aufbau, Ablauf, Tipps') },
+    ...(scored ? [{ value: 'result' as const, name: tr('Result', 'Ergebnis'), text: tr('Enter it, your history', 'Eintragen, Historie') }] : []),
+    ...(d.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: d.videos.length > 1 ? tr(`${Math.min(2, d.videos.length)} videos`, `${Math.min(2, d.videos.length)} Videos`) : tr('1 video', '1 Video') }] : []),
+    ...(gear.length ? [{ value: 'gear' as const, name: tr('Gear', 'Zubehör'), text: tr(`${gear.length} for this drill`, `${gear.length} für diese Übung`) }] : []),
   ];
-  const tab: DrillTab = tabs.some((x) => x.id === tabState) ? tabState : 'learn';
+  const tab: DrillTab = tabs.some((x) => x.value === tabState) ? tabState : 'learn';
   return (
     <main className="screen training">
       <TopBar title={t(d.name)} onBack={props.nav.back} />
@@ -1420,15 +1426,7 @@ function DrillView(props: { id: string; nav: Nav }) {
         {d.balls ? <span className="chip fact">{tr(`${d.balls} balls`, `${d.balls} Bälle`)}</span> : null}
       </div>
       {d.review && <p className="tr-review small">{tr('Content still to be checked by our golf pro.', 'Inhalt wird noch von unserem Golfprofi geprüft.')}</p>}
-      {tabs.length > 1 && (
-        <div className="segmented tr-tabs" role="tablist" aria-label={t(d.name)}>
-          {tabs.map((x) => (
-            <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)}>
-              {x.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {tabs.length > 1 && <ViewPick options={tabs} value={tab} onChange={setTab} />}
 
       {tab === 'learn' && (
         <>
@@ -1439,8 +1437,8 @@ function DrillView(props: { id: string; nav: Nav }) {
               {tr('Known from', 'Bekannt durch')}: {t(d.origin)}
             </p>
           )}
+          <Eyebrow>{tr('Set-up', 'Aufbau')}</Eyebrow>
           <section className="card tr-section">
-            <h2>{tr('Set-up', 'Aufbau')}</h2>
             <p>{t(d.setup)}</p>
             {plainNeeds.length ? (
               <div className="tr-needs">
@@ -1455,8 +1453,8 @@ function DrillView(props: { id: string; nav: Nav }) {
               </div>
             ) : null}
           </section>
+          <Eyebrow>{tr('Steps', 'Ablauf')}</Eyebrow>
           <section className="card tr-section">
-            <h2>{tr('How it works', 'So geht’s')}</h2>
             <ol className="tr-steps">
               {d.steps.map((s, i) => (
                 <li key={i}>{t(s)}</li>
@@ -1465,28 +1463,33 @@ function DrillView(props: { id: string; nav: Nav }) {
           </section>
           <RoundsLinks targets={d.rounds} nav={props.nav} />
           {d.tips?.length ? (
-            <section className="card tr-section">
-              <h2>{tr('Tips', 'Tipps')}</h2>
-              <ul className="tr-points">
-                {d.tips.map((s, i) => (
-                  <li key={i}>{t(s)}</li>
-                ))}
-              </ul>
-            </section>
+            <>
+              <Eyebrow>{tr('Tips', 'Tipps')}</Eyebrow>
+              <section className="card tr-section">
+                <ul className="tr-points">
+                  {d.tips.map((s, i) => (
+                    <li key={i}>{t(s)}</li>
+                  ))}
+                </ul>
+              </section>
+            </>
           ) : null}
           {(d.easier || d.harder) && (
-            <section className="card tr-section tr-variants">
-              {d.easier && (
-                <p>
-                  <strong>{tr('Easier', 'Leichter')}:</strong> {t(d.easier)}
-                </p>
-              )}
-              {d.harder && (
-                <p>
-                  <strong>{tr('Harder', 'Schwerer')}:</strong> {t(d.harder)}
-                </p>
-              )}
-            </section>
+            <>
+              <Eyebrow>{tr('Variants', 'Varianten')}</Eyebrow>
+              <section className="card tr-section tr-variants">
+                {d.easier && (
+                  <p>
+                    <strong>{tr('Easier', 'Leichter')}:</strong> {t(d.easier)}
+                  </p>
+                )}
+                {d.harder && (
+                  <p>
+                    <strong>{tr('Harder', 'Schwerer')}:</strong> {t(d.harder)}
+                  </p>
+                )}
+              </section>
+            </>
           )}
           <Sources list={d.sources} />
         </>
@@ -1496,32 +1499,38 @@ function DrillView(props: { id: string; nav: Nav }) {
         <>
           {/* only drills with a measurable result get the result part (no "done it?" for planning or mobility) */}
           {scored && (
-            <section className="card tr-section tr-log">
-              <h2>{tr('Enter your result', 'Ergebnis eintragen')}</h2>
-              <ResultInput
-                drill={d}
-                value={value}
-                onChange={(v) => {
-                  setValue(v);
-                  setSaved(false);
+            <>
+              <Eyebrow>{tr('Enter your result', 'Ergebnis eintragen')}</Eyebrow>
+              <section className="card tr-section tr-log">
+                <ResultInput
+                  drill={d}
+                  value={value}
+                  onChange={(v) => {
+                    setValue(v);
+                    setSaved(false);
+                  }}
+                />
+                {/* a quiet line what happens – no button in the card (Facelift 11.11.2026, tr3) */}
+                <span className="muted small tr-save-note" role="status">
+                  {saved ? tr('Saved – it is in the history below.', 'Gespeichert – steht unten in der Historie.') : tr('Then it shows in the history.', 'Erscheint danach in der Historie.')}
+                </span>
+              </section>
+              {/* a new entry: the round green tick bottom right, as everything new (docs/DESIGN.md "Saving") */}
+              <FloatActions
+                save={{
+                  label: tr('Save result', 'Ergebnis speichern'),
+                  disabled: value == null || saved,
+                  onClick: () => {
+                    addLog({ drill: d.id, value: scored ? value : null });
+                    setSaved(true);
+                  },
                 }}
               />
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={scored && value == null}
-                onClick={() => {
-                  addLog({ drill: d.id, value: scored ? value : null });
-                  setSaved(true);
-                }}
-              >
-                {saved ? tr('Saved ✓', 'Gespeichert ✓') : tr('Save result', 'Ergebnis speichern')}
-              </button>
-            </section>
+            </>
           )}
+          {scored && stats && <Eyebrow>{tr('Your evaluation', 'Deine Auswertung')}</Eyebrow>}
           {scored && stats && (
             <section className="card tr-section tr-eval">
-              <h2>{tr('Your evaluation', 'Deine Auswertung')}</h2>
               <div className="tile-row">
                 <div className="tile">
                   <span className="tile-num">{mainValue(d.scoring, stats.best)}</span>
@@ -1542,7 +1551,13 @@ function DrillView(props: { id: string; nav: Nav }) {
                   <div className={`tile${goalReached ? ' reached' : ''}`}>
                     <span className="tile-num">{mainValue(d.scoring, d.targets[band])}</span>
                     <span className="muted small">
-                      {goalReached ? tr(`✓ goal ${bandName(band)} reached`, `✓ Ziel ${bandName(band)} erreicht`) : tr(`goal ${bandName(band)}`, `Ziel ${bandName(band)}`)}
+                      {goalReached ? (
+                        <>
+                          {TR_GLYPH.tick()} {tr(`goal ${bandName(band)} reached`, `Ziel ${bandName(band)} erreicht`)}
+                        </>
+                      ) : (
+                        tr(`goal ${bandName(band)}`, `Ziel ${bandName(band)}`)
+                      )}
                     </span>
                   </div>
                 )}
@@ -1556,12 +1571,9 @@ function DrillView(props: { id: string; nav: Nav }) {
               />
             </section>
           )}
+          {scored && entries.length > 0 && <Eyebrow aside={tr(`${entries.length}× logged`, `${entries.length}× eingetragen`)}>{tr('History', 'Historie')}</Eyebrow>}
           {scored && entries.length > 0 && (
             <section className="card tr-section">
-              <div className="row">
-                <h2>{tr('History', 'Historie')}</h2>
-                <span className="muted small">{tr(`${entries.length}× logged`, `${entries.length}× eingetragen`)}</span>
-              </div>
               {scored && unitText(d.scoring) && <span className="muted small tr-hist-unit">{unitText(d.scoring)}</span>}
               <ul className="tr-history">
                 {(showAll ? entries : entries.slice(0, 5)).map((e, k) => {
@@ -1572,33 +1584,32 @@ function DrillView(props: { id: string; nav: Nav }) {
                   const when = new Date(e.at);
                   return (
                     <li key={e.id}>
-                      <span className="round-date">
-                        <strong>{when.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                        <span className="muted small">{when.toLocaleDateString(locale, { weekday: 'short' })}</span>
-                      </span>
-                      <span className="grow">
-                        <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : tr('done', 'erledigt')}</strong>
-                      </span>
-                      {delta != null && delta !== 0 && (
-                        <span className={`tr-delta${better ? ' up' : ''}`}>
-                          <TrendArrow up={!!better} />
-                          {`${delta > 0 ? '+' : '−'}${dec(Math.abs(delta))}`}
-                        </span>
-                      )}
-                      <span className={`tr-goal-dot${ok ? ' ok' : ''}`} title={ok ? tr('goal reached', 'Ziel erreicht') : undefined} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
-                        {ok ? '✓' : ''}
-                      </span>
-                      <button
-                        type="button"
-                        className="icon-btn tr-hist-remove"
-                        aria-label={tr('Remove this entry', 'Eintrag entfernen')}
-                        onClick={() => {
+                      <SwipeRow
+                        label={tr('Entry', 'Eintrag')}
+                        onDelete={() => {
                           removeLog(e.id);
                           setRemoved(e);
                         }}
                       >
-                        ✕
-                      </button>
+                        <div className="tr-hist-row">
+                          <span className="round-date">
+                            <strong>{when.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                            <span className="muted small">{when.toLocaleDateString(locale, { weekday: 'short' })}</span>
+                          </span>
+                          <span className="grow">
+                            <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : tr('done', 'erledigt')}</strong>
+                          </span>
+                          {delta != null && delta !== 0 && (
+                            <span className={`tr-delta${better ? ' up' : ''}`}>
+                              <TrendArrow up={!!better} />
+                              {`${delta > 0 ? '+' : '−'}${dec(Math.abs(delta))}`}
+                            </span>
+                          )}
+                          <span className={`tr-goal-dot${ok ? ' ok' : ''}`} title={ok ? tr('goal reached', 'Ziel erreicht') : undefined} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
+                            {ok ? TR_GLYPH.tick() : ''}
+                          </span>
+                        </div>
+                      </SwipeRow>
                     </li>
                   );
                 })}
@@ -1610,9 +1621,9 @@ function DrillView(props: { id: string; nav: Nav }) {
               )}
             </section>
           )}
+          {d.targets && <Eyebrow>{tr('Targets by handicap', 'Ziele nach Handicap')}</Eyebrow>}
           {d.targets && (
             <section className="card tr-section">
-              <h2>{tr('Targets by handicap', 'Ziele nach Handicap')}</h2>
               <div className="tr-targets">
                 {(['high', 'mid', 'low', 'tour'] as const)
                   .filter((b) => d.targets![b] != null)
@@ -1633,7 +1644,7 @@ function DrillView(props: { id: string; nav: Nav }) {
         <>
           {d.videos?.length ? (
             <>
-              <h2>{d.videos.length > 1 ? tr('Videos', 'Videos') : tr('Video', 'Video')}</h2>
+              <Eyebrow>{d.videos.length > 1 ? tr('Videos', 'Videos') : tr('Video', 'Video')}</Eyebrow>
               <VideoNote />
               {[...d.videos]
                 .sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()))
@@ -1650,7 +1661,7 @@ function DrillView(props: { id: string; nav: Nav }) {
         <>
           {gear.length > 0 && (
             <section className="tr-block">
-              <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
+              <Eyebrow>{tr('Gear for this drill', 'Zubehör für diese Übung')}</Eyebrow>
               {gear.map((g) => (
                 <GearRow key={g.id} g={g} nav={props.nav} />
               ))}
@@ -1691,7 +1702,7 @@ function DrillView(props: { id: string; nav: Nav }) {
             if (next) props.nav.push({ name: 'drill', id: next });
           }}
         >
-          {tr('Next drill to review ›', 'Nächste ungeprüfte Übung ›')}
+          {tr('Next drill to review', 'Nächste ungeprüfte Übung')} {TR_GLYPH.next()}
         </button>
       )}
       {removed && (
@@ -1799,7 +1810,9 @@ function ReviewView(props: { nav: Nav }) {
         </div>
         <div className="tile">
           <span className="tile-num">{count('ok')}</span>
-          <span className="muted small">✓ {tr('keep', 'passt')}</span>
+          <span className="muted small">
+            <CheckGlyph /> {tr('keep', 'passt')}
+          </span>
         </div>
         <div className="tile">
           <span className="tile-num">{count('edit')}</span>
@@ -1809,7 +1822,9 @@ function ReviewView(props: { nav: Nav }) {
         </div>
         <div className="tile">
           <span className="tile-num">{count('cut')}</span>
-          <span className="muted small">✕ {tr('cut', 'streichen')}</span>
+          <span className="muted small">
+            <CrossGlyph /> {tr('cut', 'streichen')}
+          </span>
         </div>
       </div>
       <button
@@ -1824,8 +1839,8 @@ function ReviewView(props: { nav: Nav }) {
       >
         {tr('Review the next drill', 'Nächste ungeprüfte Übung prüfen')}
       </button>
+      <Eyebrow>{tr('By topic', 'Nach Thema')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('By topic', 'Nach Thema')}</h2>
         <ul className="tr-review-topics">
           {CATEGORIES.map((c) => {
             const list = items.filter((i) => i.cat === c.id);
@@ -1855,9 +1870,9 @@ function ReviewView(props: { nav: Nav }) {
           })}
         </ul>
       </section>
+      {todo.length > 0 && <Eyebrow>{tr('To change or cut', 'Zu ändern oder streichen')}</Eyebrow>}
       {todo.length > 0 && (
         <section className="card tr-section">
-          <h2>{tr('To change or cut', 'Zu ändern oder streichen')}</h2>
           <ul className="tr-review-topics">
             {todo.map((i) => (
               <li key={i.key}>
@@ -1878,8 +1893,8 @@ function ReviewView(props: { nav: Nav }) {
           </ul>
         </section>
       )}
+      <Eyebrow>{tr('Share the list', 'Liste teilen')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('Share the list', 'Liste teilen')}</h2>
         {/* Teilen always the same – the share mark and "Teilen" in the action bar (Sascha 03.11.2026) */}
         <div className="sc-actions" role="group" aria-label={tr('The list', 'Die Liste')}>
           <button type="button" className="sc-action" onClick={() => void share()} disabled={!done.length}>
@@ -1913,30 +1928,26 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
       {'about' in p && <p className="muted">{t(p.about)}</p>}
       {week ? (
         week.map((day, k) => (
-          <section key={k} className="card tr-section">
-            <div className="row">
-              <h2>{t(day.day)}</h2>
-              <span className="muted small">{planMinutes(day)} min</span>
-            </div>
-            <ol className="tr-plan-list">
-              {planItems(day).map((i, n) => (
-                <li key={n}>
-                  <PlanRow drill={i.drill} meta={`${i.minutes} min`} nav={props.nav} />
-                </li>
-              ))}
-            </ol>
-            <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(`${name} – ${t(day.day)}`, day.items, p.id))}>
-              {tr('Start this day', 'Diesen Tag starten')}
-            </button>
-          </section>
+          <div key={k} className="tr-block">
+            <Eyebrow aside={`${planMinutes(day)} min`}>{t(day.day)}</Eyebrow>
+            <section className="card tr-section">
+              <ol className="tr-plan-list">
+                {planItems(day).map((i, n) => (
+                  <li key={n}>
+                    <PlanRow drill={i.drill} meta={`${i.minutes} min`} nav={props.nav} />
+                  </li>
+                ))}
+              </ol>
+              <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(`${name} – ${t(day.day)}`, day.items, p.id))}>
+                {tr('Start this day', 'Diesen Tag starten')}
+              </button>
+            </section>
+          </div>
         ))
       ) : (
         <>
+          <Eyebrow aside={`${planMinutes(p)} min`}>{tr('Drills', 'Übungen')}</Eyebrow>
           <section className="card tr-section">
-            <div className="row">
-              <h2>{tr('Drills', 'Übungen')}</h2>
-              <span className="muted small">{planMinutes(p)} min</span>
-            </div>
             <ol className="tr-plan-list">
               {items.map((i, n) => (
                 <li key={n}>
@@ -1980,7 +1991,7 @@ function GearForPlan(props: { items: { drill: string }[]; nav: Nav }) {
   if (!gear.length) return null;
   return (
     <section className="tr-block">
-      <h2>{tr('Helpful for this plan', 'Hilfreich für diesen Plan')}</h2>
+      <Eyebrow>{tr('Helpful for this plan', 'Hilfreich für diesen Plan')}</Eyebrow>
       <div className="tr-hscroll">
         {gear.map((g) => (
           <GearTile key={g.id} g={g} nav={props.nav} />
@@ -2013,6 +2024,13 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
     items.splice(Math.max(0, Math.min(items.length, k + by)), 0, x);
     setP({ ...p, items });
   };
+  // a drill swiped out of the plan comes back with "Rückgängig" for a moment (as a result, a round, a session)
+  const [out, setOut] = useState<{ item: OwnPlan['items'][number]; at: number } | null>(null);
+  useEffect(() => {
+    if (!out) return;
+    const timer = window.setTimeout(() => setOut(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [out]);
   return (
     <main className="screen training">
       <TopBar title={tr('Own session', 'Eigene Einheit')} onBack={props.nav.back} />
@@ -2020,67 +2038,62 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
         <label htmlFor="tr-plan-name">{tr('Name', 'Name')}</label>
         <input id="tr-plan-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
       </div>
-      <section className="card tr-section">
-        <div className="row">
-          <h2>{tr('Your drills', 'Deine Übungen')}</h2>
-          <span className="muted small">{planMinutes(p)} min</span>
-        </div>
-        {!p.items.length && <span className="muted small">{tr('Add drills from the list below.', 'Füge Übungen aus der Liste unten hinzu.')}</span>}
-        <ol className="tr-plan-list">
-          {p.items.map((i, k) => (
-            <li key={i.drill}>
-              <span className="grow">{t(drillById(i.drill)?.name)}</span>
-              <span className="tr-min">
-                <button type="button" className="chip" aria-label={tr('fewer minutes', 'weniger Minuten')} onClick={() => setP({ ...p, items: p.items.map((x, j) => (j === k ? { ...x, minutes: Math.max(1, x.minutes - 1) } : x)) })}>
-                  −
-                </button>
-                <span>{i.minutes}′</span>
-                <button type="button" className="chip" aria-label={tr('more minutes', 'mehr Minuten')} onClick={() => setP({ ...p, items: p.items.map((x, j) => (j === k ? { ...x, minutes: x.minutes + 1 } : x)) })}>
-                  +
-                </button>
-              </span>
-              <button type="button" className="chip" aria-label={tr('up', 'nach oben')} disabled={k === 0} onClick={() => move(k, -1)}>
-                ↑
-              </button>
-              <button type="button" className="chip" aria-label={tr('remove', 'entfernen')} onClick={() => setP({ ...p, items: p.items.filter((_, j) => j !== k) })}>
-                ✕
-              </button>
-            </li>
-          ))}
+      {/* the plan's drills (Facelift 11.11.2026, tr5): a card each – swiped left it leaves the plan ("Rückgängig" in
+          the toast), the minutes as the app's stepper, the arrow moves it up; no "−", "7′", "+", "↑", "✕" chips */}
+      <Eyebrow aside={`${planMinutes(p)} min`}>{tr('Your drills', 'Deine Übungen')}</Eyebrow>
+      {!p.items.length && <span className="muted small">{tr('Tick drills in the list below.', 'Hake unten Übungen an.')}</span>}
+      {p.items.length > 0 && (
+        <ol className="tr-own-list">
+          {p.items.map((i, k) => {
+            const dk = drillById(i.drill);
+            return (
+              <li key={i.drill}>
+                <SwipeRow
+                  label={t(dk?.name)}
+                  onDelete={() => {
+                    setOut({ item: i, at: k });
+                    setP({ ...p, items: p.items.filter((_, j) => j !== k) });
+                  }}
+                >
+                  <div className="card tr-own-row">
+                    <span className="grow">
+                      <strong>{t(dk?.name)}</strong>
+                      {dk && <span className="muted small">{placeName(dk.place)}</span>}
+                    </span>
+                    <span className="tr-own-ctl">
+                      <button type="button" className="icon-btn tr-own-up" aria-label={tr(`${t(dk?.name)} up`, `${t(dk?.name)} nach oben`)} disabled={k === 0} onClick={() => move(k, -1)}>
+                        {TR_GLYPH.up()}
+                      </button>
+                      <Stepper compact min={1} label={tr('Minutes', 'Minuten')} value={i.minutes} onChange={(v) => setP({ ...p, items: p.items.map((x, j) => (j === k ? { ...x, minutes: Math.max(1, v) } : x)) })} />
+                      <span className="muted small">min</span>
+                    </span>
+                  </div>
+                </SwipeRow>
+              </li>
+            );
+          })}
         </ol>
-        {/* the start at the end of the plan, after its settings – never floating (Sascha 17.10.2026 evening) */}
-        {/* a new plan: saved with the round green tick bottom right; an own plan changed: saved by itself, a quiet line
-            (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, … brauchen keine Speicherbuttons mehr"); the one
-            main button "Speichern & starten" at the end */}
-        {existing ? (
-          <span className="muted small autosave-note" role="status">
-            {!ok ? tr('A name and a drill – then it is saved.', 'Ein Name und eine Übung – dann wird gespeichert.') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
-          </span>
-        ) : (
-          <FloatActions
-            save={{
-              label: tr('Save plan', 'Plan speichern'),
-              disabled: !ok,
-              onClick: () => {
-                saveOwnPlan(p);
-                props.nav.toTab('train');
-              },
-            }}
-          />
-        )}
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!p.items.length || !p.name.trim()}
-          onClick={() => {
-            saveOwnPlan(p);
-            props.nav.start(newSession(p.name, p.items, p.id));
+      )}
+      {/* a new plan: saved with the round green tick bottom right; an own plan changed: saved by itself, a quiet line
+          (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, … brauchen keine Speicherbuttons mehr") */}
+      {existing ? (
+        <span className="muted small autosave-note" role="status">
+          {!ok ? tr('A name and a drill – then it is saved.', 'Ein Name und eine Übung – dann wird gespeichert.') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        </span>
+      ) : (
+        <FloatActions
+          save={{
+            label: tr('Save plan', 'Plan speichern'),
+            disabled: !ok,
+            onClick: () => {
+              saveOwnPlan(p);
+              props.nav.toTab('train');
+            },
           }}
-        >
-          {tr('Save & start', 'Speichern & starten')}
-        </button>
-      </section>
-      <h2>{tr('Add drills', 'Übungen hinzufügen')}</h2>
+        />
+      )}
+      {/* the drills to add as rows to tick (TickRow) – the tick on the right, no "+"/"✓" signs */}
+      <Eyebrow>{tr('Add drills', 'Übungen hinzufügen')}</Eyebrow>
       <input className="input" type="search" placeholder={tr('Search', 'Suchen')} aria-label={tr('Search drills', 'Übungen suchen')} value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chip-set">
         <button type="button" className={`chip${cat == null ? ' on' : ''}`} onClick={() => setCat(null)}>
@@ -2092,7 +2105,49 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
           </button>
         ))}
       </div>
-      <DrillList drills={pool} nav={props.nav} onAdd={add} added={p.items.map((i) => i.drill)} />
+      {pool.length ? (
+        <SettingsList label={tr('Drills to add', 'Übungen zum Hinzufügen')}>
+          {pool.map((d) => (
+            <TickRow key={d.id} label={t(d.name)} text={`${d.minutes} min · ${placeName(d.place)}`} on={p.items.some((i) => i.drill === d.id)} onChange={() => add(d)} />
+          ))}
+        </SettingsList>
+      ) : (
+        <p className="muted">{tr('No drills for this filter.', 'Keine Übungen für diesen Filter.')}</p>
+      )}
+      {/* the start at the end of the page, after everything to set – never floating (Sascha 17.10.2026 evening;
+          Facelift 11.11.2026, tr5: the LAST element) */}
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={!p.items.length || !p.name.trim()}
+        onClick={() => {
+          saveOwnPlan(p);
+          props.nav.start(newSession(p.name, p.items, p.id));
+        }}
+      >
+        {tr('Save & start', 'Speichern & starten')}
+      </button>
+      {out && (
+        <div className="undo-toast" role="status">
+          <span>
+            {tr('Drill removed', 'Übung entfernt')}
+            <span className="muted"> · {t(drillById(out.item.drill)?.name)}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (!p.items.some((x) => x.drill === out.item.drill)) {
+                const items = [...p.items];
+                items.splice(Math.min(out.at, items.length), 0, out.item);
+                setP({ ...p, items });
+              }
+              setOut(null);
+            }}
+          >
+            {tr('Undo', 'Rückgängig')}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
@@ -2110,15 +2165,15 @@ function SearchView(props: { q: string; nav: Nav }) {
       {cats.length > 0 && (
         <div className="chip-set">
           {cats.map((c) => (
-            <button key={c.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
-              {t(c.name)} ›
+            <button key={c.id} type="button" className="chip tr-chip-go" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+              {t(c.name)} {TR_GLYPH.next()}
             </button>
           ))}
         </div>
       )}
       {faults.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Faults', 'Fehler')}</h2>
+          <Eyebrow>{tr('Faults', 'Fehler')}</Eyebrow>
           <ul className="list">
             {faults.map(({ c, f, index }, i) => (
               <li key={i}>
@@ -2135,12 +2190,12 @@ function SearchView(props: { q: string; nav: Nav }) {
         </section>
       )}
       <section className="tr-block">
-        <h2>{tr(`Drills (${drills.length})`, `Übungen (${drills.length})`)}</h2>
+        <Eyebrow>{tr(`Drills (${drills.length})`, `Übungen (${drills.length})`)}</Eyebrow>
         <DrillList drills={drills} nav={props.nav} />
       </section>
       {gear.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Gear', 'Zubehör')}</h2>
+          <Eyebrow>{tr('Gear', 'Zubehör')}</Eyebrow>
           <div className="tr-hscroll">
             {gear.map((g) => (
               <GearTile key={g.id} g={g} nav={props.nav} />
@@ -2178,9 +2233,7 @@ function GearRow(props: { g: Gear; nav: Nav }) {
           <span className="tr-price small">{euroRange(props.g.price)}</span>
         </span>
       </button>
-      <button type="button" className={`chip${inCart ? ' on' : ''}`} onClick={() => setCartQty(props.g.id, inCart ? 0 : 1)}>
-        {inCart ? `✓ ${tr('in cart', 'im Korb')}` : `+ ${tr('cart', 'Warenkorb')}`}
-      </button>
+      <CartChip id={props.g.id} inCart={inCart} />
     </div>
   );
 }
@@ -2196,7 +2249,9 @@ function AddToCart(props: { g: Gear }) {
     );
   return (
     <div className="tr-qty">
-      <span className="good-text">✓ {tr('In the cart', 'Im Warenkorb')}</span>
+      <span className="good-text tr-in-cart">
+        {TR_GLYPH.tick()} {tr('In the cart', 'Im Warenkorb')}
+      </span>
       <div className="stepper compact">
         <button type="button" aria-label={tr('one less', 'eins weniger')} onClick={() => setCartQty(props.g.id, line.qty - 1)}>
           −
@@ -2207,6 +2262,16 @@ function AddToCart(props: { g: Gear }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** The cart on a product – the cart icon "In den Korb", once in it the tick "Im Korb" (Facelift 11.11.2026, tr9: no "+"/"✓" signs). */
+function CartChip(props: { id: string; inCart: boolean }) {
+  return (
+    <button type="button" className={`chip tr-cart-chip${props.inCart ? ' on' : ''}`} aria-pressed={props.inCart} onClick={() => setCartQty(props.id, props.inCart ? 0 : 1)}>
+      {props.inCart ? TR_GLYPH.tick() : TR_GLYPH.cart()}
+      {props.inCart ? tr('In the cart', 'Im Korb') : tr('Into the cart', 'In den Korb')}
+    </button>
   );
 }
 
@@ -2241,7 +2306,7 @@ function ShopTab(props: { nav: Nav }) {
           {tr('By topic', 'Nach Thema')}
         </button>
         <button type="button" className={`chip${sort === 'price' ? ' on' : ''}`} aria-pressed={sort === 'price'} onClick={() => setSort('price')}>
-          {tr('Price ↑', 'Preis ↑')}
+          {tr('Price', 'Preis')} {TR_GLYPH.up()}
         </button>
       </div>
       <div className="tr-shop-grid">
@@ -2255,9 +2320,7 @@ function ShopTab(props: { nav: Nav }) {
                 <span className="muted small tr-two-lines">{t(g.why)}</span>
                 <span className="tr-price">{euroRange(g.price)}</span>
               </button>
-              <button type="button" className={`chip${inCart ? ' on' : ''}`} onClick={() => setCartQty(g.id, inCart ? 0 : 1)}>
-                {inCart ? `✓ ${tr('in cart', 'im Korb')}` : `+ ${tr('cart', 'Warenkorb')}`}
-              </button>
+              <CartChip id={g.id} inCart={inCart} />
             </div>
           );
         })}
@@ -2278,10 +2341,12 @@ function GearView(props: { id: string; nav: Nav }) {
         <span className="muted">{typeof g.brand === 'string' ? g.brand : t(g.brand)}</span>
         <strong className="tr-price">{euroRange(g.price)}</strong>
       </div>
+      <Eyebrow>{tr('What it is', 'Was es ist')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('What it is', 'Was es ist')}</h2>
         <p>{t(g.what)}</p>
-        <h2>{tr('What it helps with', 'Wobei es hilft')}</h2>
+      </section>
+      <Eyebrow>{tr('What it helps with', 'Wobei es hilft')}</Eyebrow>
+      <section className="card tr-section">
         <p>{t(g.why)}</p>
         {g.diy && (
           <p className="muted">
@@ -2293,13 +2358,13 @@ function GearView(props: { id: string; nav: Nav }) {
       <ReviewBar itemKey={gearKey(g.id)} />
       {g.url && (
         <a className="btn-secondary" href={g.affiliateUrl || g.url} target="_blank" rel="noreferrer">
-          {tr('Manufacturer’s page', 'Seite des Herstellers')} ↗
+          {tr('Manufacturer’s page', 'Seite des Herstellers')} {TR_GLYPH.external()}
         </a>
       )}
       <span className="muted small">{tr('Approximate price; it varies by shop. Picture: manufacturer.', 'Ungefährer Preis; er schwankt je nach Shop. Bild: Hersteller.')}</span>
       {drills.length > 0 && (
         <>
-          <h2>{tr('Drills with it', 'Übungen damit')}</h2>
+          <Eyebrow>{tr('Drills with it', 'Übungen damit')}</Eyebrow>
           <DrillList drills={drills} nav={props.nav} />
         </>
       )}
@@ -2308,8 +2373,8 @@ function GearView(props: { id: string; nav: Nav }) {
           .map(catById)
           .filter((c): c is Category => !!c)
           .map((c) => (
-            <button key={c.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
-              {t(c.name)} ›
+            <button key={c.id} type="button" className="chip tr-chip-go" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+              {t(c.name)} {TR_GLYPH.next()}
             </button>
           ))}
       </div>
@@ -2391,8 +2456,8 @@ function Checkout(props: { nav: Nav; onOrdered: (o: Order) => void }) {
       <p className="tr-review small">
         {tr('Prototype: nothing is ordered and no data is sent. In the app you will order through partner shops.', 'Prototyp: Es wird nichts bestellt und keine Daten werden gesendet. In der App bestellst du später über Partner-Shops.')}
       </p>
+      <Eyebrow>{tr('Your order', 'Deine Bestellung')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('Your order', 'Deine Bestellung')}</h2>
         <ul className="tr-points">
           {lines.map((l) => (
             <li key={l.gear}>
@@ -2409,8 +2474,8 @@ function Checkout(props: { nav: Nav; onOrdered: (o: Order) => void }) {
           <strong>{euro(total + shipping)}</strong>
         </div>
       </section>
+      <Eyebrow>{tr('Delivery address', 'Lieferadresse')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('Delivery address', 'Lieferadresse')}</h2>
         <div className="field">
           <label htmlFor="co-name">Name</label>
           <input id="co-name" className="input" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
@@ -2424,8 +2489,8 @@ function Checkout(props: { nav: Nav; onOrdered: (o: Order) => void }) {
           <input id="co-city" className="input" autoComplete="off" value={city} onChange={(e) => setCity(e.target.value)} />
         </div>
       </section>
+      <Eyebrow>{tr('Payment', 'Zahlung')}</Eyebrow>
       <section className="card tr-section">
-        <h2>{tr('Payment', 'Zahlung')}</h2>
         <div className="format-list">
           {(
             [
@@ -2453,9 +2518,9 @@ function Ordered(props: { order: Order; nav: Nav }) {
       <TopBar title={tr('Thank you!', 'Danke!')} onBack={() => props.nav.toTab('shop')} />
       <section className="card tr-section tr-ordered">
         <span className="tr-big-check" aria-hidden="true">
-          ✓
+          {TR_GLYPH.tick()}
         </span>
-        <h2>{tr('Order received – in the prototype only', 'Bestellung aufgenommen – nur im Prototyp')}</h2>
+        <strong className="tr-ordered-title">{tr('Order received – in the prototype only', 'Bestellung aufgenommen – nur im Prototyp')}</strong>
         <p className="muted">
           {tr('Nothing was sent or charged. In the real app the order goes to the partner shop at this point.', 'Es wurde nichts gesendet oder abgebucht. In der echten App geht die Bestellung an dieser Stelle an den Partner-Shop.')}
         </p>
@@ -2539,9 +2604,9 @@ function SessionResult(props: { id: string; nav: Nav }) {
                   <span className="title">{t(d.name)}</span>
                   <span className="muted small">{!i.done ? tr('not done', 'nicht gemacht') : d.scoring && d.scoring.kind !== 'none' ? unitText(d.scoring) : tr('done', 'erledigt')}</span>
                 </span>
-                {i.done && <strong className="tr-hist-value">{i.value != null && d.scoring && d.scoring.kind !== 'none' ? mainValue(d.scoring, i.value) : '✓'}</strong>}
+                {i.done && <strong className="tr-hist-value">{i.value != null && d.scoring && d.scoring.kind !== 'none' ? mainValue(d.scoring, i.value) : <span className="tr-done-mark" role="img" aria-label={tr('done', 'erledigt')}>{TR_GLYPH.tick()}</span>}</strong>}
                 <span className={`tr-goal-dot${ok ? ' ok' : ''}`} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
-                  {ok ? '✓' : ''}
+                  {ok ? TR_GLYPH.tick() : ''}
                 </span>
               </button>
             </li>

@@ -5,7 +5,17 @@ import { drillById } from './content';
 import { SketchView } from './Sketch';
 import { Metronome } from './Metronome';
 import { addLog, saveSession, type Session } from './store';
-import { CAT_ICON, ResultInput, placeName, scoreText, t } from './ui';
+import { CAT_ICON, ResultInput, TR_GLYPH, placeName, scoreText, t } from './ui';
+
+// the marks of the round's leave sheet (HoleScreen) – the same icons, the same bar (Facelift 11.11.2026, tr6)
+const barIcon = (d: string) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+);
+const PAUSE = barIcon('M9 5v14M15 5v14');
+const BIN = barIcon('M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6');
+const BACK = barIcon('M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11');
 
 // A practice session in play – built like a round and a game (Sascha 15.10.2026: the same usability in every
 // module): the drill bar at the bottom with ‹ ›, the overview pulled up from it, and leaving = pause, finish or
@@ -83,7 +93,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
       <section className="card tr-section">
         <button type="button" className="tr-coll-head" aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)}>
           <strong className="grow">{tr('Set-up and steps', 'Aufbau und Ablauf')}</strong>
-          <span aria-hidden="true">{showSteps ? '▾' : '▸'}</span>
+          <span className="tr-coll-mark" aria-hidden="true">{TR_GLYPH.open(showSteps)}</span>
         </button>
         {showSteps && (
           <>
@@ -99,8 +109,8 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
           {tr('Everything about this drill', 'Alles zu dieser Übung')}
         </button>
       </section>
+      <span className="eyebrow">{scored ? tr('Your result', 'Dein Ergebnis') : tr('Done?', 'Erledigt?')}</span>
       <section className="card tr-section tr-log">
-        <h2>{scored ? tr('Your result', 'Dein Ergebnis') : tr('Done?', 'Erledigt?')}</h2>
         <ResultInput drill={d} value={item.value ?? null} onChange={setValue} />
         <button type="button" className="btn-primary" onClick={complete}>
           {last ? tr('Done – finish session', 'Fertig – Einheit beenden') : tr('Done – next drill', 'Fertig – nächste Übung')}
@@ -170,7 +180,9 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                         {x.done && dk ? ` · ${scoreText(dk.scoring, x.value ?? null)}` : ''}
                       </span>
                     </span>
-                    <span aria-hidden="true">{x.done ? '✓' : k === i ? '●' : '›'}</span>
+                    <span className={x.done ? 'tr-drawer-done' : undefined} role={x.done ? 'img' : undefined} aria-label={x.done ? tr('done', 'erledigt') : undefined} aria-hidden={x.done ? undefined : 'true'}>
+                      {x.done ? TR_GLYPH.tick() : k === i ? <span className="tr-drawer-now" /> : '›'}
+                    </span>
                   </button>
                 );
               })}
@@ -255,21 +267,26 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
             </div>
             {exit === 'menu' ? (
               <div className="sheet-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    saveSession(s);
-                    props.onPause();
-                  }}
-                >
-                  {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-                </button>
+                <div className="sc-actions" role="group" aria-label={tr('This session', 'Diese Einheit')}>
+                  <button
+                    type="button"
+                    className="sc-action"
+                    aria-label={tr('Pause – continue later', 'Pausieren – später fortsetzen')}
+                    onClick={() => {
+                      saveSession(s);
+                      props.onPause();
+                    }}
+                  >
+                    {PAUSE}
+                    <span>{tr('Pause', 'Pausieren')}</span>
+                  </button>
+                  <button type="button" className="sc-action danger" aria-label={tr('Cancel session', 'Einheit abbrechen')} onClick={props.onDelete}>
+                    {BIN}
+                    <span>{tr('Cancel', 'Abbrechen')}</span>
+                  </button>
+                </div>
                 <button type="button" className="btn-primary" onClick={() => setExit('end')}>
                   {tr('Finish session', 'Einheit beenden')}
-                </button>
-                <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-                  {tr('Cancel session', 'Einheit abbrechen')}
                 </button>
               </div>
             ) : (
@@ -282,15 +299,20 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                       )
                     : tr('Finish and save the session?', 'Einheit beenden und speichern?')}
                 </span>
+                {/* as the round's "Runde beenden?": [Zurück | Löschen (red)], then the one main button */}
                 <div className="sheet-actions">
+                  <div className="sc-actions" role="group" aria-label={tr('Or', 'Oder')}>
+                    <button type="button" className="sc-action" aria-label={tr('Back', 'Zurück')} onClick={() => setExit(null)}>
+                      {BACK}
+                      <span>{tr('Back', 'Zurück')}</span>
+                    </button>
+                    <button type="button" className="sc-action danger" aria-label={tr('Delete session', 'Einheit löschen')} onClick={props.onDelete}>
+                      {BIN}
+                      <span>{tr('Delete', 'Löschen')}</span>
+                    </button>
+                  </div>
                   <button type="button" className="btn-primary" onClick={finish}>
                     {tr('Save & finish', 'Speichern & beenden')}
-                  </button>
-                  <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-                    {tr('Delete session', 'Einheit löschen')}
-                  </button>
-                  <button type="button" className="btn-secondary" onClick={() => setExit(null)}>
-                    {tr('Back', 'Zurück')}
                   </button>
                 </div>
               </>

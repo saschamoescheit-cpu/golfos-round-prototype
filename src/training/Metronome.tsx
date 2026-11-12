@@ -175,7 +175,8 @@ export function Metronome(props: { compact?: boolean; mode?: MetronomeMode }) {
             ? tr('1st sound: start back · 2nd: top · 3rd: impact', '1. Ton: zurück · 2. Ton: oben · 3. Ton: Treffmoment')
             : tr('tick = top of the backswing · tock = impact', 'Tick = oben · Tack = Treffmoment')}
         </span>
-        {on && mute && <span className="warn-text small">{tr('No sound on this device – follow the lights.', 'Kein Ton auf diesem Gerät – folge den Lichtern.')}</span>}
+        {/* a hint, not an error – green, never red (docs/DESIGN.md; Facelift 11.11.2026, o4) */}
+        {on && mute && <span className="good-text small" role="status">{tr('No sound on this device – follow the lights.', 'Kein Ton auf diesem Gerät – folge den Lichtern.')}</span>}
       </div>
       <div className="tr-metro-row">
         {mode === 'swing' ? (
@@ -204,8 +205,17 @@ export function Metronome(props: { compact?: boolean; mode?: MetronomeMode }) {
             <i key={k} className={`${beat === k ? 'on' : ''}${k === lights - 1 ? ' low' : ''}`} />
           ))}
         </span>
-        <button type="button" className={on ? 'btn-secondary tr-metro-go' : 'btn-primary tr-metro-go'} aria-pressed={on} onClick={() => (on ? setOn(false) : start())}>
-          {on ? tr('■ Stop', '■ Stopp') : tr('▶ Start', '▶ Start')}
+        {/* the round play / stop symbol, as on the animations (Facelift 11.11.2026, tr8) – no "▶ Start" / "■ Stopp" text */}
+        <button
+          type="button"
+          className={`tr-metro-go${on ? ' on' : ''}`}
+          aria-pressed={on}
+          aria-label={on ? tr('Stop the metronome', 'Metronom stoppen') : tr('Start the metronome', 'Metronom starten')}
+          onClick={() => (on ? setOn(false) : start())}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            {on ? <rect x="6" y="6" width="12" height="12" rx="2" /> : <path d="M8 5v14l11-7z" />}
+          </svg>
         </button>
       </div>
       {mode === 'swing' ? (

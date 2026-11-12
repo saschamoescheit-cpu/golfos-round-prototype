@@ -8,6 +8,20 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
 const p = await ctx.newPage();
+// the parts of a topic / a drill: the switch "‹ Übungen ›" (Facelift 11.11.2026, tr1) – picked from its list; false when
+// the page has no such part
+const view = async (name) => {
+  await p.getByRole('button', { name: /^Ansicht: / }).click();
+  const sheet = p.getByRole('dialog', { name: 'Ansicht' });
+  const opt = sheet.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+  if (!(await opt.count())) {
+    await sheet.getByRole('button', { name: 'Schließen' }).click();
+    return false;
+  }
+  await opt.first().click();
+  await p.waitForTimeout(150);
+  return true;
+};
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on
 // navigation – the app catches it; not an error of the page
@@ -38,7 +52,7 @@ const T0 = Date.now();
 // stands in (19.10.2026: the side picture stood in and broke the page – a face view has no figures)
 {
   await p.locator('.tr-cat').filter({ hasText: 'Ballflug' }).first().click();
-  await p.getByRole('tab', { name: 'Fehler' }).click();
+  await view('Fehler');
   await p.locator('.list .list-item').filter({ has: p.locator('.title', { hasText: /^Shank/ }) }).first().click();
   const fig = p.locator('figure.tr-sketch').first();
   await fig.locator('.tr-motion-btn').click();
@@ -87,7 +101,7 @@ for (let ti = 0; ti < topics.length; ti++) {
     await p.waitForTimeout(200);
   }
   // basics: open every section, play the 3D ones
-  await p.getByRole('tab', { name: 'Grundlagen' }).click();
+  await view('Grundlagen');
   await p.waitForTimeout(200);
   const colls = p.locator('.tr-coll');
   const m = await colls.count();
@@ -98,8 +112,7 @@ for (let ti = 0; ti < topics.length; ti++) {
     if (((await fig.locator('.tr-motion-btn').getAttribute('aria-label').catch(() => '')) ?? '').includes('3D')) await play(fig, `${name} › Grundlagen ${i + 1}`);
   }
   // faults
-  if (await p.getByRole('tab', { name: 'Fehler' }).count()) {
-    await p.getByRole('tab', { name: 'Fehler' }).click();
+  if (await view('Fehler')) {
     await p.waitForTimeout(200);
     const faults = p.locator('.list .list-item');
     const k = await faults.count();

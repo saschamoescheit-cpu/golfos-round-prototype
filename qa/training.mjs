@@ -22,6 +22,37 @@ const ok = (cond, what) => {
 const shot = async (n) => shots && p.screenshot({ path: `${shots}/flow-${n}.png`, fullPage: true });
 const tab = (name) => p.locator('.tabbar button').filter({ hasText: name }).click();
 const back = () => p.locator('.topbar .icon-btn').first().click();
+// the parts of a topic / a drill: the switch "‹ Übungen ›" (Facelift 11.11.2026, tr1) – picked from its list
+const viewNow = async () => ((await p.getByRole('button', { name: /^Ansicht: / }).getAttribute('aria-label')) ?? '').replace('Ansicht: ', '');
+const viewNames = async () => {
+  await p.getByRole('button', { name: /^Ansicht: / }).click();
+  const names = await p.getByRole('dialog', { name: 'Ansicht' }).locator('.pick-option strong').allInnerTexts();
+  await p.getByRole('dialog', { name: 'Ansicht' }).getByRole('button', { name: 'Schließen' }).click();
+  return names;
+};
+const view = async (name) => {
+  await p.getByRole('button', { name: /^Ansicht: / }).click();
+  await p.getByRole('dialog', { name: 'Ansicht' }).locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${name}$`) }) }).click();
+  await p.waitForTimeout(150);
+};
+const eyebrow = (text) => p.locator('.eyebrow').filter({ hasText: new RegExp(`^${text}$`, 'i') });
+const block = (text) => p.locator('.tr-block').filter({ has: eyebrow(text) });
+// swiped left as a mail (SwipeRow): the red bin shows, a tap on it deletes
+const swipeDelete = async (front) => {
+  await front.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(200);
+  const bb = await front.boundingBox();
+  const y = bb.y + bb.height / 2;
+  await p.mouse.move(bb.x + bb.width - 30, y);
+  await p.mouse.down();
+  for (let i = 1; i <= 8; i++) await p.mouse.move(bb.x + bb.width - 30 - (100 * i) / 8, y);
+  await p.mouse.up();
+  await p.waitForTimeout(250);
+  const bin = p.locator('.swipe-bin').first();
+  const box = await bin.boundingBox();
+  await bin.click({ position: { x: box.width - 40, y: box.height / 2 } });
+  await p.waitForTimeout(400);
+};
 
 await p.goto(url);
 await p.waitForTimeout(1500);
@@ -60,11 +91,11 @@ const adv = await p.locator('.tr-drill-row').count();
 await p.locator('button.chip').filter({ hasText: /^alle$/ }).first().click();
 ok(adv > 0 && adv < (await p.locator('.tr-drill-row').count()), 'level filter works');
 // the topic page is split into tabs, products are not listed there (Sascha 16.10.2026)
-const topicTabs = await p.locator('.tr-tabs [role="tab"]').allInnerTexts();
-ok(topicTabs.length === 4 && topicTabs[0].startsWith('Übungen') && topicTabs[1] === 'Grundlagen', `topic tabs: ${topicTabs.join(' · ')}`);
+const topicTabs = await viewNames();
+ok((await p.locator('.tr-tabs, .segmented').count()) === 0 && topicTabs.length === 4 && topicTabs[0].startsWith('Übungen') && topicTabs[1] === 'Grundlagen' && (await viewNow()) === 'Übungen', `topic parts as the switch "‹ Übungen ›", no block of tabs: ${topicTabs.join(' · ')}`);
 ok((await p.locator('.tr-gear-row, .tr-product').count()) === 0, 'no product list on the topic page');
-await p.getByRole('tab', { name: 'Grundlagen' }).click();
-ok((await p.locator('.tr-intro-text').isVisible()) && (await p.locator('.tr-drill-row').count()) === 0, 'basics tab shows only the knowledge');
+await view('Grundlagen');
+ok((await p.locator('.tr-intro-text').count()) === 0 && (await p.locator('.tr-coll').count()) > 0 && (await p.locator('.tr-drill-row').count()) === 0, 'basics show only the knowledge – no intro paragraph (tr2)');
 const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
 ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview picture in the basics');
@@ -85,7 +116,7 @@ ok((await stroke.locator('.tr-3d canvas').count()) === 1 && (await stroke.locato
 ok((await stroke.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Hinten|Schräg|Oben', 'views: Vorne · Hinten · Schräg · Oben');
 await btn3d.click();
 ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch-pic > svg').count()) === 1, 'the close symbol brings back the still picture');
-await p.getByRole('tab', { name: 'Fehler' }).click();
+await view('Fehler');
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
 // the fault picture as a 3D video: the fault and the right way side by side
@@ -100,8 +131,8 @@ await faultBtn.click();
 ok((await faultFig.locator('.tr-3d').count()) === 0, 'back to the fault picture');
 ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 1, 'a fault leads to cause, cure and drills');
 await back();
-ok((await p.getByRole('tab', { name: 'Fehler' }).getAttribute('aria-selected')) === 'true', 'back returns to the same tab');
-await p.getByRole('tab', { name: /^Übungen/ }).click();
+ok((await viewNow()) === 'Fehler', 'back returns to the same part');
+await view('Übungen');
 // (Landering plays its 3D video since 18.10.2026 – the moving top view is checked on a drill that keeps it)
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Chips in einen Korb' }).click();
 await p.waitForTimeout(300);
@@ -121,42 +152,46 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).cli
 await p.waitForTimeout(300);
 ok((await p.locator('figure.tr-sketch').first().locator('.tr-motion-btn').getAttribute('aria-label')) === '3D-Video abspielen', 'Landering plays a 3D video');
 // the drill page in tabs (Sascha 17.10.2026: no one-pager)
-ok((await p.getByRole('tab').allInnerTexts()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page tabs: Anleitung · Ergebnis · Videos · Zubehör');
+ok((await viewNames()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page parts: Anleitung · Ergebnis · Videos · Zubehör');
 ok((await p.locator('.tr-steps li').count()) >= 2 && (await p.locator('.tr-log').count()) === 0, 'Anleitung shows the steps, not the result part');
+ok((await eyebrow('Aufbau').count()) === 1 && (await eyebrow('Ablauf').count()) === 1 && (await p.locator('main h2').count()) === 0 && (await p.getByText('So geht’s').count()) === 0, 'Anleitung: eyebrows AUFBAU · ABLAUF above plain blocks, no heading in a card (tr2)');
 await p.locator('.tr-fav').click();
-await p.getByRole('tab', { name: 'Ergebnis' }).click();
+await view('Ergebnis');
 ok((await p.locator('.tr-targets .mine').innerText()).includes('Hcp 11–20'), 'target of the player’s band is highlighted (hcp 12.4)');
 for (let i = 0; i < 11; i++) await p.locator('.tr-result button').nth(1).click();
+// a new result: the round green tick bottom right (tr3), no "Ergebnis speichern" button in the card
+ok((await p.locator('.tr-log button.btn-primary').count()) === 0, 'no save button in the result card');
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
-ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'result saved');
+ok(/Gespeichert/.test(await p.locator('.tr-save-note').innerText()) && (await p.locator('.fab-save').isDisabled()), 'result saved – a quiet line, the tick rests until the value changes');
 ok((await p.locator('.tr-history li').count()) === 1, 'result in the list');
-// removing a result can be undone (like deleting a round)
-await p.locator('.tr-history .tr-hist-remove').first().click();
+// removing a result: swiped away (tr4) – can be undone (like deleting a round)
+ok((await p.locator('.tr-history .tr-hist-remove').count()) === 0, 'no ✕ per history row');
+await swipeDelete(p.locator('.tr-history .swipe-front').first());
 ok((await p.locator('.tr-history li').count()) === 0 && (await p.locator('.undo-toast').isVisible()), 'removing a result shows Undo');
 await p.locator('.undo-toast button').click();
 ok((await p.locator('.tr-history li').count()) === 1, 'Undo brings the result back');
 await shot('drill');
-await p.getByRole('tab', { name: 'Videos' }).click();
+await view('Videos');
 // video loads only on tap
 ok((await p.locator('iframe').count()) === 0, 'no video before tapping');
 await p.locator('.tr-video-cover').first().click();
 ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'video loads from youtube-nocookie on tap');
 // gear belongs to the drill
-await p.getByRole('tab', { name: 'Zubehör' }).click();
+await view('Zubehör');
 const gearRows = p.locator('.tr-gear-row');
 ok((await gearRows.count()) >= 1 && (await gearRows.first().innerText()).includes('EyeLine'), 'the drill shows its own gear');
 await gearRows.first().locator('.chip').click();
-ok((await gearRows.first().locator('.chip').innerText()).includes('im Korb'), 'gear into the cart from the drill');
+ok((await gearRows.first().locator('.chip').innerText()).includes('Im Korb'), 'gear into the cart from the drill');
 await gearRows.first().locator('.tr-gear-row-main').click();
 await p.waitForTimeout(300);
 ok(await p.getByText('Im Warenkorb').isVisible(), 'gear page knows it is in the cart');
 await back();
-ok((await p.getByRole('tab', { name: 'Zubehör' }).getAttribute('aria-selected')) === 'true', 'back from the gear page: the same tab of the drill');
+ok((await viewNow()) === 'Zubehör', 'back from the gear page: the same part of the drill');
 await back();
 await back();
 await p.waitForTimeout(300);
-ok(await p.getByRole('heading', { name: 'Deine Favoriten' }).isVisible(), 'favourite on the library page');
-ok((await p.locator('.tr-block').filter({ has: p.getByRole('heading', { name: 'Zuletzt angesehen' }) }).locator('.tr-mini').first().innerText()).includes('Landering'), 'library: the drill opened last is offered again');
+ok(await eyebrow('Deine Favoriten').isVisible(), 'favourite on the library page');
+ok((await block('Zuletzt angesehen').locator('.tr-mini').first().innerText()).includes('Landering'), 'library: the drill opened last is offered again');
 
 // fault finder
 await p.locator('.chip').filter({ hasText: 'Slice' }).first().click();
@@ -241,11 +276,11 @@ ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result
 await shot('result');
 await back();
 await p.waitForTimeout(200);
-ok(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible(), 'progress shows the best results');
+ok(await eyebrow('Deine Übungen').isVisible(), 'progress shows the best results');
 ok((await p.locator('.tr-goals').innerText()).includes('Ziele für Hcp 11–20'), 'progress: the goals of the player’s handicap band');
 ok((await p.locator('.tr-thumb').count()) >= 1, 'progress: bests with the drill picture');
-ok(await p.getByRole('heading', { name: 'Letzte Ergebnisse' }).isVisible(), 'progress: the latest results by day');
-const sessionsBlock = () => p.locator('.tr-block').filter({ has: p.getByRole('heading', { name: 'Einheiten', exact: true }) });
+ok(await eyebrow('Letzte Ergebnisse').isVisible(), 'progress: the latest results by day');
+const sessionsBlock = () => block('Einheiten');
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'finished session in the list');
 // delete with undo
 await sessionsBlock().locator('.list-item').first().click();
@@ -263,22 +298,22 @@ const tile = (label) => p.locator('.tile-row .tile').filter({ has: p.getByText(l
 ok((await p.locator('.tile-row .tile .tile-mark svg').count()) === 4, 'progress: four tiles, each with its mark');
 ok(await tile('gelöscht').isDisabled(), 'progress: "deleted" is there with 0 and cannot be tapped');
 await tile('Einheiten').click();
-ok((await sessionsBlock().isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "sessions" shows only the sessions');
+ok((await sessionsBlock().isVisible()) && !(await eyebrow('Deine Übungen').isVisible()), 'tile "sessions" shows only the sessions');
 await tile('Ergebnisse').click();
-ok(!(await sessionsBlock().isVisible()) && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "results" shows only the results – one tile at a time');
+ok(!(await sessionsBlock().isVisible()) && (await eyebrow('Deine Übungen').isVisible()), 'tile "results" shows only the results – one tile at a time');
 await tile('Ergebnisse').click();
-ok((await sessionsBlock().isVisible()) && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'second tap: everything again');
+ok((await sessionsBlock().isVisible()) && (await eyebrow('Deine Übungen').isVisible()), 'second tap: everything again');
 await sessionsBlock().locator('.list-item').first().click();
 await p.getByRole('button', { name: 'Einheit löschen' }).click();
 await p.waitForTimeout(200);
 await tab('Üben');
 await tab('Verlauf');
 await tile('gelöscht').click();
-ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "deleted" shows only the bin');
+ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await eyebrow('Deine Übungen').isVisible()), 'tile "deleted" shows only the bin');
 await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(200);
-ok((await sessionsBlock().locator('.list-item').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'restored from the bin: the whole page again');
+ok((await sessionsBlock().locator('.list-item').count()) === 1 && (await eyebrow('Deine Übungen').isVisible()), 'restored from the bin: the whole page again');
 
 // favourites as a session needs two favourites: add the Tiger drill too
 await tab('Wissen');
@@ -289,19 +324,21 @@ await p.locator('.tr-fav').click();
 // one usability (Sascha 03.11.2026): the TopBar keeps no tool but the pen, the drill's actions are one bar
 { const acts = (await p.locator('.sc-actions:visible .sc-action').allTextContents()).map((x) => x.trim()).join('|'); const tools = await p.locator('.topbar:visible .icon-btn').count(); ok(tools === 1 && acts === 'Favorit|Zur Einheit', `drill page: no tool in the TopBar but back, actions bar Favorit · Zur Einheit (${tools} · ${acts})`); }
 await p.getByRole('button', { name: 'Zu meiner eigenen Einheit hinzufügen' }).click();
-ok((await p.locator('.tr-plan-list li').count()) === 1, 'drill page adds the drill to an own session');
+ok((await p.locator('.tr-own-list li').count()) === 1, 'drill page adds the drill to an own session');
 await tab('Üben');
 ok(await p.getByRole('button', { name: /Favoriten üben/ }).isVisible(), 'favourites can be practised as a session');
 
 // own plan
 await tab('Üben');
-await p.getByRole('button', { name: '+ Eigene Einheit zusammenstellen' }).click();
-await p.locator('.tr-add').nth(0).click();
-await p.locator('.tr-add').nth(3).click();
+// something new: the round green "+" bottom right (tr7), the drills ticked (tr5)
+ok((await p.getByRole('button', { name: /Eigene Einheit zusammenstellen/ }).count()) === 0, 'no text button "+ Eigene Einheit zusammenstellen"');
+await p.locator('.fab-plus').click();
+await p.locator('.tick-row').nth(0).click();
+await p.locator('.tick-row').nth(3).click();
 await p.getByRole('button', { name: 'Plan speichern' }).click();
 await p.waitForTimeout(200);
-ok((await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').count()) === 1, 'own plan saved');
-await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').first().click();
+ok((await block('Meine Pläne').locator('.list-item').count()) === 1, 'own plan saved');
+await block('Meine Pläne').locator('.list-item').first().click();
 await p.waitForTimeout(200);
 { const pens = await p.locator('.topbar:visible .edit-btn, .fab-pen').count(); const del = await p.locator('.sc-actions:visible .sc-action.danger').allTextContents(); del.forEach((x, k) => (del[k] = x.trim())); ok(pens === 1 && del.join() === 'Löschen', `own plan: the green pen to edit, Löschen in the bar (${pens} · ${del})`); }
 // changed afterwards: saved by itself, no "Plan speichern" (Sascha 11.11.2026)
@@ -313,14 +350,14 @@ await back();
 await p.waitForTimeout(200);
 await back();
 await p.waitForTimeout(200);
-ok(/Mein Plan B/.test(await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).innerText()), 'own plan changed: the new name kept without a save button');
+ok(/Mein Plan B/.test(await block('Meine Pläne').innerText()), 'own plan changed: the new name kept without a save button');
 
 // shop
 await tab('Shop');
 await p.waitForTimeout(800);
 const products = await p.locator('.tr-product').count();
 ok(products >= 40, `${products} products`);
-await p.locator('button.chip').filter({ hasText: 'Preis ↑' }).click();
+await p.getByRole('button', { name: 'Preis', exact: true }).click();
 const firstPrice = await p.locator('.tr-price').first().innerText();
 ok(/≈ (8|9)/.test(firstPrice), `sorted by price: cheapest first (${firstPrice})`);
 await p.locator('button.chip').filter({ hasText: 'Nach Thema' }).click();
@@ -365,7 +402,7 @@ const firstReview = await p.locator('.topbar h1').innerText();
 await p.locator('.tr-reviewbar').getByRole('button', { name: 'Ändern' }).click();
 await p.locator('.tr-reviewbar textarea').fill('Abstände in Metern angeben');
 await p.locator('.tr-reviewbar textarea').blur();
-await p.getByRole('button', { name: 'Nächste ungeprüfte Übung ›' }).click();
+await p.getByRole('button', { name: 'Nächste ungeprüfte Übung', exact: true }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.topbar h1').innerText()) !== firstReview, 'review goes on to the next drill');
 await p.locator('.tr-reviewbar').getByRole('button', { name: 'Streichen' }).click();
@@ -382,7 +419,7 @@ await back();
 // the rules that belong to a topic: the rule book opens at the rule, back leads to Training again (18.10.2026)
 await tab('Wissen');
 await p.locator('.tr-cat').filter({ hasText: 'Bunker' }).first().click();
-await p.getByRole('tab', { name: 'Grundlagen' }).click();
+await view('Grundlagen');
 const ruleRow = p.locator('.tr-rules .list-item').first();
 ok((await ruleRow.innerText().catch(() => '')).includes('12.2'), 'topic › Grundlagen: „Die Regeln dazu“ names rule 12.2');
 await ruleRow.scrollIntoViewIfNeeded();
