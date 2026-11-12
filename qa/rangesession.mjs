@@ -65,7 +65,7 @@ await p.evaluate((d) => {
 await p.reload();
 await p.waitForTimeout(1500);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(500);
 const card = p.getByRole('region', { name: 'Launch-Monitor' });
 const had4i = (await p.getByLabel('4i Carry in Metern').count()) > 0;

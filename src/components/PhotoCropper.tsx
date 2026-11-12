@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FloatActions } from './FloatActions';
 import { tr } from '../lib/i18n';
 
 // The profile photo placed by hand (Sascha 17.10.2026: "position it, zoom in and out"): the picture in a round frame,
@@ -98,10 +99,9 @@ export function PhotoCropper(props: { src: string; onCancel: () => void; onSave:
           )}
           <span className="crop-ring" aria-hidden="true" />
         </div>
-        {/* zoom with two fingers (or the wheel) – no slider (Sascha 20.10.2026) */}
-        <button type="button" className="btn-primary" disabled={!img} onClick={save}>
-          {tr('Use photo', 'Bild übernehmen')}
-        </button>
+        {/* zoom with two fingers (or the wheel) – no slider (Sascha 20.10.2026); taken with the round green save bottom right,
+            as everything new (Sascha 12.11.2026 – before a text button "Bild übernehmen") */}
+        <FloatActions overSheet save={{ label: tr('Use photo', 'Bild übernehmen'), onClick: save, disabled: !img }} />
       </section>
     </div>
   );

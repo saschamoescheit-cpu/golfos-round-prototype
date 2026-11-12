@@ -47,7 +47,7 @@ const golf = p.getByRole('region', { name: 'Golf', exact: true });
 ok(/Mein Bag[\s\S]*Distanzen in/.test(await golf.innerText()), 'distances under Golf, below "Mein Bag"');
 // P2: the home club and the strokes gained comparison rows of the same list as Tee and Distanzen ("Name · Wert ›")
 const golfRows = (await golf.locator('.settings-list > .settings-row').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-ok(golfRows.join('|') === 'Heimatclub|Tee|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
+ok(golfRows.join('|') === 'Mein Bag|Heimatclub|Tee|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await golf.locator('.card, .list-item').count()) === 0 && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
 // P1: gender a row with its sheet – one line each what follows from it; no menu
 const gender = p.getByRole('region', { name: 'Persönliche Daten' }).locator('.settings-row').filter({ hasText: 'Geschlecht' });
 ok((await p.locator('select#pf-gender').count()) === 0 && /Keine Angabe/.test(await gender.innerText()), `gender as a row: ${(await gender.innerText()).replace(/\s+/g, ' ')}`);
@@ -62,6 +62,18 @@ await p.getByRole('dialog', { name: 'Geschlecht' }).locator('.pick-option').filt
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).gender)) == null, '"Keine Angabe": no gender stored');
 // P2: Hilfe as rows of a settings list, no drawer list
+// Sascha 12.11.2026: "Mein Bag" a row of the Golf list, no "Freunde" in the profile; Caddie, Mitteilungen and Hilfe the same
+// row style as Golf – the eyebrow above, a settings list, no card
+ok((await p.locator('main .list-item').filter({ hasText: /^Freunde/ }).count()) === 0 && (await p.locator('main .settings-row').filter({ hasText: /^Freunde/ }).count()) === 0, 'no "Freunde" on the profile page');
+{
+  const caddie = p.getByRole('region', { name: 'Caddie', exact: true });
+  const rows = (await caddie.locator('.settings-list > .settings-row').allInnerTexts()).map((t) => t.split(String.fromCharCode(10))[0].trim());
+  ok(rows.join('|') === 'Schlägerempfehlungen|Grün-Neigung auf dem Grün|Von selbst vorlesen|Wie der Caddie plant' && (await caddie.locator('.card, .drawer-list').count()) === 0, `Caddie: rows of a settings list, no card (${rows.join(' · ')})`);
+  const subs = await caddie.locator('.onoff-row .switch-label .muted.small').allInnerTexts();
+  ok(subs.length === 3 && subs.every((t) => t.trim().length > 3), `each of the three switches with its line (${subs.join(' · ')})`);
+  const push = p.getByRole('region', { name: 'Mitteilungen' });
+  ok((await push.locator('.card').count()) === 0, 'Mitteilungen: no card – the same row style');
+}
 ok((await p.getByRole('region', { name: 'Hilfe', exact: true }).locator('.settings-list .settings-row').count()) === 2 && (await p.locator('main .drawer-row').filter({ hasText: /Videos|Häufige Fragen/ }).count()) === 0, 'Hilfe: "Videos ›" and "Häufige Fragen ›" as settings rows');
 ok(/Von selbst vorlesen/.test(prof) && /Wie der Caddie plant/.test(prof) && !/verfehlen darf/.test(prof), 'caddie settings in the profile, no miss map');
 ok(!/Grüns heute/.test(prof), 'no green speed setting');
@@ -80,7 +92,7 @@ await p.waitForTimeout(400);
 ok((await p.locator('.home-club').innerText()).includes('Hetzenhof'), 'home club picked from the course search');
 
 // the bag
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(300);
 const full = await p.locator('main').innerText();
 ok(full.includes('14 Schläger inkl. Putter') && full.includes('Putter') && !full.includes('Eisen 7'), `bag: 13 clubs + putter, short codes only`);
@@ -149,7 +161,7 @@ await shot('bag-tracked');
 // yards (Sascha 15.10.2026): the same bag in the player's unit – 216 m are 236 yd; typed yards are stored in metres
 await p.evaluate(() => localStorage.setItem('golfos.unit.v1', JSON.stringify('yd')));
 await p.locator('.topbar').getByRole('button').first().click();
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(300);
 const dY = p.getByRole('textbox', { name: 'D Carry in Yards' });
 ok((await dY.inputValue()) === '242' && (await p.locator('.bag-row.full').filter({ hasText: 'Putter' }).innerText()).includes('yd'), 'yards: driver 242 yd (221 m)');
@@ -188,9 +200,36 @@ await p.waitForTimeout(300);
 await sheet.locator('.pick-option').first().click();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) == null, 'back to the next better group');
+// Währung: the whole ISO catalogue, searchable – EUR, USD, GBP, CHF first, "Keine" before them (Sascha 12.11.2026)
+{
+  const row = p.locator('.settings-row').filter({ hasText: 'Währung' });
+  ok(/Keine/.test(await row.innerText()), `Währung: "Keine" at first (${(await row.innerText()).replace(/\s+/g, ' ')})`);
+  await row.click();
+  const sh = p.getByRole('dialog', { name: 'Währung' });
+  await sh.waitFor();
+  const codes = await sh.locator('.pick-option[data-code]').evaluateAll((els) => els.map((e) => e.dataset.code));
+  ok(codes.length >= 150 && codes.slice(0, 4).join('|') === 'EUR|USD|GBP|CHF' && /^Keine/.test((await sh.locator('.pick-option').first().innerText()).trim()), `the catalogue: ${codes.length} currencies, ${codes.slice(0, 4).join(', ')} first, "Keine" before them`);
+  await sh.getByRole('searchbox', { name: 'Währung suchen' }).fill('pfund');
+  await p.waitForTimeout(200);
+  const found = await sh.locator('.pick-option[data-code]').evaluateAll((els) => els.map((e) => e.dataset.code));
+  ok(found.includes('GBP') && found.length < 15, `searched "pfund": ${found.join(', ')}`);
+  await sh.locator('.pick-option[data-code="GBP"]').click();
+  await p.waitForTimeout(200);
+  ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).currency)) === 'GBP' && /Pfund/.test(await row.innerText()) && /£/.test(await row.innerText()), `GBP chosen and kept: ${(await row.innerText()).replace(/\s+/g, ' ')}`);
+  await row.click();
+  await p.getByRole('dialog', { name: 'Währung' }).getByRole('searchbox').fill('usd');
+  await p.waitForTimeout(200);
+  await p.getByRole('dialog', { name: 'Währung' }).locator('.pick-option[data-code="USD"]').click();
+  await p.waitForTimeout(200);
+  ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).currency)) === 'USD' && /\$/.test(await row.innerText()), 'a value as before (USD) still works');
+  await row.click();
+  await p.getByRole('dialog', { name: 'Währung' }).locator('.pick-option').first().click();
+  await p.waitForTimeout(200);
+  ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).currency)) == null && /Keine/.test(await row.innerText()), 'back to "Keine"');
+}
 // how the caddie plans: a row in the switch list, the choice in a sheet (Sascha 17.10.2026); no hint under the index
 ok(!/Daraus rechnet die App/.test(await p.locator('main').innerText()), 'no hint text under the handicap index');
-const planRow = p.locator('.drawer-row').filter({ hasText: 'Wie der Caddie plant' });
+const planRow = p.locator('.settings-row').filter({ hasText: 'Wie der Caddie plant' });
 ok((await planRow.count()) === 1 && /Normal/.test(await planRow.innerText()), `the caddie's plan as a row of the switch list (${(await planRow.innerText()).replace(/\s+/g, ' ')})`);
 await planRow.click();
 await p.waitForTimeout(300);
@@ -224,7 +263,9 @@ ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count(
   await p.mouse.down();
   await p.mouse.move(fb.x + fb.width / 2 + 200, fb.y + fb.height / 2, { steps: 6 }); // the left (green) half into the frame
   await p.mouse.up();
-  await crop.getByRole('button', { name: 'Bild übernehmen' }).click();
+  // taken with the round green save bottom right, as everything new (Sascha 12.11.2026) – no text button
+  ok((await crop.locator('.btn-primary').count()) === 0 && (await p.locator('.fab-stack.over-sheet .fab-save').count()) === 1, 'the cropper: the floating save bottom right, no text button');
+  await p.getByRole('button', { name: 'Bild übernehmen' }).click();
   await p.waitForTimeout(300);
   const centre = await p.evaluate(async () => {
     const src = JSON.parse(localStorage.getItem('golfos.profile.v1')).photo;

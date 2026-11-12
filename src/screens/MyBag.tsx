@@ -29,9 +29,7 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     return (
       <main className="screen">
         <TopBar title={tr('Caddie', 'Caddie')} onBack={props.onBack} />
-        <section className="card stats-card">
-          <CaddieSettingsFields />
-        </section>
+        <CaddieSettingsFields />
       </main>
     );
   return <Bag rounds={props.rounds} onBack={props.onBack} />;

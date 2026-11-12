@@ -6,8 +6,8 @@ import { SettingsList, SettingsRow } from './Settings';
 import { SaveButton } from './ui';
 
 // Sign in with a user name and password, or create the account once (Sascha 22.10.2026: "as in Schlaufuchs") –
-// besides "Sign in with Google". One form with its heading; the other way as a green line under the button (Facelift
-// 11.11.2026, "konto": not a block of two buttons "Anmelden | Konto anlegen").
+// besides "Sign in with Google". The two ways as the app's green chips above the form (Sascha 12.11.2026, newer review of
+// "konto": as the Statistik topics and the bag – before a block of two buttons, for a day a heading with a green link).
 
 const typing = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false } as const;
 
@@ -36,7 +36,26 @@ export function AccountForm(props: { onDone: () => void }) {
   const title = mode === 'login' ? tr('Sign in', 'Anmelden') : tr('Create account', 'Konto anlegen');
   return (
     <form className="account-form" aria-label={title} onSubmit={submit}>
-      <strong className="account-title">{title}</strong>
+      <div className="chip-row account-modes" role="group" aria-label={tr('Sign in or create an account', 'Anmelden oder Konto anlegen')}>
+        {(
+          [
+            ['login', tr('Sign in', 'Anmelden')],
+            ['signup', tr('Create account', 'Konto anlegen')],
+          ] as const
+        ).map(([v, l]) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={mode === v}
+            onClick={() => {
+              setMode(v);
+              setErr(null);
+            }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
       <div className="field">
         <label htmlFor="acc-name">{mode === 'login' ? tr('User name or e-mail', 'Benutzername oder E-Mail') : tr('User name', 'Benutzername')}</label>
         <input id="acc-name" className="input" value={name} maxLength={mode === 'login' ? 120 : 20} autoComplete="username" {...typing} onChange={(e) => setName(e.target.value)} />
@@ -61,26 +80,6 @@ export function AccountForm(props: { onDone: () => void }) {
       )}
       <button type="submit" className="btn-primary" disabled={busy || !ready}>
         {busy ? tr('One moment …', 'Einen Moment …') : title}
-      </button>
-      <button
-        type="button"
-        className="account-switch"
-        onClick={() => {
-          setMode(mode === 'login' ? 'signup' : 'login');
-          setErr(null);
-        }}
-      >
-        {mode === 'login' ? (
-          <>
-            {tr('No account yet? ', 'Noch kein Konto? ')}
-            <strong>{tr('Create account', 'Konto anlegen')}</strong>
-          </>
-        ) : (
-          <>
-            {tr('Have an account? ', 'Schon ein Konto? ')}
-            <strong>{tr('Sign in', 'Anmelden')}</strong>
-          </>
-        )}
       </button>
     </form>
   );

@@ -38,7 +38,7 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(400);
 const card = p.getByRole('region', { name: 'Launch-Monitor' });
 ok((await card.count()) === 1 && /Garmin R10, Trackman, Foresight/.test(await card.innerText()), 'Mein Bag: the launch monitor card under the carries – Garmin R10, Trackman, Foresight (Sascha 26.10.2026)');

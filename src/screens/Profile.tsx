@@ -1,11 +1,11 @@
 import { PAY_DETAILS, paypalName } from '../lib/wagers';
 import { PenGlyph } from '../components/Glyph';
-import { loadFriends } from '../lib/friends';
+import { CurrencyRow } from '../components/CurrencyRow';
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, TopBar } from '../components/ui';
 import { carryToReview } from '../lib/stats';
-import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
+import { loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
 import { getLang, tr } from '../lib/i18n';
 import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
@@ -64,7 +64,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   }, []);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const bag = loadCarryBag();
-  const caddie = loadCaddieSettings();
   const clubCount = (bag?.length ?? STANDARD_CLUBS.length) + (loadBagStyle().putter ? 1 : 0);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const set = (patch: Partial<Profile>) => {
@@ -226,95 +225,66 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
         </section>
       </Block>
 
+      {/* the Golf block as rows of one list, "Mein Bag ›" one of them (Sascha 12.11.2026: "Mein Bag as a normal row like Tee
+          and Distanzen"; the friends no longer here – the menu and the start page lead to them); rows like every other
+          setting, the choice in a sheet (Sascha 11.11.2026, design rounds 3–4); the home club and the strokes gained
+          comparison rows of the same list (Facelift 11.11.2026, P2 – before a label above a lone row) */}
       <Block title={tr('Golf', 'Golf')}>
-        <section className="card stats-card">
-          <button type="button" className="list-item" onClick={props.onBag}>
-            <span className="grow">
-              <span className="title">{tr('My bag', 'Mein Bag')}</span>
-              <span className="muted small">
-                {tr(`${clubCount} clubs · favourite approach ${caddie.favourite} m`, `${clubCount} Schläger · Lieblingsdistanz ${caddie.favourite} m`)}
-              </span>
-            </span>
-            {review > 0 && <span className="badge-dot">{tr(`${review} new`, `${review} neu`)}</span>}
+        <SettingsList>
+          <SettingsRow label={tr('My bag', 'Mein Bag')} value={review > 0 ? tr(`${review} new`, `${review} neu`) : tr(`${clubCount} clubs`, `${clubCount} Schläger`)} need={review > 0} onClick={props.onBag} />
+          {/* searched like when starting a round (Sascha 15.10.2026) */}
+          <button type="button" className="settings-row home-club" onClick={() => setPicking(true)}>
+            <span>{tr('Home club', 'Heimatclub')}</span>
+            <span className="settings-value">{p.homeClub || tr('Search a course', 'Platz suchen')}</span>
             <span aria-hidden="true">›</span>
           </button>
-          {props.onFriends && (
-            <button type="button" className="list-item" onClick={props.onFriends}>
-              <span className="grow">
-                <span className="title">{tr('Friends', 'Freunde')}</span>
-                <span className="muted small">{loadFriends().length ? tr(`${loadFriends().length} linked`, `${loadFriends().length} verknüpft`) : tr('Link your golf friends – invite them in one tap', 'Golffreunde verknüpfen – mit einem Tipp einladen')}</span>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )}
-          {/* rows like every other setting, the choice in a sheet (Sascha 11.11.2026, design rounds 3–4: "Distanzen wie
-              Standard-Tee darstellen"; "Standardwährung einfach nur Währung, Standard-Tee nur Tee"); the home club and the
-              strokes gained comparison rows of the same list (Facelift 11.11.2026, P2 – before a label above a lone row) */}
-          <SettingsList>
-            {/* searched like when starting a round (Sascha 15.10.2026) */}
-            <button type="button" className="settings-row home-club" onClick={() => setPicking(true)}>
-              <span>{tr('Home club', 'Heimatclub')}</span>
-              <span className="settings-value">{p.homeClub || tr('Search a course', 'Platz suchen')}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-            {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
-            <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
-              <span>Tee</span>
-              <span className="settings-value std-tee-name">
-                {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
-                <span>{p.tee ? teeName(p.tee) : tr('none', 'keins')}</span>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-            <ChoiceRow<'m' | 'yd'>
-              label={tr('Distances in', 'Distanzen in')}
-              value={unit}
-              onChange={(v) => {
-                setUnit(v);
-                saveUnit(v);
-              }}
-              options={[
-                { value: 'm', name: tr('Metres', 'Meter'), text: tr('As on courses in Germany', 'Wie auf deutschen Plätzen') },
-                { value: 'yd', name: 'Yards', text: tr('As in the USA and Great Britain', 'Wie in den USA und in Großbritannien') },
-              ]}
-            />
-            <ChoiceRow<'right' | 'left'>
-              label={tr('You play', 'Du spielst')}
-              value={p.hand ?? 'right'}
-              onChange={(v) => set({ hand: v })}
-              options={[
-                { value: 'right', name: tr('Right-handed', 'Rechtshänder') },
-                { value: 'left', name: tr('Left-handed', 'Linkshänder'), text: tr('Pictures and the 3D golfer mirrored', 'Bilder und der 3D-Golfer gespiegelt') },
-              ]}
-            />
-            {/* the currency (Sascha 12.11.2026): the Bilanz shows games and bets in another currency converted to it – at the
-                rate of their cut-off day; none: each in its own */}
-            <ChoiceRow<'none' | 'EUR' | 'USD'>
-              label={tr('Currency', 'Währung')}
-              value={p.currency ?? 'none'}
-              onChange={(v) => set({ currency: v === 'none' ? undefined : v })}
-              options={[
-                { value: 'none', name: tr('None', 'Keine'), text: tr('Every game and bet in its own currency', 'Jedes Spiel und jede Wette in seiner Währung') },
-                { value: 'EUR', name: 'Euro (€)', text: tr('"Bilanz" converts other currencies to euro – at the rate of the day they end', '„Bilanz“ rechnet andere Währungen in Euro um – zum Kurs des Tages, an dem sie enden') },
-                { value: 'USD', name: 'Dollar ($)', text: tr('"Bilanz" converts other currencies to dollars – at the rate of the day they end', '„Bilanz“ rechnet andere Währungen in Dollar um – zum Kurs des Tages, an dem sie enden') },
-              ]}
-            />
-            {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026) */}
-            <ChoiceRow<string>
-              label={tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}
-              value={p.sgGroup ?? ''}
-              onChange={(v) => set({ sgGroup: v || undefined })}
-              options={[{ value: '', name: tr(`${autoGroup} (automatic)`, `${autoGroup} (automatisch)`), text: tr('The next better group – follows your handicap index', 'Die nächstbessere Gruppe – folgt deinem Handicap-Index') }, ...GROUPS.map((g) => ({ value: g.id, name: g.label }))]}
-            />
-          </SettingsList>
-          {/* (the switch "Schlag per Ton (Test)" is gone – Sascha 03.11.2026: the iOS app hears the shots by itself) */}
-        </section>
+          {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
+          <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
+            <span>Tee</span>
+            <span className="settings-value std-tee-name">
+              {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
+              <span>{p.tee ? teeName(p.tee) : tr('none', 'keins')}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <ChoiceRow<'m' | 'yd'>
+            label={tr('Distances in', 'Distanzen in')}
+            value={unit}
+            onChange={(v) => {
+              setUnit(v);
+              saveUnit(v);
+            }}
+            options={[
+              { value: 'm', name: tr('Metres', 'Meter'), text: tr('As on courses in Germany', 'Wie auf deutschen Plätzen') },
+              { value: 'yd', name: 'Yards', text: tr('As in the USA and Great Britain', 'Wie in den USA und in Großbritannien') },
+            ]}
+          />
+          <ChoiceRow<'right' | 'left'>
+            label={tr('You play', 'Du spielst')}
+            value={p.hand ?? 'right'}
+            onChange={(v) => set({ hand: v })}
+            options={[
+              { value: 'right', name: tr('Right-handed', 'Rechtshänder') },
+              { value: 'left', name: tr('Left-handed', 'Linkshänder'), text: tr('Pictures and the 3D golfer mirrored', 'Bilder und der 3D-Golfer gespiegelt') },
+            ]}
+          />
+          {/* the currency (Sascha 12.11.2026): the Bilanz shows games and bets in another currency converted to it – at the
+              rate of their cut-off day; none: each in its own. The whole catalogue, searchable (Sascha 12.11.2026) */}
+          <CurrencyRow value={p.currency} onChange={(c) => set({ currency: c })} />
+          {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026) */}
+          <ChoiceRow<string>
+            label={tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}
+            value={p.sgGroup ?? ''}
+            onChange={(v) => set({ sgGroup: v || undefined })}
+            options={[{ value: '', name: tr(`${autoGroup} (automatic)`, `${autoGroup} (automatisch)`), text: tr('The next better group – follows your handicap index', 'Die nächstbessere Gruppe – folgt deinem Handicap-Index') }, ...GROUPS.map((g) => ({ value: g.id, name: g.label }))]}
+          />
+        </SettingsList>
+        {/* (the switch "Schlag per Ton (Test)" is gone – Sascha 03.11.2026: the iOS app hears the shots by itself) */}
       </Block>
 
+      {/* the caddie's settings as rows of the same look (Sascha 12.11.2026) */}
       <Block title={tr('Caddie', 'Caddie')}>
-        <section className="card stats-card">
-          <CaddieSettingsFields key={rev} />
-        </section>
+        <CaddieSettingsFields key={rev} />
       </Block>
 
       {teePick && (

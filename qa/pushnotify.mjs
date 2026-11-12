@@ -134,7 +134,7 @@ const openProfile = async (p) => {
   ok(await card.getByRole('status').filter({ hasText: 'Mitteilungen sind an' }).isVisible(), 'said: on – a first one on its way');
   ok((await on.getAttribute('data-on')) === 'true', 'the slider on');
   if (process.env.SHOTS) await card.screenshot({ path: `${process.env.SHOTS}/push-card.png` });
-  ok((await card.locator('.drawer-list .onoff-row').count()) === 5 && (await card.getByRole('group').count()) === 0 && (await onOff(card, /Sonderpreise live/).getAttribute('data-on')) === 'true', 'one slider per kind: check & sign, games, special prizes live (on), thunderstorm, Agility training day (no An/Aus buttons)');
+  ok((await card.locator('.onoff-row.push-kind').count()) === 5 && (await card.getByRole('group').count()) === 0 && (await onOff(card, /Sonderpreise live/).getAttribute('data-on')) === 'true', 'one slider per kind: check & sign, games, special prizes live (on), thunderstorm, Agility training day (no An/Aus buttons)');
   const storm = onOff(card, /Gewitter auf dem Platz/);
   await flip(storm);
   await p.waitForTimeout(600);
@@ -196,7 +196,7 @@ const openProfile = async (p) => {
   await p.waitForTimeout(800);
   ok(calls.some((c) => c.action === 'unsubscribe' && c.endpoint === sub?.subscription?.endpoint), 'turned off: the function forgets this phone');
   ok(Number(await p.evaluate(() => localStorage.getItem('qa.unsubscribed'))) >= 1, 'and the phone unsubscribes');
-  ok((await onOff(card2, 'Mitteilungen auf diesem Handy').getAttribute('data-on')) === 'false' && (await card2.locator('.drawer-list .onoff-row').count()) === 0, 'the slider off, the kinds hidden');
+  ok((await onOff(card2, 'Mitteilungen auf diesem Handy').getAttribute('data-on')) === 'false' && (await card2.locator('.onoff-row.push-kind').count()) === 0, 'the slider off, the kinds hidden');
   ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
   await ctx.close();
 }

@@ -96,7 +96,7 @@ await p.evaluate(() => sessionStorage.setItem('golfos.module', 'rounds'));
 await p.reload();
 await p.waitForTimeout(1500);
 await tab('Profil');
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(500);
 await p.getByRole('button', { name: 'Bag bearbeiten' }).click();
 await p.waitForTimeout(300);

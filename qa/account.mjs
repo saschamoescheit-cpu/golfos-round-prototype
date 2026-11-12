@@ -117,10 +117,13 @@ const signedAs = (p, n) => until(() => p.locator('.profile-account').getByText(`
 // iPhone: create the account
 const phone = await device('iPhone', 'iPhone 13');
 ok(await phone.getByRole('button', { name: 'Mit Google anmelden' }).isVisible(), 'not signed in: Google stays');
-// one form with its heading, the other way a green line under the button (Facelift 11.11.2026, "konto")
-ok((await phone.locator('.segmented').count()) === 0 && (await phone.getByRole('form', { name: 'Anmelden' }).count()) === 1 && (await phone.locator('.account-title').innerText()) === 'Anmelden', 'the form "Anmelden" with its heading, no block of two buttons');
-await phone.getByRole('button', { name: 'Noch kein Konto? Konto anlegen' }).click();
-ok((await phone.locator('.account-title').innerText()) === 'Konto anlegen' && (await phone.getByRole('button', { name: 'Schon ein Konto? Anmelden' }).count()) === 1, 'the green line switches to "Konto anlegen" – and back with "Schon ein Konto? Anmelden"');
+// the two ways as the app's green chips (Sascha 12.11.2026, newer review of "konto") – no block of two buttons
+{
+  const modes = phone.getByRole('group', { name: 'Anmelden oder Konto anlegen' });
+  ok((await phone.locator('.segmented').count()) === 0 && (await modes.evaluate((el) => el.classList.contains('chip-row'))) && (await modes.locator('button[aria-pressed="true"]').innerText()).trim() === 'Anmelden' && (await phone.getByRole('form', { name: 'Anmelden' }).count()) === 1, '"Anmelden | Konto anlegen" as green chips, "Anmelden" chosen');
+  await modes.getByRole('button', { name: 'Konto anlegen' }).click();
+  ok((await modes.locator('button[aria-pressed="true"]').innerText()).trim() === 'Konto anlegen' && (await phone.locator('#acc-email').count()) === 1, '"Konto anlegen" chosen: the e-mail field comes');
+}
 await phone.fill('#acc-name', 'Sascha.M');
 await phone.fill('#acc-email', 'sascha@example.com');
 await phone.fill('#acc-pw', 'kurz');
@@ -165,13 +168,13 @@ ok(await signedAs(ipad, 'sascha.m'), 'iPad: signed in with user name + password'
 
 // a third device: the user name is taken; then the e-mail with the new password
 const pc = await device('PC', 'Desktop Chrome');
-await pc.getByRole('button', { name: 'Noch kein Konto? Konto anlegen' }).click();
+await pc.getByRole('group', { name: 'Anmelden oder Konto anlegen' }).getByRole('button', { name: 'Konto anlegen' }).click();
 await pc.fill('#acc-name', 'sascha.m');
 await pc.fill('#acc-email', 'andere@example.com');
 await pc.fill('#acc-pw', 'geheim456');
 await pc.locator('.account-form button[type=submit]').click();
 ok(await until(() => pc.getByRole('alert').filter({ hasText: 'schon vergeben' }).isVisible()), 'a taken user name is said');
-await pc.getByRole('button', { name: 'Schon ein Konto? Anmelden' }).click();
+await pc.getByRole('group', { name: 'Anmelden oder Konto anlegen' }).getByRole('button', { name: 'Anmelden' }).click();
 await pc.fill('#acc-name', 'sascha@example.com');
 await pc.fill('#acc-pw', 'geheim123');
 await pc.locator('.account-form button[type=submit]').click();

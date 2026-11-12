@@ -2556,10 +2556,7 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .bag-edit-list { gap: 6px; }
 .swipe-front.bag-row.edit { background: var(--surface); border-top: 0; border-radius: 12px; padding: 6px 14px; min-height: 52px; }
 .swipe-front.bag-row.edit .bag-code { font-size: 16px; }
-/* Konto: one form with its heading, the other way a green line under the button (konto) */
-.account-title { font: 600 17px var(--display); }
-.account-switch { background: none; border: 0; padding: 6px 0; min-height: 44px; color: var(--brand-text); font: 500 15px var(--body); text-align: center; cursor: pointer; }
-.account-switch strong { font-weight: 700; }
+/* Konto: the problem as the green notice */
 .account-problem { margin: 0; }
 /* Profil (P1–P4): the photo's bin beside it, the account card */
 .profile-photo .photo-remove { color: var(--muted); }
@@ -2583,3 +2580,7 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .friend-done .done-tick { vertical-align: -2px; margin-right: 6px; }
 /* StepPick's sheet (O5): a round played with the SVG tick before its name */
 .pick-option strong .step-pick-tick { display: inline-block; vertical-align: -2px; margin-right: 6px; }
+/* Profil (12.11.2026): the currency sheet searchable; the photo's floating save keeps clear of the frame */
+.currency-sheet { height: 88vh; }
+.currency-search { flex: none; }
+.photo-cropper { padding-bottom: 92px; }

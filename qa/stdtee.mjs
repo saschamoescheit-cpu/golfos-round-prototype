@@ -32,15 +32,18 @@ await p.waitForTimeout(1000);
 // the profile: gender and standard tee
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(500);
-// gender as a menu left of the handicap index (Sascha 22.10.2026): männlich, weiblich, divers
-const opts = await p.locator('#pf-gender option').allInnerTexts();
-ok(opts.join(',') === '–,männlich,weiblich,divers', `gender menu: ${opts.join(', ')}`);
-const gBox = await p.locator('#pf-gender').boundingBox();
-const hBox = await p.locator('#pf-hcp').boundingBox();
-ok(gBox && hBox && gBox.x < hBox.x && Math.abs(gBox.y - hBox.y) < 4, 'gender left of the handicap index, in one row');
-await p.selectOption('#pf-gender', 'm');
+// gender (Sascha 22.10.2026: männlich, weiblich, divers) – since the Facelift (11.11.2026, P1) a row with its sheet, one
+// line each what follows from it
+const gRow = p.locator('.settings-row').filter({ hasText: 'Geschlecht' });
+await gRow.click();
+const gSheet = p.getByRole('dialog', { name: 'Geschlecht' });
+const opts = (await gSheet.locator('.pick-option strong').allInnerTexts()).map((t) => t.trim());
+ok(opts.join(',') === 'männlich,weiblich,divers,Keine Angabe', `gender: ${opts.join(', ')}`);
+await gSheet.locator('.pick-option').filter({ hasText: /^männlich/ }).click();
+await p.waitForTimeout(200);
+ok(/männlich/.test(await gRow.innerText()), 'gender as a row: "Geschlecht · männlich ›"');
 // the standard tee below "Mein Bag", above "Distanzen in"
-const bagY = (await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).boundingBox()).y;
+const bagY = (await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).boundingBox()).y;
 const teeY = (await p.locator('.std-tee').boundingBox()).y;
 const distY = (await p.getByText('Distanzen in', { exact: true }).boundingBox()).y;
 ok(bagY < teeY && teeY < distY, 'standard tee between "Mein Bag" and "Distanzen in"');
