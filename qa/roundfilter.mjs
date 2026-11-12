@@ -142,7 +142,7 @@ ok(filled != null && (await pen.count()) === 0, `a tap enters the score and it i
 {
   const acts = await p.locator('.sc-actions .sc-action').allInnerTexts();
   const tops = await p.locator('.sc-actions .sc-action').evaluateAll((bs) => bs.map((b) => Math.round(b.getBoundingClientRect().top)));
-  ok(acts.map((t) => t.trim()).join('|') === 'Schläge prüfen|Teilen|Export|Löschen' && new Set(tops).size === 1, `scorecard: Schläge prüfen · Teilen · Export · Löschen in one row (${acts.map((t) => t.trim()).join(' · ')})`);
+  ok(acts.map((t) => t.trim()).join('|') === 'Teilen|Export|Löschen' && new Set(tops).size === 1 && (await p.locator('.fab-stack').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1, `scorecard: Teilen · Export · Löschen in one row, Schläge prüfen floating (12.11.2026) (${acts.map((t) => t.trim()).join(' · ')})`);
 }
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(500);

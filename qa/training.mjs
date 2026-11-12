@@ -309,7 +309,7 @@ await p.waitForTimeout(200);
 await tab('Üben');
 await tab('Verlauf');
 await tile('gelöscht').click();
-ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await eyebrow('Deine Übungen').isVisible()), 'tile "deleted" shows only the bin');
+ok((await p.locator('.bin-title', { hasText: 'Gelöschte Einheiten' }).isVisible()) && !(await eyebrow('Deine Übungen').isVisible()), 'tile "deleted" shows only the bin');
 await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(200);

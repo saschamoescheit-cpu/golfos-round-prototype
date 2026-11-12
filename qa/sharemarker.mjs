@@ -73,7 +73,7 @@ await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Leaderboard · Turnier' }).click();
 await H.waitForTimeout(400);
 const board = (await H.locator('.event-board').innerText()).replace(/\s+/g, ' ');
-ok(/Sascha Zähler weicht ab: 1A/.test(board) && /Sascha.*Par/.test(board), `leaderboard: "${board}"`);
+ok(/Sascha (dein Flight )?Zähler weicht ab: 1A/.test(board) && /Sascha.*Par/.test(board), `leaderboard: "${board}"`);
 ok([...shared.values()].every((r) => !r.event_code), 'old server: no rows of their own – the tournament as before');
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

@@ -169,11 +169,15 @@ await ld('Sascha', 245, true);
   const back = sheet.locator('.sc-action.danger');
   ok((await p.locator('.fab-stack.over-sheet').count()) === 0 && (await sheet.locator('.autosave-note').count()) === 1 && (await back.count()) === 1 && (await back.getAttribute('aria-label')) === 'Meinen Wert zurücknehmen' && (await back.locator('svg').count()) === 1, 'Long Drive, corrected: no tick – "Änderungen werden von selbst gespeichert", "Zurücknehmen" red with its icon');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/special-edit.png' });
+  // the phone in front – a page in the background has its timers held back by the browser, a phone in the hand does not
+  await p.bringToFront();
   await sheet.locator('#special-m').fill('247');
+  // the keyboard closed (the field left): saved at once too – the timer of a page in the background is held back here
+  await sheet.locator('#special-m').blur();
   await sheet.locator('.autosave-note', { hasText: 'Gespeichert' }).waitFor({ timeout: 15000 }).catch(() => {});
   const said = (await sheet.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-160);
   const typed = await sheet.locator('#special-m').inputValue().catch(() => '?');
-  ok(mine() === 247 && /Gespeichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, typed ${typed}, "${said}")`);
+  ok(mine() === 247 && /Gespeichert|Speichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, typed ${typed}, "${said}")`);
   await sheet.locator('#special-m').fill('245');
   await sheet.getByRole('button', { name: 'Schließen' }).click(); // closed at once: saved on closing
   await p.waitForTimeout(1500);

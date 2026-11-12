@@ -126,7 +126,7 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
         </span>
         <div className="field">
           <label htmlFor="special-m">{ntp ? tr('Distance to the hole (m)', 'Abstand zur Fahne (m)') : tr('Length from the tee (m)', 'Weite vom Abschlag (m)')}</label>
-          <input id="special-m" className="input" inputMode="decimal" value={value} placeholder={ntp ? '2,4' : '240'} onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ''))} />
+          <input id="special-m" className="input" inputMode="decimal" value={value} placeholder={ntp ? '2,4' : '240'} onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ''))} onBlur={() => void flush()} />
           {!ntp && props.fromTee != null && (
             <button type="button" className="chip" onClick={() => setValue(String(props.fromTee))}>
               {tr(`GPS: ${props.fromTee} m from the tee`, `GPS: ${props.fromTee} m vom Abschlag`)}

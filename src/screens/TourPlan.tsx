@@ -1482,7 +1482,7 @@ function FlightBoard(props: {
         </section>
       )}
       <span className="muted small">{tr('Hold a player and drag him onto another flight – or tap him.', 'Spieler gedrückt halten und auf einen anderen Flight ziehen – oder antippen.')}</span>
-      <AddRow label={tr('Add a flight', 'Flight anlegen')} disabled={!unplaced.length} onClick={() => setOpen('new')} />
+      <AddRow label={tr('New flight', 'Neuer Flight')} disabled={!unplaced.length} onClick={() => setOpen('new')} />
       {moving && byId(moving) && (
         <PickSheet<number>
           title={tr(`Move ${props.label(byId(moving)!)}`, `${props.label(byId(moving)!)} verschieben`)}
