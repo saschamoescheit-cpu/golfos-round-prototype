@@ -65,8 +65,8 @@ const open = p.getByRole('region', { name: 'Offene Beträge' });
 const oweRows = open.getByRole('list', { name: 'Du schuldest' }).locator('li');
 const owedRows = open.getByRole('list', { name: 'Dir geschuldet' }).locator('li');
 const txt = async (l) => (await l.innerText()).replace(/\s+/g, ' ').trim();
-ok((await oweRows.count()) === 1 && /Cedric 35 € Als bezahlt markieren/.test(await txt(oweRows.first())), `open: Sascha owes Cedric 35 € (${await txt(open)})`);
-ok((await owedRows.count()) === 1 && /Erik 2 € Als erhalten markieren/.test(await txt(owedRows.first())), 'open: Erik owes Sascha 2 €');
+ok((await oweRows.count()) === 1 && /Cedric 35 € Bezahlt/.test(await txt(oweRows.first())), `open: Sascha owes Cedric 35 € (${await txt(open)})`);
+ok((await owedRows.count()) === 1 && /Erik 2 € Erhalten/.test(await txt(owedRows.first())), 'open: Erik owes Sascha 2 €');
 ok(/Cedric · 2 Spiele/.test(await txt(p.locator('.balance-people'))), 'against the friends: Cedric, 2 games');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance.png', fullPage: true });
 

@@ -93,12 +93,13 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
 
 /** A row with its own sheet of choices – the usual case: a choice of several, each with what it means. `prompt`: a
  *  required choice – shown in green ("Gegner wählen") while none is made. */
-export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string }) {
+/** `shown`: the row's value other than the choice's name – e.g. in two lines (Sascha 13.11.2026: "Hcp 5 / (automatisch)") */
+export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string; shown?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const current = props.options.find((o) => o.value === props.value);
   return (
     <>
-      <SettingsRow label={props.label} value={current?.name ?? props.prompt ?? '–'} need={!current && !!props.prompt} onClick={() => setOpen(true)} disabled={props.disabled} />
+      <SettingsRow label={props.label} value={(current && props.shown) ?? current?.name ?? props.prompt ?? '–'} need={!current && !!props.prompt} onClick={() => setOpen(true)} disabled={props.disabled} />
       {open && (
         <PickSheet
           title={props.title ?? props.label}

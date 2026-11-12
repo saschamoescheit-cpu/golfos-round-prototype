@@ -24,7 +24,7 @@ import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { shareBackup } from '../lib/backup';
 import { shareWatchSamples, watchSamples } from '../lib/watch';
 import { Block } from '../components/Block';
-import { ActionBar } from '../components/ActionBar';
+import { ACTION_ICONS } from '../components/ActionBar';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { LoginEditor } from '../components/AccountForm';
 
@@ -104,32 +104,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       {/* the Google sign-in first (Sascha 16.10.2026): it brings the name and the photo */}
       <SyncCard onSignedIn={() => { setP(loadProfile()); setSession(loadSession()); }} />
 
-      {/* signed in: the account at the same place – who is signed in, the sign-in details as rows (P6), "Abmelden" and
-          "Konto löschen" in one bar, deleting last and red (P4; before: ghost buttons and a lone button at the bottom) */}
-      {session && (
-        <Block title={tr('Account', 'Konto')} className="account-block">
-          <section className="card stats-card profile-account">
-            <span>{session.username ? tr(`Signed in as ${session.username}`, `Angemeldet als ${session.username}`) : tr('Signed in with Google', 'Mit Google angemeldet')}</span>
-            {session.email && <span className="muted small">{session.email}</span>}
-          </section>
-          {/* a user name and password for the other devices – set after Google, or changed (Facelift 11.11.2026, P6) */}
-          <LoginEditor current={session.username ?? null} onDone={() => setSession(loadSession())} />
-          <ActionBar
-            label={tr('Account', 'Konto')}
-            actions={[
-              {
-                label: tr('Sign out', 'Abmelden'),
-                icon: 'signout',
-                onClick: () => {
-                  signOut();
-                  setSession(null);
-                },
-              },
-              { label: tr('Delete account', 'Konto löschen'), icon: 'delete', danger: true, onClick: () => { setDeleting(true); setDeleteMsg(null); } },
-            ]}
-          />
-        </Block>
-      )}
       {deleteMsg && <p className="notice account-delete-msg" role="status">{deleteMsg}</p>}
 
       <Block title={tr('About you', 'Persönliche Daten')}>
@@ -141,6 +115,31 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                 <PenGlyph />
               </span>
             </button>
+            {/* signed in: the account beside the photo again, "Abmelden" and "Konto löschen" small under it (Sascha 13.11.2026:
+                "der obere Teil sollte wie früher neben dem Profilbild integriert werden") */}
+            {session && (
+              <span className="profile-account">
+                <span>{session.username ? tr(`Signed in as ${session.username}`, `Angemeldet als ${session.username}`) : tr('Signed in with Google', 'Mit Google angemeldet')}</span>
+                {session.email && <span className="muted small">{session.email}</span>}
+                <span className="profile-account-actions" role="group" aria-label={tr('Account', 'Konto')}>
+                  <button
+                    type="button"
+                    className="mini-action"
+                    onClick={() => {
+                      signOut();
+                      setSession(null);
+                    }}
+                  >
+                    {ACTION_ICONS.signout}
+                    <span>{tr('Sign out', 'Abmelden')}</span>
+                  </button>
+                  <button type="button" className="mini-action danger" onClick={() => { setDeleting(true); setDeleteMsg(null); }}>
+                    {ACTION_ICONS.delete}
+                    <span>{tr('Delete account', 'Konto löschen')}</span>
+                  </button>
+                </span>
+              </span>
+            )}
             {/* the photo removed with the bin beside it (P4) – no text button */}
             {canRemovePhoto && (
               <button type="button" className="icon-btn photo-remove" aria-label={tr('Remove your photo', 'Profilbild entfernen')} title={tr('Remove', 'Entfernen')} onClick={() => set({ photo: undefined })}>
@@ -171,6 +170,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               }}
             />
           </div>
+          {/* user name and password only for an account signed in with them – with Google none needed (Sascha 13.11.2026) */}
+          {session?.username && <LoginEditor current={session.username} onDone={() => setSession(loadSession())} />}
           <div className="form-grid">
             <div className="field">
               <label htmlFor="pf-first">{tr('First name', 'Vorname')}</label>
@@ -276,6 +277,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             label={tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}
             value={p.sgGroup ?? ''}
             onChange={(v) => set({ sgGroup: v || undefined })}
+            shown={p.sgGroup ? undefined : <span className="value-2l">{autoGroup}<span>{tr('(automatic)', '(automatisch)')}</span></span>}
             options={[{ value: '', name: tr(`${autoGroup} (automatic)`, `${autoGroup} (automatisch)`), text: tr('The next better group – follows your handicap index', 'Die nächstbessere Gruppe – folgt deinem Handicap-Index') }, ...GROUPS.map((g) => ({ value: g.id, name: g.label }))]}
           />
         </SettingsList>

@@ -987,6 +987,9 @@ button.tile:disabled { opacity: 1; }
 .settings-value { text-align: right; color: var(--muted); font-weight: 500; font-size: 15px; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 /* a required field not filled yet – green, as "Platz wählen" (Sascha 03.11.2026); an optional one stays grey */
 .settings-value.need { color: var(--brand-text); }
+/* a value in two lines, the second smaller ("Hcp 5" over "(automatisch)", Sascha 13.11.2026) – never hyphenated */
+.settings-value .value-2l { display: flex; flex-direction: column; align-items: flex-end; hyphens: none; line-height: 1.25; }
+.settings-value .value-2l > span { font-size: 13px; white-space: nowrap; }
 /* a yes/no as a row (Sascha 11.11.2026: no sliders anywhere): label and its line on the left, An/Aus on the right */
 .settings-row.onoff-row { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 56px; padding-block: 10px; }
 .onoff-row .switch-label { min-width: 0; }
@@ -2613,6 +2616,12 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 /* Profil (P1–P4): the photo's bin beside it, the account card */
 .profile-photo .photo-remove { color: var(--muted); }
 .account-block .profile-account { gap: 2px; }
+/* the account beside the photo (Sascha 13.11.2026): "Abmelden" and "Konto löschen" small, side by side */
+.profile-photo .profile-account { flex: 1 1 160px; gap: 2px; }
+.profile-account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mini-action { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 600 13px/1.2 var(--body); }
+.mini-action svg { width: 18px; height: 18px; color: var(--brand-text); }
+.mini-action.danger, .mini-action.danger svg { color: var(--bad, #e5484d); border-color: color-mix(in srgb, var(--bad, #e5484d) 45%, transparent); }
 .account-delete-msg { margin: 0; }
 .settings-list > .home-club { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .settings-list > .home-club .settings-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

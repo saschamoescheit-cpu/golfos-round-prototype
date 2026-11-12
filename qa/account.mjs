@@ -144,14 +144,16 @@ await ipad.fill('#acc-pw', 'geheim123');
 await ipad.locator('.account-form button[type=submit]').click();
 ok(await signedAs(ipad, 'sascha.m'), 'iPad: signed in with user name + password');
 
-// signed in: the block "Konto" – the sign-in details as rows (Facelift 11.11.2026, P6: "Benutzername ›", "Passwort ändern ›",
-// the password confirmed with the save button in the sheet's head), "Abmelden" and "Konto löschen" in one bar (P4)
+// signed in: the account beside the photo again (Sascha 13.11.2026: "wie früher neben dem Profilbild"), "Abmelden" and
+// "Konto löschen" small under it; user name + password rows only for an account signed in with them (none with Google)
 {
-  const acc = ipad.getByRole('region', { name: 'Konto', exact: true });
-  const rows = (await acc.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  const acc = ipad.getByRole('region', { name: 'Persönliche Daten', exact: true });
+  ok((await ipad.getByRole('region', { name: 'Konto', exact: true }).count()) === 0, 'no block "Konto" of its own any more');
+  ok(/Angemeldet als sascha\.m/.test(await acc.locator('.profile-photo .profile-account').innerText()), 'beside the photo: "Angemeldet als sascha.m"');
+  const rows = (await acc.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim()).filter((t) => /Benutzername|Passwort/.test(t));
   ok(rows.length === 2 && /^Benutzername sascha\.m ›$/.test(rows[0]) && /^Passwort ändern ›$/.test(rows[1]), `iPad signed in: the rows ${rows.join(' | ')}`);
-  const bar = (await acc.locator('.sc-actions .sc-action').allInnerTexts()).map((t) => t.trim());
-  ok(bar.join('|') === 'Abmelden|Konto löschen' && (await acc.locator('.sc-action.danger').innerText()).trim() === 'Konto löschen' && (await ipad.locator('main .btn-ghost').count()) === 0, `one bar: ${bar.join(' | ')} – deleting red and last, no ghost buttons`);
+  const bar = (await acc.locator('.profile-photo .profile-account-actions .mini-action').allInnerTexts()).map((t) => t.trim());
+  ok(bar.join('|') === 'Abmelden|Konto löschen' && (await acc.locator('.mini-action.danger').innerText()).trim() === 'Konto löschen' && (await ipad.locator('main .btn-ghost').count()) === 0, `beside the photo: ${bar.join(' | ')} – deleting red and last, no ghost buttons`);
   await acc.locator('.settings-row').filter({ hasText: 'Passwort' }).click();
   const sh = ipad.getByRole('dialog', { name: 'Passwort ändern' });
   await sh.waitFor();

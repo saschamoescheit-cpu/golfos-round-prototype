@@ -187,7 +187,7 @@ ok((await p.locator('#pf-first').inputValue()) === 'Ben', 'profile: a name synce
 const main = await p.locator('main').innerText();
 ok(!/Runden exportieren/.test(main) && (await p.getByRole('heading', { name: 'Test', exact: true }).count()) === 0, 'profile: no "Test" card');
 const sgRow = p.locator('.settings-row').filter({ hasText: 'Strokes-Gained-Vergleich' });
-ok((await sgRow.count()) === 1 && /Hcp 5 \(automatisch\)/.test(await sgRow.innerText()), `Golf: "Strokes-Gained-Vergleich · Hcp 5 (automatisch) ›" a row of the list (${(await sgRow.innerText()).replace(/\s+/g, ' ')})`);
+ok((await sgRow.count()) === 1 && /Hcp 5\s*\(automatisch\)/.test(await sgRow.innerText()) && (await sgRow.locator('.value-2l').count()) === 1, `Golf: "Strokes-Gained-Vergleich · Hcp 5 (automatisch) ›" a row of the list (${(await sgRow.innerText()).replace(/\s+/g, ' ')})`);
 await sgRow.click();
 await p.waitForTimeout(300);
 const sheet = p.getByRole('dialog', { name: 'Strokes-Gained-Vergleich' });

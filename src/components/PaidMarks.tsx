@@ -8,7 +8,8 @@ import { SwipeRow } from './SwipeRow';
 
 /** An open payment's button says what a tap does – "Als bezahlt markieren" – in a neutral outline; green only once done
  *  (Sascha 12.11.2026: "Bezahlt ist grün, aber ich habe noch nicht bezahlt – in grün wirkt es, als hätte ich schon bezahlt"). */
-export const markWord = (w: string): string => tr(`Mark as ${w.toLowerCase()}`, `Als ${w.toLowerCase()} markieren`);
+/** Since 13.11.2026 just the word – "Erhalten", "Bezahlt" (Sascha: "nur erhalten und bezahlt darstellen"); still neutral while open. */
+export const markWord = (w: string): string => w;
 
 type Transfer = { from: string; to: string; amount: number };
 /** one line of what a payment is made of: a bet (+), what the other owes back and is set off (−), what was paid already */
