@@ -15,7 +15,7 @@ export const LANGS = [
   { code: 'fr', name: 'Français', locale: 'fr-FR' },
   { code: 'it', name: 'Italiano', locale: 'it-IT' },
   { code: 'nl', name: 'Nederlands', locale: 'nl-NL' },
-  { code: 'pt', name: 'Português', locale: 'pt-PT' },
+  { code: 'pt', name: 'Português', locale: 'pt-BR' },
   { code: 'sv', name: 'Svenska', locale: 'sv-SE' },
   { code: 'da', name: 'Dansk', locale: 'da-DK' },
   { code: 'nb', name: 'Norsk', locale: 'nb-NO' },
@@ -71,7 +71,7 @@ export function setLang(l: Lang): void {
 
 // ---------- the dictionary of a language other than English and German ----------
 let dict: Record<string, string> = {};
-let templates: { re: RegExp; to: string }[] = [];
+let templates: { re: RegExp; to: string; fixed: number }[] = [];
 const done = new Map<string, string>();
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -86,11 +86,10 @@ export function useDict(d: Record<string, string>): void {
       const parts = k.split(/\{(\d)\}/);
       let re = '^';
       for (let i = 0; i < parts.length; i++) re += i % 2 ? `(?<s${parts[i]}>[\\s\\S]*?)` : esc(parts[i]);
-      templates.push({ re: new RegExp(re + '$'), to: v });
+      templates.push({ re: new RegExp(re + '$'), to: v, fixed: parts.filter((_, i) => i % 2 === 0).join('').length });
     }
   }
-  const fixed = (t: { re: RegExp }) => t.re.source.replace(/\(\?<s\d>\[\\s\\S\]\*\?\)/g, '').length;
-  templates.sort((a, b) => fixed(b) - fixed(a));
+  templates.sort((a, b) => b.fixed - a.fixed);
 }
 
 const dicts = import.meta.glob<{ default: Record<string, string> }>('../i18n/dict/*.json');
@@ -113,6 +112,9 @@ function fromDict(en: string): string {
   let out = dict[en];
   if (out == null) {
     for (const t of templates) {
+      // a template whose fixed words are only a small part of the text is a different text ("Play and review rounds" is
+      // not "{0} rounds") – English rather than half translated
+      if (t.fixed < en.length * 0.4) continue;
       const m = t.re.exec(en);
       if (!m) continue;
       const g = m.groups ?? {};
@@ -129,8 +131,9 @@ function fromDict(en: string): string {
 export function tr(en: string, de: string): string {
   if (lang === 'de') return de;
   if (lang === 'en') return en;
-  // a locale asked for (dates, numbers): the language's own
+  // a locale or a language code asked for (dates, numbers, speech): the language's own
   if (/^[a-z]{2}-[A-Z]{2}$/.test(en)) return langLocale();
+  if (/^[a-z]{2}$/.test(en) && /^[a-z]{2}$/.test(de)) return lang;
   return fromDict(en);
 }
 

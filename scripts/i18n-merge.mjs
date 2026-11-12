@@ -13,6 +13,8 @@ for (const lang of langs) {
     const part = JSON.parse(readFileSync(`src/i18n/parts/${lang}-${n}.json`, 'utf8'));
     for (const [k, v] of Object.entries(part)) {
       if (!(k in source) || typeof v !== 'string' || !v.trim()) continue;
+      // a locale or language code ("en-GB", "en"): the app puts the language's own in
+      if (/^[a-z]{2}(-[A-Z]{2})?$/.test(k)) continue;
       if (slots(k) !== slots(v)) {
         bad++;
         continue;

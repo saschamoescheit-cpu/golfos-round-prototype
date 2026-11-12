@@ -26,18 +26,37 @@ function keyOf(node) {
   return null;
 }
 
+const WRAPPERS = ['tr', 'desc', 'say', 'L'];
 const out = {};
 let calls = 0;
 let dynamic = 0;
 for (const f of files) {
   const src = ts.createSourceFile(f, readFileSync(f, 'utf8'), ts.ScriptTarget.Latest, true, f.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const visit = (n) => {
-    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'tr' && n.arguments.length === 2) {
+    // tr('English', 'Deutsch') – and the helpers that hand both to it (Home's desc, sync's say, a rules part)
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && WRAPPERS.includes(n.expression.text) && n.arguments.length === 2) {
       calls++;
       const en = keyOf(n.arguments[0]);
       const de = keyOf(n.arguments[1]);
       if (en == null || de == null) dynamic++;
       else if (!(en in out)) out[en] = de;
+    }
+    // { en: '…', de: '…' } – the texts of Training, Agility and the rules (each handed to tr(x.en, x.de))
+    if (ts.isObjectLiteralExpression(n)) {
+      const prop = (name) => n.properties.find((p) => ts.isPropertyAssignment(p) && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === name);
+      const e = prop('en');
+      const d = prop('de');
+      if (e && d) {
+        const en = keyOf(e.initializer);
+        const de = keyOf(d.initializer);
+        if (en != null && de != null && !(en in out)) out[en] = de;
+      }
+    }
+    // [en, de] pairs in a list of pairs (the rules' extra lines)
+    if (ts.isArrayLiteralExpression(n) && n.elements.length === 2 && ts.isArrayLiteralExpression(n.parent)) {
+      const en = keyOf(n.elements[0]);
+      const de = keyOf(n.elements[1]);
+      if (en != null && de != null && /[a-z]/.test(en) && en !== de && !(en in out)) out[en] = de;
     }
     ts.forEachChild(n, visit);
   };
