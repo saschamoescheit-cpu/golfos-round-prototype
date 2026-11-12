@@ -215,7 +215,7 @@ const choose = async (label, option, inside = H) => {
   // the trip: money, in dollars – the currency the second step
   await row.click();
   await ps.getByRole('button', { name: /^Geld/ }).click();
-  await H.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /^Dollar/ }).click();
+  await H.getByRole('dialog', { name: 'Geld – die Währung' }).locator('.pick-option[data-code="USD"]').click();
   ok(/Geld · US-Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
 }
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker; chosen as in "Neue Runde":
@@ -432,7 +432,7 @@ await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).
 await H.getByRole('button', { name: 'Wette löschen' }).click();
 // the app's one question, as the pool's (13.11.2026): "„…“ löschen?" – "Zurück" keeps it
 const askDel = H.getByRole('dialog', { name: '„Längster Drive an Loch 7“ löschen?' });
-ok((await askDel.count()) === 1 && (await askDel.getByRole('button', { name: 'Für alle löschen' }).count()) === 1, 'delete a bet: asked first – the same question as the pool's');
+ok((await askDel.count()) === 1 && (await askDel.getByRole('button', { name: 'Für alle löschen' }).count()) === 1, 'delete a bet: asked first – the same question as for the pool');
 await askDel.getByRole('button', { name: 'Zurück' }).click();
 await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');

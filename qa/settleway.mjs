@@ -95,7 +95,7 @@ await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.getByRole('button', { name: /Abrechnung/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Einzeln' }).click();
-await edit.getByRole('button', { name: 'Schließen' }).click(); // saved by itself (12.11.2026) – closing saves at once
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saved by itself – "Fertig" saves at once (13.11.2026)
 await H.waitForTimeout(1500);
 ok(shared.get(code).game.settle === 'single', 'the setting on the server: settle "single"');
 p = await pays();
@@ -162,7 +162,7 @@ ok(!!w1?.from && !!w1?.until && !w1.picks, `"Von – bis": from and up to the po
   ok(!/Wessen Wette/.test(txt) && /Gegen Sascha/.test(txt) && (await cs.getByRole('button', { name: /^Gegen/ }).count()) === 0 && (await cs.getByRole('button', { name: 'Wette löschen' }).count()) === 0, `Chris's 5+5+10: against Sascha fixed, no "Wessen Wette", no deleting (${txt.slice(0, 120)})`);
   await cs.getByRole('button', { name: /Vorgabe/ }).click();
   await C.locator('.pick-option').filter({ hasText: '80 %' }).click();
-  await cs.getByRole('button', { name: 'Schließen' }).click();
+  await C.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" (13.11.2026)
   await C.waitForTimeout(1500);
   const d = shared.get(code).game.wagers.find((w) => w.id === 'd1');
   ok(d?.allowance === 80 && d.player === 'c' && d.opponent === 's', `on the server: Chris changed his duel to 80 % (${d?.allowance})`);

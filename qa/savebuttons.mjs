@@ -69,7 +69,7 @@ if (await p.locator('.fab-pen').count()) {
   const edit = p.getByRole('dialog', { name: 'Pool bearbeiten' });
   await edit.waitFor({ timeout: 3000 }).catch(() => {});
   ok((await edit.getByRole('button', { name: 'Speichern', exact: true }).count()) === 0 && (await edit.locator('.autosave-note').count()) === 1, 'the pool changed: no "Speichern", the quiet line');
-  await edit.getByRole('button', { name: 'Schließen' }).click();
+  await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" (13.11.2026)
   await p.waitForTimeout(300);
 } else console.log('· pool: this phone is not the host here – its bar not checked');
 
@@ -85,9 +85,9 @@ if (await pen.count()) {
   await pen.click();
   const ren = p.getByRole('dialog', { name: 'Serie umbenennen' });
   await ren.waitFor({ timeout: 3000 }).catch(() => {});
-  ok((await ren.count()) === 1 && (await ren.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await p.locator('.fab-save').count()) === 0, 'the series renamed: no "Speichern" – no button at all');
+  ok((await ren.count()) === 1 && (await ren.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await p.locator('.fab-save').count()) === 1 && (await p.locator('.fab-save').getAttribute('aria-label')) === 'Fertig', 'the series renamed: no "Speichern" – only the floating "Fertig" (13.11.2026)');
   ok(/von selbst gespeichert/.test(await ren.locator('.autosave-note').innerText().catch(() => '')), 'the series renamed: "Änderungen werden von selbst gespeichert"');
-  await ren.getByRole('button', { name: 'Schließen' }).click();
+  await p.getByRole('button', { name: 'Fertig', exact: true }).click();
   await p.waitForTimeout(300);
 } else ok(false, 'the series: the host\'s pencil "Serie umbenennen"');
 
