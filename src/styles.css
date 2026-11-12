@@ -2562,7 +2562,8 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .hint-tick { display: inline-flex; align-items: center; gap: 6px; }
 .hint-tick svg { color: var(--brand-text); flex: none; }
 /* the plan of a hole: a row per shot, the bar below a little lower on the map (r3) */
-.plan-list .settings-row.plan-shot { min-height: 46px; padding-block: 6px; font-size: 14px; }
+.plan-list .settings-row.plan-shot { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; min-height: 46px; padding-block: 6px; padding-inline: 0; font-size: 14px; }
+.plan-list { background: transparent; border-radius: 0; }
 .plan-list .plan-own { color: var(--brand-text); font-weight: 700; }
 .plan-panel .sc-action { min-height: 56px; padding: 6px 4px; gap: 3px; }
 .sc-action:has(.note-dot) { position: relative; }
