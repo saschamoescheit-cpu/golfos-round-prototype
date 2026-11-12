@@ -3,7 +3,9 @@ import { tr } from '../lib/i18n';
 import { speak, stopSpeaking } from '../lib/caddietalk';
 import { PlayActions } from '../components/PlayActions';
 import { TopBar } from '../components/ui';
-import { ChoiceRow, SettingsList, TimeRow, ToggleRow } from '../components/Settings';
+import { ChoiceRow, SettingsList, StepPick, TimeRow, ToggleRow } from '../components/Settings';
+import { SwipeRow } from '../components/SwipeRow';
+import { TrendIcon } from './MobActions';
 import { beep, fakeSpeed, speechMs, unlockAudio } from './CameraTest';
 import {
   clipIdOf,
@@ -14,6 +16,7 @@ import {
   faultLevel,
   logSession,
   parsePlan,
+  relogSession,
   removePhysio,
   retestDue,
   routineSec,
@@ -212,20 +215,18 @@ export function PhysioView(props: { plan: PhysioPlan; onBack: () => void; onRun:
           {dueToday(p) && <span className="mob-physio-due">{tr('Today', 'Heute dran')}</span>}
         </div>
       </section>
-      <div className="segmented tr-tabs" role="tablist">
-        {(
-          [
-            ['routine', tr('Routine', 'Routine')],
-            ['diary', tr('Diary', 'Tagebuch')],
-            ['results', tr('Results', 'Ergebnisse')],
-            ['swing', tr('Swing', 'Schwung')],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* the views as the app's switch "‹ Routine ›" (Facelift 11.11.2026, a1) */}
+      <StepPick<Tab>
+        label={tr('View', 'Ansicht')}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'routine', name: tr('Routine', 'Routine') },
+          { value: 'diary', name: tr('Diary', 'Tagebuch') },
+          { value: 'results', name: tr('Results', 'Ergebnisse') },
+          { value: 'swing', name: tr('Swing', 'Schwung') },
+        ]}
+      />
       {tab === 'routine' && <RoutineTab p={p} onRun={props.onRun} onChange={setP} />}
       {tab === 'diary' && <DiaryTab p={p} onChange={setP} />}
       {tab === 'results' && <ResultsTab p={p} onRetest={props.onRetest} />}
@@ -278,7 +279,7 @@ function RoutineTab(props: { p: PhysioPlan; onRun: () => void; onChange: (p: Phy
                   {dosageText(e)} · {clock(exerciseSec(e))}
                 </span>
               </span>
-              <span aria-hidden="true">{open === i ? '▾' : '›'}</span>
+              <svg className="mob-physio-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={open === i ? 'M6 9l6 6 6-6' : 'M9 6l6 6-6 6'} /></svg>
             </button>
             {open === i && (
               <div className="mob-physio-ex-body">
@@ -418,21 +419,28 @@ function DiaryTab(props: { p: PhysioPlan; onChange: (p: PhysioPlan) => void }) {
       </button>
       {log.length ? (
         <div className="list mob-physio-log">
+          {/* swiped away as a mail, "Rückgängig" in the toast (Facelift 11.11.2026, a3 – no "✕" per row) */}
           {log.map((e: PhysioEntry) => (
-            <div key={e.id} className="list-item">
-              <span className="grow">
-                <span className="title">{dayText(e.at)}</span>
-                <span className="muted small">
-                  {tr(`${e.done} of ${e.of} exercises · ${e.min} min`, `${e.done} von ${e.of} Übungen · ${e.min} Min.`)}
-                  {e.how === 'entered' ? tr(' · entered', ' · eingetragen') : ''}
-                  {e.feel ? ` · ${FEEL[e.feel - 1]()}` : ''}
-                  {e.note ? ` · ${e.note}` : ''}
+            <SwipeRow
+              key={e.id}
+              label={dayText(e.at)}
+              onDelete={() => {
+                props.onChange(unlogSession(p, e.id));
+                window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'training', id: e.id, label: dayText(e.at), undo: () => relogSession(e) } }));
+              }}
+            >
+              <div className="list-item">
+                <span className="grow">
+                  <span className="title">{dayText(e.at)}</span>
+                  <span className="muted small">
+                    {tr(`${e.done} of ${e.of} exercises · ${e.min} min`, `${e.done} von ${e.of} Übungen · ${e.min} Min.`)}
+                    {e.how === 'entered' ? tr(' · entered', ' · eingetragen') : ''}
+                    {e.feel ? ` · ${FEEL[e.feel - 1]()}` : ''}
+                    {e.note ? ` · ${e.note}` : ''}
+                  </span>
                 </span>
-              </span>
-              <button type="button" className="icon-btn" aria-label={tr('Remove from the diary', 'Aus dem Tagebuch entfernen')} onClick={() => props.onChange(unlogSession(p, e.id))}>
-                ✕
-              </button>
-            </div>
+              </div>
+            </SwipeRow>
           ))}
         </div>
       ) : (
@@ -489,7 +497,7 @@ function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
                 </span>
                 {row && row.change !== 'open' && <CompareSides row={row} />}
               </span>
-              {row && cmp.at && <span className={`mob-cmp-change ${row.change}`}>{CHANGE_NAME[row.change]()}</span>}
+              {row && cmp.at && <span className={`mob-cmp-change ${row.change}`}><TrendIcon kind={row.change} />{CHANGE_NAME[row.change]()}</span>}
             </div>
           );
         })}
@@ -500,10 +508,10 @@ function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
 
 // before and after (Sascha 1.11.2026: "the tests again after a month – to see how far the results improved")
 const CHANGE_NAME: Record<Change, () => string> = {
-  better: () => tr('▲ better', '▲ besser'),
-  same: () => tr('= same', '= gleich'),
-  worse: () => tr('▼ worse', '▼ schlechter'),
-  mixed: () => tr('◆ mixed', '◆ gemischt'),
+  better: () => tr('better', 'besser'),
+  same: () => tr('same', 'gleich'),
+  worse: () => tr('worse', 'schlechter'),
+  mixed: () => tr('mixed', 'gemischt'),
   open: () => tr('not yet', 'noch offen'),
 };
 
@@ -524,7 +532,7 @@ function CompareSum(props: { c: ReturnType<typeof compareRetest>; p: PhysioPlan 
       <div className="mob-cmp-counts">
         {kinds.map((k) => (
           <span key={k} className={`mob-cmp-change ${k}`}>
-            {CHANGE_NAME[k]()} <b>{n(k)}</b>
+            <TrendIcon kind={k} />{CHANGE_NAME[k]()} <b>{n(k)}</b>
           </span>
         ))}
       </div>
@@ -552,7 +560,7 @@ function CompareSides(props: { row: Compared }) {
         >
           {s.side && <small>{s.side === 'left' ? 'L' : 'R'}</small>}
           <i className={`mob-dot ${s.before}`} />
-          <span aria-hidden="true">→</span>
+          <svg className="mob-cmp-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           <i className={`mob-dot ${s.after ?? 'none'}`} />
         </span>
       ))}

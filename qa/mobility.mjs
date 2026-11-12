@@ -22,6 +22,13 @@ await p.addInitScript(() => {
   };
   new MutationObserver(look).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
 });
+// the views of a page: the app's switch "‹ Ablauf ›" since the Facelift (11.11.2026) – what it shows, a view picked
+const viewNow = async () => (await p.locator('main .step-pick-now strong').first().innerText().catch(() => '')).trim();
+const view = async (name) => {
+  await p.locator('main .step-pick-now').first().click();
+  await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${name}$`) }) }).click();
+  await p.waitForTimeout(300);
+};
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 let bad = 0;
@@ -75,7 +82,7 @@ await tab('Screening');
 // ---------- quick check with the stiff player: the trainer mode – set up once, ONE tap, then everything by itself ----------
 await p.locator('.mob-start').filter({ hasText: 'Kurz-Check' }).click();
 await p.locator('.mob-setup').waitFor({ timeout: 15000 });
-ok(await p.getByText('Handy aufstellen – einmal').isVisible(), 'the setup: set up the phone once');
+ok((await p.locator('.mob-setup .mob-setup-line').count()) === 1 && (await p.locator('.mob-setup ol, .mob-setup h2').count()) === 0, 'the setup: the picture and one line (Facelift a9)');
 ok(await p.locator('.mob-setup .tr-sketch, .mob-setup svg').first().isVisible(), 'the setup shows where the phone goes');
 ok((await p.locator('.mob-setup-tests .tr-thumb, .mob-setup-tests svg').count()) >= 6, 'the setup lists the tests');
 await shot('coach-setup');
@@ -183,7 +190,7 @@ ok(await p.locator('.mob-summary').isVisible(), 'the result opens after the scre
 // measuring, not grading (Sascha 18.10.2026): values on scales, no ✓/✕, the goal asked for
 const glyphs = await p.evaluate(() => (document.querySelector('main')?.textContent ?? '').match(/[✓✕]|[Bb]estanden/g)?.length ?? 0);
 ok(glyphs === 0, `no grades in the result (${glyphs} ✓/✕/"bestanden")`);
-ok(await p.getByText('Was ist dein Ziel?').isVisible(), 'the result asks for the goal');
+ok(/Dein Ziel/i.test(await p.locator('.mob-goal .eyebrow').first().innerText()) && (await p.locator('.fab-save').count()) === 0, 'the result asks for the goal (no save button while nothing is chosen)');
 // the goal handicap: a row with its sheet, as "Format" in the round setup (docs/DESIGN.md)
 await p.locator('.mob-goal .settings-row').filter({ hasText: 'Ziel-Handicap' }).click();
 ok((await p.locator('.sheet .pick-option').count()) === 7 && /Einstellig in Reichweite/.test(await p.locator('.sheet').innerText()), 'the goal handicap opens its sheet: seven goals, each with what it means');
@@ -193,7 +200,7 @@ await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
 await shot('goal');
 await p.getByRole('button', { name: 'Ziel speichern' }).click();
 const goalText = await p.locator('.mob-goal').innerText().catch(() => '');
-ok(/Dein Ziel/i.test(goalText) && /Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText) && (await p.locator('.mob-goal .settings-row').count()) === 1, `the goal is saved, a row to change it (${goalText.replace(/\s+/g, ' ')})`);
+ok(/Dein Ziel/i.test(goalText) && /Ziel-Handicap\s*10/.test(goalText) && /Mehr Länge/.test(goalText) && (await p.locator('.mob-goal .settings-row').count()) === 1 && (await p.locator('.mob-goal .autosave-note').count()) === 1 && (await p.locator('.fab-save').count()) === 0, `the goal is saved with the floating tick, then changed by itself (${goalText.replace(/\s+/g, ' ')})`);
 // the overall value (Sascha 19.10.2026): one number 0 … 100 against the goal, as a ring at the top of the result
 const ring = await p.locator('.mob-score-ring').getAttribute('aria-label').catch(() => '');
 const scoreText = await p.locator('.mob-score').innerText().catch(() => '');
@@ -209,7 +216,7 @@ ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'by body area
 ok((await p.locator('.mob-test-row .mob-levelbar').count()) >= 6, 'each measured test shows its value on a scale');
 await shot('result-body');
 const nextStep = await p.locator('.mob-train-next').innerText().catch(() => '');ok(/Nächster Schritt/i.test(nextStep) && /Jetzt trainieren/.test(nextStep), 'after the result: the training as the next step, one tap');
-await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
+await view('Dein Schwung');
 const patterns = await p.locator('.mob-pattern').count();
 ok(patterns >= 3, `${patterns} swing patterns for the stiff player`);
 ok((await p.locator('.mob-pct-label.high').count()) >= 1, 'at least one pattern is likely (a high bar, as the TPI app shows it)');
@@ -224,7 +231,7 @@ ok((await p.locator('.mob-test-row').count()) >= 2, 'pattern page names the test
 ok((await p.locator('.mob-play-now li').count()) >= 1, 'pattern page says how to play with it today');
 await shot('pattern');
 await p.locator('.topbar .icon-btn').first().click();
-await p.locator('.segmented button').filter({ hasText: 'Dein Körper' }).click();
+await view('Dein Körper');
 await p.waitForTimeout(300);
 ok((await p.locator('.mob-test-row').count()) === 15, 'body result lists all 15 tests');
 ok((await p.locator('.mob-test-row.untested').count()) === 9, 'the 9 tests not in the quick check are marked untested');
@@ -256,9 +263,9 @@ await shot('drills');
 await small('the drills');
 await p.locator('.mob-test-row').first().click();
 await p.waitForTimeout(300);
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Videos' }).click();
+await view('Videos');
 ok((await p.locator('.tr-video').count()) >= 1, 'a drill has videos (own tab)');
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Anleitung' }).click();
+await view('Anleitung');
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'a drill has its picture');
 await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the drill shows its 3D video');
@@ -268,7 +275,7 @@ await shot('drill');
 await p.locator('.topbar .icon-btn').first().click();
 // the guided session with the camera comes first (qa/mobility-train.mjs runs it), the plan for Training second
 ok(/Jetzt trainieren/.test(await p.locator('.sticky-cta .btn-primary').innerText()), 'the pillar leads with "Jetzt trainieren … mit Kamera"');
-await p.locator('.sticky-cta .btn-secondary').filter({ hasText: 'ins Training' }).click();
+await p.locator('.sticky-cta .sc-action').filter({ hasText: 'Ins Training' }).click();
 ok(await p.getByText('Meine Pläne').isVisible(), 'the plan is in Training');
 const plans = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.training.plans.v1') ?? '[]'));
 const planMin = (plans[0]?.items ?? []).reduce((n, x) => n + x.minutes, 0);
@@ -324,7 +331,7 @@ ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol 
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
 await shot('brief');
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+await view('Ergebnisse');
 ok((await p.locator('.mob-bar-track b').count()) >= 1, 'the values over time on the scale, with the line of the goal');
 await shot('test-history');
 await p.locator('.topbar .icon-btn').first().click();
@@ -333,8 +340,10 @@ await p.locator('.topbar .icon-btn').first().click();
 await tab('Screening');
 await p.locator('.mob-test-row').filter({ hasText: 'Handgelenk anwinkeln' }).click();
 await p.waitForTimeout(300);
-const tt = await p.locator('.tr-tabs [role="tab"]').allInnerTexts();
-ok(tt.join('|') === 'Ablauf|Ergebnisse|Übungen', `test page tabs: ${tt.join(' · ')}`);
+await p.locator('main .step-pick-now').click();
+const tt = await p.getByRole('dialog').locator('.pick-option strong').allInnerTexts();
+await p.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click();
+ok(tt.join('|') === 'Ablauf|Ergebnisse|Übungen' && (await viewNow()) === 'Ablauf', `test page views: ${tt.join(' · ')}`);
 await shot('test-page');
 await p.getByRole('button', { name: 'Test starten' }).click();
 await p.waitForTimeout(300);
@@ -348,7 +357,7 @@ await small('a self check');
 await p.locator('.mob-option.limited').click();
 await p.waitForTimeout(500);
 ok((await p.locator('.topbar h1').innerText()) === 'Handgelenk anwinkeln', 'back on the test page after a single test');
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+await view('Ergebnisse');
 ok(await p.getByText('selbst eingeschätzt').first().isVisible(), 'the self-judged result is listed');
 await p.locator('.topbar .icon-btn').first().click();
 
@@ -358,7 +367,7 @@ await p.getByRole('button', { name: 'Test starten' }).click();
 await p.getByRole('button', { name: 'Selbst einschätzen' }).click();
 await p.locator('.mob-pain').click();
 await p.waitForTimeout(500);
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+await view('Ergebnisse');
 ok(await p.getByText('Schmerz').first().isVisible(), 'a test that hurt is listed as "Schmerz"');
 await p.locator('.topbar .icon-btn').first().click();
 await tab('Übungen');
@@ -378,10 +387,9 @@ await p.locator('.mob-camera-actions .pause').waitFor({ timeout: 30000 });
 const singleActs = await p.locator('.mob-camera-actions .drawer-action').evaluateAll((bs) => bs.map((b) => b.classList[1]));
 ok(!singleActs.includes('skip') && singleActs.includes('end'), `a single test has no Skip, a Finish (${singleActs.join(' ')})`);
 // left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
-await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
+await p.locator('main .step-pick').waitFor({ timeout: 90000 }).catch(() => {});
 // done: the test's page opens on its results – time to look at them (Sascha 1.11.2026)
-ok((await p.locator('.tr-tabs [role="tab"][aria-selected="true"]').innerText().catch(() => '')) === 'Ergebnisse', 'after a single test its page opens on the results');
-await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+ok((await viewNow()) === 'Ergebnisse', 'after a single test its page opens on the results');
 const neckRes = await p.locator('.list-item .title').first().innerText().catch(() => '');
 ok(/links .*rechts/.test(neckRes), 'hands-free: both sides measured and saved without a tap (' + neckRes + ')');
 await p.locator('.topbar .icon-btn').first().click();
@@ -436,14 +444,14 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(1200);
 await tab('Ergebnis');
-await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
+await view('Dein Schwung');
 const rh = await p.locator('.mob-pattern').allInnerTexts();
 const prof = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1') ?? '{}'));
 await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify({ ...pr, hand: 'left' })), prof);
 await p.reload();
 await p.waitForTimeout(1200);
 await tab('Ergebnis');
-await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
+await view('Dein Schwung');
 const lh = await p.locator('.mob-pattern').allInnerTexts();
 ok(rh.some((x) => x.includes('Sway')) && lh.some((x) => x.includes('Slide')) && !lh.some((x) => x.includes('Sway')) && !rh.some((x) => x.includes('Slide')), 'left-handed: the failed right hip means slide instead of sway');
 await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify(pr)), prof);
@@ -457,6 +465,8 @@ await p.evaluate(() => document.documentElement.removeAttribute('data-theme'));
 await p.evaluate(() => localStorage.setItem('golfos.lang.v1', 'en'));
 await p.reload();
 await p.waitForTimeout(1500);
+// (under load the app takes longer than 1.5 s to draw its menu after the reload)
+await p.locator('.tabbar button').first().waitFor({ timeout: 30000 }).catch(() => {});
 const enTabs = await p.locator('.tabbar button').allInnerTexts();
 ok(enTabs.map((x) => x.trim()).join('|') === 'Screening|Result|Drills|History|Profile', `English menu: ${enTabs.join(' · ')}`);
 

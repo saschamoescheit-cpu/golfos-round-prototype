@@ -121,7 +121,8 @@ const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mo
 ok(stored.perWeek === 4 && stored.days.join() === '0,2,4,6' && stored.remind === '18:30', `the week and the reminder kept in the account (${JSON.stringify(stored)})`);
 
 // the results: lights, sides, taken over as a screening
-await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Ergebnisse' }).click();
+await p.locator('.mob-physio .step-pick-now').click();
+await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Ergebnisse$/ }) }).click();
 const lights = await p.locator('.mob-physio-tests .mob-light').evaluateAll((xs) => xs.map((x) => x.classList[1]));
 ok(lights.join(' ') === 'red red yellow green green', `the tests by their light, red first (${lights.join(' ')})`);
 ok(/links eingeschränkt · rechts teilweise/.test(await p.locator('.mob-physio-tests').innerText()), 'a sided test shows both sides');
@@ -132,13 +133,15 @@ ok(/Nachtest/.test(await p.locator('.mob-physio-retest').innerText()), 'the rete
 await shot('physio-results');
 
 // the swing characteristics
-await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Schwung' }).click();
+await p.locator('.mob-physio .step-pick-now').click();
+await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Schwung$/ }) }).click();
 const levels = await p.locator('.mob-physio-level').allInnerTexts();
 ok(levels.join(' | ') === '90 % · Hoch | 60 % · Mittel | 10 % · Niedrig', `the swing characteristics: ${levels.join(' | ')}`);
 await shot('physio-swing');
 
 // the guided routine to the end
-await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Routine' }).click();
+await p.locator('.mob-physio .step-pick-now').click();
+await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Routine$/ }) }).click();
 // as every detail screen: the action bar (a new plan, Entfernen red and last), the main button below it
 const pacts = (await p.locator('.mob-physio-manage .sc-action').allInnerTexts()).map((x) => x.trim());
 ok(pacts.join(' | ') === 'Neuer Plan | Entfernen' && (await p.locator('.mob-physio-manage .sc-action').last().evaluate((b) => b.classList.contains('danger'))), `the plan's actions as one bar (${pacts.join(' | ')})`);
@@ -169,7 +172,8 @@ await p.locator('.mob-physio-confirm').click();
 await p.locator('.mob-physio').waitFor({ timeout: 5000 }).catch(() => {});
 
 // the diary
-await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Tagebuch' }).click();
+await p.locator('.mob-physio .step-pick-now').click();
+await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Tagebuch$/ }) }).click();
 const entry = await p.locator('.mob-physio-log .list-item').first().innerText().catch(() => '');
 ok(/3 von 3 Übungen/.test(entry) && /okay/.test(entry), `the session in the diary (${entry.replace(/\n/g, ' ')})`);
 ok(/1 Trainingstage/.test(await p.locator('.mob-physio-weeks').innerText()) && /Ziel: 4× pro Woche/.test(await p.locator('.mob-physio-weeks').innerText()), 'days trained and the weekly goal');
@@ -197,14 +201,18 @@ await p.evaluate(() => {
   localStorage.setItem('golfos.mobility.v1', JSON.stringify(list));
 });
 await p.locator('.mob-physio-card .mob-physio-open').click();
-await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Ergebnisse' }).click();
+await p.locator('.mob-physio .step-pick-now').click();
+await p.getByRole('dialog').locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Ergebnisse$/ }) }).click();
 await p.locator('.mob-cmp-sum').waitFor({ timeout: 5000 }).catch(() => {});
 const cmp = await p.locator('.mob-cmp-sum').innerText().catch(() => '');
-ok(/Vorher – nachher/.test(cmp) && /besser 1/.test(cmp) && /schlechter 1/.test(cmp) && /2 Einheiten/.test(cmp), `before – after: one better, one worse, the sessions in between (${cmp.replace(/\n/g, ' · ').slice(0, 140)})`);
+ok(/Vorher – nachher/.test(cmp) && /besser\s+1/.test(cmp) && /schlechter\s+1/.test(cmp) && /2 Einheiten/.test(cmp), `before – after: one better, one worse, the sessions in between (${cmp.replace(/\n/g, ' · ').slice(0, 140)})`);
 const toe = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Zehen berühren' }).innerText();
 ok(/besser/.test(toe), 'the toe touch: red at the physio, yellow now – better');
 const legDots = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Einbeinstand' }).locator('.mob-cmp-side .mob-dot').evaluateAll((xs) => xs.map((x) => x.classList[1]).join(' '));
 ok(legDots === 'red red yellow red', `the balance per side: left red → red, right yellow → red (${legDots})`);
+// the trend as an SVG arrow, the middle light grey – no ▲ ▼ ◆ glyphs, no yellow (Facelift 11.11.2026, a2)
+ok((await p.locator('.mob-cmp-sum .mob-cmp-change svg').count()) >= 2 && !/[▲▼◆=]/.test(cmp), 'before – after: the trends as SVG arrows, no glyphs');
+ok((await p.locator('.mob-physio-tests .mob-light.yellow').first().evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(143, 163, 176)', 'the middle light grey, not yellow');
 await shot('physio-compare');
 
 ok(!errs.length, `no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);

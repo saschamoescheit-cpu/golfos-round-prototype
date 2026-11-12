@@ -72,7 +72,7 @@ if (asked) {
   const ask = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').find((x) => !x.finishedAt)?.ask ?? []);
   ok(ask[0] === asked, `the open question is kept in the screening (${JSON.stringify(ask)})`);
   await p.locator('.topbar .icon-btn').first().click();
-  await p.locator('.sheet .btn-secondary').filter({ hasText: 'Pausieren' }).click();
+  await p.locator('.sheet .sc-action').filter({ hasText: 'Pausieren' }).click();
   await p.locator('.mob-open').click();
   await p.waitForTimeout(500);
   ok(await p.locator('.mob-' + asked).isVisible(), 'after the pause the open question (' + asked + ') comes first, without the camera');

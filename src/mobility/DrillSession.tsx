@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { cameraOn, speak } from '../lib/caddietalk';
 import { TopBar } from '../components/ui';
+import { PausedIcon } from '../components/PausedIcon';
+import { MobActionBar, PainIcon, TickIcon } from './MobActions';
 import { drillById } from '../training/content';
 import { SketchThumb } from '../training/Sketch';
 import type { Drill } from '../training/types';
@@ -16,7 +18,7 @@ import { LogShare, LogSwitch } from './LogUi';
 import { currentLog, startLog } from './motionlog';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
-import { bestOf, cleanStreak, daysThisWeek, drillHistory, gains, saveSession, type DrillDone, type TrainSession } from './sessions';
+import { bestOf, cleanStreak, daysThisWeek, deleteSession, drillHistory, gains, saveSession, type DrillDone, type TrainSession } from './sessions';
 
 const t = (x: { en: string; de: string }) => tr(x.en, x.de);
 
@@ -118,6 +120,12 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
     next(cur);
   };
   const skip = () => record({ drill: drills[k].id, sets: [], skipped: true, at: new Date().toISOString() });
+  /** paused for later: kept when something is done, the drills tab offers it */
+  const pauseLater = () => {
+    stopStream();
+    if (s.done.length) saveSession(s);
+    props.onPause();
+  };
 
   const d = drills[Math.min(k, drills.length - 1)];
   const intro = drills.length > 1 ? tr(`Drill ${k + 1} of ${drills.length}: ${t(d.name)}`, `Übung ${k + 1} von ${drills.length}: ${t(d.name)}`) : t(d.name);
@@ -141,54 +149,67 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
       <TopBar title={tr('Training', 'Training')} onBack={() => (stage === 'summary' ? props.onFinished() : setExit(true))} backLabel={tr('Leave', 'Verlassen')} />
       {stage === 'setup' && <TrainSetup drills={drills} minutes={s.minutes} warm={s.warm ?? []} resumed={s.done.length > 0} onStart={start} planOf={planOf} />}
       {stage === 'hold' && (
+        // the pause (Facelift 11.11.2026, a5): its status, one bar of icons – Pausieren, Es tut weh, Beenden red and last –
+        // then the green "Weiter"
         <section className="tr-block mob-hold-screen">
-          <h2>{tr('Paused', 'Pausiert')}</h2>
-          <p className="muted">{tr(`${doneCount} of ${drills.length} drills done. Continue starts the drill again.`, `${doneCount} von ${drills.length} Übungen erledigt. Weiter startet die Übung neu.`)}</p>
+          <section className="card mob-screening-status">
+            <strong>
+              {tr('Paused', 'Pausiert')}{' '}
+              <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')}>
+                <PausedIcon />
+              </span>
+            </strong>
+            <span className="muted small">{tr(`${doneCount} of ${drills.length} drills done – Continue starts the drill again.`, `${doneCount} von ${drills.length} Übungen erledigt – Weiter startet die Übung neu.`)}</span>
+          </section>
+          <MobActionBar
+            label={tr('The paused training', 'Das pausierte Training')}
+            actions={[
+              {
+                label: tr('Pause', 'Pausieren'),
+                aria: tr('Pause – continue later', 'Pausieren – später fortsetzen'),
+                icon: 'pause',
+                onClick: pauseLater,
+              },
+              // pain in the middle of a set: stop this drill at once (stop sign) – it stays out of the plan for 4 weeks
+              { label: tr('It hurts', 'Es tut weh'), aria: tr('It hurts – stop this drill', 'Es tut weh – Übung abbrechen'), icon: 'hurt', className: 'mob-pain-stop', onClick: () => record({ drill: d.id, sets: [], pain: true, at: new Date().toISOString() }) },
+              { label: tr('Finish', 'Beenden'), aria: tr('Finish training', 'Training beenden'), icon: 'finish', danger: true, onClick: () => finish(s) },
+            ]}
+          />
           <button type="button" className="btn-primary" onClick={() => setStage('drill')}>
             {tr('Continue', 'Weiter')}
           </button>
-          {/* pain in the middle of a set: stop this drill at once (stop sign) – it stays out of the plan for 4 weeks */}
-          <button type="button" className="btn-secondary mob-pain-stop" onClick={() => record({ drill: d.id, sets: [], pain: true, at: new Date().toISOString() })}>
-            {tr('It hurts – stop this drill', 'Es tut weh – Übung abbrechen')}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              stopStream();
-              if (s.done.length) saveSession(s);
-              props.onPause();
-            }}
-          >
-            {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => finish(s)}>
-            {tr('Finish training', 'Training beenden')}
-          </button>
         </section>
       )}
-      {stage === 'summary' && <TrainSummary session={s} drills={drills} previous={previous} onDone={props.onFinished} />}
+      {stage === 'summary' && <TrainSummary session={s} drills={drills} previous={previous} onDeleted={props.onFinished} />}
       {exit && (
+        // exactly the round's leave sheet (Facelift 11.11.2026, a6): head with ✕, the bar – Pausieren, Löschen red and
+        // last – then the one main button
         <div className="sheet-backdrop" onClick={() => setExit(false)}>
           <section className="sheet" role="dialog" aria-label={tr('Leave the training', 'Training verlassen')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <h2>{tr('Leave the training', 'Training verlassen')}</h2>
+              <strong>{tr('Leave the training?', 'Training verlassen?')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setExit(false)}>
-                ×
+                ✕
               </button>
             </div>
             <div className="sheet-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  stopStream();
-                  if (s.done.length) saveSession(s);
-                  props.onPause();
-                }}
-              >
-                {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-              </button>
+              <MobActionBar
+                label={tr('This training', 'Dieses Training')}
+                actions={[
+                  { label: tr('Pause', 'Pausieren'), aria: tr('Pause – continue later', 'Pausieren – später fortsetzen'), icon: 'pause', onClick: pauseLater },
+                  {
+                    label: tr('Delete', 'Löschen'),
+                    aria: tr('Delete the training', 'Training löschen'),
+                    icon: 'delete',
+                    danger: true,
+                    onClick: () => {
+                      stopStream();
+                      deleteSession(s.id, tr('Training', 'Training'));
+                      props.onFinished();
+                    },
+                  },
+                ]}
+              />
               <button
                 type="button"
                 className="btn-primary"
@@ -197,7 +218,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
                   finish(s);
                 }}
               >
-                {tr('Finish training', 'Training beenden')}
+                {tr('Save & finish', 'Speichern & beenden')}
               </button>
             </div>
           </section>
@@ -224,18 +245,17 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; warm: string[]; r
   }, []);
   return (
     <section className="tr-block mob-setup">
-      <h2>{tr('Set up the phone – once', 'Handy aufstellen – einmal')}</h2>
+      {/* the camera setup: a picture and one line, then the drills and Start – no intro with steps (Facelift 11.11.2026, a9) */}
       <PhoneSetup view="front" height="hip" />
-      <ol className="card tr-section tr-steps">
-        <li>{tr('Phone upright on a stand or against a bottle, at hip height, the screen towards you.', 'Handy hochkant auf ein Stativ oder an eine Flasche lehnen, auf Hüfthöhe, Bildschirm zu dir.')}</li>
-        <li>{tr('Step back 2.5–3 m, sound on. The app shows each drill, then you do it.', '2,5–3 m zurückgehen, Ton an. Die App macht jede Übung vor, dann machst du sie.')}</li>
-        <li>{tr('It counts, times the holds, measures how far you get, says what to correct and goes on by itself.', 'Sie zählt mit, stoppt die Haltezeiten, misst, wie weit du kommst, sagt dir, was du korrigieren kannst, und macht von selbst weiter.')}</li>
-      </ol>
+      <p className="muted small mob-setup-line">
+        {tr('Phone upright at hip height, 2.5–3 m away, sound on – the app shows each drill, counts, measures and goes on by itself.', 'Handy hochkant auf Hüfthöhe, 2,5–3 m entfernt, Ton an – die App macht jede Übung vor, zählt, misst und macht von selbst weiter.')}
+      </p>
       {needs.length > 0 && (
         <p className="muted small">
           {tr('You need', 'Du brauchst')}: {needs.join(', ')}
         </p>
       )}
+      <span className="eyebrow">{tr(`The drills · about ${props.minutes} min`, `Die Übungen · etwa ${props.minutes} Min.`)}</span>
       <div className="list mob-train-list" aria-label={tr('The drills', 'Die Übungen')}>
         {props.drills.map((d, i) => {
           const c = props.planOf(d.id);
@@ -266,10 +286,10 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; warm: string[]; r
           );
         })}
       </div>
-      <p className="muted small">{tr(`About ${props.minutes} min.`, `Etwa ${props.minutes} Min.`)}</p>
       {/* the motion log for checking the measuring on a real body: only the body points, never a picture */}
       <LogSwitch />
       <p className={`small mob-model ${model}`} role="status">
+        {model === 'ready' && <TickIcon size={14} />}
         {model === 'ready'
           ? tr('Body tracking ready', 'Körpererkennung bereit')
           : model === 'loading'
@@ -284,10 +304,35 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; warm: string[]; r
 }
 
 /** The end of a session: what was done and how far each measured movement went – against the last time. */
-function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous: Record<string, number | null>; onDone: () => void }) {
+function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous: Record<string, number | null>; onDeleted: () => void }) {
   const s = props.session;
   const days = daysThisWeek();
   const pain = s.done.filter((x) => x.pain);
+  const [shared, setShared] = useState('');
+  // Teilen: what was done, in words – the share sheet, else the clipboard
+  const share = async () => {
+    const text = [
+      tr(`Agility training, ${new Date(s.startedAt).toLocaleDateString('en-GB')}`, `Agility-Training, ${new Date(s.startedAt).toLocaleDateString('de-DE')}`),
+      ...props.drills.map((d) => {
+        const x = s.done.find((y) => y.drill === d.id);
+        return `– ${t(d.name)}: ${x ? doneText(x) : tr('not done', 'nicht gemacht')}`;
+      }),
+    ].join('\n');
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: tr('Agility training', 'Agility-Training'), text });
+        return setShared(tr('Shared.', 'Geteilt.'));
+      }
+    } catch {
+      /* cancelled – the clipboard instead */
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared(tr('Copied – paste it into a message.', 'Kopiert – in eine Nachricht einfügen.'));
+    } catch {
+      setShared('');
+    }
+  };
   return (
     <section className="tr-block mob-train-summary">
       <section className="card">
@@ -298,8 +343,13 @@ function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous:
       </section>
       {pain.length > 0 && (
         <section className="card mob-pain-note">
-          <strong>{tr('It hurt', 'Hat wehgetan')}</strong>
-          <span className="small">{tr(`${pain.map((x) => t(drillById(x.drill)?.name ?? { en: x.drill, de: x.drill })).join(', ')}: pain is a stop sign – leave it out and let a physio look at it.`, `${pain.map((x) => t(drillById(x.drill)?.name ?? { en: x.drill, de: x.drill })).join(', ')}: Schmerz ist ein Stoppsignal – lass die Übung weg und lass es von einem Physio anschauen.`)}</span>
+          <span className="mob-grade fail pain" aria-hidden="true">
+            <PainIcon />
+          </span>
+          <span className="grow">
+            <strong>{tr('It hurt', 'Hat wehgetan')}</strong>
+            <span className="small">{tr(`${pain.map((x) => t(drillById(x.drill)?.name ?? { en: x.drill, de: x.drill })).join(', ')}: pain is a stop sign – leave it out and let a physio look at it.`, `${pain.map((x) => t(drillById(x.drill)?.name ?? { en: x.drill, de: x.drill })).join(', ')}: Schmerz ist ein Stoppsignal – lass die Übung weg und lass es von einem Physio anschauen.`)}</span>
+          </span>
         </section>
       )}
       <div className="list">
@@ -335,9 +385,30 @@ function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous:
         })}
       </div>
       <LogShare />
-      <button type="button" className="btn-primary mob-train-done" onClick={props.onDone}>
-        {tr('Done', 'Fertig')}
-      </button>
+      {/* no 'Fertig' – back with ‹ in the TopBar; the summary's actions as one bar, Löschen red and last (Facelift
+          11.11.2026, a10) */}
+      <MobActionBar
+        label={tr('This training', 'Dieses Training')}
+        className="mob-train-acts"
+        actions={[
+          { label: tr('Share', 'Teilen'), aria: tr('Share the training', 'Training teilen'), icon: 'share', onClick: () => void share() },
+          {
+            label: tr('Delete', 'Löschen'),
+            aria: tr('Delete the training', 'Training löschen'),
+            icon: 'delete',
+            danger: true,
+            onClick: () => {
+              deleteSession(s.id, tr('Training', 'Training'));
+              props.onDeleted();
+            },
+          },
+        ]}
+      />
+      {shared && (
+        <span className="muted small" role="status">
+          {shared}
+        </span>
+      )}
     </section>
   );
 }

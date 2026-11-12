@@ -84,7 +84,7 @@ if (d) {
   ok(turn?.seen > 0.9, `the body was seen in the log (${Math.round((turn?.seen ?? 0) * 100)} %)`);
 }
 // ---------- the screening: a quick check with the switch on, the log at the result, the replay measures the same ----------
-await p.locator('.mob-train-done').click();
+await p.locator('.topbar .icon-btn').first().click();
 await p.waitForTimeout(300);
 await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
 await p.locator('.mob-start').filter({ hasText: 'Kurz-Check' }).click();
