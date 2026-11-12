@@ -45,8 +45,9 @@ const block = (name) => H.locator('.score-player').filter({ has: H.locator('.sco
 await H.locator('.map-score').click();
 await H.waitForTimeout(300);
 await block('Sascha').getByRole('button', { name: /Schläge plus eins/ }).click();
-// the scorer of all enters Chris in full – putts too (Sascha 12.11.2026: "Erik could enter only the scores, not the putts")
-ok((await block('Chris').getByRole('group', { name: 'Putts' }).count()) === 1, 'the scorer: Chris in full – putts, sand, penalties');
+// the scorer of all enters Chris's score and putts – no bet counts the round: nothing more (Sascha 13.11.2026: "für Erik und
+// Chris reichen Score und Putts")
+ok((await block('Chris').getByRole('group', { name: 'Putts' }).count()) === 1 && (await block('Chris').getByRole('group', { name: 'Sand Shots' }).count()) === 0 && (await block('Chris').getByRole('group', { name: 'Strafschläge' }).count()) === 0, 'the scorer: Chris with score and putts – no sand, no penalties apart');
 await block('Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
 // Chris's name: his sheet – "Gibt nach diesem Loch auf" (hole 1 has his score)
 await H.getByRole('button', { name: 'Chris – aufgeben' }).click();

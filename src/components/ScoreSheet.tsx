@@ -138,6 +138,9 @@ export function ScoreSheet(props: {
   entry?: 'strokes' | 'details';
   /** every player entered in full – a round from a pool whose bets need the details of all (a GIR bet, 02.11.2026) */
   everyone?: boolean;
+  /** not in full, but the putts with the strokes – the scorer of all for his partners (Sascha 13.11.2026: "für Erik und
+   *  Chris reichen Score und Putts") */
+  putts?: (playerId: string) => boolean;
   /** the own card kept by a scorer: its own analysis beside it – putts, sand, tee shot – on this phone only (02.11.2026) */
   analysis?: (playerId: string) => boolean;
   /** the own details on (Sascha 07.11.2026: "set per person") – and the phone's switch for it; without: shown as before */
@@ -271,7 +274,7 @@ export function ScoreSheet(props: {
               {props.analysis?.(p.id) && props.onAnalysis && (
                 <ToggleRow
                   label={tr('Own details', 'Eigene Detailerfassung')}
-                  text={tr('Putts, tee shot and sand for your own analysis – asked on every hole', 'Putts, Abschlag und Sand für deine eigene Auswertung – auf jedem Loch gefragt')}
+                  text={tr('Putts, sand, penalty strokes and tee shot for your own analysis – asked on every hole', 'Putts, Sand, Strafschläge und Abschlag für deine eigene Auswertung – auf jedem Loch gefragt')}
                   on={!!props.analysisOn}
                   onChange={props.onAnalysis}
                 />
@@ -297,6 +300,8 @@ export function ScoreSheet(props: {
                     onChange={(v) => analyse({ putts: v, ...(e.puttsAt && v !== e.puttsAt.balls.length ? { puttsAt: undefined } : {}) })}
                   />
                   <Stepper label="Sand Shots" value={e.sandShots ? e.sandShots : null} start={1} max={9} onChange={(v) => analyse({ sandShots: v ?? 0 })} />
+                  {/* the penalty strokes too, for his own analysis (Sascha 13.11.2026) – the score stays the scorer's */}
+                  <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ? e.penalties : null} start={1} max={9} onChange={(v) => analyse({ penalties: v ?? 0 })} />
                   {h.par >= 4 && (
                     <div className="stepper-row">
                       <span className="stepper-label">{tr('Tee shot', 'Abschlag')}</span>
@@ -385,7 +390,16 @@ export function ScoreSheet(props: {
               </>
             )}
             {/* not entered in full: the strokes incl. penalty strokes, nothing besides (Sascha 02.11.2026: "the penalty
-                strokes apart are not needed") */}
+                strokes apart are not needed") – the scorer of all with the putts (Sascha 13.11.2026) */}
+            {!full && !props.team && !e.pickedUp && props.putts?.(p.id) && (
+              <Stepper
+                label="Putts"
+                value={e.putts}
+                start={strokes != null ? Math.max(0, Math.min(2, strokes - 1)) : 2}
+                max={9}
+                onChange={(v) => set({ putts: v })}
+              />
+            )}
           </div>
         );
       })}

@@ -1002,6 +1002,8 @@ export function HoleScreen(props: {
   // a scorer keeps the card (Sascha 07.11.2026): this phone may still enter its own details – set per player in the
   // setup, changed here on the phone; then the score entry asks on every hole for them
   const ownEligible = (views[me.id]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer) || props.game?.keptBy?.[me.id] != null;
+  // a partner this phone keeps as the scorer of all – not one who enters his own details himself
+  const scoredForAll = (pid: string): boolean => views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer && !(round.format?.ownDetails ?? []).some((n) => n.trim().toLowerCase() === (round.players.find((p) => p.id === pid)?.name ?? '').trim().toLowerCase());
   const [ownOn, setOwnOn] = useState(() => ownDetailsOn(round.id, me.name, round.format?.ownDetails ?? props.game?.ownDetails));
   const ownEmpty = (k: number): boolean => {
     const e = round.entries[me.id]?.[k];
@@ -2018,10 +2020,11 @@ export function HoleScreen(props: {
               setOwnDetails(round.id, on);
               setOwnOn(on);
             }}
-            // the scorer of all ("Einer für alle") enters everyone in full – putts, sand, penalties, tee shot (Sascha 12.11.2026: "Erik
-            // could enter only the scores for Cedric and Moritz, not the putts") – but not who keeps his own details; the
-            // marker in a tournament as before when a bet counts the round
-            details={(pid) => (withBets && views[pid]?.role === 'mark') || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer && !(round.format?.ownDetails ?? []).some((n) => n.trim().toLowerCase() === (round.players.find((p) => p.id === pid)?.name ?? '').trim().toLowerCase()))}
+            // the scorer of all ("Einer für alle"): for his partners the score and the putts (Sascha 13.11.2026: "für Erik und Chris
+            // reichen Score und Putts – vllt abhängig, welche Wetten laufen"), in full – sand, penalties, tee shot – when a bet
+            // counts the round; not who keeps his own details (he enters them himself); the marker in a tournament as before
+            details={(pid) => (withBets && views[pid]?.role === 'mark') || (withBets && scoredForAll(pid))}
+            putts={(pid) => scoredForAll(pid)}
             shared={{
               ...Object.fromEntries(Object.entries(props.game?.keptBy ?? {}).map(([pid, by]) => [pid, { keptBy: by }])),
               ...Object.fromEntries(

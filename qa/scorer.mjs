@@ -90,6 +90,7 @@ ok(/Chris erfasst/.test(await H.locator('.score-panel').innerText()), 'Sascha: "
 // his own analysis beside it (Sascha 02.11.2026): putts on his phone only – the scorer's count stays the score
 const mine = H.getByRole('group', { name: 'Meine Analyse' });
 ok(await mine.isVisible(), 'Sascha: "Meine Analyse" under his card');
+ok((await mine.getByRole('group', { name: 'Strafschläge' }).count()) === 1 && (await mine.getByRole('group', { name: 'Sand Shots' }).count()) === 1, 'Meine Analyse: Putts, Sand and the penalty strokes too (Sascha 13.11.2026)');
 await mine.getByRole('button', { name: /Putts plus eins/ }).click();
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await H.waitForTimeout(12000);
