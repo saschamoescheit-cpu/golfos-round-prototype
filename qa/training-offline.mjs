@@ -10,6 +10,20 @@ const b = await chromium.launch({ channel: 'msedge' });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'allow' });
 await mockNet(ctx);
 const p = await ctx.newPage();
+// the parts of a topic / a drill: the switch "‹ Übungen ›" (Facelift 11.11.2026, tr1) – picked from its list; false when
+// the page has no such part
+const view = async (name) => {
+  await p.getByRole('button', { name: /^Ansicht: / }).click();
+  const sheet = p.getByRole('dialog', { name: 'Ansicht' });
+  const opt = sheet.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+  if (!(await opt.count())) {
+    await sheet.getByRole('button', { name: 'Schließen' }).click();
+    return false;
+  }
+  await opt.first().click();
+  await p.waitForTimeout(150);
+  return true;
+};
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on
 // navigation – the app catches it; not an error of the page
@@ -48,12 +62,12 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Leiter-Übung' })
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'offline: the drill shows its sketch');
 ok(await p.locator('.tr-metronome').isVisible(), 'offline: the metronome is there');
-await p.getByRole('tab', { name: 'Ergebnis' }).click();
+await view('Ergebnis');
 for (let i = 0; i < 6; i++) await p.locator('.tr-result button').nth(1).click();
-await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
-ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'offline: a result is saved');
+await p.getByRole('button', { name: 'Ergebnis speichern' }).click(); // the round green tick bottom right (Facelift 11.11.2026, tr3)
+ok(/Gespeichert/.test(await p.locator('.tr-save-note').innerText()) && (await p.locator('.tr-history li').count()) >= 1, 'offline: a result is saved');
 await p.waitForTimeout(1500);
-await p.getByRole('tab', { name: 'Videos' }).click().catch(() => {});
+await view('Videos');
 const thumbs = await p.locator('.tr-video-thumb img').count();
 ok(thumbs === 0 || (await p.locator('.tr-video-cover').count()) > 0, 'offline: videos show their card without breaking');
 await back();

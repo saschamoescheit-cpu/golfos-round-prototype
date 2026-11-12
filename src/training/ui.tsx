@@ -6,6 +6,35 @@ import type { CategoryId, Drill, Gear, GearKind, L, Level, Place, Scoring, Targe
 
 // Small building blocks of the Training module.
 
+// The small signs of the module as SVG – never a text sign (Facelift 11.11.2026, tr9/tr10: "+ Warenkorb", "✓ im Korb",
+// "Preis ↑", "↗", "▾/▸", "Putten ›"). They take the size and colour of the text around them.
+const glyph = (d: ReactNode) => (
+  <svg className="glyph" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d}
+  </svg>
+);
+export const TR_GLYPH = {
+  /** fits / done / in the cart – the tick */
+  tick: () => glyph(<path d="M5 12.5l4.5 4.5L19 7.5" />),
+  /** a further page – the chevron */
+  next: () => glyph(<path d="M9 5l7 7-7 7" />),
+  /** open (a collapsible) – the chevron down; closed – the chevron right */
+  open: (on: boolean) => glyph(<path d={on ? 'M5 9l7 7 7-7' : 'M9 5l7 7-7 7'} />),
+  /** another website – the arrow out of the box */
+  external: () => glyph(<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />),
+  /** the cart */
+  cart: () =>
+    glyph(
+      <>
+        <path d="M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6" />
+        <circle cx="9.5" cy="20" r="1.3" />
+        <circle cx="17.5" cy="20" r="1.3" />
+      </>,
+    ),
+  /** ascending – the arrow up */
+  up: () => glyph(<path d="M12 19V5M6 11l6-6 6 6" />),
+};
+
 // left-handers read every right/left mirrored, like the pictures (sides.ts)
 export const t = (x: L | string | undefined): string => (x == null ? '' : typeof x === 'string' ? x : sided(tr(x.en, x.de)));
 
@@ -137,7 +166,7 @@ export function VideoCard(props: { v: Video }) {
       )}
       {on && (
         <a className="btn-secondary tr-video-open" href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noreferrer">
-          {tr('Open on YouTube', 'Auf YouTube öffnen')} ↗
+          {tr('Open on YouTube', 'Auf YouTube öffnen')} {TR_GLYPH.external()}
         </a>
       )}
     </div>
@@ -351,7 +380,7 @@ export function Collapsible(props: { title: ReactNode; children: ReactNode; open
     <section className={`card tr-coll${props.className ? ' ' + props.className : ''}`}>
       <button type="button" className="tr-coll-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="grow">{props.title}</span>
-        <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span className="tr-coll-mark" aria-hidden="true">{TR_GLYPH.open(open)}</span>
       </button>
       {open && <div className="tr-coll-body">{props.children}</div>}
     </section>

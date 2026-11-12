@@ -48,7 +48,7 @@
 .tr-drill-row { display: flex; align-items: center; gap: 8px; }
 .tr-drill-row .list-item { flex: 1; min-width: 0; }
 .tr-add { width: 48px; height: 48px; font-size: 22px; font-weight: 700; }
-.tr-add.on { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+.tr-add.on { background: var(--brand); color: #fff; border-color: var(--brand); }
 
 .tr-goal { font: 600 17px/1.4 var(--display); color: var(--text); }
 .tr-section { display: flex; flex-direction: column; gap: 10px; }
@@ -68,8 +68,8 @@
 .tr-targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow: column; gap: 6px; }
 .tr-targets > div { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 10px; background: var(--surface-2); }
 .tr-targets strong { font: 700 20px var(--display); }
-.tr-targets .mine { background: var(--brand); color: var(--bg); }
-.tr-targets .mine .small { color: var(--bg); }
+.tr-targets .mine { background: var(--brand); color: #fff; }
+.tr-targets .mine .small { color: #fff; }
 
 .tr-result { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tr-log { gap: 12px; }
@@ -122,7 +122,7 @@
 .tr-qty { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .tr-total { font-size: 18px; }
 .tr-ordered { align-items: center; text-align: center; }
-.tr-big-check { width: 64px; height: 64px; border-radius: 32px; background: var(--brand); color: var(--bg); font: 700 34px/64px var(--display); text-align: center; }
+.tr-big-check { width: 64px; height: 64px; border-radius: 32px; background: var(--brand); color: #fff; font: 700 34px/64px var(--display); text-align: center; }
 
 /* session */
 .tr-session .tr-now { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--brand); }
@@ -167,11 +167,11 @@
 .tr-metro-lights i { width: 14px; height: 14px; border-radius: 7px; background: var(--line); transition: background 0.05s; }
 .tr-metro-lights i.on { background: var(--brand); }
 .tr-metro-lights i.low.on { background: var(--brand-text); }
-.tr-metro-go { width: auto; min-width: 96px; flex: 1 0 96px; padding-left: 14px; padding-right: 14px; }
+.tr-metro-go { flex: none; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--brand); color: #fff; box-shadow: 0 1px 4px #0003; cursor: pointer; }
 
 /* small pictures of the drills in lists and plans (Sascha 16.10.2026) */
 .tr-thumb { width: 60px; height: 60px; flex-shrink: 0; border-radius: 12px; overflow: hidden; display: block; position: relative; }
-.tr-thumb-play { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); color: var(--bg); display: flex; align-items: center; justify-content: center; }
+.tr-thumb-play { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; }
 .tr-thumb-play svg { width: 8px !important; height: 8px !important; margin-left: 1px; }
 .tr-thumb svg { width: 100%; height: 100%; border-radius: 0 !important; }
 .tr-thumb svg text { display: none; }
@@ -188,12 +188,12 @@
 .tr-reviewbar.edit { border: 1px solid var(--text-2); }
 .tr-reviewbar.cut { border: 1px solid var(--bad); }
 .tr-reviewbar .chip-set { gap: 6px; }
-.tr-reviewbar .chip.on { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+.tr-reviewbar .chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
 .tr-reviewbar.cut .chip.on { background: var(--bad); border-color: var(--bad); }
 .tr-reviewbar.edit .chip.on { background: var(--text-2); border-color: var(--text-2); }
 .tr-review-topics { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .tr-review-sign { width: 32px; height: 32px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; background: var(--surface-2); }
-.tr-review-sign.cut { background: var(--bad); color: var(--bg); }
+.tr-review-sign.cut { background: var(--bad); color: #fff; }
 .tr-review-entry { margin-top: 8px; }
 .tr-video-item { display: flex; flex-direction: column; gap: 8px; }
 .tr-reviewbar textarea { font: inherit; font-size: 16px; color: var(--text); resize: vertical; }
@@ -261,7 +261,7 @@
 .tr-history .grow { display: flex; flex-direction: column; gap: 0; }
 .tr-delta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .tr-goal-dot { width: 26px; height: 26px; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
-.tr-goal-dot.ok { background: var(--ok); color: var(--bg); }
+.tr-goal-dot.ok { background: var(--ok); color: #fff; }
 .tr-hist-remove { border: 0 !important; background: transparent !important; }
 .tr-day { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .tr-day .eyebrow { color: var(--text-2); }
@@ -271,12 +271,12 @@
 .tr-callouts li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.35; }
 .tr-callout-no { flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; background: var(--brand); color: #fff; font: 800 12px var(--display); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
 /* switched on = brand green, like the speaker button and the map tools in Rounds (Sascha 17.10.2026) */
-.tr-switch[aria-pressed='true'], .tr-metro-go[aria-pressed='true'] { border: 2px solid var(--brand); background: var(--brand-soft); color: var(--brand-text); }
+.tr-switch[aria-pressed='true'] { border: 2px solid var(--brand); background: var(--brand-soft); color: var(--brand-text); }
 
 /* the animated figure (Sascha 17.10.2026): the play button under the picture, the phase beside it while it moves */
 .tr-sketch-pic { position: relative; }
 .tr-motion-btn { position: absolute; right: 8px; bottom: 8px; z-index: 2; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; background: rgba(14, 20, 24, 0.62); color: #ffffff; box-shadow: 0 1px 4px #0005; cursor: pointer; }
-.tr-motion-btn.on { background: var(--brand); color: var(--bg); }
+.tr-motion-btn.on { background: var(--brand); color: #fff; }
 .tr-motion-btn.close { top: 8px; bottom: auto; background: rgba(14, 20, 24, 0.62); color: #ffffff; }
 .tr-motion-phase { font-weight: 600; color: var(--brand-text); line-height: 1.3; }
 
@@ -288,6 +288,46 @@
 .tr-3d-views { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 .tr-3d-controls .chip, .tr-3d-controls .icon-btn, .tr-3d-views .chip { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
 .tr-3d-controls .icon-btn { width: 44px; padding: 0; }
-.tr-3d-controls .chip.on, .tr-3d-views .chip.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.tr-3d-controls .chip.on, .tr-3d-views .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .tr-3d-step { display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 8px 12px; border-radius: 12px; background: var(--surface); color: var(--text); font: 600 15px var(--body); }
-.tr-3d-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: var(--bg); display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--body); }
+.tr-3d-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--body); }
+
+/* ---------- Facelift 11.11.2026 – Training (tr1–tr10, o6) ---------- */
+/* a block's eyebrow with a quiet figure on the right (the minutes of a plan, "3× eingetragen") */
+.tr-eb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* SVG signs in text and chips: the size and colour of the text around them */
+.training .glyph { flex: none; vertical-align: -0.14em; }
+.tr-chip-go, .tr-cart-chip { display: inline-flex; align-items: center; gap: 6px; }
+.tr-in-cart { display: inline-flex; align-items: center; gap: 6px; }
+.tr-coll-mark { display: inline-flex; color: var(--muted); }
+.tr-ext { display: inline-flex; color: var(--muted); }
+.training a.btn-secondary .glyph { margin-left: 4px; }
+/* the goal dot and the done mark: a white SVG tick on green */
+.tr-goal-dot .glyph { width: 16px; height: 16px; }
+.tr-done-mark { display: inline-flex; color: var(--brand-text); }
+.tr-big-check { display: flex; align-items: center; justify-content: center; }
+.tr-big-check .glyph { width: 36px; height: 36px; }
+.tr-ordered-title { font: 700 18px/1.3 var(--display); }
+/* the history of a drill: a row each, swiped away (tr4) – the front on the card's ground */
+.tr-history .swipe { border-radius: 10px; }
+.tr-history .swipe-front { background: var(--surface); }
+.tr-history li { display: block; padding: 0; }
+.tr-hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; min-height: 56px; }
+.tr-hist-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* the result's note under the stepper – the tick floats bottom right (tr3) */
+.tr-save-note { text-align: center; }
+/* the own session (tr5): a card per drill – its name, then the arrow up, the minutes' stepper */
+.tr-own-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tr-own-row { display: flex; flex-direction: column; gap: 8px; }
+.tr-own-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tr-own-row strong { font: 600 16px/1.3 var(--display); overflow-wrap: break-word; hyphens: auto; }
+.tr-own-ctl { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.tr-own-ctl .stepper { gap: 6px; }
+.tr-own-up { width: 48px; height: 48px; margin-right: auto; }
+.tr-own-up .glyph { width: 22px; height: 22px; }
+.tr-own-up:disabled { opacity: 0.35; }
+/* the overview of a session: done – the green tick, the drill in play – a green dot */
+.tr-drawer-done { display: inline-flex; color: var(--brand-text); }
+.tr-drawer-now { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
+/* the switch "‹ Anleitung ›" stays at the top while the part scrolls, as the tabs did (tr1) */
+.training:not(.mobility) > .step-pick { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 6px 0; margin: -6px 0; }

@@ -8,6 +8,20 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
 const p = await ctx.newPage();
+// the parts of a topic / a drill: the switch "‹ Übungen ›" (Facelift 11.11.2026, tr1) – picked from its list; false when
+// the page has no such part
+const view = async (name) => {
+  await p.getByRole('button', { name: /^Ansicht: / }).click();
+  const sheet = p.getByRole('dialog', { name: 'Ansicht' });
+  const opt = sheet.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+  if (!(await opt.count())) {
+    await sheet.getByRole('button', { name: 'Schließen' }).click();
+    return false;
+  }
+  await opt.first().click();
+  await p.waitForTimeout(150);
+  return true;
+};
 await p.goto(url);
 await p.waitForTimeout(1200);
 await p.evaluate(() => {
@@ -34,21 +48,21 @@ await p.evaluate(() => window.scrollTo(0, 700));
 await shot('themen');
 await p.locator('.tr-cat').filter({ hasText: 'Putten' }).first().click();
 await shot('thema-putten');
-await p.getByRole('tab', { name: 'Grundlagen' }).click();
+await view('Grundlagen');
 await shot('thema-grundlagen');
-await p.getByRole('tab', { name: 'Fehler' }).click();
+await view('Fehler');
 await shot('thema-fehler');
-await p.getByRole('tab', { name: /^Übungen/ }).click();
+await view('Übungen');
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Tiger' }).click();
 await shot('uebung');
 // the drill page in tabs (17.10.2026): Zubehör and Ergebnis are their own tabs
-await p.getByRole('tab', { name: 'Zubehör' }).click();
+await view('Zubehör');
 await p.waitForTimeout(300);
 await shot('uebung-zubehoer');
-await p.getByRole('tab', { name: 'Ergebnis' }).click();
+await view('Ergebnis');
 await p.waitForTimeout(300);
 await shot('uebung-ergebnis');
-await p.getByRole('tab', { name: 'Anleitung' }).click();
+await view('Anleitung');
 await p.waitForTimeout(200);
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.topbar .icon-btn').first().click();
@@ -66,14 +80,14 @@ await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.topbar .icon-btn').first().click();
 // the 3D fault videos of the night (18.10.2026): the slice from behind with the ball's tracer, the bunker, the putt at
 // the hole from above – each a moment after the hit
-const fault3d = async (cat, fault, name, wait, view) => {
+const fault3d = async (cat, fault, name, wait, camera) => {
   await p.locator('.tr-cat').filter({ hasText: cat }).first().click();
-  await p.getByRole('tab', { name: 'Fehler' }).click();
+  await view('Fehler');
   await p.locator('.list .list-item').filter({ hasText: fault }).first().click();
   await p.locator('figure.tr-sketch').first().scrollIntoViewIfNeeded();
   await p.locator('figure.tr-sketch .tr-motion-btn').first().click();
   await p.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
-  if (view) await p.locator('.tr-3d-views .chip').filter({ hasText: view }).click();
+  if (camera) await p.locator('.tr-3d-views .chip').filter({ hasText: camera }).click();
   await p.waitForTimeout(wait);
   await shot(name);
   await p.locator('.topbar .icon-btn').first().click();
