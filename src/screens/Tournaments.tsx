@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { type RetiredFill, CLASS_NAMES, amHost, eventOwner, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, confirmReopen, reopenAsked, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -1149,16 +1149,6 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
-  // the host asked on the server too – a tournament kept without its owner still shows the host what to confirm
-  // (Sascha 13.11.2026: "ich finde nicht, wo ich das bestätigen kann")
-  const [ownerHost, setOwnerHost] = useState(false);
-  useEffect(() => {
-    let on = true;
-    void eventOwner(props.code).then((o) => on && setOwnerHost(amHost(o)));
-    return () => {
-      on = false;
-    };
-  }, [props.code]);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [live, setLive] = useState<RoundEvent | null>(null);
@@ -1410,34 +1400,8 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
               </div>
             );
           })}
-          {/* a card handed in asked to be opened for a correction (Sascha 12.11.2026: Moritz on the Cypress – "der Host muss
-              das bestätigen"): the host confirms it here – its signatures go back, it is corrected and signed anew */}
-          {(host || ownerHost) &&
-            (() => {
-              const lf = live?.flights[f.id];
-              if (!lf) return null;
-              return lf.players
-                .filter((p) => reopenAsked(lf, p.id))
-                .map((p) => (
-                  <div key={'reopen' + p.id} className="sign-row reopen-confirm">
-                    <span className="grow">
-                      <strong>{tr(`Correct ${p.name}'s card?`, `Karte von ${p.name} korrigieren?`)}</strong>
-                      <span className="muted small">{tr(`${lf.reopen![p.id].by} asks to open it again – its signatures are taken back, then it is corrected and signed anew.`, `${lf.reopen![p.id].by} möchte sie wieder öffnen – die Unterschriften werden zurückgenommen, danach wird korrigiert und neu unterschrieben.`)}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={async () => {
-                        const r = await confirmReopen(props.code, f.id, true, p.id);
-                        if (r) setLive(r);
-                        setMsg(r ? null : NO_NET());
-                      }}
-                    >
-                      {tr('Confirm', 'Bestätigen')}
-                    </button>
-                  </div>
-                ));
-            })()}
+          {/* a card asked to be opened for a correction: the host confirms it in the inbox (Sascha 13.11.2026: "nicht unter
+              solchen Masken, sondern alles in die Inbox") */}
           {/* the scores entered afterwards by the host (Sascha 08.11.2026: "yesterday's scores afterwards") – from the day on */}
           {host && started && (
             <button type="button" className="btn-secondary tour-scores-btn" onClick={() => setScoring(f.id)}>

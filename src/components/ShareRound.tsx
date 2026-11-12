@@ -1041,7 +1041,8 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
   const nameOf = (pid: string) => f.players.find((p) => p.id === pid)?.name ?? props.round.players.find((p) => p.id === pid)?.name ?? '';
   const signedAny = (pid: string) => !!f.signed?.[pid]?.player || !!f.signed?.[pid]?.marker;
   const mine = props.pids.filter((pid) => signedAny(pid) || reopenAsked(f, pid));
-  const toConfirm = host ? f.players.map((p) => p.id).filter((pid) => reopenAsked(f, pid)) : [];
+  // the host confirms in the inbox (Sascha 13.11.2026: "alles in die Inbox") – not on the scorecard
+  const toConfirm: string[] = [];
   if (!mine.length && !toConfirm.length) return null;
   // the cards to open again as rows of a list, not as green text links (Sascha 13.11.2026: "die Texte links sind nicht schön")
   const openable = mine.filter((pid) => !reopenAsked(f, pid));
@@ -1089,7 +1090,7 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
       {ask && (
         <ConfirmSheet
           title={tr(`Open ${nameOf(ask)}'s card for a correction?`, `Karte von ${nameOf(ask)} zur Korrektur öffnen?`)}
-          text={host ? tr('As the host you confirm it right after.', 'Als Host bestätigst du es gleich danach.') : tr('The host confirms it – he gets a notification. Then the hole is corrected and the card signed anew.', 'Der Host bestätigt es – er bekommt eine Mitteilung. Danach wird das Loch korrigiert und die Karte neu unterschrieben.')}
+          text={host ? tr('As the host you confirm it afterwards in the inbox (the bell).', 'Als Host bestätigst du es danach in der Inbox (Glocke oben).') : tr('The host confirms it – he gets a notification. Then the hole is corrected and the card signed anew.', 'Der Host bestätigt es – er bekommt eine Mitteilung. Danach wird das Loch korrigiert und die Karte neu unterschrieben.')}
           confirmLabel={tr('Ask for the correction', 'Korrektur beantragen')}
           danger={false}
           busy={busy}

@@ -28,8 +28,8 @@ const vw = p.viewportSize().width;
 const tops = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
 ok(!!box && box.x + box.width <= vw && new Set(tops).size === 1, `on a small phone: DE, bell and sun in one line, on the screen (${tops.join(',')})`);
 await bell.click();
-const sheet = p.getByRole('dialog', { name: 'Mitteilungen' });
-ok((await sheet.count()) === 1 && /Nichts Neues/.test(await sheet.innerText()), 'tapped: the sheet "Mitteilungen" – "Nichts Neues für dich."');
+const sheet = p.getByRole('dialog', { name: 'Inbox' });
+ok((await sheet.count()) === 1 && /Nichts Neues/.test(await sheet.innerText()), 'tapped: the inbox – "Nichts Neues für dich."');
 await sheet.getByRole('button', { name: 'Schließen' }).click();
 
 // a round finished, not signed

@@ -1,31 +1,45 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
-import { canLink } from '../lib/friendlinks';
-import { cachedEvent, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
+import { canLink, pendingAsk } from '../lib/friendlinks';
+import { amHost, cachedEvent, confirmReopen, eventOwner, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
 import { isTourHost, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import { loadGames } from '../lib/gamestore';
 import { openChallenges } from '../lib/wagerstore';
 import { prizeOf, prizeSym } from '../lib/prize';
-import { goPool, goTour } from '../lib/nav';
+import { goPool } from '../lib/nav';
 import { roundsToSign } from '../screens/Rounds';
 
-// The bell beside the language and the sun mode (Sascha 13.11.2026: "neben der Sprache und dem Tag-/Nachtmodus noch eine
-// Glocke für Notifications, wie Anfragen usw."): what others ask of you and what waits for you, in one sheet – an
-// invitation to a round, a game or bets (also one put aside with "Nicht jetzt"), a 5+5+10 challenge, rounds to check &
-// sign, game results to confirm. A green dot with the number while something waits; each row goes straight there.
+// The inbox (Sascha 13.11.2026: "neben der Sprache und dem Tag-/Nachtmodus noch eine Glocke für Notifications, wie
+// Anfragen" – and then: "solche Meldungen und Freundesanfragen nicht unter solchen Masken, sondern alles in die Inbox"):
+// the bell beside the language and the sun mode, a green number while something waits. In it what others ask of you –
+// a card to be opened for a correction (confirmed right here), a friend's request, an invitation to a round, a game or
+// bets (also one put aside), a 5+5+10 challenge – and what waits for you: rounds to check & sign, results to confirm.
 
-interface BellItem {
+interface InboxItem {
   key: string;
   title: string;
   line: string;
-  go: () => void;
+  /** a tap on the row: where it is answered */
+  go?: () => void;
+  /** answered right in the inbox (the correction asked of the host) */
+  action?: { label: string; run: () => Promise<boolean> };
+}
+
+interface ReopenAsk {
+  code: string;
+  fid: string;
+  pid: string;
+  tournament: boolean;
+  by: string;
+  player: string;
+  where: string;
 }
 
 const pick = (m: 'rounds' | 'games') => window.dispatchEvent(new CustomEvent('golfos:pick-module', { detail: m }));
 
-function inviteItem(inv: RoundInvite): BellItem {
+function inviteItem(inv: RoundInvite): InboxItem {
   const title =
     inv.kind === 'pool'
       ? tr(`${inv.who} invites you to bets`, `${inv.who} lädt dich zu Wetten ein`)
@@ -40,21 +54,28 @@ function inviteItem(inv: RoundInvite): BellItem {
   };
 }
 
-function localItems(): BellItem[] {
-  const out: BellItem[] = [];
-  // a card handed in asked to be opened for a correction – the host confirms it on the tournament's page (Sascha
-  // 13.11.2026: "Erik hat eine Anfrage geschickt … ich finde nicht, wo ich das bestätigen kann")
-  for (const t of loadTours().filter(isTourHost)) {
-    const ev = cachedEvent(t.code);
-    for (const f of Object.values(ev?.flights ?? {}))
-      for (const p of f.players.filter((x) => reopenAsked(f, x.id)))
-        out.push({
-          key: `reopen:${t.code}:${p.id}`,
-          title: tr(`${f.reopen![p.id].by} asks to correct ${p.name}'s card`, `${f.reopen![p.id].by} möchte die Karte von ${p.name} korrigieren`),
-          line: tr(`${t.ev.name} – confirm on its page`, `${t.ev.name} – auf der Turnierseite bestätigen`),
-          go: () => goTour(t.code),
-        });
+/** The cards asked to be opened again whose host this account is – tournaments and shared rounds this phone knows. */
+async function reopenAsks(): Promise<ReopenAsk[]> {
+  const tours = loadTours();
+  const codes = new Map<string, { tournament: boolean; where: string; host: boolean }>();
+  for (const t of tours) codes.set(t.code, { tournament: true, where: t.ev.name, host: isTourHost(t) });
+  for (const r of loadRounds()) if (r.shared?.code && !codes.has(r.shared.code)) codes.set(r.shared.code, { tournament: !!r.shared.tournament, where: r.courseName, host: false });
+  const out: ReopenAsk[] = [];
+  for (const [code, c] of codes) {
+    const ev = cachedEvent(code);
+    const asks = Object.entries(ev?.flights ?? {}).flatMap(([fid, f]) => f.players.filter((p) => reopenAsked(f, p.id)).map((p) => ({ fid, pid: p.id, by: f.reopen![p.id].by, player: p.name })));
+    if (!asks.length) continue;
+    // the host asked on the server when this phone does not know it (a tournament kept without its owner)
+    if (!c.host && !amHost(await eventOwner(code))) continue;
+    for (const a of asks) out.push({ code, tournament: c.tournament, where: c.where, ...a });
   }
+  return out;
+}
+
+function localItems(): InboxItem[] {
+  const out: InboxItem[] = [];
+  // a friend's request waiting: its sheet with "Annehmen" / "Ablehnen"
+  if (pendingAsk()) out.push({ key: 'friend', title: tr('Friend request', 'Freundschaftsanfrage'), line: tr('Accept or decline', 'Annehmen oder ablehnen'), go: () => window.dispatchEvent(new Event('golfos:friend-ask')) });
   for (const { e, w } of openChallenges()) {
     const by = e.pool.players.find((p) => p.id === w.player)?.name ?? '?';
     out.push({ key: `duel:${w.id}`, title: tr(`${by} challenges you to 5+5+10`, `${by} fordert dich zu 5+5+10 heraus`), line: `${e.pool.name} · ${prizeSym(prizeOf(e.pool))}`, go: () => goPool(e.code) });
@@ -81,11 +102,16 @@ function localItems(): BellItem[] {
 export function NotifyBell() {
   const [open, setOpen] = useState(false);
   const [invites, setInvites] = useState<RoundInvite[]>([]);
+  const [asks, setAsks] = useState<ReopenAsk[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [, setTick] = useState(0);
   useEffect(() => {
     let gone = false;
     const look = async () => {
-      if (gone || document.visibilityState !== 'visible' || !canLink()) return;
+      if (gone || document.visibilityState !== 'visible') return;
+      void reopenAsks().then((a) => !gone && setAsks(a));
+      if (!canLink()) return;
       const joined = [...loadRounds().map((r) => r.shared?.code), ...loadGames().map((g) => g.shared?.code)].filter((c): c is string => !!c);
       const found = await roundInvites(joined, true);
       if (!gone) setInvites(found);
@@ -96,6 +122,7 @@ export function NotifyBell() {
     document.addEventListener('visibilitychange', look);
     window.addEventListener('golfos:synced', look);
     window.addEventListener('golfos:pools-changed', redraw);
+    window.addEventListener('golfos:friend-ask', redraw);
     return () => {
       gone = true;
       window.clearTimeout(first);
@@ -103,18 +130,27 @@ export function NotifyBell() {
       document.removeEventListener('visibilitychange', look);
       window.removeEventListener('golfos:synced', look);
       window.removeEventListener('golfos:pools-changed', redraw);
+      window.removeEventListener('golfos:friend-ask', redraw);
     };
   }, []);
-  const items = [...invites.map(inviteItem), ...localItems()];
+  const askItems: InboxItem[] = asks.map((a) => ({
+    key: `reopen:${a.code}:${a.pid}`,
+    title: tr(`${a.by} asks to correct ${a.player}'s card`, `${a.by} möchte die Karte von ${a.player} korrigieren`),
+    line: tr(`${a.where} – its signatures go back, it is corrected and signed anew`, `${a.where} – die Unterschriften gehen zurück, dann wird korrigiert und neu unterschrieben`),
+    action: {
+      label: tr('Confirm', 'Bestätigen'),
+      run: async () => {
+        const ev = await confirmReopen(a.code, a.fid, a.tournament, a.pid);
+        if (ev) setAsks((x) => x.filter((y) => !(y.code === a.code && y.pid === a.pid)));
+        return !!ev;
+      },
+    },
+  }));
+  const items = [...askItems, ...localItems(), ...invites.map(inviteItem)];
   const n = items.length;
   return (
     <>
-      <button
-        type="button"
-        className="lang-btn bell-btn"
-        aria-label={n ? tr(`Notifications – ${n} waiting`, `Mitteilungen – ${n} offen`) : tr('Notifications', 'Mitteilungen')}
-        onClick={() => setOpen(true)}
-      >
+      <button type="button" className="lang-btn bell-btn" aria-label={n ? tr(`Inbox – ${n} waiting`, `Inbox – ${n} offen`) : 'Inbox'} onClick={() => setOpen(true)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block', margin: 'auto' }}>
           <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
           <path d="M10 20.5a2.2 2.2 0 0 0 4 0" />
@@ -128,35 +164,62 @@ export function NotifyBell() {
       {open &&
         createPortal(
           <div className="sheet-backdrop" onClick={() => setOpen(false)}>
-            <section className="sheet bell-sheet" role="dialog" aria-label={tr('Notifications', 'Mitteilungen')} onClick={(e) => e.stopPropagation()}>
+            <section className="sheet bell-sheet" role="dialog" aria-label="Inbox" onClick={(e) => e.stopPropagation()}>
               <div className="sheet-head">
-                <strong>{tr('Notifications', 'Mitteilungen')}</strong>
+                <strong>Inbox</strong>
                 <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
                   ✕
                 </button>
               </div>
               {n ? (
                 <div className="settings-list">
-                  {items.map((it) => (
-                    <button
-                      key={it.key}
-                      type="button"
-                      className="settings-row bell-row"
-                      onClick={() => {
-                        setOpen(false);
-                        it.go();
-                      }}
-                    >
-                      <span className="grow">
-                        <strong>{it.title}</strong>
-                        {it.line && <span className="muted small">{it.line}</span>}
-                      </span>
-                      <span aria-hidden="true">›</span>
-                    </button>
-                  ))}
+                  {items.map((it) =>
+                    it.action ? (
+                      <div key={it.key} className="settings-row bell-row bell-ask">
+                        <span className="grow">
+                          <strong>{it.title}</strong>
+                          {it.line && <span className="muted small">{it.line}</span>}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-primary bell-act"
+                          disabled={busy === it.key}
+                          onClick={async () => {
+                            setBusy(it.key);
+                            const done = await it.action!.run();
+                            setBusy(null);
+                            setMsg(done ? null : tr('That did not work – check the connection and try again.', 'Das hat nicht geklappt – Verbindung prüfen und nochmal.'));
+                          }}
+                        >
+                          {it.action.label}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        key={it.key}
+                        type="button"
+                        className="settings-row bell-row"
+                        onClick={() => {
+                          setOpen(false);
+                          it.go?.();
+                        }}
+                      >
+                        <span className="grow">
+                          <strong>{it.title}</strong>
+                          {it.line && <span className="muted small">{it.line}</span>}
+                        </span>
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    ),
+                  )}
                 </div>
               ) : (
                 <span className="muted">{tr('Nothing waiting for you.', 'Nichts Neues für dich.')}</span>
+              )}
+              {msg && (
+                <span className="small good-text" role="status">
+                  {msg}
+                </span>
               )}
             </section>
           </div>,
