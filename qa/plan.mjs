@@ -81,7 +81,7 @@ await p.fill('#hole-note', 'Blind – auf den linken Baum');
 {
   const save = p.getByRole('button', { name: 'Für diesen Platz speichern' });
   if (await save.count()) await save.click();
-  else await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+  else await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" (13.11.2026)
 }
 await p.waitForTimeout(300);
 const notes4 = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
