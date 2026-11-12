@@ -2576,7 +2576,7 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .live-course-chev.open { transform: rotate(90deg); }
 /* Facelift 11.11.2026 – wetten */
 /* a payment taken back by swiping left (G4): the action grey with the arrow back – nothing is deleted */
-.swipe-bin.neutral { background: #5d6d77; }
+.swipe-bin.neutral { background: var(--brand); color: #fff; } /* "Zurücknehmen": green, not grey – deleting stays red (Sascha 13.11.2026) */
 .paid-list > li, .balance-items li.paid-swipe { display: block; padding: 0; background: none; }
 .paid-row { display: flex; align-items: center; gap: 10px; }
 .paid-row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -2728,3 +2728,6 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .settle-card > .list > li + li { border-top: 1px solid var(--line); }
 .settle-card .swipe { border-radius: 0; }
 .settle-card .list-item { background: var(--surface); border-radius: 0; padding: 6px 0; min-height: 56px; }
+/* a heading over a group of choices in a sheet (Sascha 13.11.2026: "Was" in its categories) */
+.pick-list > .pick-group { padding: 10px 2px 2px; }
+.pick-list > .pick-group:first-child { padding-top: 0; }

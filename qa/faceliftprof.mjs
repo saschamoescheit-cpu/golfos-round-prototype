@@ -91,48 +91,8 @@ await p.evaluate(
 );
 await p.reload();
 await p.waitForTimeout(1500);
-const settle = p.getByRole('region', { name: 'Runde abgerechnet' });
-const label = `USA-Wetten · Runde ${iso(-2).slice(8, 10)}.${iso(-2).slice(5, 7)}.`;
-ok((await settle.count()) === 1, 'S1: the settled round on the start page');
-const hasRunning = (await p.locator('.running-card').count()) > 0;
-ok((await settle.locator('> .eyebrow').textContent()) === 'Runde abgerechnet' && (!hasRunning || (await settle.boundingBox()).y < (await p.locator('.running-card').boundingBox()).y), 'its own title "Runde abgerechnet", above "Läuft gerade" (12.11.2026)');
-const row = settle.locator('.swipe .list-item');
-const rowText = (await row.innerText()).replace(/\s+/g, ' ');
-ok((await row.count()) === 1 && rowText.includes(label) && /Du −20/.test(rowText) && /Chris \+40/.test(rowText), `a list row: ${rowText}`);
-ok((await settle.getByRole('button', { name: 'Verstanden' }).count()) === 0 && (await settle.locator('.badge').count()) === 0 && (await settle.locator('.link-eyebrow').count()) === 0, 'no "Verstanden" button, no badges, no link in the eyebrow');
-const box = await settle.boundingBox();
-const brand = await p.locator('.brand').boundingBox();
-ok(!!box && !!brand && box.y > brand.y, 'below GOLFOS, with "Jetzt dran" – not above the brand');
-await shot('s1-row');
-// swiped away: put aside, "Rückgängig" brings it back
-const swipeAway = () =>
-  settle.locator('.swipe').first().evaluate((el) => {
-    const f = el.querySelector('.swipe-front');
-    const r = f.getBoundingClientRect();
-    const y = r.top + r.height / 2;
-    const fire = (type, x) => f.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, isPrimary: true }));
-    fire('pointerdown', r.right - 10);
-    for (let x = r.right - 20; x > r.left - 40; x -= 30) fire('pointermove', x);
-    fire('pointerup', r.left - 40);
-  });
-await swipeAway();
-await p.waitForTimeout(600);
-ok((await settle.count()) === 0 && /Ausgeblendet/.test(await p.locator('.undo-toast').innerText()), 'swiped away: gone, the toast "Ausgeblendet · Rückgängig"');
-await p.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
-await p.waitForTimeout(400);
-ok((await settle.count()) === 1, '"Rückgängig": the row back');
-// a tap opens the pool on that round
-await row.click();
-await p.waitForTimeout(1500);
-ok((await p.locator('.pool-standings').count()) === 1 && (await p.getByRole('region', { name: 'Runde abgerechnet' }).count()) === 0, 'a tap opens the pool');
-await p.evaluate(() => sessionStorage.removeItem('golfos.module'));
-await p.goto(url);
-await p.waitForTimeout(1200);
-await swipeAway();
-await p.waitForTimeout(600);
-await p.reload();
-await p.waitForTimeout(1200);
-ok((await p.getByRole('region', { name: 'Runde abgerechnet' }).count()) === 0, 'put aside for good once the toast is gone');
+// since 13.11.2026 (Sascha: "Entferne Runde abgerechnet doch von der Startseite"): not on the start page any more
+ok((await p.getByRole('region', { name: 'Runde abgerechnet' }).count()) === 0 && (await p.locator('.settle-card').count()) === 0, 'S1: no "Runde abgerechnet" on the start page');
 
 // ---------- O5 · the StepPick sheet: a round played ticked with an SVG ----------
 {

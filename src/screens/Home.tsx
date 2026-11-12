@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react';
-import { RoundSettleCards } from '../components/RoundSettle';
 import { tr } from '../lib/i18n';
 import { loadFriends, type Friend } from '../lib/friends';
 import { Friends } from '../components/Friends';
@@ -155,9 +154,8 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
         <TopTools />
       </div>
       <div className="home-hero">
-        {/* each round of the bets settled (Sascha 09.11.2026) – above "Läuft gerade" with its own title (12.11.2026: "Der Bereich
-            sollte über Läuft gerade platziert werden") */}
-        <RoundSettleCards />
+        {/* "Runde abgerechnet" no longer on the start page (Sascha 13.11.2026: "Entferne Runde abgerechnet doch von der
+            Startseite") – the settlement stays in the pool */}
         {props.running && props.onRunning && <RunningCard items={props.running} onOpen={props.onRunning} />}
         <ModuleCardList {...props} describe />
       </div>

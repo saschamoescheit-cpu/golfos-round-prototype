@@ -34,6 +34,8 @@ export interface Choice<T> {
   name: string;
   /** what it means – one line under the name */
   text?: string;
+  /** a heading over this choice and the ones after it with the same group (Sascha 13.11.2026: categories in "Was") */
+  group?: string;
 }
 
 /** The sheet of choices behind a row (as "Modus" or "Wer erfasst" in the round setup): the chosen one ticked. */
@@ -62,7 +64,12 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
           )}
         </div>
         <div className="pick-list">
-          {props.options.map((o) => (
+          {props.options.map((o, k) => [
+            o.group && o.group !== props.options[k - 1]?.group ? (
+              <span key={'g' + o.group} className="eyebrow pick-group">
+                {o.group}
+              </span>
+            ) : null,
             <button key={String(o.value)} type="button" className="pick-option" aria-pressed={o.value === props.current} onClick={() => props.onPick(o.value)}>
               <span className="grow">
                 <strong>
@@ -81,8 +88,8 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
                   ✓
                 </span>
               )}
-            </button>
-          ))}
+            </button>,
+          ])}
         </div>
         {props.children}
       </section>

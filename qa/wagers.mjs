@@ -430,8 +430,10 @@ await H.goto(url + '#pool=' + code);
 await H.waitForTimeout(2500);
 await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).click();
 await H.getByRole('button', { name: 'Wette löschen' }).click();
-ok(await H.getByText('„Längster Drive an Loch 7“ löschen – für alle im Pool?').isVisible(), 'delete a bet: asked first');
-await H.getByRole('button', { name: 'Behalten' }).click();
+// the app's one question, as the pool's (13.11.2026): "„…“ löschen?" – "Zurück" keeps it
+const askDel = H.getByRole('dialog', { name: '„Längster Drive an Loch 7“ löschen?' });
+ok((await askDel.count()) === 1 && (await askDel.getByRole('button', { name: 'Für alle löschen' }).count()) === 1, 'delete a bet: asked first – the same question as the pool's');
+await askDel.getByRole('button', { name: 'Zurück' }).click();
 await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');
 

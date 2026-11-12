@@ -1746,9 +1746,28 @@ function Field(props: { label: string; children: React.ReactNode }) {
 
 /** A choice as a row with its sheet, where the bets had chip groups (Sascha 02.11.2026: "as Format in the round
  *  settings" – docs/DESIGN.md); inside a `SettingsList`. */
-function Pick<T>(props: { label: string; value: T | null | undefined; onChange: (v: T) => void; options: { value: T; label: string; text?: string }[]; prompt?: string }) {
-  return <ChoiceRow<T> label={props.label} options={props.options.map((o) => ({ value: o.value, name: o.label, text: o.text }))} value={props.value as T} onChange={props.onChange} prompt={props.prompt} />;
+function Pick<T>(props: { label: string; value: T | null | undefined; onChange: (v: T) => void; options: { value: T; label: string; text?: string; group?: string }[]; prompt?: string }) {
+  return <ChoiceRow<T> label={props.label} options={props.options.map((o) => ({ value: o.value, name: o.label, text: o.text, group: o.group }))} value={props.value as T} onChange={props.onChange} prompt={props.prompt} />;
 }
+
+/** "Was" in its categories, as the library had them (Sascha 13.11.2026: "zuvor hatten wir Kategorien – die Liste
+ *  übersichtlicher"): in a row, in one round at least / at most, the score, against one another, own. */
+const KIND_GROUP: Partial<Record<WagerKind, 'runs' | 'round' | 'roundMost' | 'score' | 'duel' | 'own'>> = {
+  birdieRun: 'runs', parRun: 'runs',
+  birdies: 'round', pars: 'round', greens: 'round', fairways: 'round', oneputts: 'round', updowns: 'round', eagles: 'round', holeInOne: 'round', stableford: 'round',
+  putts: 'roundMost', threeputts: 'roundMost', doubles: 'roundMost', penalties: 'roundMost',
+  score: 'score', scoreSum: 'score',
+  nassau: 'duel',
+  custom: 'own', free: 'own',
+};
+const GROUP_ORDER = ['runs', 'round', 'roundMost', 'score', 'duel', 'own'] as const;
+const groupName = (g: (typeof GROUP_ORDER)[number]): string =>
+  g === 'runs' ? tr('In a row', 'In Folge') : g === 'round' ? tr('In one round – at least', 'In einer Runde – mindestens') : g === 'roundMost' ? tr('In one round – at most', 'In einer Runde – höchstens') : g === 'score' ? tr('Score', 'Ergebnis') : g === 'duel' ? tr('Against one another', 'Gegeneinander') : tr('Own', 'Eigene');
+const kindOptions = (kinds: { kind: WagerKind; name: () => string }[]) =>
+  kinds
+    .map((x) => ({ x, g: KIND_GROUP[x.kind] ?? 'own' }))
+    .sort((a, b) => GROUP_ORDER.indexOf(a.g) - GROUP_ORDER.indexOf(b.g))
+    .map(({ x, g }) => ({ value: x.kind, label: x.name(), group: groupName(g) }));
 
 /** An own bet, built (Sascha 02.11.2026): what is counted, at least or at most, the number, on which holes, in a row. */
 function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void }) {
@@ -2185,7 +2204,7 @@ export function WagerSheet(props: {
         )}
         {!props.own && (
         <SettingsList>
-          <Pick<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => setW({ ...w, kind: v, target: v === 'custom' ? 2 : startOf(v), ...(v === 'custom' ? CUSTOM_START : {}), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind).map((x) => ({ value: x.kind, label: x.name() }))} />
+          <Pick<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => setW({ ...w, kind: v, target: v === 'custom' ? 2 : startOf(v), ...(v === 'custom' ? CUSTOM_START : {}), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={kindOptions(KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind))} />
         </SettingsList>
         )}
         {shapeOf(w.kind) === 'duel' ? (
@@ -2228,26 +2247,23 @@ export function WagerSheet(props: {
         {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
         {props.wager && !props.own && (
           <>
-            {!asking ? (
-              <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) }]} />
-            ) : (
-              <div className="play-confirm" role="group" aria-label={tr('Delete the bet?', 'Wette löschen?')}>
-                <span>{tr(`Delete "${wagerLabel(props.wager)}" – for everyone in the pool?`, `„${wagerLabel(props.wager)}“ löschen – für alle im Pool?`)}</span>
-                <div className="play-actions">
-                  <button type="button" className="btn-secondary" onClick={() => setAsking(false)}>
-                    {tr('Keep', 'Behalten')}
-                  </button>
-                  <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(props.wager!.id)}>
-                    {tr('Delete', 'Löschen')}
-                  </button>
-                </div>
-              </div>
+            <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) }]} />
+            {/* the app's one question before deleting for everyone – as the pool's (Sascha 13.11.2026: "das Löschen hier anders
+                als bei Rounds oder Games – vereinheitlichen"); no inline Behalten/Löschen any more */}
+            {asking && (
+              <ConfirmSheet
+                title={tr(`Delete "${wagerLabel(props.wager)}"?`, `„${wagerLabel(props.wager)}“ löschen?`)}
+                text={tr('For everyone in the pool: the bet and what it settled are gone on every phone.', 'Für alle im Pool: Die Wette und was sie abgerechnet hat, sind auf jedem Handy weg.')}
+                confirmLabel={tr('Delete for everyone', 'Für alle löschen')}
+                onConfirm={() => props.onDelete(props.wager!.id)}
+                onClose={() => setAsking(false)}
+              />
             )}
           </>
         )}
         {props.wager ? (
           <span className="muted small autosave-note" role="status">
-            <DoneFab onClick={close} />
+            {!asking && <DoneFab onClick={close} />}
             {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
           </span>
         ) : (
