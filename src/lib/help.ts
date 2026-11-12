@@ -146,8 +146,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Does the app work without a connection?', 'Geht die App ohne Netz?'),
         a: () =>
           tr(
-            'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "map kept offline ✓" – then the round works without network, and everything is sent later.',
-            'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert ✓“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
+            'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "Map saved for offline" – then the round works without network, and everything is sent later.',
+            'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
           ),
         video: 'start',
       },
@@ -155,8 +155,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A hole has no map – what now?', 'Ein Loch hat keine Karte – was tun?'),
         a: () =>
           tr(
-            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Set up the hole" at the top still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own. Afterwards too: in "Check the shots" a hole without a map offers "Set up the hole".',
-            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Loch einrichten“ oben zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben. Auch nachträglich: In „Schläge prüfen“ bietet ein Loch ohne Karte „Loch einrichten“.',
+            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Map" in the bar at the bottom still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own. Afterwards too: in "Check the shots" a hole without a map offers "Set up the hole".',
+            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Karte“ in der Leiste unten zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben. Auch nachträglich: In „Schläge prüfen“ bietet ein Loch ohne Karte „Loch einrichten“.',
           ),
         video: 'start',
       },
@@ -274,8 +274,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
         a: () =>
           tr(
-            'On the course or in "Check shots": "Hole drawn wrong? Mark tee and green again" – tap the tee and the green anew; it goes to everyone on the course. "Use the course map again" takes your own marking away – for one hole or every hole of the course.',
-            'Auf dem Platz oder in „Schläge prüfen“: „Loch falsch eingezeichnet? Abschlag und Grün neu markieren“ – Abschlag und Grün neu antippen; es geht an alle auf dem Platz. „Platzkarte verwenden“ nimmt deine eigene Markierung wieder weg – für ein Loch oder alle Löcher des Platzes.',
+            'On the course or in "Check shots": "Hole drawn wrong? Mark tee and green again" – tap the tee and the green anew; it goes to everyone on the course. In the set-up, "Course map" takes your own marking away again, "All holes" every marking of the course.',
+            'Auf dem Platz oder in „Schläge prüfen“: „Loch falsch eingezeichnet? Abschlag und Grün neu markieren“ – Abschlag und Grün neu antippen; es geht an alle auf dem Platz. Beim Einrichten nimmt „Platzkarte“ deine eigene Markierung wieder weg, „Alle Löcher“ jede Markierung des Platzes.',
           ),
         video: 'map',
       },
@@ -314,8 +314,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('What are hole notes?', 'Was sind Lochnotizen?'),
         a: () =>
           tr(
-            'What you know about a hole that no map shows – out of bounds, a blind tee shot. They count for the course in every round; a green dot shows there is one.',
-            'Was du über ein Loch weißt, das keine Karte zeigt – Aus, ein blinder Abschlag. Sie gelten für den Platz in jeder Runde; ein grüner Punkt zeigt, dass es eine gibt.',
+            'What you know about a hole that no map shows – out of bounds, a blind tee shot. They count for the course in every round; a green dot shows there is one. A new one is saved with the green tick, a change to one saves by itself.',
+            'Was du über ein Loch weißt, das keine Karte zeigt – Aus, ein blinder Abschlag. Sie gelten für den Platz in jeder Runde; ein grüner Punkt zeigt, dass es eine gibt. Eine neue speichert der grüne Haken, Änderungen an einer speichern sich von selbst.',
           ),
         video: 'caddie',
       },

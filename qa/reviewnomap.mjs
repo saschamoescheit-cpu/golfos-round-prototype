@@ -52,9 +52,18 @@ await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.42);
 await p.waitForTimeout(500);
 await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.2);
 await p.waitForTimeout(500);
-await card.getByRole('button', { name: 'Loch speichern' }).click();
+await p.getByRole('button', { name: 'Loch speichern' }).click();
 await p.waitForTimeout(2000);
 ok((await p.locator('.review-setup-layer').count()) === 0 && (await p.locator('.review-nomap').count()) === 0 && (await p.locator('.review-map').count()) === 1, 'saved: the hole on the map in "Schläge prüfen"');
+// no shots yet: "Fahne und Putts" as a row like every setting, not a text link (Facelift 11.11.2026, r8)
+{
+  const row = p.locator('.settings-row').filter({ hasText: 'Fahne und Putts' });
+  ok((await row.count()) === 1 && (await p.locator('.link-text').filter({ hasText: /Fahne und Putts/ }).count()) === 0 && !/setzen ›/.test(await row.innerText()), `"Fahne und Putts" as a row (${(await row.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
+  // the hole bar: SVG chevrons, no "←" / "→"
+  const nav = p.locator('.review-nav');
+  ok((await nav.locator('.hole-step svg').count()) === 2 && !/[←→✓]/.test(await nav.innerText()), 'the round check: ‹ › as SVG chevrons, no glyph');
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/reviewnomap-row.png` });
+}
 // a shot by a tap halfway
 const rm = await p.locator('.review-map').boundingBox();
 await p.mouse.click(rm.x + rm.width / 2, rm.y + rm.height / 2);

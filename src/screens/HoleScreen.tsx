@@ -55,7 +55,10 @@ import { clubSpread, spreadShape } from '../lib/spread';
 import { loadCaddieSettings, loadCarryBag, newId } from '../lib/storage';
 import { holdGeometry } from '../lib/storageguard';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
-import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
+import { Chips, Stepper, TopBar, formatToPar } from '../components/ui';
+import { ActionBar } from '../components/ActionBar';
+import { ConfirmSheet } from '../components/ConfirmSheet';
+import { OnOffRow, PickSheet, SettingsList } from '../components/Settings';
 import { HoleMap } from '../components/HoleMap';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
@@ -553,7 +556,7 @@ export function HoleScreen(props: {
       {tr('Working out the green slopes', 'Grün-Neigungen werden berechnet')} · {making.done}/{making.total}
     </div>
   ) : offline === 'ready' ? (
-      <div className="map-shot">{tr('Map saved for offline ✓', 'Karte offline gespeichert ✓')}</div>
+      <div className="map-shot">{tr('Map saved for offline', 'Karte offline gespeichert')}</div>
     ) : offline ? (
       <div className="map-shot">
         {tr('Saving map for offline', 'Karte wird offline gespeichert')} · {Math.round((offline.done / offline.total) * 100)}%
@@ -619,6 +622,8 @@ export function HoleScreen(props: {
   const [seenSig, setSeenSig] = useState<string | null>(null);
   useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [planNoteOpen, setPlanNoteOpen] = useState(false);
+  const [planClubPick, setPlanClubPick] = useState<number | null>(null); // the plan's shot whose club is being picked
+  const [clearAsk, setClearAsk] = useState(false); // 'delete all shots of this hole?'
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
@@ -2181,49 +2186,60 @@ export function HoleScreen(props: {
           {round.planning && !greenFocus && (
             <section className="plan-panel" aria-label={tr('Plan for this hole', 'Plan für dieses Loch')}>
               <span className="plan-panel-title">{tr(`Plan ${hole.label}`, `Plan ${hole.label}`)}</span>
-              {planShots.map((x, k) => (
-                <label key={k} className="plan-shot">
-                  <span className="plan-shot-what">
-                    {k === 0 ? tr('Tee', 'Abschlag') : tr(`Target ${k}`, `Ziel ${k}`)} → {k === planShots.length - 1 ? tr('green', 'Grün') : tr(`target ${k + 1}`, `Ziel ${k + 1}`)}
-                    <span className="muted"> · {fmt(x.len)} {unit}</span>
-                  </span>
-                  <select value={x.club} className={x.own ? 'own' : ''} aria-label={tr(`Club for shot ${k + 1}`, `Schläger für Schlag ${k + 1}`)} onChange={(e) => setPlanClub(k, e.target.value as Club)}>
-                    {carryBag.filter((b) => !b.swing || b.swing === 'full').map((b) => (
-                      <option key={b.club} value={b.club}>
-                        {clubCode(b.club)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-              <div className="plan-actions">
-                {plan.targets.length < (hole.par === 3 ? 2 : 3) && (
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => {
+              {/* a row per shot, its club in a sheet (Facelift 11.11.2026, r3) */}
+              <div className="settings-list plan-list">
+                {planShots.map((x, k) => (
+                  <button key={k} type="button" className="settings-row plan-shot" aria-label={tr(`Club for shot ${k + 1}: ${clubCode(x.club)}`, `Schläger für Schlag ${k + 1}: ${clubCode(x.club)}`)} onClick={() => setPlanClubPick(k)}>
+                    <span className="plan-shot-what">
+                      {k === 0 ? tr('Tee', 'Abschlag') : tr(`Target ${k}`, `Ziel ${k}`)} → {k === planShots.length - 1 ? tr('green', 'Grün') : tr(`target ${k + 1}`, `Ziel ${k + 1}`)}
+                      <span className="muted"> · {fmt(x.len)} {unit}</span>
+                    </span>
+                    <span className={`settings-value${x.own ? ' plan-own' : ''}`}>{clubCode(x.club)}</span>
+                    <span aria-hidden="true">›</span>
+                  </button>
+                ))}
+              </div>
+              {planClubPick != null && planShots[planClubPick] && (
+                <PickSheet
+                  title={tr(`Club for shot ${planClubPick + 1} · ${fmt(planShots[planClubPick].len)} ${unit}`, `Schläger für Schlag ${planClubPick + 1} · ${fmt(planShots[planClubPick].len)} ${unit}`)}
+                  options={carryBag
+                    .filter((b) => !b.swing || b.swing === 'full')
+                    .map((b) => ({ value: b.club, name: clubCode(b.club), text: tr(`${fmt(b.carry)} ${unit} carry`, `${fmt(b.carry)} ${unit} Carry`) }))}
+                  current={planShots[planClubPick].club}
+                  onPick={(c) => {
+                    setPlanClub(planClubPick, c);
+                    setPlanClubPick(null);
+                  }}
+                  onClose={() => setPlanClubPick(null)}
+                />
+              )}
+              {/* a target more or less, the hole note – one bar of icons (Facelift 11.11.2026, r3); removing red, last */}
+              <ActionBar
+                label={tr('Plan', 'Plan')}
+                actions={[
+                  plan.targets.length < (hole.par === 3 ? 2 : 3) && {
+                    label: tr('Target', 'Ziel'),
+                    aria: tr('Add a target', 'Ziel hinzufügen'),
+                    icon: 'add',
+                    onClick: () => {
                       // a new target between the last one (or the tee) and the green
                       const from = plan.targets[plan.targets.length - 1] ?? mapData.tee;
                       const a0 = alongLine(mapData.line, from);
                       const a1 = lineLength(mapData.line);
                       setPlan({ targets: [...plan.targets, pointAt(mapData.line, a0 + (a1 - a0) / 2)] });
-                    }}
-                  >
-                    + {tr('Target', 'Ziel')}
-                  </button>
-                )}
-                {plan.targets.length > 0 && (
-                  <button type="button" className="btn-secondary" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })}>
-                    − {tr(`Target ${plan.targets.length}`, `Ziel ${plan.targets.length}`)}
-                  </button>
-                )}
-                {/* the hole note while planning (Sascha 21.10.2026) – the same as the caddie's "Hole notes" */}
-                {/* a green dot when the hole has a note (Sascha 23.10.2026) */}
-                <button type="button" className="btn-secondary has-dot" aria-label={hasNote(note) ? tr('Hole note – there is one', 'Lochnotiz – eine ist gespeichert') : tr('Hole note', 'Lochnotiz')} onClick={() => setPlanNoteOpen(true)}>
-                  {tr('Hole note', 'Lochnotiz')}
-                  {hasNote(note) && <i className="note-dot" aria-hidden="true" />}
-                </button>
-              </div>
+                    },
+                  },
+                  // the hole note while planning (Sascha 21.10.2026) – a green dot when the hole has one (23.10.2026)
+                  { label: tr('Note', 'Lochnotiz'), aria: hasNote(note) ? tr('Hole note – there is one', 'Lochnotiz – eine ist gespeichert') : tr('Hole note', 'Lochnotiz'), icon: 'note', dot: hasNote(note), onClick: () => setPlanNoteOpen(true) },
+                  plan.targets.length > 0 && {
+                    label: tr(`Target ${plan.targets.length}`, `Ziel ${plan.targets.length}`),
+                    aria: tr(`Remove target ${plan.targets.length}`, `Ziel ${plan.targets.length} entfernen`),
+                    icon: 'delete',
+                    danger: true,
+                    onClick: () => setPlan({ targets: plan.targets.slice(0, -1) }),
+                  },
+                ]}
+              />
               {planNoteOpen && (
                 <NotesSheet
                   hole={hole.label}
@@ -2499,7 +2515,10 @@ export function HoleScreen(props: {
           {testMsg && !scoreSheet && (
             <div className="test-shot-row">
               <span className="map-hint detected" role="status">
-                <span>✓ {testMsg}</span>
+                <span className="hint-tick">
+                  <Chevron d="M5 12.5l4.5 4.5L19 7.5" size={16} />
+                  {testMsg}
+                </span>
                 <button
                   type="button"
                   className="btn-ghost"
@@ -2518,7 +2537,10 @@ export function HoleScreen(props: {
           )}
           {undo && undo.hole === i && !placing && (
             <div className="map-hint detected" role="status">
-              <span>✓ {undo.text}</span>
+              <span className="hint-tick">
+                <Chevron d="M5 12.5l4.5 4.5L19 7.5" size={16} />
+                {undo.text}
+              </span>
               <button
                 type="button"
                 className="btn-ghost"
@@ -2648,47 +2670,43 @@ export function HoleScreen(props: {
         title={round.courseName}
         onBack={askExit}
         backLabel={tr('Leave round', 'Runde verlassen')}
-        right={
-          <>
-            <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Karte') : tr('Set up the hole', 'Loch einrichten')} onClick={() => (mapData ? setView('map') : setSetupOpen(true))}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
-                <path d="M9 4v14M15 6v14" />
-              </svg>
-            </button>
-            <button type="button" className="icon-btn" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <rect x="4" y="3" width="16" height="18" rx="2" />
-                <path d="M8 8h8M8 12h8M8 16h5" />
-              </svg>
-            </button>
-          </>
-        }
       />
       <div className="progress" aria-hidden="true">
         <div style={{ width: `${((playPos(round, i) + 1) / round.holes.length) * 100}%` }} />
       </div>
       {detectedBanner}
 
-      <div className="hole-header">
-        <div>
+      {/* the hole bar with ‹ › as on the map (Facelift 11.11.2026, r2): back and on – the last hole's › finishes */}
+      <div className="hole-header hole-nav">
+        <button type="button" className="icon-btn hole-step" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(prevHole(round, i) ?? -1)} disabled={prevHole(round, i) == null}>
+          <Chevron d="M15 5l-7 7 7 7" />
+        </button>
+        <div className="hole-nav-mid">
           <span className="eyebrow">{tr(`Hole ${i + 1} of ${round.holes.length}`, `Loch ${i + 1} von ${round.holes.length}`)}</span>
           <div className="hole-no">{hole.label}</div>
+          <button
+            type="button"
+            className="hole-meta"
+            style={{ background: 'none', border: 0, padding: '6px 0', cursor: 'pointer' }}
+            aria-expanded={editHole}
+            aria-label={tr('Edit par and stroke index of this hole', 'Par und Hcp dieses Lochs bearbeiten')}
+            onClick={() => setEditHole(!editHole)}
+          >
+            <span>Par {hole.par || '?'}</span>
+            <span>Hcp {hole.strokeIndex || '?'}</span>
+            {received > 0 && <span style={{ color: 'var(--brand-text)' }}>+{received}</span>}
+            <span aria-hidden="true" style={{ color: 'var(--brand-text)', display: 'inline-flex' }}>
+              <PenGlyph />
+            </span>
+          </button>
         </div>
         <button
           type="button"
-          className="hole-meta"
-          style={{ background: 'none', border: 0, padding: '6px 0', cursor: 'pointer' }}
-          aria-expanded={editHole}
-          aria-label={tr('Edit par and stroke index of this hole', 'Par und Hcp dieses Lochs bearbeiten')}
-          onClick={() => setEditHole(!editHole)}
+          className="icon-btn hole-step next"
+          aria-label={isLastHole(round, i) ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr(`Next hole · ${round.holes[nextHole(round, i) ?? i].label}`, `Nächstes Loch · ${round.holes[nextHole(round, i) ?? i].label}`)}
+          onClick={() => goTo(nextHole(round, i) ?? round.holes.length)}
         >
-          <span>Par {hole.par || '?'}</span>
-          <span>Hcp {hole.strokeIndex || '?'}</span>
-          {received > 0 && <span style={{ color: 'var(--brand-text)' }}>+{received}</span>}
-          <span aria-hidden="true" style={{ color: 'var(--brand-text)', display: 'inline-flex' }}>
-            <PenGlyph />
-          </span>
+          <Chevron d="M9 5l7 7-7 7" />
         </button>
       </div>
 
@@ -2747,26 +2765,10 @@ export function HoleScreen(props: {
               {detail.holedOut && <li><span className="n putt-n"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 21V3l11 4-11 4" /></svg></span><span>{tr('Holed out', 'Eingelocht')}</span><span /><span /></li>}
             </ol>
           )}
-          <div className="nav-bottom" style={{ gridTemplateColumns: hasShots ? '1fr 1fr' : '1fr' }}>
-            <button type="button" className="btn-secondary" onClick={() => setSheet({ kind: 'shot', index: null, pos: null })} disabled={detail.holedOut}>
-              {tr('+ Add shot', '+ Schlag hinzufügen')}
-            </button>
-            {hasShots && (
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  if (window.confirm(tr(`Delete all ${detail.shots.length} shots of this hole?`, `Alle ${detail.shots.length} Schläge dieses Lochs löschen?`))) update(me.id, { detail: undefined, strokes: null, putts: null });
-                }}
-              >
-                {tr('Clear shots', 'Schläge löschen')}
-              </button>
-            )}
-          </div>
         </section>
       )}
 
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <section className="card score-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="row">
           <span className="row-label">{me.name} · {tr('Strokes', 'Schläge')}</span>
           {myEntry.pickedUp ? (
@@ -2779,20 +2781,39 @@ export function HoleScreen(props: {
         </div>
 
         <div className="field">
-          <label>Putts {gir != null && myEntry.putts != null && (gir ? <span className="badge ok">✓ GIR</span> : <span className="badge bad">✕ GIR</span>)}</label>
-          <Segmented<number>
-            label="Putts"
-            value={myEntry.putts}
-            onChange={(v) => (hasShots ? saveDetail(detail, v) : update(me.id, { putts: v }))}
-            options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
-          />
+          <label>
+            Putts{' '}
+            {gir != null && myEntry.putts != null && (
+              <span className={`badge gir-badge ${gir ? 'ok' : 'bad'}`}>
+                <Chevron d={gir ? 'M5 12.5l4.5 4.5L19 7.5' : 'M6 6l12 12M18 6L6 18'} size={13} />
+                GIR
+              </span>
+            )}
+          </label>
+          {/* tiles as the clubs – the quickest input at the green (Facelift 11.11.2026); a second tap clears */}
+          <div className="club-grid putt-tiles" role="group" aria-label="Putts">
+            {[0, 1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={myEntry.putts === n}
+                onClick={() => {
+                  const v = myEntry.putts === n ? null : n;
+                  if (hasShots) saveDetail(detail, v);
+                  else update(me.id, { putts: v });
+                }}
+              >
+                {n === 4 ? '4+' : n}
+              </button>
+            ))}
+          </div>
         </div>
 
         {hasShots && (
           <p className="muted small" style={{ margin: 0 }}>
             {hole.par >= 4 && `Fairway: ${myEntry.fairway ? fairwayName(myEntry.fairway) : '–'} · `}
             {tr('Penalties', 'Strafschläge')}: {myEntry.penalties}
-            {myEntry.greensideBunker && tr(` · Greenside bunker${myEntry.upAndDown ? ' – sand save ✓' : ''}`, ` · Grünbunker${myEntry.upAndDown ? ' – Sand Save ✓' : ''}`)}
+            {myEntry.greensideBunker && tr(` · Greenside bunker${myEntry.upAndDown ? ' – sand save' : ''}`, ` · Grünbunker${myEntry.upAndDown ? ' – Sand Save' : ''}`)}
           </p>
         )}
 
@@ -2804,47 +2825,45 @@ export function HoleScreen(props: {
         )}
 
         {!hasShots && (
-          <>
-            <div className="row">
-              <span className="row-label">{tr('Penalties', 'Strafschläge')}</span>
-              <Stepper compact label={tr('Penalties', 'Strafschläge')} value={myEntry.penalties} min={0} onChange={(v) => update(me.id, { penalties: v })} />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button
-                type="button"
-                className="toggle"
-                aria-pressed={myEntry.greensideBunker}
-                onClick={() => update(me.id, { greensideBunker: !myEntry.greensideBunker, upAndDown: null })}
-              >
-                {myEntry.greensideBunker ? '✓' : '○'} {tr('Greenside bunker', 'Grünbunker')}
-              </button>
-              {myEntry.greensideBunker && (
-                <div className="field">
-                  <label>{tr('Up & down from the bunker?', 'Up & Down aus dem Bunker?')}</label>
-                  <Segmented<string>
-                    label={tr('Up and down', 'Up & Down')}
-                    value={myEntry.upAndDown == null ? null : myEntry.upAndDown ? 'yes' : 'no'}
-                    onChange={(v) => update(me.id, { upAndDown: v == null ? null : v === 'yes' })}
-                    options={[
-                      { value: 'yes', label: tr('Yes', 'Ja') },
-                      { value: 'no', label: tr('No', 'Nein') },
-                    ]}
-                  />
-                </div>
-              )}
-            </div>
-          </>
+          <div className="row">
+            <span className="row-label">{tr('Penalties', 'Strafschläge')}</span>
+            <Stepper compact label={tr('Penalties', 'Strafschläge')} value={myEntry.penalties} min={0} onChange={(v) => update(me.id, { penalties: v })} />
+          </div>
         )}
 
-        <button
-          type="button"
-          className="toggle"
-          aria-pressed={myEntry.pickedUp}
-          onClick={() => update(me.id, { pickedUp: !myEntry.pickedUp, strokes: myEntry.pickedUp ? myEntry.strokes : null })}
-        >
-          {myEntry.pickedUp ? '✓' : '○'} {tr('Picked up (0 points)', 'Aufgehoben (0 Punkte)')}
-        </button>
+        {/* yes / no as rows with their sheet, as every setting (Facelift 11.11.2026, r1) */}
+        <SettingsList>
+          {!hasShots && (
+            <OnOffRow
+              label={tr('Greenside bunker', 'Grünbunker')}
+              on={!!myEntry.greensideBunker}
+              onText={tr('In a bunker next to the green on this hole', 'Auf diesem Loch in einem Bunker am Grün')}
+              offText={tr('No greenside bunker', 'Kein Grünbunker')}
+              onChange={(on) => update(me.id, { greensideBunker: on, upAndDown: null })}
+            />
+          )}
+          <OnOffRow
+            label={tr('Picked up (0 points)', 'Aufgehoben (0 Punkte)')}
+            on={!!myEntry.pickedUp}
+            onText={tr('Ball picked up – no score, 0 Stableford points', 'Ball aufgehoben – kein Score, 0 Stableford-Punkte')}
+            offText={tr('Holed out – the strokes count', 'Eingelocht – die Schläge zählen')}
+            onChange={(on) => update(me.id, { pickedUp: on, strokes: on ? null : myEntry.strokes })}
+          />
+        </SettingsList>
+        {!hasShots && myEntry.greensideBunker && (
+          <div className="field">
+            <label>{tr('Up & down from the bunker?', 'Up & Down aus dem Bunker?')}</label>
+            <Chips<string>
+              label={tr('Up and down', 'Up & Down')}
+              value={myEntry.upAndDown == null ? null : myEntry.upAndDown ? 'yes' : 'no'}
+              onChange={(v) => update(me.id, { upAndDown: v == null ? null : v === 'yes' })}
+              options={[
+                { value: 'yes', label: tr('Yes', 'Ja') },
+                { value: 'no', label: tr('No', 'Nein') },
+              ]}
+            />
+          </div>
+        )}
       </section>
 
       {others.length > 0 && (
@@ -2862,14 +2881,15 @@ export function HoleScreen(props: {
                   ) : (
                     <Stepper compact label={tr(`${p.name} strokes`, `${p.name} Schläge`)} value={e.strokes} placeholder={hole.par || 4} min={1} onChange={(v) => update(p.id, { strokes: v })} />
                   )}
+                  {/* picked up: the flag; undone: the arrow back round (Facelift 11.11.2026, r1) */}
                   <button
                     type="button"
-                    className="icon-btn"
+                    className="icon-btn pickup-btn"
                     aria-label={e.pickedUp ? tr(`${p.name}: undo picked up`, `${p.name}: Aufheben rückgängig`) : tr(`${p.name}: picked up`, `${p.name}: aufgehoben`)}
                     aria-pressed={e.pickedUp}
                     onClick={() => update(p.id, { pickedUp: !e.pickedUp, strokes: null })}
                   >
-                    {e.pickedUp ? '↺' : 'PU'}
+                    {e.pickedUp ? <Chevron d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" /> : <Chevron d="M6 21V4M6 4h11l-2 4 2 4H6" />}
                   </button>
                 </div>
               </div>
@@ -2894,17 +2914,40 @@ export function HoleScreen(props: {
       </section>
 
       <span className="spacer" />
-      <div className="nav-bottom">
-        <button type="button" className="btn-secondary" onClick={() => goTo(prevHole(round, i) ?? -1)} disabled={prevHole(round, i) == null}>
-          {tr('← Back', '← Zurück')}
-        </button>
-        <button type="button" className="btn-primary" onClick={() => goTo(nextHole(round, i) ?? round.holes.length)}>
-          {isLastHole(round, i) ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr(`Next · hole ${round.holes[nextHole(round, i) ?? i].label}`, `Weiter · Loch ${round.holes[nextHole(round, i) ?? i].label}`)}
-        </button>
-      </div>
+      {/* the screen's actions in one bar (Facelift 11.11.2026, r2): a shot, the map, the scorecard – deleting red, last */}
+      <ActionBar
+        label={tr('This hole', 'Dieses Loch')}
+        actions={[
+          detailMode && { label: tr('Shot', 'Schlag'), aria: tr('Add shot', 'Schlag hinzufügen'), icon: 'add', disabled: detail.holedOut, onClick: () => setSheet({ kind: 'shot', index: null, pos: null }) },
+          { label: tr('Map', 'Karte'), aria: mapData ? tr('Hole map', 'Karte') : tr('Set up the hole', 'Loch einrichten'), icon: 'map', onClick: () => (mapData ? setView('map') : setSetupOpen(true)) },
+          { label: tr('Scorecard', 'Scorekarte'), icon: 'card', onClick: () => props.onShowScorecard(round) },
+          detailMode && hasShots && { label: tr('Delete', 'Löschen'), aria: tr('Clear shots', 'Schläge löschen'), icon: 'delete', danger: true, onClick: () => setClearAsk(true) },
+        ]}
+      />
+      {clearAsk && (
+        <ConfirmSheet
+          title={tr(`Delete all ${detail.shots.length} shots of this hole?`, `Alle ${detail.shots.length} Schläge dieses Lochs löschen?`)}
+          text={tr('Strokes and putts of this hole are emptied too.', 'Schläge und Putts dieses Lochs werden auch geleert.')}
+          confirmLabel={tr('Clear shots', 'Schläge löschen')}
+          onConfirm={() => {
+            update(me.id, { detail: undefined, strokes: null, putts: null });
+            setClearAsk(false);
+          }}
+          onClose={() => setClearAsk(false)}
+        />
+      )}
       {sheetEl}
       {exitEl}
     </main>
+  );
+}
+
+/** A line icon of the score page – the chevrons of the hole bar, the tick and cross, the flag (Facelift 11.11.2026). */
+function Chevron(props: { d: string; size?: number }) {
+  return (
+    <svg width={props.size ?? 22} height={props.size ?? 22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={props.d} />
+    </svg>
   );
 }
 

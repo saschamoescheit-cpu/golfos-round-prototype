@@ -53,7 +53,7 @@ await p.waitForTimeout(3000);
 const round = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
 const mine = async (i) => { const r = await round(); return r.entries[r.players.find((x) => x.isMe).id][i]; };
 
-ok(/0\/9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "0/9 geprüft"');
+ok(/0 von 9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "0 von 9 geprüft"');
 // "Vom Tee" is gone (Sascha 24.10.2026)
 ok((await p.locator('.plan-vs').count()) === 0, 'no "Vom Tee" card');
 
@@ -112,7 +112,7 @@ ok(/Ball verloren/.test(rows) && /provisorischer Ball/.test(rows), 'the list say
 await p.locator('.fab-save').click();
 await p.waitForTimeout(800);
 ok((await mine(0)).checked === true, '"Loch 1C passt" marks the hole as checked');
-ok(/1\/9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "1/9 geprüft"');
+ok(/1 von 9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "1 von 9 geprüft"');
 const same = p.locator('.review-check').filter({ hasText: 'vom selben Ort' });
 ok((await same.count()) === 1, 'hole 2C: "Schlag 2 vom selben Ort wie Schlag 1 …" asks');
 await same.getByRole('button', { name: /zusammenlegen/ }).click();

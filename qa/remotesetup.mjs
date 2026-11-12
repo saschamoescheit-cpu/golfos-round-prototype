@@ -67,7 +67,18 @@ await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.2);
 await p.waitForTimeout(500);
 const len = Number((/Abschlag → Grün: (\d+) m/.exec(await card.innerText()) ?? [])[1]);
 ok(len > 50, `green tapped – tee to green ${len} m`);
-await card.getByRole('button', { name: 'Loch speichern' }).click();
+// Facelift 11.11.2026 (r6): the other actions as one bar of icons, "Loch speichern" the floating green tick, no "✓" glyph
+{
+  const bar = card.locator('.sc-actions');
+  const words = await bar.locator('.sc-action span').allInnerTexts();
+  ok(words[0] === 'Neu beginnen' && words.includes('Nur Score') && (await card.locator('.btn-ghost, .btn-secondary, .btn-primary').count()) === 0, `the set-up's actions in one bar (${words.join(' · ')}), no column of text buttons`);
+  ok((await p.locator('.fab-stack .fab-save').getAttribute('aria-label')) === 'Loch speichern' && !/✓/.test(await card.innerText()), '"Loch speichern" as the floating tick, no "✓" in the card');
+  const fab = await p.locator('.fab-stack .fab-save').boundingBox();
+  const cb = await card.boundingBox();
+  ok(fab.y >= cb.y + cb.height - 2, 'the floating tick below the card, nothing covered');
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/holesetup.png` });
+}
+await p.getByRole('button', { name: 'Loch speichern' }).click();
 await p.waitForTimeout(2500);
 ok((await p.locator('.setup-card').count()) === 0 && (await p.locator('.map-hole-no').first().innerText()).trim() === '1', 'saved: the round plays hole 1 on the map');
 const saved = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.includes('holeline') || k.includes('lines')).length);

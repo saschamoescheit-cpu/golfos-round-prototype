@@ -85,6 +85,16 @@ export const ACTION_ICONS = {
       <path d="M4 9h16M4 14.5h16M10 9v11.5" />
     </>,
   ),
+  // Facelift 11.11.2026 – play: adding (a shot, a target), the hole map, the scorecard, a note
+  add: svg(<path d="M12 5v14M5 12h14" />),
+  map: svg(<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14" />),
+  card: svg(
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </>,
+  ),
+  note: svg(<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h4" />),
 };
 
 export interface Action {
@@ -95,6 +105,8 @@ export interface Action {
   /** red – deleting, finishing; put it last */
   danger?: boolean;
   disabled?: boolean;
+  /** a green dot on the icon – there is something (a hole note) */
+  dot?: boolean;
   onClick: () => void;
 }
 
@@ -108,6 +120,7 @@ export function ActionBar(props: { label: string; actions: (Action | false | nul
         <button key={a.label} type="button" className={`sc-action${a.danger ? ' danger' : ''}`} aria-label={a.aria} disabled={a.disabled} onClick={a.onClick}>
           {ACTION_ICONS[a.icon]}
           <span>{a.label}</span>
+          {a.dot && <i className="note-dot" aria-hidden="true" />}
         </button>
       ))}
     </div>

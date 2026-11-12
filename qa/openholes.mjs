@@ -55,6 +55,13 @@ await p.waitForTimeout(800);
 ok((await at('1A')) === '1A', 'last hole confirmed with holes open: back to the first open one');
 const filter = p.locator('.review-filter');
 ok((await filter.getByRole('button', { name: 'Noch zu prüfen (8)' }).getAttribute('aria-pressed')) === 'true', 'from now on only the open holes: "Noch zu prüfen (8)" chosen');
+// green chips as the topics of the statistics, no block of two buttons (Facelift 11.11.2026)
+ok((await filter.locator('.segmented').count()) === 0 && (await filter.getByRole('group', { name: 'Löcher', exact: true }).evaluate((e) => e.classList.contains('chip-row'))), 'the choice "Noch zu prüfen | Alle Löcher" as green chips');
+{
+  const tick = p.locator('.review-progress .review-tick svg');
+  const txt = await p.locator('.review-progress').innerText();
+  ok(/\d+ von 9 geprüft/.test(txt) && !/[✓/]/.test(txt), `the progress "… von 9 geprüft", no "✓" glyph (${txt.trim()}, ticks ${await tick.count()})`);
+}
 const chips = await filter.getByRole('group', { name: 'Noch zu prüfende Löcher' }).getByRole('button').allInnerTexts();
 ok(chips.join(' ') === '1A 2A 3A 4A 5A 6A 7A 8A', `the open holes as chips: ${chips.join(' ')} (9A is done)`);
 // confirm 1A and 2A: on to the next open one
