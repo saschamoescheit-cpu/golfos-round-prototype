@@ -1,7 +1,7 @@
 import { Avatar } from '../components/Avatar';
 import { goTour } from '../lib/nav';
 import { loadProfile } from '../lib/profile';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { checksShots, fmtHcp, playerTotals, playing18, roundStats, finishRound } from '../lib/scoring';
 import { deleteRound, loadRounds } from '../lib/storage';
@@ -51,6 +51,19 @@ export function Scorecard(props: {
   // on several phones: the players this phone counts as their marker (its entries of them are its counts)
   const marked = round.players.filter((p) => round.shared?.roles?.[p.id] === 'mark').map((p) => p.name);
   const [editHole, setEditHole] = useState<number | null>(null);
+  // swiped sideways in the hole's panel: the next or the previous hole (Sascha 12.11.2026: "wenn ich eine Scorekarte
+  // nachträglich bearbeite, wäre es praktisch, wenn man die Löcher durchkippen könnte, anstatt andauernd zurückzugehen")
+  const swipeFrom = useRef<{ x: number; y: number } | null>(null);
+  const swipeEnd = (x: number, y: number) => {
+    const s = swipeFrom.current;
+    swipeFrom.current = null;
+    if (!s || editHole == null) return;
+    const dx = x - s.x;
+    const dy = y - s.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const k = editHole + (dx < 0 ? 1 : -1);
+    if (k >= 0 && k < round.holes.length) setEditHole(k);
+  };
   const differ = useDiffers(round);
   // a shared round: who keeps which score – the others' shown, not changed here, as on the course (Sascha 08.11.2026)
   const views = useShareViews(round);
@@ -291,8 +304,16 @@ export function Scorecard(props: {
       {/* a hole tapped on the card (or its pencil, an empty hole): the same score panel as on the course – strokes, putts,
           sand shots, penalties, tee shot (Sascha 20.10.2026: "the same menu as on a round") */}
       {editHole != null && (
-        <div className="score-panel-screen">
+        <div
+          className="score-panel-screen"
+          onPointerDown={(e) => (swipeFrom.current = { x: e.clientX, y: e.clientY })}
+          onPointerUp={(e) => swipeEnd(e.clientX, e.clientY)}
+          onPointerCancel={() => (swipeFrom.current = null)}
+          onTouchStart={(e) => (swipeFrom.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
+          onTouchEnd={(e) => swipeEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY)}
+        >
           <ScoreSheet
+            key={editHole}
             hole={round.holes[editHole]}
             players={round.players}
             entries={Object.fromEntries(round.players.map((p) => [p.id, round.entries[p.id][editHole]]))}

@@ -167,6 +167,26 @@ await p.waitForTimeout(600);
 // the same score panel as on the course (Sascha 20.10.2026)
 await p.locator('.score-panel').getByRole('button', { name: /Schläge minus eins/ }).first().click();
 for (let k = 0; k < 4 && (await stored(0)).putts !== 1; k++) await p.locator('.score-panel').getByRole('button', { name: (await stored(0)).putts > 1 ? /Putts minus eins/ : /Putts plus eins/ }).first().click();
+// swiped sideways: the next hole – and back (Sascha 12.11.2026: "die Löcher durchkippen, anstatt andauernd zurückzugehen")
+{
+  const head = async () => (await p.locator('.score-panel .sheet-head').innerText()).split('\n')[0].trim();
+  const before = await head();
+  const swipe = async (dx) => {
+    const box = await p.locator('.score-panel').boundingBox();
+    const y = box.y + 80;
+    const x0 = dx < 0 ? box.x + box.width - 30 : box.x + 30;
+    await p.mouse.move(x0, y);
+    await p.mouse.down();
+    await p.mouse.move(x0 + dx, y + 5, { steps: 5 });
+    await p.mouse.up();
+    await p.waitForTimeout(300);
+  };
+  await swipe(-160);
+  const next = await head();
+  await swipe(160);
+  const back = await head();
+  ok(/^Loch 2/.test(next) && back === before, `swiped: "${before}" → "${next}" → "${back}"`);
+}
 await p.locator('.score-panel').getByRole('button', { name: 'Zurück zur Scorekarte' }).click();
 await p.waitForTimeout(600);
 const e1b = await stored(0);
