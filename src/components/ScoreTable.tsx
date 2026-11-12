@@ -29,7 +29,9 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
   const metres = (h: RoundHole) => (ti >= 0 ? (teeData!.holes[h.label]?.[ti] ?? null) : null);
   const hasMetres = round.holes.some((h) => metres(h) != null);
   const me = round.players.find((p) => p.isMe);
-  const hasPutts = me != null && round.entries[me.id].some((e) => e.putts != null);
+  // the putts of every player, once any are known – "–" where his are missing (Sascha 12.11.2026: "hier fehlen von Chris
+  // und Cedric die Putts – es müssen immer alle Informationen angezeigt werden")
+  const hasPutts = round.players.some((p) => (round.entries[p.id] ?? []).some((e) => e?.putts != null));
   const nines = round.holes.length === 18 ? [round.holes.slice(0, 9), round.holes.slice(9)] : [round.holes];
 
   const gross = (pid: string, h: RoundHole) => grossForHole(round.entries[pid][h.index], h.par, received[pid][h.index]);
@@ -135,13 +137,15 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                       <td className="sumc">{sum(nine.map((h) => points(p.id, h)))}</td>
                     </tr>
                   ),
-                  (hasPutts || props.full) && me && p.id === me.id && (
+                  (hasPutts || (props.full && me && p.id === me.id)) && (
                     <tr className={`meta pg pg-${k % 2}`} key={`${p.id}-putts`}>
                       <td className="lab">Putts</td>
-                      {nine.map((h) => (
-                        <td key={h.index}>{round.entries[me.id][h.index].putts ?? (props.full ? '–' : '')}</td>
-                      ))}
-                      <td className="sumc">{sum(nine.map((h) => round.entries[me.id][h.index].putts)) ?? (props.full ? '–' : null)}</td>
+                      {nine.map((h) => {
+                        const e = round.entries[p.id]?.[h.index];
+                        // a hole played without putts: "–"; not played: empty
+                        return <td key={h.index}>{e?.putts ?? (e && (e.strokes != null || e.pickedUp) ? '–' : props.full ? '–' : '')}</td>;
+                      })}
+                      <td className="sumc">{sum(nine.map((h) => round.entries[p.id]?.[h.index]?.putts ?? null)) ?? (props.full ? '–' : null)}</td>
                     </tr>
                   ),
                 ])}
