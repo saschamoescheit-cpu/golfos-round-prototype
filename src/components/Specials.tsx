@@ -20,7 +20,9 @@ export function leaderText(ev: RoundEvent, s: Special): string {
 export function SpecialsAtHole(props: { ev: RoundEvent; code: string; flight: string; player: string; phone: string; hole: number; /** Long Drive: the length from the tee by GPS, metres */ fromTee: number | null }) {
   const specials = specialsAt(props.ev, props.hole);
   const [open, setOpen] = useState<Special | null>(null);
-  if (!specials.length) return null;
+  // the sheet stays while it is open – a moment without the prize in the event (another phone's write coming in) must not
+  // close it and lose what was typed (Sascha 12.11.2026, the night's QA: typed 247, the server kept 245)
+  if (!specials.length && !open) return null;
   return (
     <>
       {specials.map((s) => {
@@ -94,9 +96,11 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
   useEffect(() => {
     open.current = true;
     return () => {
+      // gone without "close" (the hole screen moved on, the app went to the background): what was typed is still saved
+      void flush();
       open.current = false;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!editing || saved.current === key) return;
     const t = window.setTimeout(() => void flush(), 900);
