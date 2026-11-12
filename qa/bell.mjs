@@ -27,6 +27,7 @@ const box = await bell.boundingBox();
 const vw = p.viewportSize().width;
 const tops = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
 ok(!!box && box.x + box.width <= vw && new Set(tops).size === 1, `on a small phone: DE, bell and sun in one line, on the screen (${tops.join(',')})`);
+{ const xs = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => ({ x: e.getBoundingClientRect().x, bell: e.classList.contains('bell-btn') }))); ok(xs.length === 3 && xs.reduce((m, a) => (a.x > m.x ? a : m)).bell, 'the inbox on the far right (Sascha 13.11.2026)'); }
 await bell.click();
 const sheet = p.getByRole('dialog', { name: 'Inbox' });
 ok((await sheet.count()) === 1 && /Nichts Neues/.test(await sheet.innerText()), 'tapped: the inbox – "Nichts Neues für dich."');
@@ -47,6 +48,7 @@ if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/bell-top
 await p.locator('.bell-btn').first().click();
 const rows = (await sheet.locator('.bell-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
 ok(rows.length === 1 && /1 Runde prüfen & signieren/.test(rows[0]) && /Hetzenhof/.test(rows[0]), `the sheet: ${rows.join(' | ')}`);
+ok((await sheet.locator('.bell-group > .eyebrow').allInnerTexts()).join('|').toLowerCase() === 'zu erledigen', 'the inbox in groups: "Zu erledigen" (nothing asked of you here)');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/bell-sheet.png` });
 await sheet.locator('.bell-row').first().click();
 await p.waitForTimeout(1200);

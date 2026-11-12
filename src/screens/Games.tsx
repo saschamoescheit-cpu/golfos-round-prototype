@@ -45,7 +45,7 @@ import { SeriesScreen, TOURS_ICON, TourScreen, TourStartCard, ToursTab, useTours
 import { TourSetup, newTourDraft, pickCourse, type TourDraft } from './TourPlan';
 import { loadSeries, tourState } from '../lib/tourstore';
 import { isLive, loadPools } from '../lib/wagerstore';
-import { ChallengeInvites, DuelSetup } from './Duels';
+import { DuelSetup } from './Duels';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
 import { dayOf } from '../lib/wagers';
@@ -596,8 +596,7 @@ function GamesTabs(props: {
           {running.map((g) => (
             <RunningGame key={g.id} game={g} onContinue={() => props.onOpen(g)} onFinish={() => props.onFinish(g)} onDelete={() => props.onDelete(g)} />
           ))}
-          {/* 5+5+10 challenges to answer (Sascha 09.11.2026) – each opens its pool */}
-          <ChallengeInvites onOpen={props.onOpenPool} />
+          {/* 5+5+10 challenges to answer: in the inbox only (Sascha 13.11.2026: "ausschließlich in der Box") */}
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>

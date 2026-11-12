@@ -25,6 +25,8 @@ interface InboxItem {
   go?: () => void;
   /** answered right in the inbox (the correction asked of the host) */
   action?: { label: string; run: () => Promise<boolean> };
+  /** asked of you by someone – else something to do (Sascha 13.11.2026: "in zwei Gruppen für die Übersichtlichkeit") */
+  ask?: boolean;
 }
 
 interface ReopenAsk {
@@ -51,6 +53,7 @@ function inviteItem(inv: RoundInvite): InboxItem {
     title,
     line: inv.course || tr('Tap to join', 'Antippen zum Beitreten'),
     go: () => window.dispatchEvent(new CustomEvent(inv.kind === 'round' ? 'golfos:join-round' : 'golfos:join-game', { detail: inv.code })),
+    ask: true,
   };
 }
 
@@ -75,10 +78,10 @@ async function reopenAsks(): Promise<ReopenAsk[]> {
 function localItems(): InboxItem[] {
   const out: InboxItem[] = [];
   // a friend's request waiting: its sheet with "Annehmen" / "Ablehnen"
-  if (pendingAsk()) out.push({ key: 'friend', title: tr('Friend request', 'Freundschaftsanfrage'), line: tr('Accept or decline', 'Annehmen oder ablehnen'), go: () => window.dispatchEvent(new Event('golfos:friend-ask')) });
+  if (pendingAsk()) out.push({ key: 'friend', title: tr('Friend request', 'Freundschaftsanfrage'), line: tr('Accept or decline', 'Annehmen oder ablehnen'), go: () => window.dispatchEvent(new Event('golfos:friend-ask')), ask: true });
   for (const { e, w } of openChallenges()) {
     const by = e.pool.players.find((p) => p.id === w.player)?.name ?? '?';
-    out.push({ key: `duel:${w.id}`, title: tr(`${by} challenges you to 5+5+10`, `${by} fordert dich zu 5+5+10 heraus`), line: `${e.pool.name} · ${prizeSym(prizeOf(e.pool))}`, go: () => goPool(e.code) });
+    out.push({ key: `duel:${w.id}`, title: tr(`${by} challenges you to 5+5+10`, `${by} fordert dich zu 5+5+10 heraus`), line: `${e.pool.name} · ${prizeSym(prizeOf(e.pool))}`, go: () => goPool(e.code), ask: true });
   }
   const sign = roundsToSign(loadRounds());
   if (sign.length)
@@ -137,6 +140,7 @@ export function NotifyBell() {
     key: `reopen:${a.code}:${a.pid}`,
     title: tr(`${a.by} asks to correct ${a.player}'s card`, `${a.by} möchte die Karte von ${a.player} korrigieren`),
     line: tr(`${a.where} – its signatures go back, it is corrected and signed anew`, `${a.where} – die Unterschriften gehen zurück, dann wird korrigiert und neu unterschrieben`),
+    ask: true,
     action: {
       label: tr('Confirm', 'Bestätigen'),
       run: async () => {
@@ -173,8 +177,16 @@ export function NotifyBell() {
                 </button>
               </div>
               {n ? (
+                [
+                  { name: tr('Asked of you', 'Anfragen an dich'), list: items.filter((x) => x.ask) },
+                  { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask) },
+                ]
+                  .filter((g) => g.list.length)
+                  .map((g) => (
+                <div key={g.name} className="bell-group">
+                <span className="eyebrow">{g.name}</span>
                 <div className="settings-list">
-                  {items.map((it) =>
+                  {g.list.map((it) =>
                     it.action ? (
                       <div key={it.key} className="settings-row bell-row bell-ask">
                         <span className="grow">
@@ -214,6 +226,8 @@ export function NotifyBell() {
                     ),
                   )}
                 </div>
+                </div>
+                  ))
               ) : (
                 <span className="muted">{tr('Nothing waiting for you.', 'Nichts Neues für dich.')}</span>
               )}

@@ -1774,13 +1774,14 @@ export async function roundInvites(joined: string[], all = false): Promise<Round
   const h = await headers();
   if (!me || !h) return [];
   try {
-    const fresh = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    const back = (all ? 14 * 24 : 12) * 3600 * 1000; // the inbox: every open one of the last 14 days
+    const fresh = new Date(Date.now() - back).toISOString();
     const r = await fetch(`${table()}?select=code,game,near_requests&event_code=is.null&members=cs.%7B${encodeURIComponent(me)}%7D&updated_at=gte.${encodeURIComponent(fresh)}`, { headers: h });
     if (!r.ok) return [];
     const rows = (await r.json()) as { code: string; game: { kind?: string; name?: string; courseName?: string; finishedAt?: string | null; deletedAt?: string | null; course?: { name?: string } } | null; near_requests: Record<string, { invited?: string; at?: string }> | null }[];
     const kindOf = (k?: string): RoundInvite['kind'] => (k === 'wager-pool' ? 'pool' : k === 'round-event' || k === 'tour-series' ? 'round' : 'game');
     const seen = seenInvites();
-    const since = Date.now() - 12 * 3600 * 1000;
+    const since = Date.now() - back;
     return rows
       .filter((x) => {
         const inv = x.near_requests?.[me];

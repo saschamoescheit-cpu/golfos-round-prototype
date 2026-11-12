@@ -23,8 +23,6 @@ export function TopTools() {
       >
         {getLang() === 'de' ? 'DE' : 'EN'}
       </button>
-      {/* the bell: requests and what waits (Sascha 13.11.2026) */}
-      <NotifyBell />
       <button
         type="button"
         className="lang-btn"
@@ -41,6 +39,8 @@ export function TopTools() {
           <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
         </svg>
       </button>
+      {/* the inbox, on the far right (Sascha 13.11.2026: "platziere die Inbox ganz rechts") */}
+      <NotifyBell />
     </>
   );
 }

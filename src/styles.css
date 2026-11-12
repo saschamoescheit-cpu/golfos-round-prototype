@@ -2737,3 +2737,6 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .bell-btn { position: relative; }
 .bell-count { position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--brand); color: #fff; font: 700 11px/18px var(--body); text-align: center; }
 .bell-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+/* the inbox in two groups – asked of you, to do (Sascha 13.11.2026) */
+.bell-group { display: flex; flex-direction: column; gap: 6px; }
+.bell-group > .eyebrow { padding-inline: 2px; }

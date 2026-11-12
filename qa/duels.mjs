@@ -97,10 +97,13 @@ await C.locator('.duel-challenges').waitFor({ timeout: 15000 });
 }
 ok((await C.locator('.duel-challenge').filter({ hasText: 'Du forderst Sascha heraus' }).locator('.invite-mark.muted').count()) === 1 && /Wartet auf Sascha/.test(await C.locator('.duel-challenge').filter({ hasText: 'Du forderst Sascha heraus' }).innerText()), "Chris's pool: \"Du forderst Sascha heraus · Wartet auf Sascha\" with a clock");
 
-// Sascha: on Games' start page, "Chris fordert dich zu 5+5+10 heraus" – into the pool, "Annehmen"
+// Sascha: in the inbox (top right, Sascha 13.11.2026: "ausschließlich in der Box"), "Chris fordert dich zu 5+5+10
+// heraus" – into the pool, "Annehmen"; no list on Games' start page any more
 await toGames(H);
-const invite = H.locator('.duel-invite').filter({ hasText: 'Chris fordert dich zu 5+5+10 heraus' });
-ok((await invite.count()) === 1, 'Sascha, Games: "Chris fordert dich zu 5+5+10 heraus"');
+ok((await H.locator('.duel-invite').count()) === 0, 'Sascha, Games: no list of challenges on the start page');
+await H.locator('.bell-btn').first().click();
+const invite = H.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Chris fordert dich zu 5+5+10 heraus' });
+ok((await invite.count()) === 1, 'Sascha, inbox: "Chris fordert dich zu 5+5+10 heraus" under "Anfragen an dich"');
 await invite.click();
 await H.locator('.duel-challenges').waitFor({ timeout: 15000 });
 if (process.env.SHOTS) await H.screenshot({ path: `${process.env.SHOTS}/duel-answer.png`, fullPage: true });
