@@ -2731,3 +2731,5 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 /* a heading over a group of choices in a sheet (Sascha 13.11.2026: "Was" in its categories) */
 .pick-list > .pick-group { padding: 10px 2px 2px; }
 .pick-list > .pick-group:first-child { padding-top: 0; }
+/* a flight's "Ändern ›": quiet, no second pencil next to the floating one (Sascha 13.11.2026) */
+.flight-change { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; background: none; border: 0; color: var(--muted); font: 600 14px var(--body); }
