@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ActionBar } from './ActionBar';
+import { FloatActions } from './FloatActions';
+import { OnOffRow, SettingsList } from './Settings';
 import { tr } from '../lib/i18n';
 import { metres, specialBoard, specialName, specialsAt, type Special } from '../lib/specials';
 import { setSpecial, type RoundEvent } from '../lib/sharedround';
@@ -43,28 +46,74 @@ export function SpecialsAtHole(props: { ev: RoundEvent; code: string; flight: st
 function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; player: string; phone: string; fromTee: number | null; special: Special; onClose: () => void }) {
   const s = props.special;
   const ntp = s.kind === 'nearestPin';
-  const had = props.ev.flights[props.flight]?.specials?.[s.id]?.[props.player];
+  // as it was when the sheet opened: a first entry is saved with the floating tick, one there already corrected saves by
+  // itself (Sascha 11.11.2026, Facelift-Abnahme T3: "wenn nachträglich was bearbeitet wird, die automatische Speicherung")
+  const [had] = useState(() => props.ev.flights[props.flight]?.specials?.[s.id]?.[props.player]);
+  const editing = had?.m != null;
   const [value, setValue] = useState(() => (had?.m != null ? String(had.m).replace('.', ',') : !ntp && props.fromTee != null ? String(props.fromTee) : ''));
   const [fairway, setFairway] = useState(had?.fairway ?? true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const m = Number(value.replace(',', '.'));
   const valid = value.trim() !== '' && Number.isFinite(m) && m > 0 && m < (ntp ? 100 : 500);
+  const entryOf = (v: number, fw: boolean) => ({ m: ntp ? Math.round(v * 10) / 10 : Math.round(v), ...(ntp ? {} : { fairway: fw }) });
+  const write = (entry: { m: number | null; fairway?: boolean } | null) => setSpecial(props.code, props.flight, s.id, props.player, entry ? { ...entry, at: new Date().toISOString(), by: props.phone } : null);
+  const noNet = () => setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+  // new: the tick saves and closes; taken back: gone, closed
   const save = async (entry: { m: number | null; fairway?: boolean } | null) => {
     setBusy(true);
-    const ok = await setSpecial(props.code, props.flight, s.id, props.player, entry ? { ...entry, at: new Date().toISOString(), by: props.phone } : null);
+    const ok = await write(entry);
     setBusy(false);
     if (ok) props.onClose();
-    else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+    else noNet();
+  };
+  // corrected: a moment after the last change and when the sheet closes – one save at a time
+  const key = JSON.stringify([valid ? entryOf(m, fairway) : null]);
+  const saved = useRef(key);
+  const latest = useRef({ key, entry: valid ? entryOf(m, fairway) : null });
+  latest.current = { key, entry: valid ? entryOf(m, fairway) : null };
+  const chain = useRef<Promise<void>>(Promise.resolve());
+  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const saveNow = async () => {
+    const cur = latest.current;
+    if (!editing || !cur.entry || saved.current === cur.key) return;
+    setSaving('busy');
+    const ok = await write(cur.entry);
+    if (ok) {
+      saved.current = cur.key;
+      setMsg(null);
+    } else {
+      noNet();
+      // on the course the connection comes back: tried again by itself while the sheet is open
+      if (open.current) window.setTimeout(() => open.current && void flush(), 3000);
+    }
+    setSaving(ok ? 'done' : 'idle');
+  };
+  const flush = (): Promise<void> => (chain.current = chain.current.then(saveNow, saveNow));
+  const open = useRef(true);
+  useEffect(() => {
+    open.current = true;
+    return () => {
+      open.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!editing || saved.current === key) return;
+    const t = window.setTimeout(() => void flush(), 900);
+    return () => window.clearTimeout(t);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const close = () => {
+    void flush();
+    props.onClose();
   };
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet" role="dialog" aria-label={specialName(s.kind)} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>
             {specialName(s.kind)} · {tr('hole', 'Loch')} {props.ev.holes[s.hole]?.label}
           </strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>
@@ -82,23 +131,27 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
           {!ntp && props.fromTee == null && <span className="muted small">{tr('No GPS here – enter the length yourself.', 'Kein GPS hier – die Weite selbst eintragen.')}</span>}
         </div>
         {!ntp && (
-          <label className="check-row">
-            <input type="checkbox" checked={fairway} onChange={(e) => setFairway(e.target.checked)} />
-            <span>{tr('In the fairway (only then it counts)', 'Im Fairway (nur dann zählt er)')}</span>
-          </label>
+          <>
+            {/* yes / no as a row like every other setting (Facelift-Abnahme T3) */}
+            <SettingsList>
+              <OnOffRow label={tr('In the fairway', 'Im Fairway')} on={fairway} onChange={setFairway} onText={tr('The drive counts', 'Der Drive zählt')} offText={tr('In the rough – it does not count', 'Im Rough – er zählt nicht')} />
+            </SettingsList>
+            <span className="muted small">{tr('Only in the fairway it counts.', 'Nur im Fairway zählt er.')}</span>
+          </>
         )}
-        <button type="button" className="btn-primary" disabled={busy || !valid} onClick={() => void save({ m: ntp ? Math.round(m * 10) / 10 : Math.round(m), ...(ntp ? {} : { fairway }) })}>
-          {busy ? tr('Saving …', 'Speichere …') : tr('Save', 'Eintragen')}
-        </button>
-        {had?.m != null && (
-          <button type="button" className="btn-secondary" disabled={busy} onClick={() => void save(null)}>
-            {tr('Take mine back', 'Meinen Wert zurücknehmen')}
-          </button>
-        )}
+        {editing && <ActionBar label={tr('My entry', 'Mein Eintrag')} actions={[{ label: tr('Take back', 'Zurücknehmen'), aria: tr('Take mine back', 'Meinen Wert zurücknehmen'), icon: 'reopen', danger: true, disabled: busy, onClick: () => { saved.current = latest.current.key; void save(null); } }]} />}
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="status">
             {msg}
           </span>
+        )}
+        {editing ? (
+          <span className="muted small autosave-note" role="status">
+            {!valid ? tr('Enter a figure – then it is saved.', 'Wert eintragen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          </span>
+        ) : (
+          // a first entry: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
+          <FloatActions overSheet save={{ label: tr('Save', 'Eintragen'), disabled: busy || !valid, onClick: () => void save(entryOf(m, fairway)) }} />
         )}
       </section>
     </div>

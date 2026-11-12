@@ -62,8 +62,8 @@ async function run(o) {
   // only the friends in the flight (Sascha 03.11.2026): Chris is linked, but not one of the players
   ok((await friends.getByRole('button', { name: 'Chris einladen' }).count()) === 0, 'Chris, linked but not in the flight: not offered');
   await friends.getByRole('button', { name: 'Cedric einladen' }).click();
-  await friends.locator('button', { hasText: 'Eingeladen ✓' }).waitFor({ timeout: 10000 }).catch(() => {});
-  ok((await friends.locator('button', { hasText: 'Eingeladen ✓' }).count()) === 1, `one tap: "Eingeladen ✓" (${(await friends.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-90)})`);
+  await friends.locator('button', { hasText: 'Eingeladen' }).filter({ has: H.locator('svg.btn-tick') }).waitFor({ timeout: 10000 }).catch(() => {});
+  ok((await friends.locator('button', { hasText: 'Eingeladen' }).filter({ has: H.locator('svg.btn-tick') }).count()) === 1, `one tap: "Eingeladen" with the tick as an icon (${(await friends.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-90)})`);
   await H.waitForTimeout(800);
   ok(shared.get(code)?.members.includes('Cedric') && !!shared.get(code)?.requests.Cedric?.invited, 'server: Cedric let in, marked invited');
   if (!o.oldPush) ok(pushes.some((x) => x.action === 'invite' && x.friend === 'Cedric' && x.code === code), 'push: the invitation to Cedric (by his account)');
@@ -83,7 +83,7 @@ async function run(o) {
   // Sascha's invitation again (Sascha 06.11.2026: "Christopher is in – at mine it still says 'Einladen'"): the app shown
   // again, the list asks the server – Cedric "Dabei ✓"
   await H.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await friends.locator('button', { hasText: 'Dabei ✓' }).waitFor({ timeout: 8000 }).catch(() => {});
+  await friends.locator('button', { hasText: 'Dabei' }).filter({ has: H.locator('svg.btn-tick') }).waitFor({ timeout: 8000 }).catch(() => {});
   ok((await friends.getByRole('button', { name: 'Cedric ist dabei' }).count()) === 1 && (await friends.getByRole('button', { name: 'Cedric ist dabei' }).isDisabled()), `Sascha's invitation: Cedric "Dabei ✓", no "Einladen" any more (${(await friends.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-60)})`);
   // his own score on top
   await C.locator('.map-score').click().catch(() => {});

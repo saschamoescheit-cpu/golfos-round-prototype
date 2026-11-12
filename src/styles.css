@@ -2557,3 +2557,9 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .player-row .player-remove-a11y:focus-visible { opacity: 1; width: auto; height: auto; padding: 4px 8px; background: var(--surface-2); border-radius: 8px; }
 /* r11: the friends in a sheet titled "Freunde" – the page's own title not twice */
 .friends-sheet h1.tab-title { display: none; }
+/* Facelift 11.11.2026 – tours */
+.eyebrow-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; padding: 0; border: 0; background: none; font-family: inherit; color: var(--brand-text); cursor: pointer; min-height: 24px; text-align: left; }
+.lb-signed { display: flex; align-items: center; gap: 3px; }
+.invite-friend button:has(> .btn-tick) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.live-course-chev { transition: transform 0.15s; color: var(--muted); flex-shrink: 0; }
+.live-course-chev.open { transform: rotate(90deg); }

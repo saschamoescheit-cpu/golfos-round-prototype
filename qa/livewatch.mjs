@@ -107,8 +107,13 @@ const fit = await V.locator('.lb-card').evaluate((card) => {
   return { bad: out, col: Math.round(card.querySelector('tr.score td:nth-child(2)')?.getBoundingClientRect().width ?? 0) };
 });
 ok(fit.bad.length === 0, `the card's marks inside their columns (${fit.col} px a hole${fit.bad.length ? ': ' + fit.bad.slice(0, 3).join(', ') : ''})`);
-// the course: its holes on the aerial image, the scores on each
-await V.getByRole('tab', { name: 'Platz' }).click();
+// no tabs any more (Facelift-Abnahme T9): the leaderboard, below it the course as a row "Platz · … ›" – tapped, its holes
+// on the aerial image, the scores on each
+ok((await V.getByRole('tab').count()) === 0 && (await V.locator('.segmented').count()) === 0, 'no tabs on the page');
+const courseRow = V.locator('.live-course-row .settings-row');
+ok((await courseRow.count()) === 1 && /^Platz/.test((await courseRow.innerText()).trim()) && (await courseRow.getAttribute('aria-expanded')) === 'false' && (await V.locator('.live-course').count()) === 0, `the course a row under the leaderboard, closed (${(await courseRow.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
+if (process.env.SHOTS) await V.screenshot({ path: process.env.SHOTS + '/live-event-board.png', fullPage: true });
+await courseRow.click();
 await V.locator('.live-course').waitFor({ timeout: 20000 }).catch(() => {});
 await V.waitForTimeout(2500);
 const holeHead = async () => (await V.locator('.live-hole-head').innerText().catch(() => '')).replace(/\s+/g, ' ');
@@ -159,9 +164,13 @@ await V.locator('[aria-label="Gesamtwertung"] .series-lb-row').first().click();
 await V.waitForTimeout(500);
 ok((await V.locator('.series-player-sheet table.sc').count()) === 1, 'a player tapped: his sheet with the scorecard of the round');
 await V.locator('.series-player-sheet').getByRole('button', { name: 'Schließen' }).click();
-await V.getByRole('tab', { name: 'Runden' }).click();
+// the total and each round as one switch "‹ Gesamt ›" (Facelift-Abnahme T9) – the next one: round 1
+const views = V.getByRole('group', { name: 'Ansicht' });
+ok((await V.getByRole('tab').count()) === 0 && /Gesamt/.test(await views.locator('.step-pick-now').innerText()) && (await V.locator('.live-course-row').count()) === 1, 'the series: "‹ Gesamt ›" as the switch, no tabs, the course a row below');
+if (process.env.SHOTS) await V.screenshot({ path: process.env.SHOTS + '/live-series.png', fullPage: true });
+await views.getByRole('button', { name: 'Nächste' }).click();
 await V.waitForTimeout(500);
-ok(/Celebration/.test(await V.locator('main').innerText()) && (await V.locator('.lb-rows li').count()) === 2, 'the tab "Runden": the leaderboard of the round');
+ok(/Runde 1/.test(await views.locator('.step-pick-now').innerText()) && /Celebration/.test(await V.locator('main').innerText()) && (await V.locator('.lb-rows li').count()) === 2, '"›": round 1 – the leaderboard of the round');
 
 // 6 · switched off by the host
 await flip(sw);

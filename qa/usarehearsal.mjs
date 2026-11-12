@@ -13,6 +13,7 @@
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/usarehearsal.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer, teeSoon } from './sharesim.mjs';
+import { onOff, setOnOff } from './onoff.mjs';
 const [T1, T2] = [teeSoon(30), teeSoon(40)]; // later today, whatever the hour
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -137,12 +138,47 @@ const ld = async (n, m, fairway) => {
   await hint.getByRole('button').click();
   const sheet = p.getByRole('dialog', { name: 'Long Drive' });
   await sheet.locator('#special-m').fill(String(m));
-  if (!fairway) await sheet.getByRole('checkbox').uncheck();
-  await sheet.getByRole('button', { name: 'Eintragen' }).click();
+  // "Im Fairway" a row with An/Aus, the first entry saved with the floating tick (Facelift-Abnahme T3)
+  if (!fairway) await setOnOff(onOff(sheet, 'Im Fairway'), false);
+  await p.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Eintragen' }).click();
   await sheet.waitFor({ state: 'detached', timeout: 10000 });
 };
 ok(/Long Drive · führend: noch keiner/.test((await P('Sascha').getByRole('status', { name: 'Long Drive' }).innerText().catch(() => '')).replace(/\s+/g, ' ')), 'the hint at the Long Drive hole: "Long Drive · führend: noch keiner"');
+{
+  // a first entry (Facelift-Abnahme T3): "Im Fairway" a row, no checkbox, no text buttons, nothing to take back yet – the tick
+  const p = P('Sascha');
+  await p.getByRole('status', { name: 'Long Drive' }).getByRole('button').click();
+  const sheet = p.getByRole('dialog', { name: 'Long Drive' });
+  await sheet.waitFor({ timeout: 5000 });
+  ok(
+    (await sheet.getByRole('checkbox').count()) === 0 && (await onOff(sheet, 'Im Fairway').getAttribute('data-on')) === 'true' && (await sheet.locator('.btn-primary, .btn-secondary').count()) === 0 && (await sheet.locator('.sc-action').count()) === 0 && (await p.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Eintragen' }).count()) === 1,
+    'Long Drive, first entry: "Im Fairway · An" as a row, the floating tick "Eintragen", nothing to take back',
+  );
+  if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/special-new.png' });
+  await sheet.getByRole('button', { name: 'Schließen' }).click();
+  await sheet.waitFor({ state: 'detached', timeout: 5000 });
+}
 await ld('Sascha', 245, true);
+{
+  // corrected afterwards: saved by itself, "Zurücknehmen" red in the bar (Facelift-Abnahme T3)
+  const p = P('Sascha');
+  const mine = () => Object.values(sim.event().flights).flatMap((f) => Object.values(f.specials?.ld ?? {}))[0]?.m;
+  await p.getByRole('status', { name: 'Long Drive' }).getByRole('button').click();
+  const sheet = p.getByRole('dialog', { name: 'Long Drive' });
+  await sheet.waitFor({ timeout: 5000 });
+  const back = sheet.locator('.sc-action.danger');
+  ok((await p.locator('.fab-stack.over-sheet').count()) === 0 && (await sheet.locator('.autosave-note').count()) === 1 && (await back.count()) === 1 && (await back.getAttribute('aria-label')) === 'Meinen Wert zurücknehmen' && (await back.locator('svg').count()) === 1, 'Long Drive, corrected: no tick – "Änderungen werden von selbst gespeichert", "Zurücknehmen" red with its icon');
+  if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/special-edit.png' });
+  await sheet.locator('#special-m').fill('247');
+  await sheet.locator('.autosave-note', { hasText: 'Gespeichert' }).waitFor({ timeout: 15000 }).catch(() => {});
+  const said = (await sheet.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-160);
+  const typed = await sheet.locator('#special-m').inputValue().catch(() => '?');
+  ok(mine() === 247 && /Gespeichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, typed ${typed}, "${said}")`);
+  await sheet.locator('#special-m').fill('245');
+  await sheet.getByRole('button', { name: 'Schließen' }).click(); // closed at once: saved on closing
+  await p.waitForTimeout(1500);
+  ok(mine() === 245, `Long Drive, back to 245 m and closed at once: saved on closing (${mine()})`);
+}
 await ld('Erik', 262, false); // longer – but in the rough: it does not count
 await ld('Cedric', 251, true);
 for (const [n, m] of [['Chris', 2.1], ['Cedric', 3.4]])

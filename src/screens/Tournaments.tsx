@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
-import { KeyHint } from '../components/KeyHint';
-import { ChoiceRow, SettingsList, ToggleList, ToggleRow } from '../components/Settings';
+import { ChoiceRow, OnOffRow, SettingsList, TickRow, ToggleList, ToggleRow } from '../components/Settings';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent,reopenFlight, confirmReopen, reopenAsked, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, confirmReopen, reopenAsked, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -15,7 +15,7 @@ import { ScoreTable } from '../components/ScoreTable';
 import type { Round } from '../types';
 import { madeCut } from '../lib/tourdraw';
 import { dealRound, draftOf, draftOfMulti, tourFormat, type TourDraft } from './TourPlan';
-import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
+import { boardText, copyLink, FriendInvite, InviteCard, saveCsv, shareLink, shareText } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
 import { LiveShare } from '../components/LiveShare';
 import { Bin } from '../components/Bin';
@@ -28,6 +28,14 @@ import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 // offers "take part" and every phone plays its flight – marks, signing, leaderboard as ever. Only the host changes it.
 
 const NO_NET = () => tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.');
+
+/** The total of a series as a list (CSV, semicolons as a spreadsheet in German takes them): place, player, each round, total. */
+export function seriesCsv(name: string, rounds: number, total: ReturnType<typeof seriesStandings>, out: (name: string) => boolean = () => false): string {
+  const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const head = [tr('Place', 'Platz'), tr('Player', 'Spieler'), ...Array.from({ length: rounds }, (_, k) => `R${k + 1}`), total.higherBetter ? tr('Points', 'Punkte') : tr('To par', 'Zu Par'), tr('Rounds', 'Runden')];
+  const lines = total.rows.map((r) => [out(r.name) ? 'CUT' : r.pos, r.name, ...Array.from({ length: rounds }, (_, k) => r.parts.find((p) => p.k === k)).map((p) => (!p ? '' : p.noReturn ? 'NR' : p.sort)), r.sum, r.rounds].map(q).join(';'));
+  return [`${q(name)};${q(tr('Total standing', 'Gesamtwertung'))}`, head.map(q).join(';'), ...lines].join('\n');
+}
 
 /** The menu's icon of the tournaments: a cup. */
 export const TOURS_ICON = (
@@ -196,20 +204,15 @@ function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void
           <input id="series-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <span className="eyebrow">{tr('Its rounds', 'Ihre Runden')}</span>
-        {props.tours.map((e) => (
-          <label key={e.code} className="list-item series-pick">
-            <input type="checkbox" checked={picked.has(e.code)} onChange={() => toggle(e.code)} />
-            <span className="grow">
-              <span className="title">{e.ev.name}</span>
-              <span className="muted small">
-                {longDate(e.ev.date)} · {e.ev.course.name}
-              </span>
-            </span>
-          </label>
-        ))}
+        {/* ticked rows, not boxes (Facelift-Abnahme T1): the name, its day and course below */}
+        <SettingsList label={tr('Its rounds', 'Ihre Runden')}>
+          {props.tours.map((e) => (
+            <TickRow key={e.code} label={e.ev.name} text={`${longDate(e.ev.date)} · ${e.ev.course.name}`} on={picked.has(e.code)} onChange={() => toggle(e.code)} />
+          ))}
+        </SettingsList>
         <span className="muted small">{tr('The tournaments stay as they are – codes, players, scores; the series adds them up and has one code for all.', 'Die Turniere bleiben, wie sie sind – Codes, Spieler, Scores; die Serie zählt sie zusammen und hat einen Code für alle.')}</span>
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="status">
             {msg}
           </span>
         )}
@@ -311,7 +314,7 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
         onPurge={forgetTour}
       />
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="small good-text" role="status">
           {msg}
         </span>
       )}
@@ -400,27 +403,25 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={tr('Correct an entry', 'Eintrag korrigieren')} onClick={(e) => e.stopPropagation()}>
-        <strong>{specialName(props.special.kind)}</strong>
-        <div className="select-wrap">
-          <select className="input" aria-label={tr('Player', 'Spieler')} value={who} onChange={(e) => setWho(e.target.value)}>
-            {players.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+        {/* the sheet's head with ✕, the player as a row with its sheet, yes/no as a row (Facelift-Abnahme T2) */}
+        <div className="sheet-head">
+          <strong>{tr('Correct an entry', 'Eintrag korrigieren')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
         </div>
+        <span className="muted small">
+          {specialName(props.special.kind)} · {tr(`hole ${props.ev.holes[props.special.hole]?.label ?? props.special.hole + 1}`, `Loch ${props.ev.holes[props.special.hole]?.label ?? props.special.hole + 1}`)}
+        </span>
+        <SettingsList>
+          <ChoiceRow<string> label={tr('Player', 'Spieler')} value={who} onChange={setWho} options={players.map((p) => ({ value: p.key, name: p.name }))} />
+          {props.special.kind === 'longDrive' && <OnOffRow label={tr('In the fairway', 'Im Fairway')} on={fairway} onChange={setFairway} onText={tr('The drive counts', 'Der Drive zählt')} offText={tr('In the rough – it does not count', 'Im Rough – er zählt nicht')} />}
+        </SettingsList>
         <div className="field">
           <label htmlFor="special-m">{props.special.kind === 'nearestPin' ? tr('Distance to the hole (m)', 'Abstand zur Fahne (m)') : tr('Length from the tee (m)', 'Weite vom Abschlag (m)')}</label>
           <input id="special-m" className="input" inputMode="decimal" value={m} onChange={(e) => setM(e.target.value)} />
         </div>
-        {props.special.kind === 'longDrive' && (
-          <label className="list-item series-pick">
-            <input type="checkbox" checked={fairway} onChange={(e) => setFairway(e.target.checked)} />
-            <span className="grow">{tr('In the fairway', 'Im Fairway')}</span>
-          </label>
-        )}
-        <ActionBar label={tr('This entry', 'Dieser Eintrag')} actions={[{ label: tr('Take the entry away', 'Eintrag entfernen'), icon: 'delete', danger: true, disabled: !one, onClick: () => one && props.onSave(one.fid, one.pid, null, fairway) }]} />
+        <ActionBar label={tr('This entry', 'Dieser Eintrag')} actions={[{ label: tr('Remove', 'Entfernen'), aria: tr('Take the entry away', 'Eintrag entfernen'), icon: 'delete', danger: true, disabled: !one, onClick: () => one && props.onSave(one.fid, one.pid, null, fairway) }]} />
         {/* an entry set: the round green tick bottom right, above the sheet (Sascha 11.11.2026) – a correction is a new entry */}
         <FloatActions overSheet save={{ label: tr('Save the entry', 'Eintrag speichern'), disabled: !one || !(value > 0), onClick: () => one && props.onSave(one.fid, one.pid, value, fairway) }} />
       </section>
@@ -558,7 +559,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
             : tr('No hole yet.', 'Noch kein Loch.')}
         </span>
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="status">
             {msg}
           </span>
         )}
@@ -843,6 +844,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   const [adopting, setAdopting] = useState<string | null>(null);
   const [at, setAt] = useState<Date | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const today = dayOf(new Date());
   const codes = entry?.series.rounds.map((r) => r.code).join() ?? '';
   useEffect(() => {
@@ -1030,12 +1032,20 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       {host && <LiveShare code={props.code} name={s.name} />}
       {!host && <span className="muted small">{tr('Only whoever set up the series changes it.', 'Nur wer die Serie angelegt hat, ändert sie.')}</span>}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="small good-text" role="status">
           {msg}
         </span>
       )}
       {/* the actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – the red one last */}
-      {host && <ActionBar label={multi ? tr('This tournament', 'Dieses Turnier') : tr('This series', 'Diese Serie')} actions={[multi ? { label: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }]} />}
+      {/* Teilen · CSV · the red one (Facelift-Abnahme T7) – the total's once there is one */}
+      <ActionBar
+        label={multi ? tr('This tournament', 'Dieses Turnier') : tr('This series', 'Diese Serie')}
+        actions={[
+          total.rows.length > 0 && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(s.name, boardText(`${s.name} · ${tr('Total standing', 'Gesamtwertung')}`, total.rows.map((r) => ({ pos: out(r.name) ? 'CUT' : r.pos, name: r.name, value: fmtSum(r.sum), thru: onRounds(r.rounds) })))).then(setMsg) },
+          total.rows.length > 0 && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(s.name, seriesCsv(s.name, s.rounds.length, total, out)) },
+          host && (multi ? { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo', 'Auflösen'), aria: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }),
+        ]}
+      />
       {sheet === 'adopt' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet wager-sheet" role="dialog" aria-label={tr('Take in a tournament', 'Turnier aufnehmen')} onClick={(e) => e.stopPropagation()}>
@@ -1082,7 +1092,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
               )}
             </span>
             {msg && (
-              <span className="small bad-text" role="alert">
+              <span className="small good-text" role="status">
                 {msg}
               </span>
             )}
@@ -1090,55 +1100,44 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         </div>
       )}
       {sheet === 'rename' && <RenameSeriesSheet code={props.code} name={s.name} onMsg={setMsg} onClose={() => setSheet(null)} />}
-      {/* a tournament over rounds deleted for everyone: its rounds marked deleted (the bin brings them back) */}
+      {/* the one confirmation of the app (Facelift-Abnahme T8): head with ✕, the red-outlined action, "Zurück" */}
       {sheet === 'dissolve' && multi && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
-            <strong>{tr(`Delete "${s.name}" – for everyone?`, `„${s.name}“ löschen – für alle?`)}</strong>
-            <span className="muted">{tr('Its rounds are only marked deleted: the bin of "Tournaments" brings them back.', 'Seine Runden werden nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt sie zurück.')}</span>
-            <button
-              type="button"
-              className="btn-primary btn-danger-fill"
-              onClick={async () => {
-                let ok = await dissolveSeries(props.code);
-                for (const r of s.rounds) {
-                  const e = loadTours().find((t) => t.code === r.code);
-                  if (ok && e) ok = await changeTour(r.code, { ...e.ev, deletedAt: new Date().toISOString() });
-                }
-                setSheet(null);
-                if (ok) props.onBack();
-                else setMsg(NO_NET());
-              }}
-            >
-              {tr('Delete for everyone', 'Für alle löschen')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-          </section>
-        </div>
+        <ConfirmSheet
+          title={tr(`Delete "${s.name}" – for everyone?`, `„${s.name}“ löschen – für alle?`)}
+          text={tr('Its rounds are only marked deleted: the bin of "Tournaments" brings them back.', 'Seine Runden werden nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt sie zurück.')}
+          confirmLabel={tr('Delete for everyone', 'Für alle löschen')}
+          busy={confirming}
+          onClose={() => setSheet(null)}
+          onConfirm={async () => {
+            setConfirming(true);
+            let ok = await dissolveSeries(props.code);
+            for (const r of s.rounds) {
+              const e = loadTours().find((t) => t.code === r.code);
+              if (ok && e) ok = await changeTour(r.code, { ...e.ev, deletedAt: new Date().toISOString() });
+            }
+            setConfirming(false);
+            setSheet(null);
+            if (ok) props.onBack();
+            else setMsg(NO_NET());
+          }}
+        />
       )}
       {sheet === 'dissolve' && !multi && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Undo the series', 'Serie auflösen')} onClick={(e) => e.stopPropagation()}>
-            <strong>{tr(`Undo "${s.name}"?`, `„${s.name}“ auflösen?`)}</strong>
-            <span className="muted">{tr('Its rounds stay as single tournaments – with their players and scores.', 'Ihre Runden bleiben als einzelne Turniere – mit Spielern und Scores.')}</span>
-            <button
-              type="button"
-              className="btn-primary btn-danger-fill"
-              onClick={async () => {
-                if (await dissolveSeries(props.code)) props.onBack();
-                else setMsg(NO_NET());
-                setSheet(null);
-              }}
-            >
-              {tr('Undo the series', 'Serie auflösen')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-          </section>
-        </div>
+        <ConfirmSheet
+          title={tr(`Undo "${s.name}"?`, `„${s.name}“ auflösen?`)}
+          text={tr('Its rounds stay as single tournaments – with their players and scores.', 'Ihre Runden bleiben als einzelne Turniere – mit Spielern und Scores.')}
+          confirmLabel={tr('Undo the series', 'Serie auflösen')}
+          busy={confirming}
+          onClose={() => setSheet(null)}
+          onConfirm={async () => {
+            setConfirming(true);
+            const ok = await dissolveSeries(props.code);
+            setConfirming(false);
+            setSheet(null);
+            if (ok) props.onBack();
+            else setMsg(NO_NET());
+          }}
+        />
       )}
     </main>
   );
@@ -1151,6 +1150,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [live, setLive] = useState<RoundEvent | null>(null);
   const [fix, setFix] = useState<Special | null>(null);
   const [scoring, setScoring] = useState<string | null>(null); // the flight whose scores the host enters
@@ -1211,7 +1211,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           <p className="muted small">{tr('Whoever set it up can restore it.', 'Wer es angelegt hat, kann es wiederherstellen.')}</p>
         )}
         {msg && (
-          <span className="small bad-text" role="alert">
+          <span className="small good-text" role="status">
             {msg}
           </span>
         )}
@@ -1259,13 +1259,8 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           <span aria-hidden="true">›</span>
         </button>
       )}
-      {/* one of the most important hints: green as "Tipp für die nächste Runde" (Sascha 07.11.2026) */}
-      <KeyHint title={tr('On the day', 'Am Turniertag')} className="tour-howto">
-        {tr(
-          'Open Rounds – "Tournament · take part" is on its start page. One tap sets up your flight with its players, markers and course.',
-          'Rounds öffnen – auf der Startseite steht „Turnier · teilnehmen“. Ein Tipp richtet deinen Flight mit Mitspielern, Zählern und Platz ein.',
-        )}
-      </KeyHint>
+      {/* how to play it on the day – one quiet line, no card (Facelift-Abnahme T10: "keine Intros") */}
+      {!done && <span className="muted small tour-howto">{tr('On the day: Rounds start page → "Tournament · take part".', 'Am Turniertag: Rounds-Startseite → „Turnier · teilnehmen“.')}</span>}
       {standings.rows.length > 0 && (
         <LiveBoard
           label={tr('Live leaderboard', 'Live-Leaderboard')}
@@ -1472,32 +1467,36 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
       {host && <LiveShare code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} />}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <span className="small good-text" role="status">
           {msg}
         </span>
       )}
-      {host && <ActionBar label={tr('This tournament', 'Dieses Turnier')} actions={[{ label: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('delete') }]} />}
+      {/* one bar of icons (Facelift-Abnahme T7): Teilen · CSV · Löschen (red, last) – the result's once there is one */}
+      <ActionBar
+        label={tr('This tournament', 'Dieses Turnier')}
+        actions={[
+          played && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${standings.title}`, standings.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))).then(setMsg) },
+          played && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(live ?? ev, gross)) },
+          host && { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('delete') },
+        ]}
+      />
+      {/* the one confirmation of the app (Facelift-Abnahme T8) */}
       {sheet === 'delete' && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
-            <strong>{tr(`Delete "${ev.name}" – for everyone?`, `„${ev.name}“ löschen – für alle?`)}</strong>
-            <span className="muted">{tr('It is only marked deleted: the bin of "Tournaments" brings it back.', 'Es wird nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt es zurück.')}</span>
-            <button
-              type="button"
-              className="btn-primary btn-danger-fill"
-              onClick={async () => {
-                if (await changeTour(props.code, { ...ev, deletedAt: new Date().toISOString() })) props.onBack();
-                else setMsg(NO_NET());
-                setSheet(null);
-              }}
-            >
-              {tr('Delete for everyone', 'Für alle löschen')}
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-          </section>
-        </div>
+        <ConfirmSheet
+          title={tr(`Delete "${ev.name}" – for everyone?`, `„${ev.name}“ löschen – für alle?`)}
+          text={tr('It is only marked deleted: the bin of "Tournaments" brings it back.', 'Es wird nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt es zurück.')}
+          confirmLabel={tr('Delete for everyone', 'Für alle löschen')}
+          busy={confirming}
+          onClose={() => setSheet(null)}
+          onConfirm={async () => {
+            setConfirming(true);
+            const ok = await changeTour(props.code, { ...ev, deletedAt: new Date().toISOString() });
+            setConfirming(false);
+            setSheet(null);
+            if (ok) props.onBack();
+            else setMsg(NO_NET());
+          }}
+        />
       )}
     </main>
   );

@@ -67,6 +67,13 @@ export const ACTION_ICONS = {
       <circle cx="17" cy="17" r="3" />
     </>,
   ),
+  // a list to keep (CSV): the sheet with its table (Facelift 11.11.2026 – tours, T7)
+  csv: svg(
+    <>
+      <rect x="4" y="3.5" width="16" height="17" rx="2" />
+      <path d="M4 9h16M4 14.5h16M10 9v11.5" />
+    </>,
+  ),
 };
 
 export interface Action {

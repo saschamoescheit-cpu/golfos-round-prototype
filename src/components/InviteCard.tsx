@@ -168,7 +168,7 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
       <span className="eyebrow">{tr('Invite linked friends', 'Verknüpfte Freunde einladen')}</span>
       {friends.map((f) => {
         const st = state[f.uid!];
-        // in already (on the server): "Dabei ✓" – an invitation tapped just now: "Eingeladen ✓" until the next look
+        // in already (on the server): "Dabei" – an invitation tapped just now: "Eingeladen" until the next look – with a tick
         const isIn = members.includes(f.uid!) && st !== 'busy';
         const done = isIn || st === 'sent' || st === 'silent' || st === 'old';
         return (
@@ -179,7 +179,19 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
               {f.hcp.trim() && <span className="muted small"> · HCP {f.hcp}</span>}
             </span>
             <button type="button" className={done ? 'btn-secondary' : 'btn-primary'} disabled={st === 'busy' || done} aria-label={isIn ? tr(`${f.name} is in`, `${f.name} ist dabei`) : done ? tr(`${f.name} invited`, `${f.name} eingeladen`) : tr(`Invite ${f.name}`, `${f.name} einladen`)} onClick={() => void go(f.uid!, f.fullName || f.name)}>
-              {st === 'busy' ? '…' : isIn ? tr('In ✓', 'Dabei ✓') : done ? tr('Invited ✓', 'Eingeladen ✓') : tr('Invite', 'Einladen')}
+              {st === 'busy' ? (
+                '…'
+              ) : done ? (
+                // the tick as an icon, not a glyph in the word (Facelift-Abnahme O5)
+                <>
+                  <svg className="btn-tick" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                  {isIn ? tr('In', 'Dabei') : tr('Invited', 'Eingeladen')}
+                </>
+              ) : (
+                tr('Invite', 'Einladen')
+              )}
             </button>
           </div>
         );
@@ -207,6 +219,44 @@ export async function shareLink(text: string, url: string): Promise<string | nul
     if ((e as Error)?.name === 'AbortError') return null; // closed by the player
     return null;
   }
+}
+
+/** A leaderboard as text to pass on ("Teilen", Facelift-Abnahme T7): its head, then a line a player – "1. Erik +2 · nach 9". */
+export function boardText(head: string, rows: { pos: string; name: string; value: string; thru?: string }[]): string {
+  return [head, ...rows.map((r) => `${r.pos}. ${r.name} ${r.value}${r.thru ? ` · ${r.thru}` : ''}`)].join('\n');
+}
+
+/** Share a text – a leaderboard, a result ("Teilen", Facelift-Abnahme T7) – with the phone's share sheet; without one (a
+ *  PC) copied. Returns a line to show, or null. */
+export async function shareText(title: string, text: string): Promise<string | null> {
+  const nav = navigator as Navigator & { share?: (d: { text: string; title?: string }) => Promise<void> };
+  try {
+    if (nav.share) {
+      await nav.share({ text });
+      return null;
+    }
+    await navigator.clipboard.writeText(text);
+    return tr(`${title}: copied.`, `${title}: kopiert.`);
+  } catch (e) {
+    if ((e as Error)?.name === 'AbortError') return null; // closed by the player
+    return null;
+  }
+}
+
+/** A list as a CSV file – the phone's share sheet with the file (iOS: "Sichern in Dateien", WhatsApp …), else a download. */
+export async function saveCsv(name: string, text: string): Promise<void> {
+  const file = new File([`\uFEFF${text}`], `${name.replace(/[^\p{L}\p{N} ._-]+/gu, '').trim() || 'Ergebnis'}.csv`, { type: 'text/csv' });
+  const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean; share?: (d: { files: File[]; title?: string }) => Promise<void> };
+  try {
+    if (nav.canShare?.({ files: [file] }) && nav.share) return await nav.share({ files: [file], title: name });
+  } catch {
+    return; // cancelled
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 /** Copy a link: "Link kopiert." – or null when the phone does not let it. */

@@ -8,6 +8,7 @@
 // Usage: node qa/tours.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { onOff } from './onoff.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -464,19 +465,13 @@ const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && !/Aktualisiert|30 Sekunden/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
-// "Am Turniertag" one of the most important hints (Sascha 07.11.2026): green as "Tipp für die nächste Runde" – the
-// green card, the heading as a heading, the text bold
-const dayHint = H.locator('section.key-hint').filter({ hasText: 'Am Turniertag' });
-const dayLook = await dayHint.evaluate((el) => {
-  const probe = document.createElement('span');
-  probe.style.background = 'var(--brand-soft)';
-  document.body.appendChild(probe);
-  const green = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  const s = getComputedStyle(el);
-  return { bg: s.backgroundColor, green, border: s.borderTopWidth, h2: el.querySelector('h2')?.textContent ?? '', weight: getComputedStyle(el.querySelector('p') ?? el).fontWeight };
-}).catch(() => null);
-ok(!!dayLook && dayLook.bg === dayLook.green && dayLook.border === '1px' && dayLook.h2 === 'Am Turniertag' && Number(dayLook.weight) >= 600, `"Am Turniertag" as "Tipp für die nächste Runde": green card, heading, bold text (${JSON.stringify(dayLook)})`);
+// "Am Turniertag": one quiet line under the line of the tournament – no green card, no heading (Facelift-Abnahme T10,
+// "keine Intros")
+{
+  const line = H.locator('.tour-howto');
+  const look = await line.evaluate((el) => ({ tag: el.tagName, cls: el.className, card: !!el.closest('.key-hint, .card'), h2: !!el.querySelector('h2') })).catch(() => null);
+  ok((await H.locator('section.key-hint').filter({ hasText: 'Am Turniertag' }).count()) === 0 && !!look && look.tag === 'SPAN' && /muted/.test(look.cls) && /small/.test(look.cls) && !look.card && !look.h2 && /^Am Turniertag: Rounds-Startseite → „Turnier · teilnehmen“\.$/.test((await line.innerText()).trim()), `"Am Turniertag" one muted line, no card (${JSON.stringify(look)})`);
+}
 ok(rows.length === 4 && /Erik/.test(rows[0]) && /Chris/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Erik first, Chris last, all "nach 3" (${rows.join(' | ')})`);
 // a player tapped: his scorecard opens below (Sascha 04.11.2026)
 await board.locator('.lb-rows li').first().click();
@@ -490,7 +485,14 @@ ok(ntpRows.length === 2 && /Cedric.*1,8 m/.test(ntpRows[0]) && /Erik.*3,4 m/.tes
 // the host corrects an entry (Sascha 01.11.2026): Chris's long drive measured again – 280 m, in the fairway
 await H.getByRole('region', { name: 'Long Drive' }).getByRole('button', { name: 'Eintrag korrigieren' }).click();
 const fixer = H.getByRole('dialog', { name: 'Eintrag korrigieren' });
-await fixer.getByRole('combobox', { name: 'Spieler' }).selectOption({ label: 'Chris' });
+ok(
+  (await fixer.locator('select, input[type=checkbox]').count()) === 0 && (await fixer.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 1 && (await onOff(fixer, 'Im Fairway').getAttribute('data-on')) === 'true' && (await fixer.locator('.sc-action.danger').getAttribute('aria-label')) === 'Eintrag entfernen',
+  'the correction (Facelift-Abnahme T2): head with ✕, "Spieler ›" and "Im Fairway · An" as rows, "Entfernen" red – no dropdown, no checkbox',
+);
+await fixer.getByRole('button', { name: /^Spieler/ }).click();
+await H.locator('.sheet[role="dialog"]').last().getByRole('button', { name: 'Chris' }).click();
+ok(/Chris/.test(await fixer.getByRole('button', { name: /^Spieler/ }).innerText()), 'the correction: Chris picked in the sheet of "Spieler"');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-fix.png' });
 await fixer.locator('#special-m').fill('280');
 // an entry set: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
 ok((await fixer.getByRole('button', { name: 'Speichern' }).count()) === 0, 'the correction: no "Speichern" in the sheet – the floating tick');
@@ -498,6 +500,22 @@ await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Eintrag sp
 await H.waitForTimeout(1500);
 const ld2 = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/Chris.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Chris 280 m in the fairway leads (${ld2.join(' | ')})`);
+{
+  // the actions one bar of icons (Facelift-Abnahme T7): Teilen · CSV · Löschen, the red one last; no text button for the list
+  const bar = H.getByRole('group', { name: 'Dieses Turnier' });
+  const words = (await bar.locator('.sc-action').allInnerTexts()).map((t) => t.trim());
+  ok(words.join('|') === 'Teilen|CSV|Löschen' && (await bar.locator('.sc-action svg').count()) === 3 && (await bar.locator('.sc-action').last().getAttribute('class')).includes('danger') && (await H.getByRole('button', { name: 'Ergebnisliste (CSV)' }).count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'CSV' }).count()) === 0, `the tournament's bar: ${words.join(' · ')} – icons, Löschen red and last`);
+  const [dl] = await Promise.all([H.waitForEvent('download', { timeout: 8000 }).catch(() => null), bar.getByRole('button', { name: 'Ergebnisliste (CSV)' }).click()]);
+  const csv = dl ? await dl.createReadStream().then(async (st) => { let t = ''; for await (const c of st) t += c; return t; }) : '';
+  ok(/"Platz";"Spieler";"Flight"/.test(csv) && /"Erik"|"Sascha"/.test(csv), `CSV from the bar: ${csv.split('\n').slice(1, 3).join(' / ') || 'no download'}`);
+  // Teilen: the phone's share sheet with the leaderboard as text (caught here)
+  await H.evaluate(() => { window.__shared = null; navigator.share = async (d) => { window.__shared = d; }; });
+  await bar.getByRole('button', { name: 'Ergebnis teilen' }).click();
+  await H.waitForTimeout(400);
+  const sent = await H.evaluate(() => window.__shared?.text ?? '');
+  ok(/^USA Tag 1/.test(sent) && /\n1\. Erik /.test(sent) && sent.split('\n').length === 5, `Teilen: the leaderboard as text (${sent.replace(/\n/g, ' / ')})`);
+  if (process.env.SHOTS) await bar.screenshot({ path: process.env.SHOTS + '/tours-bar.png' });
+}
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
 // a flight ended by mistake (Sascha 03.11.2026: "Cedric ended the round by accident – then he did not get in any more"):
 // the host opens it again, its scores kept
@@ -560,6 +578,19 @@ ok(after.find((f) => f.id === byTime[1].id)?.teeTime === '12:16' && after.find((
 
 // ---------- deleted – only marked – and restored ----------
 await H.getByRole('button', { name: 'Turnier löschen' }).click();
+{
+  const ask = H.locator('.confirm-sheet');
+  const btn = ask.getByRole('button', { name: 'Für alle löschen' });
+  const look = await btn.evaluate((e) => ({ cls: e.className, bg: getComputedStyle(e).backgroundColor })).catch(() => null);
+  ok(
+    (await ask.count()) === 1 && (await ask.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 1 && (await ask.getByRole('button', { name: 'Zurück' }).count()) === 1 && (await ask.getByRole('button', { name: 'Abbrechen' }).count()) === 0 && !!look && /btn-danger/.test(look.cls) && !/btn-danger-fill/.test(look.cls),
+    `"Turnier löschen?" the one confirmation (Facelift-Abnahme T8): head with ✕, red outline, "Zurück" (${JSON.stringify(look)})`,
+  );
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-confirm.png' });
+  await ask.getByRole('button', { name: 'Zurück' }).click();
+  ok((await H.locator('.confirm-sheet').count()) === 0 && !shared.get(code).game.deletedAt, '"Zurück": nothing deleted');
+}
+await H.getByRole('button', { name: 'Turnier löschen' }).click();
 await H.getByRole('button', { name: 'Für alle löschen' }).click();
 await H.waitForTimeout(1500);
 ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
@@ -587,8 +618,11 @@ await H.waitForTimeout(1200);
 await H.getByRole('button', { name: 'Turnierserie erstellen' }).click();
 const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
 await ss.locator('#series-name').fill('USA 2026');
-await ss.locator('label', { hasText: 'USA Tag 2' }).click();
-await ss.locator('label', { hasText: 'USA Tag 1 · Bethpage' }).click();
+ok((await ss.locator('input[type=checkbox]').count()) === 0 && (await ss.locator('.tick-row').count()) >= 2 && /\d\d\.\d\d\.\d{4} · /.test(await ss.locator('.tick-row').first().innerText()), 'the series\' rounds (Facelift-Abnahme T1): rows to tick with "Datum · Platz", no checkboxes');
+await ss.getByRole('checkbox', { name: /^USA Tag 2/ }).click();
+await ss.getByRole('checkbox', { name: /^USA Tag 1 · Bethpage/ }).click();
+ok((await ss.getByRole('checkbox', { name: /^USA Tag 2/ }).getAttribute('aria-checked')) === 'true' && (await ss.locator('.tick-mark.on svg').count()) === 2, 'two ticked: the green tick at each');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series-pick.png' });
 // set up new: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
 await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Serie aus 2 Runden anlegen' }).click();
 await H.waitForTimeout(2500);
