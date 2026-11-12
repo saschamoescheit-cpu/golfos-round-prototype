@@ -48,6 +48,8 @@ await P.locator('button.list-item').first().click();
 await P.getByText('Runde starten').waitFor({ timeout: 60000 });
 await P.waitForTimeout(1500);
 {
+  // the score entry shows once the app knows it can share (a moment's question to the server)
+  await P.locator('main .eyebrow', { hasText: /^Score-Erfassung$/i }).waitFor({ timeout: 20000 }).catch(() => {});
   const h = await heads();
   ok(h.join('|') === 'FORMAT|PLATZ|SPIELER|MITSPIELER EINLADEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN', `r9: Was → Wo → Wer (Spieler, Einladen, Score-Erfassung) → Worum → Einstellungen (${h.join(' · ')})`);
   ok((await P.locator('.topbar h1').innerText()).trim() === 'Neue Runde', 'r9: the title "Neue Runde" – the course a row below');
