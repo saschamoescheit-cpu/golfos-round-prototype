@@ -69,7 +69,7 @@ if (await p.locator('.fab-pen').count()) {
   const edit = p.getByRole('dialog', { name: 'Pool bearbeiten' });
   await edit.waitFor({ timeout: 3000 }).catch(() => {});
   ok((await edit.getByRole('button', { name: 'Speichern', exact: true }).count()) === 0 && (await edit.locator('.autosave-note').count()) === 1, 'the pool changed: no "Speichern", the quiet line');
-  await edit.getByRole('button', { name: 'Schließen' }).click();
+  await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" (13.11.2026)
   await p.waitForTimeout(300);
 } else console.log('· pool: this phone is not the host here – its bar not checked');
 

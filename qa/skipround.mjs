@@ -122,7 +122,7 @@ await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.waitFor();
 ok((await edit.locator('.skip-list').count()) === 0, 'the pencil: no list "Nicht gewertete Runden"');
-await edit.getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" (13.11.2026)
 await H.waitForTimeout(500);
 
 // a phone that is not the host's (the pool set up by another account) has no such button
