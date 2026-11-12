@@ -1,5 +1,4 @@
 import { Component, useMemo, useState, type ReactNode } from 'react';
-import { KeyHint } from './KeyHint';
 import { Block } from './Block';
 import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import type { Round } from '../types';
@@ -91,7 +90,17 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
     </section>
     </Block>
     {tip && (
-      <KeyHint title={tr('Tip for the next round', 'Tipp für die nächste Runde')}>{tip.charAt(0).toUpperCase() + tip.slice(1)}</KeyHint>
+      // the tip as the app's blocks: its title small above, a plain card with a green light bulb – not a green box with a
+      // heading inside (Sascha 12.11.2026: "passt designtechnisch nicht zum neuen Design")
+      <section className="eb-block next-round-card" aria-label={tr('Tip for the next round', 'Tipp für die nächste Runde')}>
+        <span className="eyebrow">{tr('Tip for the next round', 'Tipp für die nächste Runde')}</span>
+        <div className="card tip-card">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" />
+          </svg>
+          <p className="next-round">{tip.charAt(0).toUpperCase() + tip.slice(1)}</p>
+        </div>
+      </section>
     )}
     </>
   );

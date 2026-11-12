@@ -31,7 +31,7 @@ import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
-import { ChoiceRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleList, ToggleRow } from '../components/Settings';
+import { ChoiceRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleList, ToggleRow, AddRow } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
@@ -1143,9 +1143,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
           />
         )}
         {n < 4 && (
-          <button type="button" className="btn-secondary" onClick={() => set({ players: [...d.players, { id: newId(), name: '', hcp: '' }] })}>
-            {tr('+ Add player', '+ Spieler hinzufügen')}
-          </button>
+          <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => set({ players: [...d.players, { id: newId(), name: '', hcp: '' }] })} />
         )}
         {chosen && sides && fits && (
           <div className="game-setting">

@@ -32,7 +32,7 @@ async function setup(phone, others = []) {
   await H.locator('input[id^="name-"]').first().fill('Sascha');
   await H.locator('input[id^="hcp-"]').first().fill('10');
   for (const o of others) {
-    await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
     await H.locator('input[id^="name-"]').last().fill(o);
   }
   const card = H.locator('.invite-card');

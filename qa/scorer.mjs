@@ -25,7 +25,7 @@ await H.locator('button.list-item').first().click();
 await H.getByText('Runde starten').waitFor({ timeout: 30000 });
 await H.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await H.locator('input[id^="name-"]').first().fill('Sascha');
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await H.locator('input[id^="name-"]').last().fill('Chris');
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });

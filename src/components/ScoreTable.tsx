@@ -67,7 +67,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                   <th className="sumc">{sumLabel}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={round.players.length > 1 ? 'multi' : undefined}>
                 {(hasMetres || props.full) && (
                   <tr className="meta">
                     <td className="lab">{tr('Metres', 'Meter')}</td>
@@ -91,8 +91,10 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                   ))}
                   <td className="sumc">{sum(nine.map((h) => h.par))}</td>
                 </tr>
-                {round.players.map((p) => [
-                  <tr className="score" key={p.id}>
+                {/* each player's rows as one group – a band of its own and a line above it, the own putts inside the own group
+                    (Sascha 12.11.2026: "wenn eine Scorekarte mehrere Spieler hat … visuell klarer, was zu einem Spieler gehört") */}
+                {round.players.map((p, k) => [
+                  <tr className={`score pg pg-${k % 2} pg-first`} key={p.id}>
                     <td className="lab name">
                       {p.name}
                     </td>
@@ -125,7 +127,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                     <td className="sumc">{sum(nine.map((h) => gross(p.id, h)))}</td>
                   </tr>,
                   p.playingHandicap != null && (
-                    <tr className="meta pts" key={`${p.id}-pts`}>
+                    <tr className={`meta pts pg pg-${k % 2}`} key={`${p.id}-pts`}>
                       <td className="lab">{tr('Pts', 'Pkt.')}</td>
                       {nine.map((h) => (
                         <td key={h.index}>{points(p.id, h) ?? ''}</td>
@@ -133,16 +135,16 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                       <td className="sumc">{sum(nine.map((h) => points(p.id, h)))}</td>
                     </tr>
                   ),
+                  (hasPutts || props.full) && me && p.id === me.id && (
+                    <tr className={`meta pg pg-${k % 2}`} key={`${p.id}-putts`}>
+                      <td className="lab">Putts</td>
+                      {nine.map((h) => (
+                        <td key={h.index}>{round.entries[me.id][h.index].putts ?? (props.full ? '–' : '')}</td>
+                      ))}
+                      <td className="sumc">{sum(nine.map((h) => round.entries[me.id][h.index].putts)) ?? (props.full ? '–' : null)}</td>
+                    </tr>
+                  ),
                 ])}
-                {(hasPutts || props.full) && me && (
-                  <tr className="meta">
-                    <td className="lab">Putts</td>
-                    {nine.map((h) => (
-                      <td key={h.index}>{round.entries[me.id][h.index].putts ?? (props.full ? '–' : '')}</td>
-                    ))}
-                    <td className="sumc">{sum(nine.map((h) => round.entries[me.id][h.index].putts)) ?? (props.full ? '–' : null)}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>

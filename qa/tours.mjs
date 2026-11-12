@@ -218,7 +218,7 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
   ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `the order: ${heads.join(' · ')}`);
 }
 for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
-  await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
   await H.locator('input[id^="hcp-"]').last().fill(n === 'Dave' ? '' : n === 'Cedric' ? '20' : n === 'Erik' ? '4' : '12,4');
 }

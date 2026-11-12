@@ -2676,3 +2676,29 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .score-card > .settings-list { background: transparent; border-radius: 0; }
 .score-card > .settings-list > .settings-row { padding-inline: 0; background: transparent; }
 .caddie-lie-row { flex: none; } /* the caddie card scrolls – the row keeps its height */
+
+/* adding one more as a quiet row with a green plus (Sascha 12.11.2026) */
+.add-list { margin-top: 2px; }
+.settings-row.add-row { grid-template-columns: auto 1fr; color: var(--text); }
+.settings-row.add-row > svg { color: var(--brand-text); }
+.settings-row.add-row:disabled { opacity: 0.45; }
+
+/* the settlement in three parts, each a card under its title (Sascha 12.11.2026): Übersicht · Wer zahlt wem · Bezahlt */
+section.pool-settle { display: flex; flex-direction: column; gap: 8px; }
+.pool-settle-card { display: flex; flex-direction: column; gap: 12px; }
+section.pool-settle .pool-pays-block { border-top: 0; padding-top: 4px; gap: 8px; }
+section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pays-block > .pays-even, section.pool-settle .pool-pays-block > .paid-hint { background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+
+/* a scorecard of several players: each player's rows a group – every second one on a faint band, a line above each
+   (Sascha 12.11.2026) */
+.sc tbody.multi tr.pg-1 > td { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.sc tbody.multi tr.pg-first > td { border-top: 2px solid var(--line-strong); }
+.sc tbody.multi tr.pg-first > td.lab.name { font-weight: 700; }
+
+/* the tip for the next round: a plain card with a green light bulb (Sascha 12.11.2026) */
+.next-round-card .tip-card { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.next-round-card .tip-card > svg { color: var(--brand-text); margin-top: 2px; }
+.next-round-card .tip-card .next-round { margin: 0; }
+/* the own flight in words, no frame (Sascha 12.11.2026) */
+.lb-rows li.lb-mine { box-shadow: none; }
+.lb-flight { display: block; }

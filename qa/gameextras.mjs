@@ -27,7 +27,7 @@ await p.waitForTimeout(500);
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.waitForTimeout(300);
 await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Bingo Bango Bongo$/ }) }).click();
-if ((await p.locator('.game-player-row').count()) < 2) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+if ((await p.locator('.game-player-row').count()) < 2) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
 await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
 await p.fill('#course-search', 'Hetzenhof');

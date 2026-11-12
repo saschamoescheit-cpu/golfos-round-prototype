@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AddRow } from './Settings';
 import { FloatActions } from './FloatActions';
 import { tr } from '../lib/i18n';
 import { loadFriends, saveFriends, type Friend } from '../lib/friends';
@@ -206,9 +207,7 @@ export function Friends(props: { onSignIn: () => void; /** the friends page itse
           }}
         />
       ) : (
-        <button type="button" className="btn-secondary" onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])}>
-          {tr('+ Add friend', '+ Freund hinzufügen')}
-        </button>
+        <AddRow label={tr('Add friend', 'Freund hinzufügen')} onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])} />
       )}
 
       {scan && <QrScan title={tr('Scan QR code', 'QR-Code scannen')} onText={take} onClose={() => setScan(false)} />}

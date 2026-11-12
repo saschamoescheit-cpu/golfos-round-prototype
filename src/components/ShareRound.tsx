@@ -12,7 +12,7 @@ import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { boardText, copyLink, FriendInvite, InviteCard, saveCsv, shareLink, shareText } from './InviteCard';
 import { ActionBar } from './ActionBar';
-import { OnOffRow, SettingsList, SheetRow } from './Settings';
+import { OnOffRow, SettingsList, SheetRow, AddRow } from './Settings';
 import { ScanCodeButton } from './QrScan';
 
 /** A planned tournament's day: "Fr., 6.11." */
@@ -616,9 +616,7 @@ export function JoinRoundSheet(props: {
               </div>
             ))}
             {own.length < 4 && (
-              <button type="button" className="btn-secondary" onClick={() => setOwn([...own, { name: '', hcp: '' }])}>
-                {tr('+ Player', '+ Spieler')}
-              </button>
+              <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setOwn([...own, { name: '', hcp: '' }])} />
             )}
             <button
               type="button"
@@ -737,6 +735,9 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
                 <span>
                   {r.name}
                   {r.cls && <small className="muted"> · {r.cls}</small>}
+                  {/* the own flight said in words, not a green frame nobody can read (Sascha 12.11.2026: "Warum sind einige
+                      Spieler grün umrandet und andere nicht?") */}
+                  {mine.has(r.key) && <small className="muted lb-flight">{tr('your flight', 'dein Flight')}</small>}
                   {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
                   {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
                   {r.signed && (

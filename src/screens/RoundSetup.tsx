@@ -19,7 +19,7 @@ import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel, myName } from '../components/ShareRound';
-import { SettingsList, SettingsRow, ToggleRow } from '../components/Settings';
+import { SettingsList, SettingsRow, ToggleRow, AddRow } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
@@ -418,9 +418,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           />
         )}
         {others.length < 3 && (
-          <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])}>
-            {tr('+ Add player', '+ Spieler hinzufügen')}
-          </button>
+          <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])} />
         )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (

@@ -121,7 +121,7 @@ await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().click();
 await H.locator('.wager-sheet').getByRole('button', { name: /Welche Runden/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Ausgewählte Runden' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: /^Runden/ }).click();
-await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: '+ Diesen Tag hinzufügen' }).click();
+await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Diesen Tag hinzufügen' }).click();
 await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Schließen' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: 'Schließen' }).click();
 await H.waitForTimeout(1500);

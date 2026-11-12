@@ -461,3 +461,18 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
     </div>
   );
 }
+
+/** Adding one more (a player, bets, a flight, a day, a friend): a quiet row with a green plus – not a text button with "+"
+ *  (Sascha 12.11.2026: "+ Wetten usw. – folgen wir deiner Empfehlung"). */
+export function AddRow(props: { label: string; onClick: () => void; disabled?: boolean; ariaLabel?: string; className?: string }) {
+  return (
+    <div className={`settings-list add-list${props.className ? ' ' + props.className : ''}`}>
+      <button type="button" className="settings-row add-row" aria-label={props.ariaLabel} disabled={props.disabled} onClick={props.onClick}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <span>{props.label}</span>
+      </button>
+    </div>
+  );
+}

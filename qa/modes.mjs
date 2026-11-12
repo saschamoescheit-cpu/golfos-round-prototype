@@ -61,7 +61,7 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
     await p.locator('input[id^="name-"]').first().fill(PEOPLE[0][0]);
     await p.locator('input[id^="hcp-"]').first().fill(PEOPLE[0][1]);
     for (let k = 1; k < c.n; k++) {
-      await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+      await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
       await p.locator('input[id^="name-"]').last().fill(PEOPLE[k][0]);
       await p.locator('input[id^="hcp-"]').last().fill(PEOPLE[k][1]);
     }

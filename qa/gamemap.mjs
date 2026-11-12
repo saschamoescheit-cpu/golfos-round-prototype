@@ -44,7 +44,7 @@ await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.waitForTimeout(800);
 for (const [k, n] of [[1, 'Ben'], [2, 'Chris'], [3, 'Anna']]) {
-  if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click(); // Chicago starts with four rows
+  if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click(); // Chicago starts with four rows
   await p.locator('.game-player-row').nth(k).locator('input').first().fill(n);
 }
 await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');

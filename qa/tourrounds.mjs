@@ -131,7 +131,7 @@ const choose = async (label, option) => {
 };
 await choose('HCP-Vorgabe', /^0 %/); // gross (07.11.2026: the format as in Rounds)
 for (const [n, h] of [['Chris', '12,4'], ['Erik', '4'], ['Cedric', '20'], ['Dave', '8']]) {
-  await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
   await H.locator('input[id^="hcp-"]').last().fill(h);
 }

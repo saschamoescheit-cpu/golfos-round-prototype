@@ -29,7 +29,7 @@ async function setup(players, o = {}) {
   await H.locator('input[id^="name-"]').first().fill('Sascha');
   await H.locator('input[id^="hcp-"]').first().fill('10');
   for (const n of players) {
-    await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
     await H.locator('input[id^="name-"]').last().fill(n);
   }
   if (o.mode) {

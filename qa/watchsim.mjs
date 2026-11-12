@@ -174,7 +174,7 @@ ok(gone === 0 && ended > endedBefore, `deleted on the phone: the watch ends it t
   await p.waitForTimeout(2000);
   await p.locator('button.list-item').first().click();
   await p.waitForTimeout(800);
-  if ((await p.locator('.game-player-row').count()) < 2) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  if ((await p.locator('.game-player-row').count()) < 2) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
   await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
   await pickPrize(p).catch(() => null);
   await p.getByRole('button', { name: 'Spiel starten' }).click();

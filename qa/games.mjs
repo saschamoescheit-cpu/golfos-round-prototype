@@ -119,7 +119,7 @@ for (const [form, n] of CASES) {
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
   await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form.replace(/[()+]/g, '\\$&')}$`) }) }).click();
   for (let k = 2; k <= n; k++) {
-    if ((await p.locator('.game-player-row').count()) < k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    if ((await p.locator('.game-player-row').count()) < k) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
     await p.fill(`.game-player-row:nth-of-type(${k}) input >> nth=0`, `S${k}`).catch(async () => {
       await p.locator('.game-player-row').nth(k - 1).locator('input').first().fill(`S${k}`);
     });
@@ -269,7 +269,7 @@ await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.locator('.pick-option').filter({ hasText: 'Chicago' }).click();
 await p.getByRole('button', { name: '+ Ben' }).click();
 // Chicago needs four: four rows from the start (Sascha 17.10.2026)
-ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('button', { name: '+ Spieler hinzufügen' }).count()) === 0, 'Chicago: four player rows straight away');
+ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('button', { name: 'Spieler hinzufügen' }).count()) === 0, 'Chicago: four player rows straight away');
 // the house rules in one row of switches, all on (Sascha 20.10.2026: Eagle −10, "summarise them sensibly")
 // – a row whose sheet holds the switches (02.11.2026: rows like Format)
 {

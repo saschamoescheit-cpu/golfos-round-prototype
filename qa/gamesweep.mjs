@@ -52,7 +52,7 @@ for (const sun of [false, true]) {
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
   await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Wolf$/ }) }).click();
   for (let k = 0; k < 4; k++) {
-    if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
     const row = p.locator('.game-player-row').nth(k);
     if (k > 0) await row.locator('input').first().fill(['', 'Ben', 'Chris', 'Thomas'][k]);
     await row.locator('input').nth(1).fill(String([15, 8, 22, 4][k]));

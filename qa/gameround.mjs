@@ -61,7 +61,7 @@ const setup = async (form, names) => {
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
   await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form}$`) }) }).click();
   for (let k = 1; k < names.length; k++) {
-    if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: 'Spieler hinzufügen' }).click();
     await p.locator('.game-player-row').nth(k).locator('input').first().fill(names[k]);
   }
   await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();

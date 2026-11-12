@@ -23,7 +23,7 @@ import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { SaveButton, TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, ToggleRow } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, ToggleRow, AddRow } from '../components/Settings';
 
 // Planning a tournament (Sascha 01.11.2026, rebuilt 04.11.2026: "the whole of 'Flights und Startzeiten' rebuilt – a
 // random draw, by handicap up or down, at the final day by result; a tournament over three rounds, each its own day and
@@ -798,9 +798,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           />
         ))}
         <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
-        <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, newPlayer('', '')])}>
-          {tr('+ Add player', '+ Spieler hinzufügen')}
-        </button>
+        <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...d.players, newPlayer('', '')])} />
       </section>
 
       {/* Wer: the flights right after the players (Facelift 11.11.2026, t5) – several rounds: a row each, to its page */}
@@ -1484,9 +1482,7 @@ function FlightBoard(props: {
         </section>
       )}
       <span className="muted small">{tr('Hold a player and drag him onto another flight – or tap him.', 'Spieler gedrückt halten und auf einen anderen Flight ziehen – oder antippen.')}</span>
-      <button type="button" className="btn-secondary" disabled={!unplaced.length} onClick={() => setOpen('new')}>
-        {tr('+ Flight', '+ Flight')}
-      </button>
+      <AddRow label={tr('Add a flight', 'Flight anlegen')} disabled={!unplaced.length} onClick={() => setOpen('new')} />
       {moving && byId(moving) && (
         <PickSheet<number>
           title={tr(`Move ${props.label(byId(moving)!)}`, `${props.label(byId(moving)!)} verschieben`)}

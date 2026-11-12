@@ -51,7 +51,7 @@ async function run(o) {
   await H.getByRole('button', { name: /A · 9 Löcher/ }).click();
   await H.locator('input[id^="name-"]').first().fill('Sascha');
   await H.locator('input[id^="hcp-"]').first().fill('10');
-  await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill('Cedric');
   await H.locator('input[id^="hcp-"]').last().fill('13');
   const inviteCard = H.locator('.invite-card');

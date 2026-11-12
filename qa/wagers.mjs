@@ -138,9 +138,9 @@ await H.getByRole('button', { name: 'Neue Wette' }).click();
 await H.fill('#pool-name', 'USA 2026');
 await H.getByRole('textbox', { name: 'Spieler 2' }).fill('Chris');
 // laid out as "Neues Spiel": a card per player, "+ Spieler hinzufügen"
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 3' }).fill('Erik');
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
 // the players as in "Runde starten" (Sascha 03.11.2026): name, tee, HCP, playing handicap – "Du" first
@@ -236,7 +236,7 @@ const choose = async (label, option, inside = H) => {
   // "Einstellungen" only "Abrechnung" (W7)
   const eyebrows = (await H.locator('.setup-part > .eyebrow').allTextContents()).join('|');
   const players = H.locator('.setup-part').filter({ has: H.locator('.player-row') });
-  const yAdd = (await players.getByRole('button', { name: '+ Spieler hinzufügen' }).boundingBox())?.y ?? -1;
+  const yAdd = (await players.getByRole('button', { name: 'Spieler hinzufügen' }).boundingBox())?.y ?? -1;
   const yWho = (await who.boundingBox())?.y ?? -1;
   const worum = H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Worum$/ }) });
   const settings = H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Einstellungen$/ }) });
@@ -446,7 +446,7 @@ await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const ed = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 ok((await ed.locator('.friend-chips').getByRole('button', { name: '+ Ben' }).count()) === 1, 'edit: the friends to add with a tap (+ Ben)');
 await ed.locator('#pool-edit-name').fill('USA 2026 Florida');
-await ed.getByRole('button', { name: '+ Spieler' }).click();
+await ed.getByRole('button', { name: 'Spieler' }).click();
 await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 // a player who joined or has bets removed after asking – his bets go with him (Sascha 04.11.2026: "players cannot be
 // deleted"); kept here, the rest of the test counts on him
@@ -459,7 +459,7 @@ await ed.getByRole('button', { name: 'Chris entfernen' }).click();
 }
 await ed.getByRole('button', { name: 'Dave entfernen' }).click();
 ok((await ed.getByRole('alertdialog').count()) === 0 && (await ed.getByRole('textbox', { name: 'Spieler 5' }).count()) === 0, 'edit: Dave (new, no bets) removed at once');
-await ed.getByRole('button', { name: '+ Spieler' }).click();
+await ed.getByRole('button', { name: 'Spieler' }).click();
 await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 // "Einer für alle" (Sascha 04.11.2026): kept with the pool, it counts as "Mit Zähler"
 await ed.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();

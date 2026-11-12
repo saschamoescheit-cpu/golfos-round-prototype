@@ -31,7 +31,7 @@ await H.getByText('Runde starten').waitFor({ timeout: 30000 });
 await H.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await H.locator('input[id^="name-"]').first().fill('Sascha');
 await H.locator('input[id^="hcp-"]').first().fill('10'); // as in the profile – no "update the HCP?"
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await H.locator('input[id^="name-"]').last().fill('Ben');
 await H.locator('input[id^="hcp-"]').last().fill('16');
 // a plain social round invites as well (Sascha 29.10.2026: "not only scramble or a tournament")

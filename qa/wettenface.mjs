@@ -151,7 +151,7 @@ await stand.waitFor({ timeout: 15000 });
   const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
   const brows = (await edit.locator(':scope > .eyebrow').allTextContents()).join('|');
   ok(!brows.includes('Score-Erfassung') && /Spieler\|Worum\|Einstellungen$/.test(brows), `edit: Spieler → Worum → Einstellungen (${brows})`);
-  const yAdd = (await edit.getByRole('button', { name: '+ Spieler hinzufügen' }).boundingBox())?.y ?? -1;
+  const yAdd = (await edit.getByRole('button', { name: 'Spieler hinzufügen' }).boundingBox())?.y ?? -1;
   const yWho = (await edit.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).boundingBox())?.y ?? -1;
   const yWorum = (await edit.locator(':scope > .eyebrow', { hasText: /^Worum$/ }).boundingBox())?.y ?? -1;
   ok(yAdd > 0 && yWho > yAdd && yWorum > yWho, `edit: "Wer erfasst" right after the players, before "Worum" (${Math.round(yAdd)} < ${Math.round(yWho)} < ${Math.round(yWorum)})`);

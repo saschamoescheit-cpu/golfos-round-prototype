@@ -82,9 +82,9 @@ await P.getByRole('button', { name: /A · 9 Löcher/ }).click();
 }
 
 // r10: Ben removed by swiping, back with "Rückgängig"
-await P.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await P.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await P.getByLabel('Spieler 2', { exact: true }).fill('Ben');
-await P.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await P.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await P.getByLabel('Spieler 3', { exact: true }).fill('Chris');
 await shot('round');
 {

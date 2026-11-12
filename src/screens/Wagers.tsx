@@ -27,7 +27,7 @@ import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
 import { Avatar } from '../components/Avatar';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, OnOffRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, TickRow, ToggleList, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, OnOffRow, PickSheet, SettingsList, SettingsRow, SheetRow, StepPick, TickRow, ToggleList, ToggleRow, dayText, AddRow } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -360,9 +360,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
           }}
         />
         {names.length < 12 && (
-          <button type="button" className="btn-secondary" onClick={() => setNames([...names, { id: newId(), name: '', hcp: '' }])}>
-            {tr('+ Add player', '+ Spieler hinzufügen')}
-          </button>
+          <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setNames([...names, { id: newId(), name: '', hcp: '' }])} />
         )}
         {/* "Wer erfasst" right after the players, in every setup the same (Sascha 11.11.2026, Facelift-Abnahme O1) */}
         <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
@@ -1045,9 +1043,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               );
             })}
             {host && !pool.finishedAt && (
-              <button type="button" className="btn-secondary pool-add" aria-label={tr(`Add bets for ${p.name}`, `Wetten für ${p.name} hinzufügen`)} onClick={() => setSheet({ library: p.id })}>
-                {tr('+ Bets', '+ Wetten')}
-              </button>
+              <AddRow label={tr('Add bets', 'Wetten hinzufügen')} className="pool-add" ariaLabel={tr(`Add bets for ${p.name}`, `Wetten für ${p.name} hinzufügen`)} onClick={() => setSheet({ library: p.id })} />
             )}
           </div>
           </section>
@@ -1585,7 +1581,9 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
   const signed = (v: number) => (Math.abs(v) < 0.005 ? money(0, sym) : `${v > 0 ? '+' : '−'}${money(Math.abs(v), sym)}`);
   return (
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
-    <section className="setup-part pool-part" aria-label={tr('Settlement', 'Abrechnung')}>
+    // three parts, each with its title above (Sascha 12.11.2026: "Bei der Abrechnung einzelne Kategorien bilden: Übersicht,
+    // Wer zahlt wem, Bezahlt")
+    <section className="setup-part pool-part pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
       <div className="pool-part-head">
         <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
         <span className="muted small">
@@ -1593,7 +1591,8 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           {props.pending > 0 && tr(` · ${props.pending} provisional`, ` · ${props.pending} vorläufig`)}
         </span>
       </div>
-    <div className="card pool-settle">
+    <span className="eyebrow">{tr('Overview', 'Übersicht')}</span>
+    <div className="card pool-settle-card">
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
         <i style={{ width: `${n ? (props.settled / n) * 100 : 0}%` }} />
       </div>
@@ -1632,10 +1631,10 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           );
         })}
       </ul>
-      {/* "Wer zahlt wem" with what was paid – PaidMarks; how each payment comes about stands right below it (Sascha
-          10.11.2026: "the way must be shown and traceable"; 11.11.2026, design round 2: no separate "Rechenweg") */}
-      {props.children}
     </div>
+      {/* "Wer zahlt wem" and "Bezahlt" – PaidMarks, each its own card under its title; how each payment comes about stands
+          right below it (Sascha 10.11.2026: "the way must be shown and traceable"; 11.11.2026: no separate "Rechenweg") */}
+      {props.children}
     </section>
   );
 }
@@ -1970,9 +1969,7 @@ function PickRounds(props: { pool: WagerPool; picks: BetRound[]; /** a score ove
       <SettingsList>
         <DateRow label={tr('Day', 'Tag')} min={pool.from} max={pool.to} value={day} onChange={setDay} />
       </SettingsList>
-      <button type="button" className="btn-secondary" disabled={full || picks.some((p) => p.day === day && !p.course)} onClick={() => props.onChange([...picks, { day }])}>
-        {tr('+ Add this day', '+ Diesen Tag hinzufügen')}
-      </button>
+      <AddRow label={tr('Add this day', 'Diesen Tag hinzufügen')} disabled={full || picks.some((p) => p.day === day && !p.course)} onClick={() => props.onChange([...picks, { day }])} />
     </>
   );
 }
@@ -2678,9 +2675,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
                 setPlayers(k >= 0 ? players.map((p, j) => (j === k ? { ...p, name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) } : p)) : [...players, { id: newId(), name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) }]);
               }}
             />
-            <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
-              {tr('+ Add player', '+ Spieler hinzufügen')}
-            </button>
+            <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...players, { id: newId(), name: '' }])} />
             {asking && (
               <div className="card pool-remove" role="alertdialog" aria-label={tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}>
                 <strong>{tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}</strong>

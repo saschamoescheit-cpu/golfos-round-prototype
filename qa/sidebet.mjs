@@ -22,7 +22,7 @@ await P.waitForTimeout(1500);
 await P.locator('button.list-item').first().click();
 await P.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await P.waitForTimeout(600);
-await P.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await P.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await P.getByLabel('Spieler 2', { exact: true }).fill('Ben');
 const eyebrows = (await P.locator('main .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
 const at = (x) => eyebrows.indexOf(x);

@@ -45,7 +45,7 @@ ok((await H.locator('.settings-list').filter({ hasText: 'HCP-Vorgabe' }).locator
 await flip(aids);
 await H.locator('input[id^="hcp-"]').first().fill('10');
 for (const [n, h] of [['Erik', '4'], ['Cedric', '20'], ['Christopher', '0']]) {
-  await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
   await H.locator('input[id^="hcp-"]').last().fill(h);
 }
