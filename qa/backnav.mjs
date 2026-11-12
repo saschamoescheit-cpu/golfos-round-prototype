@@ -52,11 +52,13 @@ await H.evaluate(() => window.dispatchEvent(new CustomEvent('golfos:go', { detai
 await H.waitForTimeout(2500);
 const tb = H.locator('.topbar .icon-btn').first();
 const lbl = (await tb.getAttribute('aria-label')) ?? '';
-ok(/Games/.test(lbl), `the tournament, "Zurück" to Games (${lbl})`);
+// since 13.11.2026 (Sascha: "ich komme gar nicht mehr in die Übersicht der Turniere"): back from a tournament always to
+// the tournaments' list – wherever it was tapped
+ok(/Turniere/.test(lbl), `the tournament, "Zurück" to the tournaments (${lbl})`);
 await tb.click();
 await H.waitForTimeout(1500);
 const after = (await H.locator('body').innerText()).replace(/\s+/g, ' ');
-ok(/USA-Wetten/.test(await H.locator('.topbar').innerText().catch(() => '')), `back in Games: on the pool as it was (${after.slice(0, 120)})`);
+ok(/Turniere/.test(await H.locator('main h1').first().innerText().catch(() => '')), `back: the tournaments' list (${after.slice(0, 120)})`);
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

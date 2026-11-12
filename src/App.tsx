@@ -403,7 +403,9 @@ export function App() {
     window.dispatchEvent(new CustomEvent('golfos:open-pool', { detail: code }));
   };
   const openTour = (code: string) => {
-    setCameFrom(moduleNow.current && moduleNow.current !== 'tournaments' ? moduleNow.current : null);
+    // back from a tournament always to the tournaments' list, not to where it was tapped (Sascha 13.11.2026: "wenn ich auf Turnier
+    // gehe und dann zurück, lande ich in Rounds – ich komme gar nicht mehr in die Übersicht der Turniere")
+    setCameFrom(null);
     try {
       sessionStorage.setItem('golfos.openTour', code);
     } catch {
