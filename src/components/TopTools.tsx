@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getLang, setLang, tr } from '../lib/i18n';
+import { getLang, langLocale, tr } from '../lib/i18n';
 import { isSun, setSun } from '../lib/theme';
 import { NotifyBell } from './NotifyBell';
 
@@ -7,7 +7,7 @@ import { NotifyBell } from './NotifyBell';
 // same header on the start page, in Rounds and in Games (Sascha 15.10.2026), right of the GOLFOS logo.
 export function TopTools() {
   const [sun, setSunState] = useState(isSun);
-  const locale = getLang() === 'de' ? 'de-DE' : undefined;
+  const locale = getLang() === 'en' ? undefined : langLocale();
   return (
     <>
       {/* two lines – "TT.MM." over "HH:MM" (Sascha 03.11.2026: beside the claim the version looked cramped) */}
@@ -15,14 +15,7 @@ export function TopTools() {
         <span>{new Date(__BUILD_TIME__).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</span>
         <span>{new Date(__BUILD_TIME__).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
-      <button
-        type="button"
-        className="lang-btn"
-        aria-label={getLang() === 'de' ? 'Sprache: Deutsch – switch to English' : 'Language: English – auf Deutsch umstellen'}
-        onClick={() => setLang(getLang() === 'de' ? 'en' : 'de')}
-      >
-        {getLang() === 'de' ? 'DE' : 'EN'}
-      </button>
+      {/* the language: in the profile (Sascha 13.11.2026) – here only the sun mode and the inbox */}
       <button
         type="button"
         className="lang-btn"

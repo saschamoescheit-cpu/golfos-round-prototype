@@ -26,8 +26,8 @@ ok((await bell.count()) === 1 && (await p.locator('.bell-count').count()) === 0,
 const box = await bell.boundingBox();
 const vw = p.viewportSize().width;
 const tops = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-ok(!!box && box.x + box.width <= vw && new Set(tops).size === 1, `on a small phone: DE, bell and sun in one line, on the screen (${tops.join(',')})`);
-{ const xs = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => ({ x: e.getBoundingClientRect().x, bell: e.classList.contains('bell-btn') }))); ok(xs.length === 3 && xs.reduce((m, a) => (a.x > m.x ? a : m)).bell, 'the inbox on the far right (Sascha 13.11.2026)'); }
+ok(!!box && box.x + box.width <= vw && new Set(tops).size === 1, `on a small phone: sun and inbox in one line – no language button (in the profile, 13.11.2026), on the screen (${tops.join(',')})`);
+{ const xs = await p.locator('.topbar .lang-btn').evaluateAll((els) => els.map((e) => ({ x: e.getBoundingClientRect().x, bell: e.classList.contains('bell-btn') }))); ok(xs.length === 2 && xs.reduce((m, a) => (a.x > m.x ? a : m)).bell, 'the inbox on the far right (Sascha 13.11.2026)'); }
 await bell.click();
 const sheet = p.getByRole('dialog', { name: 'Inbox' });
 ok((await sheet.count()) === 1 && /Nichts Neues/.test(await sheet.innerText()), 'tapped: the inbox – "Nichts Neues für dich."');

@@ -1,29 +1,62 @@
 import type { Club } from '../types';
 
-// Language (feature 021): German or English, every text sits next to its translation at the call site –
-// tr('New round', 'Neue Runde'). Default is the phone's language; the player can switch on the home screen.
-// Golf terms as German club golfers say them (Abschlag, Aus, Carry, Spielvorgabe, Eisen 7).
+// Language (feature 021): every text sits next to its German translation at the call site – tr('New round', 'Neue
+// Runde'); the other languages (Sascha 13.11.2026: "neben Deutsch und Englisch auch alle anderen Sprachen") come from a
+// dictionary per language, keyed by the English text (src/i18n/dict/<lang>.json, made by scripts/i18n-extract.mjs and
+// the translators; a template's `${…}` as {0}, {1} …). A text not in it stays English. The first start: the phone's
+// language when there is one of them, else English (Sascha 13.11.2026); changed in the profile.
+// Golf terms as club golfers say them (Abschlag, Aus, Carry, Spielvorgabe, Eisen 7).
 
-export type Lang = 'de' | 'en';
+/** The languages, each in its own name – English and German first. */
+export const LANGS = [
+  { code: 'en', name: 'English', locale: 'en-GB' },
+  { code: 'de', name: 'Deutsch', locale: 'de-DE' },
+  { code: 'es', name: 'Español', locale: 'es-ES' },
+  { code: 'fr', name: 'Français', locale: 'fr-FR' },
+  { code: 'it', name: 'Italiano', locale: 'it-IT' },
+  { code: 'nl', name: 'Nederlands', locale: 'nl-NL' },
+  { code: 'pt', name: 'Português', locale: 'pt-PT' },
+  { code: 'sv', name: 'Svenska', locale: 'sv-SE' },
+  { code: 'da', name: 'Dansk', locale: 'da-DK' },
+  { code: 'nb', name: 'Norsk', locale: 'nb-NO' },
+  { code: 'fi', name: 'Suomi', locale: 'fi-FI' },
+  { code: 'pl', name: 'Polski', locale: 'pl-PL' },
+  { code: 'ja', name: '日本語', locale: 'ja-JP' },
+  { code: 'zh', name: '中文', locale: 'zh-CN' },
+] as const;
+export type Lang = (typeof LANGS)[number]['code'];
 const KEY = 'golfos.lang.v1';
+const known = (c: string | null | undefined): c is Lang => !!c && LANGS.some((l) => l.code === c);
+
+/** A phone's language as one of ours: "de-AT" → de, "no"/"nn" → nb, "zh-Hans" → zh; none of them: null. */
+export function langOf(tag: string | null | undefined): Lang | null {
+  const base = (tag ?? '').toLowerCase().split(/[-_]/)[0];
+  const code = base === 'no' || base === 'nn' ? 'nb' : base;
+  return known(code) ? code : null;
+}
 
 function initial(): Lang {
   try {
     const saved = localStorage.getItem(KEY);
-    if (saved === 'de' || saved === 'en') return saved;
+    if (known(saved)) return saved;
   } catch {
     // storage blocked
   }
   // Outside the browser (unit tests, the caddie audit) the texts stay English.
-  if (typeof window === 'undefined') return 'en';
-  const nav = typeof navigator !== 'undefined' ? navigator.language : '';
-  return /^de\b/i.test(nav ?? '') ? 'de' : 'en';
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'en';
+  for (const t of [...(navigator.languages ?? []), navigator.language]) {
+    const l = langOf(t);
+    if (l) return l;
+  }
+  return 'en';
 }
 
 let lang: Lang = initial();
 if (typeof document !== 'undefined') document.documentElement.lang = lang;
 
 export const getLang = (): Lang => lang;
+/** The language's locale for dates and numbers ("de-DE", "es-ES" …). */
+export const langLocale = (l: Lang = lang): string => LANGS.find((x) => x.code === l)?.locale ?? 'en-GB';
 
 /** Switches the language and reloads the app (every screen reads its texts on render). */
 export function setLang(l: Lang): void {
@@ -36,9 +69,69 @@ export function setLang(l: Lang): void {
   if (typeof location !== 'undefined') location.reload();
 }
 
+// ---------- the dictionary of a language other than English and German ----------
+let dict: Record<string, string> = {};
+let templates: { re: RegExp; to: string }[] = [];
+const done = new Map<string, string>();
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The dictionary in use: its plain texts, and the templates as patterns (the longest fixed text first). */
+export function useDict(d: Record<string, string>): void {
+  dict = {};
+  templates = [];
+  done.clear();
+  for (const [k, v] of Object.entries(d)) {
+    if (!/\{\d\}/.test(k)) dict[k] = v;
+    else {
+      const parts = k.split(/\{(\d)\}/);
+      let re = '^';
+      for (let i = 0; i < parts.length; i++) re += i % 2 ? `(?<s${parts[i]}>[\\s\\S]*?)` : esc(parts[i]);
+      templates.push({ re: new RegExp(re + '$'), to: v });
+    }
+  }
+  const fixed = (t: { re: RegExp }) => t.re.source.replace(/\(\?<s\d>\[\\s\\S\]\*\?\)/g, '').length;
+  templates.sort((a, b) => fixed(b) - fixed(a));
+}
+
+const dicts = import.meta.glob<{ default: Record<string, string> }>('../i18n/dict/*.json');
+/** The dictionary of the language chosen, before the app is drawn; none needed for English and German. */
+export async function loadLang(): Promise<void> {
+  if (lang === 'en' || lang === 'de') return;
+  const load = dicts[`../i18n/dict/${lang}.json`];
+  if (!load) return;
+  try {
+    useDict((await load()).default);
+  } catch {
+    // not loaded (offline before it was cached): English
+  }
+}
+
+/** A text in a language of the dictionary – the plain text, else a template filled with what the English one had. */
+function fromDict(en: string): string {
+  const hit = done.get(en);
+  if (hit != null) return hit;
+  let out = dict[en];
+  if (out == null) {
+    for (const t of templates) {
+      const m = t.re.exec(en);
+      if (!m) continue;
+      const g = m.groups ?? {};
+      out = t.to.replace(/\{(\d)\}/g, (_, n: string) => g[`s${n}`] ?? '');
+      break;
+    }
+  }
+  out ??= en;
+  done.set(en, out);
+  return out;
+}
+
 /** The text in the player's language. */
 export function tr(en: string, de: string): string {
-  return lang === 'de' ? de : en;
+  if (lang === 'de') return de;
+  if (lang === 'en') return en;
+  // a locale asked for (dates, numbers): the language's own
+  if (/^[a-z]{2}-[A-Z]{2}$/.test(en)) return langLocale();
+  return fromDict(en);
 }
 
 /** For tests: the language without reload. */
@@ -56,7 +149,7 @@ const CLUB_CODE: Record<Club, string> = {
 export const clubCode = (c: Club): string => CLUB_CODE[c];
 
 /** Speech language for read-aloud and voice questions. */
-export const speechLang = (): string => (lang === 'de' ? 'de-DE' : 'en-US');
+export const speechLang = (): string => (lang === 'en' ? 'en-US' : langLocale());
 
 const SIDE_DE: Record<string, string> = { left: 'links', right: 'rechts', long: 'hinten', short: 'kurz' };
 /** left / right / long / short in the player's language ("links", "rechts", "hinten", "kurz"). */
@@ -67,4 +160,4 @@ const HAZARD_DE: Record<string, string> = { water: 'Wasser', bunker: 'Bunker', r
 export const hazardWord = (h: string): string => tr(({ woods: 'woods – ball lost', drop: 'steep drop', ob: 'out of bounds' } as Record<string, string>)[h] ?? h, HAZARD_DE[h] ?? h);
 
 /** Decimal number as text: "34.8" in English, "34,8" in German. */
-export const dec = (v: number | string): string => (lang === 'de' ? String(v).replace('.', ',') : String(v));
+export const dec = (v: number | string): string => (lang === 'en' || lang === 'ja' || lang === 'zh' ? String(v) : String(v).replace('.', ','));

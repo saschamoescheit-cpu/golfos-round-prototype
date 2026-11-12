@@ -6,7 +6,7 @@ import type { Round } from '../types';
 import { Attribution, TopBar } from '../components/ui';
 import { carryToReview } from '../lib/stats';
 import { loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
-import { getLang, tr } from '../lib/i18n';
+import { getLang, LANGS, setLang, tr, type Lang } from '../lib/i18n';
 import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
@@ -248,6 +248,14 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             </span>
             <span aria-hidden="true">›</span>
           </button>
+          {/* the language in the profile, not a button on top (Sascha 13.11.2026: "die Sprache mit in das Profil – oben nur
+              noch Tag-/Nachtmodus und Inbox, aufgeräumter") – each in its own name */}
+          <ChoiceRow<Lang>
+            label={tr('Language', 'Sprache')}
+            value={getLang()}
+            onChange={(v) => setLang(v)}
+            options={LANGS.map((l) => ({ value: l.code, name: l.name }))}
+          />
           <ChoiceRow<'m' | 'yd'>
             label={tr('Distances in', 'Distanzen in')}
             value={unit}

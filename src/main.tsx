@@ -27,6 +27,7 @@ import { startErrorLog } from './lib/errorlog';
 import { watchForUpdates } from './lib/appupdate';
 import { installNativeShims } from './lib/native';
 import { liveCodeOf } from './lib/live';
+import { loadLang } from './lib/i18n';
 import { installSwipeBack } from './lib/swipeback';
 
 applyTheme(); // sun mode before the first paint
@@ -56,7 +57,9 @@ const bigStore = Promise.race([
 // sync, no intro; only looking
 const LIVE = liveCodeOf(location.hash);
 const LiveScreen = lazy(() => import('./screens/LiveView').then((m) => ({ default: m.LiveScreen })));
-if (LIVE) {
+// the language's dictionary before anything is drawn (Sascha 13.11.2026: all languages)
+const langReady = loadLang();
+if (LIVE) void langReady.then(() =>
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ErrorBoundary>
@@ -65,9 +68,9 @@ if (LIVE) {
         </Suspense>
       </ErrorBoundary>
     </React.StrictMode>,
-  );
-}
-void bigStore.then(() =>
+  ),
+);
+void Promise.all([bigStore, langReady]).then(() =>
   !LIVE &&
   ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -90,10 +90,20 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Where do I find requests and invitations?', 'Wo finde ich Anfragen und Einladungen?'),
         a: () =>
           tr(
-            'In the inbox: the bell top right, beside the language and the sun mode. A green number says how many wait. In it: a card someone asks to correct (as the host you confirm it right there), a friend request, invitations to a round, a game or bets, a 5+5+10 challenge, rounds to check & sign and results to confirm – a tap goes straight there.',
-            'In der Inbox: die Glocke oben rechts, neben der Sprache und dem Sonnenmodus. Eine grüne Zahl sagt, wie viel wartet. Darin: eine Karte, die jemand korrigieren möchte (als Host bestätigst du es direkt dort), eine Freundschaftsanfrage, Einladungen zu Runde, Spiel oder Wetten, eine 5+5+10-Herausforderung, Runden zum Prüfen & Signieren und Ergebnisse zum Bestätigen – ein Tipp führt direkt hin.',
+            'In the inbox: the tray top right, beside the sun mode. A green number says how many wait. In it: a request to join your round ("Let in" right there), a card someone asks to correct (as the host you confirm it right there), a friend request, invitations to a round, a game or bets, a new bet against you, a payment to you ("Received"), your scorecard to sign, a 5+5+10 challenge, rounds to check & sign and results to confirm – a tap goes straight there.',
+            'In der Inbox: das Ablagefach oben rechts, neben dem Sonnenmodus. Eine grüne Zahl sagt, wie viel wartet. Darin: eine Beitrittsanfrage zu deiner Runde („Zulassen“ direkt dort), eine Karte, die jemand korrigieren möchte (als Host bestätigst du es direkt dort), eine Freundschaftsanfrage, Einladungen zu Runde, Spiel oder Wetten, eine neue Wette gegen dich, eine Zahlung an dich („Erhalten“), deine Scorekarte zum Unterschreiben, eine 5+5+10-Herausforderung, Runden zum Prüfen & Signieren und Ergebnisse zum Bestätigen – ein Tipp führt direkt hin.',
           ),
         video: 'start',
+      },
+      {
+        // Sascha 13.11.2026: all languages, the phone's language at the first start, the language in the profile
+        q: () => tr('How do I change the language?', 'Wie stelle ich die Sprache um?'),
+        a: () =>
+          tr(
+            'In your profile, "Language": English, German, Spanish, French, Italian, Dutch, Portuguese, Swedish, Danish, Norwegian, Finnish, Polish, Japanese or Chinese. At the first start the app takes your phone\'s language when it is one of them – otherwise English.',
+            'Im Profil unter „Sprache“: Englisch, Deutsch, Spanisch, Französisch, Italienisch, Niederländisch, Portugiesisch, Schwedisch, Dänisch, Norwegisch, Finnisch, Polnisch, Japanisch oder Chinesisch. Beim ersten Start nimmt die App die Sprache deines Handys, wenn sie dabei ist – sonst Englisch.',
+          ),
+        video: 'profile',
       },
       {
         // Sascha 12.11.2026: "+" and the pencil floating bottom right, the same in the whole app; edits save by themselves
