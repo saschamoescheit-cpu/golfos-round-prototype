@@ -1005,7 +1005,12 @@ export function HoleScreen(props: {
   const ownEligible = (views[me.id]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer) || props.game?.keptBy?.[me.id] != null;
   // a partner this phone keeps as the scorer of all – not one who enters his own details himself
   const scoredForAll = (pid: string): boolean => views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer && !(round.format?.ownDetails ?? []).some((n) => n.trim().toLowerCase() === (round.players.find((p) => p.id === pid)?.name ?? '').trim().toLowerCase());
-  const [ownOn, setOwnOn] = useState(() => ownDetailsOn(round.id, me.name, round.format?.ownDetails ?? props.game?.ownDetails));
+  // as the event has it now – the setup changed during the round reaches this phone (Sascha 12.11.2026: "Cedric konnte
+  // die eins noch mit Details erfassen, seit der zwei nicht mehr": read once on opening, the round's format taken over
+  // only before the first score); the phone's own choice wins
+  const [, setOwnTick] = useState(0);
+  const ownOn = ownDetailsOn(round.id, me.name, shareEvent?.format?.ownDetails ?? round.format?.ownDetails ?? props.game?.ownDetails);
+  const setOwnOn = () => setOwnTick((n) => n + 1);
   const ownEmpty = (k: number): boolean => {
     const e = round.entries[me.id]?.[k];
     return !!e && !e.pickedUp && e.putts == null && e.fairway == null && !e.sandShots;
@@ -2020,7 +2025,7 @@ export function HoleScreen(props: {
             analysisOn={ownOn}
             onAnalysis={(on) => {
               setOwnDetails(round.id, on);
-              setOwnOn(on);
+              setOwnOn();
             }}
             // the scorer of all ("Einer für alle"): for his partners the score and the putts (Sascha 13.11.2026: "für Erik und Chris
             // reichen Score und Putts – vllt abhängig, welche Wetten laufen"), in full – sand, penalties, tee shot – when a bet

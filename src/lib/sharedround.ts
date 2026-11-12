@@ -596,9 +596,11 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
         // "ich erfasse für den ganzen Flight, Cedric zusätzlich seine eigenen – ich kann seine Putts nicht eingeben")
         const own = list[i] ?? emptyEntry();
         const theirPutts = there?.d?.pu ?? null;
-        if (!sameScore(there, local) || (there?.d?.pe ?? 0) !== (local?.d?.pe ?? 0) || (own.putts == null && theirPutts != null)) {
+        // his own penalty strokes for his analysis stay, unless the scorer entered some (Sascha 13.11.2026)
+        const theirPe = there?.d?.pe;
+        if (!sameScore(there, local) || (theirPe != null && theirPe !== (local?.d?.pe ?? 0)) || (own.putts == null && theirPutts != null)) {
           const w = withCell(own, there);
-          list[i] = { ...w, penalties: there?.d?.pe ?? 0, putts: own.putts ?? theirPutts, fairway: own.fairway, sandShots: own.sandShots, greensideBunker: own.greensideBunker, upAndDown: own.upAndDown, ...(own.puttsAt ? { puttsAt: own.puttsAt } : {}) };
+          list[i] = { ...w, penalties: theirPe ?? own.penalties ?? 0, putts: own.putts ?? theirPutts, fairway: own.fairway, sandShots: own.sandShots, greensideBunker: own.greensideBunker, upAndDown: own.upAndDown, ...(own.puttsAt ? { puttsAt: own.puttsAt } : {}) };
           changedThere = true;
         }
         return there;

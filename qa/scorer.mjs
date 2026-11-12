@@ -119,6 +119,33 @@ await H.waitForTimeout(900);
 ok((await H.locator('.score-panel').count()) === 0 && (await H.locator('.map-hole-no').innerText()).trim() !== hole2, `off: "→" goes on at once (${(await H.locator('.map-hole-no').innerText()).trim()})`);
 ok(await H.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.owndetails.v1') ?? '{}')).includes(false)), 'his choice kept on his phone, for this round');
 
+// set in the setup during the round (Sascha 12.11.2026: "Cedric konnte die eins noch mit Details erfassen, seit der zwei
+// nicht mehr"): no choice on the phone, the event names him only once scores are in – "Meine Analyse" follows the event
+// the event's setup on this phone (as an exchange keeps it): the analysis follows it at once
+const setOwn = (names) =>
+  H.evaluate(
+    ({ names }) => {
+      const r = JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((x) => !x.finishedAt);
+      const key = 'golfos.event.v1.' + r.shared.code;
+      const ev = JSON.parse(localStorage.getItem(key) ?? 'null') ?? { kind: 'round-event', id: r.id, name: r.courseName, tournament: false, course: { id: r.courseId, name: r.courseName }, loopOrder: r.loopOrder, holes: r.holes, createdAt: r.createdAt, flights: {} };
+      localStorage.setItem(key, JSON.stringify({ ...ev, format: { ...(ev.format ?? r.format), ownDetails: names } }));
+      window.dispatchEvent(new Event('golfos:event-changed'));
+    },
+    { names },
+  );
+await H.evaluate(() => localStorage.removeItem('golfos.owndetails.v1'));
+await H.reload();
+await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await H.waitForTimeout(1500);
+await setOwn([]);
+await H.locator('.map-score').click();
+await H.waitForTimeout(300);
+ok((await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 0, 'not named in the event: no "Meine Analyse"');
+await setOwn(['sascha']);
+await H.waitForTimeout(300);
+ok((await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 1, 'named in the event during the round: "Meine Analyse" there – without opening the round anew');
+await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
+
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
