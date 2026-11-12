@@ -12,6 +12,8 @@ import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { boardText, copyLink, FriendInvite, InviteCard, saveCsv, shareLink, shareText } from './InviteCard';
 import { ActionBar } from './ActionBar';
+import { liveAction, LiveSheet } from './LiveShare';
+import { isTourHost, loadTours } from '../lib/tourstore';
 import { OnOffRow, SettingsList, SheetRow, AddRow } from './Settings';
 import { ScanCodeButton } from './QrScan';
 
@@ -656,6 +658,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   // a tournament (Sascha's concept 30.10.2026): gross or net, one class or all
   const [gross, setGross] = useState(false);
   const [cls, setCls] = useState<string | null>(null);
+  const [liveOpen, setLiveOpen] = useState(false);
   useEffect(() => {
     const on = () => setEv(cachedEvent(props.code));
     window.addEventListener('golfos:event-changed', on);
@@ -680,6 +683,12 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   };
   const status = ev.tournament && flights > 1 ? flightStatus(ev) : [];
   const played = b.rows.some((r) => r.thru);
+  // still played somewhere: the live link offered (Sascha 12.11.2026) – a series' own for a round of it, as its page has it
+  const running = played && b.rows.some((r) => !r.finished && !r.retired);
+  // a tournament's link is switched by its host (the server lets only him)
+  const tour = ev.tournament ? loadTours().find((t) => t.code === props.code) : undefined;
+  const series = tour?.ev.series;
+  const canLive = running && (!ev.tournament || (!!tour && isTourHost(tour)));
   return (
     <>
     {/* the name as the block's eyebrow above the card, not a heading inside it (Facelift-Abnahme O6) – a finished
@@ -784,15 +793,17 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
         </div>
       )}
       {/* Teilen · CSV as one bar of icons (Facelift-Abnahme T7) */}
-      {ev.tournament && played && (
+      {((ev.tournament && played) || canLive) && (
         <ActionBar
           label={tr('The result', 'Das Ergebnis')}
           actions={[
-            { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${b.title}`, b.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))) },
-            { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(ev, gross)) },
+            canLive && liveAction(() => setLiveOpen(true)),
+            ev.tournament && played && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${b.title}`, b.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))) },
+            ev.tournament && played && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(ev, gross)) },
           ]}
         />
       )}
+      {liveOpen && <LiveSheet code={series?.code ?? props.code} name={series?.name ?? ev.name} onClose={() => setLiveOpen(false)} />}
     </section>
     </>
   );

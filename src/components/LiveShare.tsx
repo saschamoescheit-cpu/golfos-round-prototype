@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { liveLink, liveState, setLive, type LiveState } from '../lib/live';
 import { copyLink, InviteCard, shareLink } from './InviteCard';
 import { OnOffRow, ToggleRow } from './Settings';
+import { DoneFab } from './FloatActions';
+import type { Action } from './ActionBar';
 
 // "Zuschauer" (Sascha 08.11.2026, USA: "the live leaderboard also for people outside the tournament – the same for
 // games and bets"): a block of its own below "Mitspieler einladen", the same in a tournament, a series, a game and a
@@ -89,5 +92,26 @@ export function LiveShare(props: {
         {msg && <span className="muted small">{msg}</span>}
       </div>
     </section>
+  );
+}
+
+// "Live" under every leaderboard while a round is played (Sascha 12.11.2026, on the course: "Hier könnte man auch den
+// Knopf Live einbauen wie unter dem Leaderboard bei Tournaments – eig. bei allen Leaderboards in der App, solange irgendwo
+// eine Runde läuft"): an icon of the board's action bar; its sheet the block "Zuschauer" as on the tournament's page.
+export const liveAction = (open: () => void): Action => ({ label: 'Live', aria: tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer'), icon: 'live', onClick: open });
+
+export function LiveSheet(props: { code: string; name: string; money?: boolean; onClose: () => void }) {
+  // on the body – opened from a board that is itself in a sheet
+  return createPortal(
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet" role="dialog" aria-label="Live" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>Live</strong>
+        </div>
+        <LiveShare code={props.code} name={props.name} money={props.money} />
+        <DoneFab onClick={props.onClose} />
+      </section>
+    </div>,
+    document.body,
   );
 }

@@ -9,6 +9,8 @@ import { dayOf, withDuels } from '../lib/wagers';
 import { Standings } from '../screens/Wagers';
 import { StandingCard } from '../screens/Games';
 import { sideGamesOf, sideGameView } from '../lib/sidegames';
+import { ActionBar } from './ActionBar';
+import { liveAction, LiveSheet } from './LiveShare';
 
 // Live leaderboard of the flight (Sascha 14.10.2026): everyone entered on this phone, after every hole.
 
@@ -56,6 +58,7 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void; /**
     return () => window.removeEventListener('golfos:sidegames-changed', on);
   }, [props.round.id]);
   const [tab, setTab] = useState<'board' | 'bets'>(props.tab ?? 'board');
+  const [livePool, setLivePool] = useState<PoolEntry | null>(null);
   const anyBets = pools.length > 0 || sides.length > 0;
   useEffect(() => {
     if (tab !== 'bets') return;
@@ -106,8 +109,11 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void; /**
               <div key={e.code} className="board-pool">
                 {pools.length > 1 && <span className="eyebrow">{e.pool.name}</span>}
                 <Standings pool={withDuels(e.pool)} today={day} me={e.me} round={{ day, course: props.round.courseName }} />
+                {/* the pool's live link, as under the leaderboard (Sascha 12.11.2026: "bei allen Leaderboards, solange eine Runde läuft") */}
+                <ActionBar label={tr('The bets', 'Die Wetten')} actions={[liveAction(() => setLivePool(e))]} />
               </div>
             ))}
+            {livePool && <LiveSheet code={livePool.code} name={livePool.pool.name} money onClose={() => setLivePool(null)} />}
           </>
         ) : (
           <>

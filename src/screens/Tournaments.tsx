@@ -17,7 +17,7 @@ import { madeCut } from '../lib/tourdraw';
 import { dealRound, draftOf, draftOfMulti, tourFormat, type TourDraft } from './TourPlan';
 import { boardText, copyLink, FriendInvite, InviteCard, saveCsv, shareLink, shareText } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { LiveShare } from '../components/LiveShare';
+import { LiveShare, liveAction, LiveSheet } from '../components/LiveShare';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -835,7 +835,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   // what this phone has kept, at once (Sascha 09.11.2026: "back from a round of the series the leaderboard takes a
   // moment – it should show at once"): a round already on its day its last read copy, a round to come its plan
   const [evs, setEvs] = useState<RoundEvent[]>(() => keptRounds(props.code));
-  const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve' | 'adopt'>(null);
+  const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve' | 'adopt' | 'live'>(null);
   const [dealing, setDealing] = useState<number | null>(null);
   const [adopting, setAdopting] = useState<string | null>(null);
   const [at, setAt] = useState<Date | null>(null);
@@ -1041,11 +1041,14 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       <ActionBar
         label={multi ? tr('This tournament', 'Dieses Turnier') : tr('This series', 'Diese Serie')}
         actions={[
+          // the live link while a round of it is played (Sascha 12.11.2026) – its host switches it, as below
+          host && total.rows.some((r) => r.parts.some((x) => !x.finished)) && liveAction(() => setSheet('live')),
           total.rows.length > 0 && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(s.name, boardText(`${s.name} · ${tr('Total standing', 'Gesamtwertung')}`, total.rows.map((r) => ({ pos: out(r.name) ? 'CUT' : r.pos, name: r.name, value: fmtSum(r.sum), thru: onRounds(r.rounds) })))).then(setMsg) },
           total.rows.length > 0 && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(s.name, seriesCsv(s.name, s.rounds.length, total, out)) },
           host && (multi ? { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo', 'Auflösen'), aria: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }),
         ]}
       />
+      {sheet === 'live' && <LiveSheet code={props.code} name={s.name} onClose={() => setSheet(null)} />}
       {sheet === 'adopt' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet wager-sheet" role="dialog" aria-label={tr('Take in a tournament', 'Turnier aufnehmen')} onClick={(e) => e.stopPropagation()}>
@@ -1148,7 +1151,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
 export function TourScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
   useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
-  const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
+  const [sheet, setSheet] = useState<null | 'invite' | 'delete' | 'live'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [live, setLive] = useState<RoundEvent | null>(null);
@@ -1456,11 +1459,14 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       <ActionBar
         label={tr('This tournament', 'Dieses Turnier')}
         actions={[
+          // the live link while it is played (Sascha 12.11.2026) – its host switches it, as below
+          host && played && !done && liveAction(() => setSheet('live')),
           played && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${standings.title}`, standings.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))).then(setMsg) },
           played && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(live ?? ev, gross)) },
           host && { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('delete') },
         ]}
       />
+      {sheet === 'live' && <LiveSheet code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} onClose={() => setSheet(null)} />}
       {/* the one confirmation of the app (Facelift-Abnahme T8) */}
       {sheet === 'delete' && (
         <ConfirmSheet

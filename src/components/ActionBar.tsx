@@ -97,6 +97,13 @@ export const ACTION_ICONS = {
     </>,
   ),
   note: svg(<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h4" />),
+  // watching live (Sascha 12.11.2026: the live link under every leaderboard): the dot with its waves
+  live: svg(
+    <>
+      <circle cx="12" cy="12" r="2" />
+      <path d="M8.2 15.8a5.4 5.4 0 0 1 0-7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.3 18.7a9.5 9.5 0 0 1 0-13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4" />
+    </>,
+  ),
 };
 
 export interface Action {

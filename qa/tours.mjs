@@ -500,7 +500,8 @@ ok(/Chris.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.s
   // the actions one bar of icons (Facelift-Abnahme T7): Teilen · CSV · Löschen, the red one last; no text button for the list
   const bar = H.getByRole('group', { name: 'Dieses Turnier' });
   const words = (await bar.locator('.sc-action').allInnerTexts()).map((t) => t.trim());
-  ok(words.join('|') === 'Teilen|CSV|Löschen' && (await bar.locator('.sc-action svg').count()) === 3 && (await bar.locator('.sc-action').last().getAttribute('class')).includes('danger') && (await H.getByRole('button', { name: 'Ergebnisliste (CSV)' }).count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'CSV' }).count()) === 0, `the tournament's bar: ${words.join(' · ')} – icons, Löschen red and last`);
+  // while it is played "Live" in front (Sascha 12.11.2026)
+  ok(words.filter((w) => w !== 'Live').join('|') === 'Teilen|CSV|Löschen' && (await bar.locator('.sc-action svg').count()) === words.length && (await bar.locator('.sc-action').last().getAttribute('class')).includes('danger') && (await H.getByRole('button', { name: 'Ergebnisliste (CSV)' }).count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'CSV' }).count()) === 0, `the tournament's bar: ${words.join(' · ')} – icons, Löschen red and last`);
   const [dl] = await Promise.all([H.waitForEvent('download', { timeout: 8000 }).catch(() => null), bar.getByRole('button', { name: 'Ergebnisliste (CSV)' }).click()]);
   const csv = dl ? await dl.createReadStream().then(async (st) => { let t = ''; for await (const c of st) t += c; return t; }) : '';
   ok(/"Platz";"Spieler";"Flight"/.test(csv) && /"Erik"|"Sascha"/.test(csv), `CSV from the bar: ${csv.split('\n').slice(1, 3).join(' / ') || 'no download'}`);
