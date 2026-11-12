@@ -215,7 +215,7 @@ const choose = async (label, option, inside = H) => {
   // the trip: money, in dollars – the currency the second step
   await row.click();
   await ps.getByRole('button', { name: /^Geld/ }).click();
-  await H.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /Dollar \(\$\)/ }).click();
+  await H.getByRole('dialog', { name: 'Geld – die Währung' }).locator('.pick-option[data-code="USD"]').click();
   ok(/Geld · US-Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
 }
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker; chosen as in "Neue Runde":
