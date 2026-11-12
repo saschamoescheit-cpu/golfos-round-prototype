@@ -4,6 +4,7 @@
 // the tournament, the bag, the own plan) – the pencil small above the "+" when a page has both. Rendered beside the
 // screen (fixed), above the menu bar when there is one. A row's own pencil stays at the row.
 import { createPortal } from 'react-dom';
+import { tr } from '../lib/i18n';
 
 export type FloatAction = { label: string; onClick: () => void; disabled?: boolean };
 
@@ -29,6 +30,12 @@ const Tick = () => (
  *  neu angelegt wird, brauchen wir unten rechts einen schwebenden Speicherbutton. Aber wenn nachträglich was bearbeitet
  *  wird, haben wir die automatische Speicherung") – a pool, a tournament, a bet, a flight, an own plan; something changed
  *  afterwards saves by itself and has no save button. overSheet: opened from a sheet – the tick above its backdrop. */
+/** A sheet that saves by itself closed with the round green tick "Fertig" bottom right – no ✕ in its head: the cross
+ *  looked like "discard", and one had to scroll up for it (Sascha 13.11.2026). Saves what is left, then closes. */
+export function DoneFab(props: { onClick: () => void; overSheet?: boolean }) {
+  return <FloatActions overSheet={props.overSheet ?? true} save={{ label: tr('Done', 'Fertig'), onClick: props.onClick }} />;
+}
+
 export function FloatActions(props: { plus?: FloatAction | null; pen?: FloatAction | null; save?: FloatAction | null; overSheet?: boolean }) {
   if (!props.plus && !props.pen && !props.save) return null;
   return createPortal(

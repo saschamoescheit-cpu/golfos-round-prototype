@@ -155,7 +155,7 @@ await stand.waitFor({ timeout: 15000 });
   const yWho = (await edit.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).boundingBox())?.y ?? -1;
   const yWorum = (await edit.locator(':scope > .eyebrow', { hasText: /^Worum$/ }).boundingBox())?.y ?? -1;
   ok(yAdd > 0 && yWho > yAdd && yWorum > yWho, `edit: "Wer erfasst" right after the players, before "Worum" (${Math.round(yAdd)} < ${Math.round(yWho)} < ${Math.round(yWorum)})`);
-  await edit.getByRole('button', { name: 'Schließen' }).click();
+  await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
   await H.waitForTimeout(400);
 }
 

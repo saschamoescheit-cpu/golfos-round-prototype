@@ -80,7 +80,7 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
       // saved by itself (Sascha 11.11.2026) – no "Speichern"; the form closed with ✕
       ok((await p.locator('.rating-form').getByRole('button', { name: 'Speichern' }).count()) === 0, 'setup: the course rating saves by itself – no "Speichern"');
       await p.waitForTimeout(1200);
-      await p.locator('.rating-form').getByRole('button', { name: 'Schließen' }).click();
+      await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
       await p.waitForTimeout(200);
       const shown2 = await p.locator('.playing-hcp').allInnerTexts();
       const want2 = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round((Number(h) * (140 / 113) + (73 - 72)) / 2)));

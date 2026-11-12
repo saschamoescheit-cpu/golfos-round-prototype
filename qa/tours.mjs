@@ -359,7 +359,7 @@ await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 ok(/12:16/.test(await sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).innerText()) && /Tee 1/.test(await sheet.locator('.settings-row').filter({ hasText: 'Start' }).last().innerText()), 'flight 2 opened: its tee time and its tee');
 // a flight there already: no "Speichern" – changes taken by themselves (Sascha 11.11.2026)
 ok((await sheet.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.getByRole('button', { name: 'Flight anlegen' }).count()) === 0 && /von selbst gespeichert/.test(await sheet.locator('.autosave-note').innerText().catch(() => '')), 'a flight changed: no "Speichern", the quiet line');
-await sheet.getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 // Score-Erfassung (Sascha 03./04.11.2026): "Mit Zähler" the default; "Einer für alle" – who keeps the score chosen there,
 // not in the flights
 const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });

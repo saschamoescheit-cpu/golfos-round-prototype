@@ -432,7 +432,7 @@ await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).
 await H.getByRole('button', { name: 'Wette löschen' }).click();
 ok(await H.getByText('„Längster Drive an Loch 7“ löschen – für alle im Pool?').isVisible(), 'delete a bet: asked first');
 await H.getByRole('button', { name: 'Behalten' }).click();
-await H.getByRole('dialog', { name: 'Wette' }).getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');
 
 // change the pool: rename it, add a player; Chris (joined, bets) cannot be removed, Dave can
@@ -464,7 +464,7 @@ await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 // "Einer für alle" (Sascha 04.11.2026): kept with the pool, it counts as "Mit Zähler"
 await ed.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
-await ed.getByRole('button', { name: 'Schließen' }).click(); // saved by itself (12.11.2026) – closing saves at once
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1200);
 const after = shared.get(code).game;
 ok(after.oneScorer === true && after.counted === true, `edit: "Einer für alle" kept – counted as with a marker (${after.oneScorer}, ${after.counted})`);
@@ -477,7 +477,7 @@ ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',
   await ed2.getByRole('button', { name: 'Erik entfernen' }).click();
   const ask = ed2.getByRole('alertdialog', { name: 'Erik entfernen?' });
   if (await ask.count()) await ask.getByRole('button', { name: 'Entfernen' }).click();
-  await ed2.getByRole('button', { name: 'Schließen' }).click();
+  await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
   await H.waitForTimeout(1200);
   const g = shared.get(code).game;
   ok(!g.players.some((p) => p.name === 'Erik') && g.wagers.length === 7 - erikBets && Object.keys(g.progress).every((id) => g.wagers.some((w) => w.id === id)), `edit: Erik removed – with his ${erikBets} bets, the others kept (${g.players.map((p) => p.name).join(', ')}; ${g.wagers.length} bets)`);

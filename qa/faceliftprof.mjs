@@ -58,7 +58,7 @@ await p.waitForTimeout(1500);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => r.id === 'r1')?.rating);
 ok(stored?.slope === 113 && stored?.cr === 72.2, `saved by itself a moment after the last digit (${JSON.stringify(stored)})`);
 ok(/Gespeichert/.test(await hcp.locator('.autosave-note').innerText()), 'the quiet line: "Gespeichert"');
-await hcp.locator('.rating-form').getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await p.waitForTimeout(300);
 const diff1 = (await hcp.locator('.played-hcp .num').innerText()).trim();
 ok(diff1 !== diff0 && /Slope 113/.test((await hcp.locator('.rating-line').innerText()).replace(/\s+/g, ' ')), `the differential follows: ${diff0} → ${diff1}`);

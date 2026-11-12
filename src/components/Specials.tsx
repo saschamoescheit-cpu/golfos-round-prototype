@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionBar } from './ActionBar';
-import { FloatActions } from './FloatActions';
+import { DoneFab, FloatActions } from './FloatActions';
 import { OnOffRow, SettingsList } from './Settings';
 import { tr } from '../lib/i18n';
 import { metres, specialBoard, specialName, specialsAt, type Special } from '../lib/specials';
@@ -117,10 +117,14 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
           <strong>
             {specialName(s.kind)} · {tr('hole', 'Loch')} {props.ev.holes[s.hole]?.label}
           </strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
+          {/* a first entry: ✕ discards it; one there already saves by itself – "Fertig" bottom right (Sascha 13.11.2026) */}
+          {!editing && (
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
+              ✕
+            </button>
+          )}
         </div>
+        {editing && <DoneFab onClick={close} />}
         <span className="muted small">
           {tr('Leading', 'Führend')}: {leaderText(props.ev, s)}
         </span>

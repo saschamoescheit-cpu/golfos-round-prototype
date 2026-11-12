@@ -1,3 +1,4 @@
+import { DoneFab } from '../components/FloatActions';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadStrategy } from '../lib/strategy';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
@@ -848,18 +849,15 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
     <div className="card rating-form">
       <div className="sheet-head">
         <strong>{tr('Course rating', 'Course Rating')}</strong>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={tr('Close', 'Schließen')}
-          onClick={() => {
-            flush();
-            setEdit(false);
-          }}
-        >
-          ✕
-        </button>
       </div>
+      {/* saves by itself: closed with "Fertig" bottom right instead of a ✕ (Sascha 13.11.2026) */}
+      <DoneFab
+        overSheet={false}
+        onClick={() => {
+          flush();
+          setEdit(false);
+        }}
+      />
       <div className="field">
         <label htmlFor="setup-cr">Course Rating</label>
         <input id="setup-cr" className="input" inputMode="decimal" placeholder={dec('71.6')} value={crIn} onChange={(e) => setCrIn(e.target.value)} />

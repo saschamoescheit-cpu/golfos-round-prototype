@@ -179,7 +179,7 @@ await ld('Sascha', 245, true);
   const typed = await sheet.locator('#special-m').inputValue().catch(() => '?');
   ok(mine() === 247 && /Gespeichert|Speichert/.test(said), `Long Drive, corrected to 247 m: on the server by itself (${mine()}, typed ${typed}, "${said}")`);
   await sheet.locator('#special-m').fill('245');
-  await sheet.getByRole('button', { name: 'Schließen' }).click(); // closed at once: saved on closing
+  await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // closed at once with "Fertig": saved on closing (13.11.2026)
   await p.waitForTimeout(1500);
   ok(mine() === 245, `Long Drive, back to 245 m and closed at once: saved on closing (${mine()})`);
 }

@@ -109,7 +109,7 @@ await H.locator('.wager-sheet').getByRole('button', { name: /Ergebnis/ }).click(
 await H.locator('.pick-option').filter({ hasText: 'Netto' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: /Vorgabe/ }).click();
 await H.locator('.pick-option').filter({ hasText: '75 %' }).click();
-await H.locator('.wager-sheet').getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 const d1 = shared.get(code).game.wagers.find((w) => w.id === 'd1');
 ok(d1?.net === true && d1?.allowance === 75, `the duel on the server: net, 75 % (${JSON.stringify({ net: d1?.net, allowance: d1?.allowance })})`);
@@ -123,7 +123,7 @@ await H.locator('.pick-option').filter({ hasText: 'Ausgewählte Runden' }).click
 await H.locator('.wager-sheet').getByRole('button', { name: /^Runden/ }).click();
 await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Diesen Tag hinzufügen' }).click();
 await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Schließen' }).click();
-await H.locator('.wager-sheet').getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 let w1 = shared.get(code).game.wagers.find((w) => w.id === 'w1');
 ok(w1?.picks?.length === 1 && !w1.picks[0].course, `a day added: the bet counts its rounds only (${JSON.stringify(w1?.picks)})`);
@@ -131,7 +131,7 @@ ok((await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().inne
 await H.locator('.pool-wager').filter({ hasText: '1 Birdies' }).first().click();
 await H.locator('.wager-sheet').getByRole('button', { name: /Welche Runden/ }).click();
 await H.locator('.pick-option').filter({ hasText: 'Von – bis' }).click();
-await H.locator('.wager-sheet').getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 w1 = shared.get(code).game.wagers.find((w) => w.id === 'w1');
 ok(!!w1?.from && !!w1?.until && !w1.picks, `"Von – bis": from and up to the pool's days (${w1?.from}–${w1?.until})`);

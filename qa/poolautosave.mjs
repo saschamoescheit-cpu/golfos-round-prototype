@@ -52,6 +52,7 @@ await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.waitFor();
 ok((await edit.getByRole('button', { name: 'Speichern', exact: true }).count()) === 0, 'no "Speichern" any more');
+ok((await edit.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 0 && (await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Fertig', exact: true }).count()) === 1, 'saves by itself: no ✕ in its head – the round tick "Fertig" floats bottom right (Sascha 13.11.2026)');
 ok(/von selbst gespeichert/.test(await edit.locator('.autosave-note').innerText()), 'a quiet line: changes are saved by themselves');
 await edit.locator('#pool-edit-name').fill('USA-Wetten Florida');
 await H.waitForTimeout(2500);
@@ -62,9 +63,9 @@ ok(await edit.isVisible() && /Gespeichert/.test(await edit.locator('.autosave-no
 await edit.locator('#pool-edit-name').fill('');
 await H.waitForTimeout(2000);
 ok(sim.shared.get(code)?.game?.name === 'USA-Wetten Florida' && /brauchen einen Namen/.test(await edit.locator('.autosave-note').innerText()), 'an empty name: not saved, the line says why');
-// the cross saves at once
+// "Fertig" saves at once
 await edit.locator('#pool-edit-name').fill('USA 2026');
-await edit.getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 ok(sim.shared.get(code)?.game?.name === 'USA 2026' && (await edit.count()) === 0, 'the cross: saved at once and closed');
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);

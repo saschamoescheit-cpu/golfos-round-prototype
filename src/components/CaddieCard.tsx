@@ -5,7 +5,7 @@ import { RulesBook } from './RulesBook';
 import { hasNote, type HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, lieEffect, type LieKind } from '../lib/caddie';
 import { ChoiceRow, SettingsList, TickRow } from './Settings';
-import { FloatActions } from './FloatActions';
+import { DoneFab, FloatActions } from './FloatActions';
 import { getLang, tr } from '../lib/i18n';
 import type { HazardAhead, HoleBook } from '../lib/holebook';
 import type { PlaysLike } from '../lib/caddie';
@@ -165,16 +165,20 @@ export function pickLines(lines: Line[]): Line[] {
   return [instruction, warning].filter((l): l is Line => l != null);
 }
 
-function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {
+/** done: saves by itself – closed with "Fertig" bottom right, no ✕ (Sascha 13.11.2026) */
+function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode; done?: boolean }) {
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
+          {!props.done && (
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+              ✕
+            </button>
+          )}
         </div>
+        {props.done && <DoneFab onClick={props.onClose} />}
         {props.children}
       </section>
     </div>
@@ -288,7 +292,7 @@ export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: Ho
   };
   const flip = (k: 'obLeft' | 'obRight' | 'obLong') => setN({ ...n, [k]: !n[k] });
   return (
-    <Sheet title={tr(`Hole ${props.hole} – what the caddie should know`, `Loch ${props.hole} – was der Caddie wissen soll`)} onClose={close}>
+    <Sheet title={tr(`Hole ${props.hole} – what the caddie should know`, `Loch ${props.hole} – was der Caddie wissen soll`)} onClose={close} done={existing}>
       <SettingsList label={tr('Out of bounds', 'Aus')}>
         <TickRow label={tr('Out of bounds left', 'Aus links')} on={!!n.obLeft} onChange={() => flip('obLeft')} />
         <TickRow label={tr('Out of bounds right', 'Aus rechts')} on={!!n.obRight} onChange={() => flip('obRight')} />

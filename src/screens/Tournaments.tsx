@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FloatActions } from '../components/FloatActions';
+import { DoneFab, FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
 import { ChoiceRow, OnOffRow, SettingsList, SettingsRow, TickRow, ToggleList, ToggleRow } from '../components/Settings';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -484,9 +484,6 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
       <section className="sheet tour-scores-sheet" role="dialog" aria-label={tr(`Scores of flight ${props.n}`, `Scores von Flight ${props.n}`)} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr(`Scores · flight ${props.n}`, `Scores · Flight ${props.n}`)}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
         </div>
         <div className="chip-set" role="group" aria-label={tr('Player', 'Spieler')}>
           {flight.players.map((p) => {
@@ -566,6 +563,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
         <span className="muted small autosave-note" role="status">
           {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
         </span>
+        <DoneFab onClick={close} />
       </section>
     </div>
   );
@@ -815,9 +813,6 @@ function RenameSeriesSheet(props: { code: string; name: string; onMsg: (m: strin
       <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr('Rename the series', 'Serie umbenennen')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
         </div>
         <div className="field">
           <label htmlFor="series-rename">{tr('Name of the series', 'Name der Serie')}</label>
@@ -826,6 +821,7 @@ function RenameSeriesSheet(props: { code: string; name: string; onMsg: (m: strin
         <span className="muted small autosave-note" role="status">
           {!name.trim() ? tr('The series needs a name – then it is saved.', 'Die Serie braucht einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
         </span>
+        <DoneFab onClick={close} />
       </section>
     </div>
   );

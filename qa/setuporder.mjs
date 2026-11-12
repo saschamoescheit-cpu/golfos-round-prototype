@@ -80,7 +80,7 @@ await P.waitForTimeout(1500);
     await P.waitForTimeout(300);
     const w = await P.locator('#setup-cr').evaluate((e) => e.getBoundingClientRect().width).catch(() => 0);
     ok(w > 100, `course rating form: the field wide enough (${Math.round(w)} px)`);
-    await P.locator('.rating-form .sheet-head').getByRole('button', { name: 'Schließen' }).click();
+    await P.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
   }
 }
 // the course row leads back to the course search

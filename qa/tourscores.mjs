@@ -66,7 +66,7 @@ await H.waitForTimeout(2500);
   const cid = r0?.game.flight.players.find((p) => p.name === 'Cedric')?.id;
   ok(!!cid && (r0.game.flight.scores[cid] ?? []).filter((c) => c?.s != null).length === 9 && (await sheet.count()) === 1, 'saved by themselves: Cedric\'s nine holes on the server, the sheet still open');
 }
-await sheet.getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 ok((await sheet.count()) === 0, 'closed with ✕');
 const row = [...sim.shared.values()].find((r) => r.event_code === code && r.game.flight.players.some((p) => p.name === 'Sascha'));

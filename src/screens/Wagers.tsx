@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FloatActions } from '../components/FloatActions';
+import { DoneFab, FloatActions } from '../components/FloatActions';
 import { goTour } from '../lib/nav';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
@@ -2171,9 +2171,12 @@ export function WagerSheet(props: {
       <section className="sheet wager-sheet" role="dialog" aria-label={props.wager ? tr('Bet', 'Wette') : tr('New bet', 'Neue Wette')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.wager ? wagerLabel(props.wager) : tr('New bet', 'Neue Wette')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
+          {/* a new bet: ✕ discards it; a bet there already saves by itself – "Fertig" bottom right (Sascha 13.11.2026) */}
+          {!props.wager && (
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
+              ✕
+            </button>
+          )}
         </div>
         {!props.own && (
         <Field label={tr('Whose bet', 'Wessen Wette')}>
@@ -2244,6 +2247,7 @@ export function WagerSheet(props: {
         )}
         {props.wager ? (
           <span className="muted small autosave-note" role="status">
+            <DoneFab onClick={close} />
             {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
           </span>
         ) : (
@@ -2647,10 +2651,9 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
       <section className="sheet wager-sheet" role="dialog" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr('Change the pool', 'Pool bearbeiten')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
         </div>
+        {/* saves by itself: "Fertig" bottom right instead of a ✕ (Sascha 13.11.2026) – not over the delete question */}
+        {!del && <DoneFab onClick={close} />}
           <>
             <div className="field">
               <label htmlFor="pool-edit-name">{tr('Name', 'Name')}</label>

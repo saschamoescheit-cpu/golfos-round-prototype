@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FloatActions } from '../components/FloatActions';
+import { DoneFab, FloatActions } from '../components/FloatActions';
 import { useTop } from '../components/useTop';
 import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
@@ -1558,9 +1558,12 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
       <section className="sheet tour-flight-sheet" role="dialog" aria-label={`Flight ${props.n}`} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>Flight {props.n}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
-            ✕
-          </button>
+          {/* a new flight: ✕ discards it; one there already saves by itself – "Fertig" bottom right (Sascha 13.11.2026) */}
+          {!there && (
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
+              ✕
+            </button>
+          )}
         </div>
         <SettingsList>
           <TimeRow id="flight-time" label={tr('Tee time', 'Startzeit')} value={time} onChange={(v) => v && setTime(v)} />
@@ -1596,6 +1599,7 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
         {props.onRemove && <ActionBar label={`Flight ${props.n}`} actions={[{ label: tr(`Remove flight ${props.n}`, `Flight ${props.n} entfernen`), icon: 'delete', danger: true, onClick: props.onRemove }]} />}
         {there ? (
           <span className="muted small autosave-note" role="status">
+            <DoneFab onClick={close} />
             {!ids.length ? tr('A flight needs a player – then it is saved.', 'Ein Flight braucht einen Spieler – dann wird gespeichert.') : done ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
           </span>
         ) : (
