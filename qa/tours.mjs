@@ -465,13 +465,9 @@ const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && !/Aktualisiert|30 Sekunden/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
-// "Am Turniertag": one quiet line under the line of the tournament – no green card, no heading (Facelift-Abnahme T10,
-// "keine Intros")
-{
-  const line = H.locator('.tour-howto');
-  const look = await line.evaluate((el) => ({ tag: el.tagName, cls: el.className, card: !!el.closest('.key-hint, .card'), h2: !!el.querySelector('h2') })).catch(() => null);
-  ok((await H.locator('section.key-hint').filter({ hasText: 'Am Turniertag' }).count()) === 0 && !!look && look.tag === 'SPAN' && /muted/.test(look.cls) && /small/.test(look.cls) && !look.card && !look.h2 && /^Am Turniertag: Rounds-Startseite → „Turnier · teilnehmen“\.$/.test((await line.innerText()).trim()), `"Am Turniertag" one muted line, no card (${JSON.stringify(look)})`);
-}
+// on its day: "Teilnehmen" right on the tournament's page (Sascha 13.11.2026: "von der Startseite aus noch nicht direkt am
+// Turnier teilnehmen") – no line "Am Turniertag: Rounds-Startseite → …" any more
+ok((await H.locator('.tour-join').count()) === 1 && (await H.locator('.tour-howto').count()) === 0 && (await H.locator('section.key-hint').count()) === 0, 'on its day: the button "Teilnehmen", no line, no card');
 ok(rows.length === 4 && /Erik/.test(rows[0]) && /Chris/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Erik first, Chris last, all "nach 3" (${rows.join(' | ')})`);
 // a player tapped: his scorecard opens below (Sascha 04.11.2026)
 await board.locator('.lb-rows li').first().click();

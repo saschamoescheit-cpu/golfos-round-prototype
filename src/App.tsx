@@ -510,7 +510,9 @@ export function App() {
     }
     for (const code of toursTodayCodes()) {
       const t = loadTours().find((e) => e.code === code);
-      if (t) out.push({ key: `tour:${code}`, kind: 'tour', title: t.ev.name, line: tr('Tournament today', 'Turnier heute') });
+      // not joined yet: the row takes part right away (Sascha 13.11.2026) – joined: it is the paused round's row
+      const joined = rounds.some((r) => r.shared?.code === code);
+      if (t) out.push({ key: `tour:${code}`, kind: 'tour', title: t.ev.name, line: joined ? tr('Tournament today', 'Turnier heute') : tr('Tournament today · take part', 'Turnier heute · teilnehmen') });
     }
     const sign = roundsToSign(rounds);
     if (sign.length)
@@ -546,7 +548,7 @@ export function App() {
   const openRunning = (r: RunningItem) => {
     const [kind, id] = [r.kind, r.key.slice(r.key.indexOf(':') + 1)];
     if (kind === 'pool') return openPool(id);
-    if (kind === 'tour') return openTour(id);
+    if (kind === 'tour') return rounds.some((x) => x.shared?.code === id) ? openTour(id) : joinRoundByCode(id);
     if (kind === 'sign') return pickModule('rounds'); // straight to the rounds to check & sign
     if (kind === 'confirm') return pickModule('games');
     if (kind === 'training') return pickModule('training');

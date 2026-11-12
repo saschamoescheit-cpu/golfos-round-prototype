@@ -1260,7 +1260,15 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
         </button>
       )}
       {/* how to play it on the day – one quiet line, no card (Facelift-Abnahme T10: "keine Intros") */}
-      {!done && <span className="muted small tour-howto">{tr('On the day: Rounds start page → "Tournament · take part".', 'Am Turniertag: Rounds-Startseite → „Turnier · teilnehmen“.')}</span>}
+      {/* on the day: take part right here (Sascha 13.11.2026: "von der Startseite aus noch nicht direkt am Turnier
+          teilnehmen") – the same joining as Rounds' "Turnier heute · Teilnehmen"; before the day one quiet line */}
+      {!done && ev.date === dayOf(new Date()) ? (
+        <button type="button" className="btn-primary tour-join" onClick={() => window.dispatchEvent(new CustomEvent('golfos:join-round', { detail: props.code }))}>
+          {tr('Take part', 'Teilnehmen')}
+        </button>
+      ) : (
+        !done && <span className="muted small tour-howto">{tr('On the day "Take part" is here.', 'Am Turniertag steht hier „Teilnehmen“.')}</span>
+      )}
       {standings.rows.length > 0 && (
         <LiveBoard
           label={tr('Live leaderboard', 'Live-Leaderboard')}
