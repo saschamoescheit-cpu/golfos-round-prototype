@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getLang, setLang, tr } from '../lib/i18n';
 import { isSun, setSun } from '../lib/theme';
+import { NotifyBell } from './NotifyBell';
 
 // The version in small print (so a new one is easy to spot, Sascha 14.10.2026), the language and the sun mode – the
 // same header on the start page, in Rounds and in Games (Sascha 15.10.2026), right of the GOLFOS logo.
@@ -22,6 +23,8 @@ export function TopTools() {
       >
         {getLang() === 'de' ? 'DE' : 'EN'}
       </button>
+      {/* the bell: requests and what waits (Sascha 13.11.2026) */}
+      <NotifyBell />
       <button
         type="button"
         className="lang-btn"

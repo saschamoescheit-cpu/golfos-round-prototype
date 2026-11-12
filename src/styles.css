@@ -2733,3 +2733,7 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .pick-list > .pick-group:first-child { padding-top: 0; }
 /* a flight's "Ändern ›": quiet, no second pencil next to the floating one (Sascha 13.11.2026) */
 .flight-change { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; background: none; border: 0; color: var(--muted); font: 600 14px var(--body); }
+/* the bell beside language and sun mode (Sascha 13.11.2026): a green count while something waits, white number */
+.bell-btn { position: relative; }
+.bell-count { position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--brand); color: #fff; font: 700 11px/18px var(--body); text-align: center; }
+.bell-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }

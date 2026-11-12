@@ -1768,7 +1768,8 @@ export function inviteSeen(code: string): void {
 }
 /** What this account was invited to in the last 12 hours – a round, a tournament or series, a game, a pool of bets – and
  *  has not joined on this phone (`joined`: the codes it has), nor answered. */
-export async function roundInvites(joined: string[]): Promise<RoundInvite[]> {
+/** `all`: also the ones put aside with "Nicht jetzt" – the bell lists them until joined (Sascha 13.11.2026) */
+export async function roundInvites(joined: string[], all = false): Promise<RoundInvite[]> {
   const me = userId();
   const h = await headers();
   if (!me || !h) return [];
@@ -1783,7 +1784,7 @@ export async function roundInvites(joined: string[]): Promise<RoundInvite[]> {
     return rows
       .filter((x) => {
         const inv = x.near_requests?.[me];
-        return !!x.game && x.game.kind !== 'round-flight' && !x.game.deletedAt && !x.game.finishedAt && !!inv?.invited && new Date(inv.at ?? 0).getTime() > since && !joined.includes(x.code) && !seen.includes(x.code);
+        return !!x.game && x.game.kind !== 'round-flight' && !x.game.deletedAt && !x.game.finishedAt && !!inv?.invited && new Date(inv.at ?? 0).getTime() > since && !joined.includes(x.code) && (all || !seen.includes(x.code));
       })
       .map((x) => {
         const kind = kindOf(x.game?.kind);

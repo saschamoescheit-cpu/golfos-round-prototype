@@ -6,7 +6,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, confirmReopen, reopenAsked, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
+import { type RetiredFill, CLASS_NAMES, amHost, eventOwner, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, confirmReopen, reopenAsked, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -1149,6 +1149,16 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
+  // the host asked on the server too – a tournament kept without its owner still shows the host what to confirm
+  // (Sascha 13.11.2026: "ich finde nicht, wo ich das bestätigen kann")
+  const [ownerHost, setOwnerHost] = useState(false);
+  useEffect(() => {
+    let on = true;
+    void eventOwner(props.code).then((o) => on && setOwnerHost(amHost(o)));
+    return () => {
+      on = false;
+    };
+  }, [props.code]);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [live, setLive] = useState<RoundEvent | null>(null);
@@ -1402,7 +1412,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           })}
           {/* a card handed in asked to be opened for a correction (Sascha 12.11.2026: Moritz on the Cypress – "der Host muss
               das bestätigen"): the host confirms it here – its signatures go back, it is corrected and signed anew */}
-          {host &&
+          {(host || ownerHost) &&
             (() => {
               const lf = live?.flights[f.id];
               if (!lf) return null;
