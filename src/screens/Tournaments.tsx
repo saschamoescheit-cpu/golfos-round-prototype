@@ -1304,7 +1304,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             name: r.name,
             ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
             value: played && r.thru ? r.value : '–',
-            thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+            thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
             // tapped: his scorecard opens below (Sascha 04.11.2026)
             ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}
@@ -1479,7 +1479,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       <ActionBar
         label={tr('This tournament', 'Dieses Turnier')}
         actions={[
-          played && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${standings.title}`, standings.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))).then(setMsg) },
+          played && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${standings.title}`, standings.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))).then(setMsg) },
           played && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(live ?? ev, gross)) },
           host && { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('delete') },
         ]}

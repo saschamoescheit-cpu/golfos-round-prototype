@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seriesStandings } from './seriesstandings';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { classOf, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
+import { classOf, eventCard, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -458,6 +458,18 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     expect(erik.thru).toBe(2);
     expect(erik.sort).toBeNull();
     expect(st[st.length - 1].key).toBe('f1/e'); // stroke play: below everyone
+  });
+  it('gave up after 2, a score on hole 3 anyway: not counted, not on his card (Sascha 13.11.2026: "No Return nach Loch 8, aber die Scorekarte zeigt für 9 bis 18 noch Werte")', () => {
+    let { ev } = host(withScorer());
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    for (const pid of ['me', 'c', 'e']) for (let i = 0; i < 3; i++) chris = set(chris, pid, i, { strokes: 4 });
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    const out = { ...ev, flights: { ...ev.flights, f1: { ...ev.flights.f1, retired: { e: 2 }, retiredFill: { e: 'nr' as const } } } };
+    const erik = eventStandings(out).rows.find((r) => r.key === 'f1/e')!;
+    expect(erik.thru).toBe(2);
+    expect(erik.noReturn).toBe(true);
+    const card = eventCard(out, 'f1/e')!;
+    expect(card.entries['f1/e'].map((e) => e.strokes)).toEqual([4, 4, null]);
   });
   it('the holes missing in the series total: double bogey, by the handicap or par – he stays in it (Sascha 12.11.2026)', () => {
     let { ev } = host(withScorer());

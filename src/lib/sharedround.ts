@@ -695,7 +695,9 @@ export function newFlightRound(ev: RoundEvent, players: { name: string; playingH
 }
 
 /** The score a player stands with: his own – without one (no phone of his), the marker's. */
-const scoreAt = (f: Flight, pid: string, i: number): Cell => f.scores[pid]?.[i] ?? f.marks?.[pid]?.[i] ?? null;
+// a hole after a player gave up counts and shows as not played – whatever stands there (Sascha 13.11.2026: "No Return nach
+// Loch 8, aber die Scorekarte zeigt für 9 bis 18 noch Werte")
+const scoreAt = (f: Flight, pid: string, i: number): Cell => (f.retired?.[pid] != null && i >= f.retired[pid]! ? null : (f.scores[pid]?.[i] ?? f.marks?.[pid]?.[i] ?? null));
 
 /** A tournament: the holes where a player's own score and his marker's differ (both entered). */
 export function differences(f: Flight, pid: string): number[] {

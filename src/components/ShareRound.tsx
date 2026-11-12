@@ -751,7 +751,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
                 </span>
               </span>
               <span className="lb-value">{r.value}</span>
-              <span className="lb-thru muted small">{r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
+              <span className="lb-thru muted small">{r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
             </li>
           );
         })}
@@ -788,7 +788,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
         <ActionBar
           label={tr('The result', 'Das Ergebnis')}
           actions={[
-            { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${b.title}`, b.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))) },
+            { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(ev.name, boardText(`${ev.name} · ${b.title}`, b.rows.map((r) => ({ pos: r.pos, name: r.name, value: r.value, thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? '' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '' })))) },
             { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(ev.name, standingsCsv(ev, gross)) },
           ]}
         />
