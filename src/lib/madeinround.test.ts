@@ -23,6 +23,27 @@ describe('a bet made in one round', () => {
 // Sascha 10.11.2026: "a round played – green when made, else red; over 7 rounds the strokes by the rounds (Erik +35 →
 // +5 a round); in the total the rounds added up, coloured once all are played"
 import { roundVerdict, shareOf, sumSoFar, parText } from '../screens/Wagers';
+describe('holes without the putts (Sascha 12.11.2026: Cedric "8 von 8 Grüns", counted 5)', () => {
+  it('a count short of the target with holes missing their putts: "5?", not missed – reached: made', async () => {
+    const { perRoundOf, tally } = await import('./wagers');
+    const e = (putts: number | null) => ({ strokes: 4, putts, fairway: null, sandShots: 0, penalties: 0 }) as never;
+    const round = (putts: (number | null)[]) => ({ day: '2026-11-12', course: 'Oaks', pars: putts.map(() => 4), entries: putts.map(e), counted: false }) as never;
+    const greens = bet({ kind: 'greens', target: 8 });
+    // 5 greens hit (2 putts on 4 strokes), 3 holes without putts, the rest missed (1 putt on 4 strokes)
+    const per = perRoundOf(greens, [round([2, 2, 2, 2, 2, null, null, null, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])]);
+    expect(per[0]).toMatchObject({ value: 5, unknown: true });
+    expect(roundVerdict(greens, per[0])).toBe(null);
+    expect(tally(greens, { best: null, done: false, rounds: 0, at: '', perRound: per })).toEqual({ made: 0, missed: 0, played: 0 });
+    // reached with holes missing: made
+    const per8 = perRoundOf(greens, [round([2, 2, 2, 2, 2, 2, 2, 2, null, 1, 1, 1, 1, 1, 1, 1, 1, 1])]);
+    expect(roundVerdict(greens, per8[0])).toBe('made');
+    // every hole's putts: missed when short
+    const full = perRoundOf(greens, [round([2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])]);
+    expect(full[0].unknown).toBeUndefined();
+    expect(roundVerdict(greens, full[0])).toBe('missed');
+  });
+});
+
 describe('a round decided', () => {
   const r = (value: number | null, open = false) => ({ day: '2026-11-09', course: 'Kissimmee', value, counted: true, ...(open ? { open: true } : {}) });
   it('a bet for each round: green made, red missed once played, nothing while it is played', () => {

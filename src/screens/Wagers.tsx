@@ -1254,8 +1254,9 @@ export function roundVerdict(w: Wager, r: RoundResult | undefined, inPlay = fals
   // 12.11.2026: "Ergebnis brutto in 6 Runden kann bei niemandem grün sein nach 4 gespielten Runden"); its share stays shown
   if (shareOf(w) != null) return null;
   if (!perRoundBet(w)) return null;
-  if (reached(w, r.value) && (!r.open || !lower(w))) return 'made';
-  return r.open ? null : 'missed';
+  if (reached(w, r.value) && (!r.open || !lower(w)) && !(r.unknown && lower(w))) return 'made';
+  // holes without what it counts (the putts): not missed while they are missing
+  return r.open || r.unknown ? null : 'missed';
 }
 /** A score over N rounds so far (Sascha 10.11.2026: "in the total the rounds added up – where one stands"): the rounds
  *  played added up, how many of how many; decided once all are played. */
@@ -1275,6 +1276,8 @@ export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 export function valueOf(w: Wager, n: number | null, unknown = false): string {
   const shape = shapeOf(w.kind);
   if (n == null) return unknown || shape === 'score' || shape === 'sum' ? '–' : '0';
+  // counted so far, holes still without putts: "5?" – not decided (Sascha 12.11.2026)
+  if (unknown) return `${n}?`;
   return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
 }
 /** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */

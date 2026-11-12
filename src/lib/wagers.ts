@@ -326,13 +326,21 @@ export function perRoundOf(w: Wager, inTime: PlayedRound[]): RoundResult[] {
   for (const r of inTime) {
     const value = bestOf(w, [r]).best;
     const counted = !w.counted || r.counted;
-    // played, but what the bet counts not entered (the putts for the greens): "–", not 0
-    const unknown = value == null && needsDetails(w) && r.entries.some((e) => e?.strokes != null);
+    // played, but what the bet counts not entered (the putts for the greens): "–", not 0 – and holes played without it
+    // (Sascha 12.11.2026: Cedric "8 von 8 Grüns", counted 5 – the putts of three holes missing): not decided, never
+    // missed or paid while they are missing
+    const gaps = detailGaps(w, r);
+    const unknown = (value == null && needsDetails(w) && r.entries.some((e) => e?.strokes != null)) || (gaps > 0 && (lower(w) || !reached(w, value)));
     const same = out.find((x) => x.day === r.day && x.course === r.course);
     if (!same) out.push({ day: r.day, course: r.course, value, counted, ...(r.open ? { open: true } : {}), ...(unknown ? { unknown: true } : {}) });
     else {
       if (value != null && (same.value == null || (lower(w) ? value < same.value : value > same.value))) Object.assign(same, { value, counted });
       if (!r.open) delete same.open; // over on one of the phones
+      // a copy with every hole's details: its figure, decided
+      if (same.unknown && !gaps && value != null) {
+        Object.assign(same, { value, counted });
+        delete same.unknown;
+      }
     }
   }
   return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
@@ -529,6 +537,11 @@ export const isPool = (x: unknown): x is WagerPool => !!x && (x as WagerPool).ki
  *  need the detail entry; birdies, to par and so on only the strokes incl. penalty strokes"). */
 const DETAIL_KINDS: WagerKind[] = ['greens', 'fairways', 'oneputts', 'updowns', 'putts', 'threeputts'];
 export const needsDetails = (w: Pick<Wager, 'kind' | 'metric'>): boolean => DETAIL_KINDS.includes(w.kind) || (w.kind === 'custom' && !!metricOf(w.metric).details);
+/** The holes of a round played without what the bet counts – the tee shot (fairways, par 4 and 5) or the putts. */
+export function detailGaps(w: Pick<Wager, 'kind' | 'metric'>, r: Pick<PlayedRound, 'entries' | 'pars'>): number {
+  if (!needsDetails(w)) return 0;
+  return r.entries.filter((e, i) => !!e && e.strokes != null && !e.pickedUp && (w.kind === 'fairways' ? (r.pars[i] ?? 0) >= 4 && e.fairway == null : e.putts == null)).length;
+}
 /** Does a round need the detail entry for a pool: a bet of it that needs details and counts this round. */
 export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
   return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
@@ -1132,8 +1145,8 @@ export function tally(w: Wager, p: Progress | undefined, signedOnly = false): { 
   let missed = 0;
   for (const r of p.perRound) {
     if (r.value == null || (signedOnly && !r.counted)) continue;
-    if (reached(w, r.value) && (!r.open || !lower(w))) made++;
-    else if (!r.open) missed++;
+    if (reached(w, r.value) && (!r.open || !lower(w)) && !(r.unknown && lower(w))) made++;
+    else if (!r.open && !r.unknown) missed++;
   }
   return { made, missed, played: made + missed };
 }
