@@ -100,7 +100,7 @@ export function Scorecard(props: {
       <button type="button" className={`card sc-status${signed ? ' signed' : ''}${attention ? ' attention' : ''}`} aria-label={tr(`State of the round: ${status.title} – change`, `Status der Runde: ${status.title} – ändern`)} onClick={() => setStatusOpen(true)}>
         <span className="sc-status-icon" aria-hidden="true">{status.icon}</span>
         <span className="grow">
-          <strong>{attention ? `${tr('Round saved ✓', 'Runde gespeichert ✓')} · ${status.title}` : status.title}</strong>
+          <strong>{attention ? `${tr('Round saved', 'Runde gespeichert')} · ${status.title}` : status.title}</strong>
           <span className="muted small">{attention ? tr('Tap to choose how it goes on', 'Antippen: wie es weitergeht') : status.sub}</span>
         </span>
         <span aria-hidden="true">›</span>
@@ -109,7 +109,7 @@ export function Scorecard(props: {
         <div className="sheet-backdrop" onClick={() => setStatusOpen(false)}>
           <section className="sheet" role="dialog" aria-label={tr('State of the round', 'Status der Runde')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{attention ? tr('Round saved ✓ How does it go on?', 'Runde gespeichert ✓ Wie geht es weiter?') : tr('State of the round', 'Status der Runde')}</strong>
+              <strong>{attention ? tr('Round saved. How does it go on?', 'Runde gespeichert. Wie geht es weiter?') : tr('State of the round', 'Status der Runde')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setStatusOpen(false)}>
                 ✕
               </button>
@@ -328,7 +328,7 @@ export function Scorecard(props: {
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2>{tr('Your stats', 'Deine Statistik')}</h2>
+        <span className="eyebrow">{tr('Your stats', 'Deine Statistik')}</span>
         <div className="stat-grid">
           <Stat label="Putts" value={String(stats.putts)} />
           <Stat label={tr('Fairways hit', 'Fairways getroffen')} value={`${stats.fairwaysHit} / ${stats.fairwaysPossible}`} />

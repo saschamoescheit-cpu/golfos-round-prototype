@@ -23,7 +23,7 @@ export interface Profile {
   paypal?: string;
   /** the standard currency (Sascha 12.11.2026): games and bets in another currency are shown converted to it in the
    *  Bilanz – at the rate of their cut-off day (lib/fx.ts); euro by default */
-  currency?: 'EUR' | 'USD';
+  currency?: string; // an ISO 4217 code – the whole catalogue since 12.11.2026 (lib/currencies.ts), before EUR or USD
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };

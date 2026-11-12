@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Block } from '../components/Block';
 import type { Round } from '../types';
 import { career, playedCourses } from '../lib/history';
 import { handicapIndex, playedHandicap } from '../lib/handicap';
@@ -88,8 +89,8 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
         )
       ) : (
         <>
+          <Block title={tr('Your holes played', 'Deine gespielten Löcher')}>
           <section className="card stats-card">
-            <h2>{tr('Your holes played', 'Deine gespielten Löcher')}</h2>
             <div className="mix-bar" role="img" aria-label={results.map((x) => `${x.label} ${c.mix[x.k]}`).join(', ')}>
               {/* the numbers in the bars, the legend below on its own (Sascha 17.10.2026) */}
               {results.map((x) =>
@@ -109,6 +110,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
               ))}
             </div>
           </section>
+          </Block>
 
           <div className="tile-row">
             <div className="tile">

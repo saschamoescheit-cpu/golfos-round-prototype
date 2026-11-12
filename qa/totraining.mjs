@@ -71,7 +71,7 @@ for (let k = 0; k < 20 && !(after.length === 1 && after[0].items?.length); k++) 
   after = await plans();
 }
 ok(after.length === 1 && /^Nach der Runde \d\d\.\d\d\. · .*Hetzenhof/.test(after[0].name) && after[0].items.length > 0, `Training: own plan "${after[0]?.name}" with ${after[0]?.items.length} drills`);
-ok((await p.getByRole('button', { name: 'Im Training ✓' }).isDisabled()) && (await p.getByText(/Im Training gespeichert als/).count()) === 1, 'button: "Im Training ✓", note where to find it');
+ok((await p.getByRole('button', { name: 'Im Training', exact: true }).isDisabled()) && (await p.getByRole('button', { name: 'Im Training', exact: true }).locator('svg').count()) === 1 && (await p.getByText(/Im Training gespeichert als/).count()) === 1, 'button: "Im Training" with the SVG tick (no ✓ glyph – Facelift O5), note where to find it');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/totraining.png', fullPage: true });
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

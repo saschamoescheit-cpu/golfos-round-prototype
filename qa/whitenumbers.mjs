@@ -4,6 +4,7 @@
 // Dark and sun mode. Figures on white (the ball in the putt editor) keep dark ink. Data: the tutorial's example player.
 // Usage: node qa/whitenumbers.mjs [url]
 import { webkit, devices } from 'playwright';
+import { pickTopic, topicNames } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -111,9 +112,9 @@ for (const sun of [false, true]) {
   // the statistics, topic by topic
   await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
   await p.waitForTimeout(600);
-  const topics = await p.getByRole('group', { name: 'Thema' }).getByRole('button').allInnerTexts();
+  const topics = await topicNames(p); // the switch "‹ Abschlag ›" since the Facelift (11.11.2026)
   for (const t of topics) {
-    await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: t.trim(), exact: true }).click();
+    await pickTopic(p, t.trim());
     await p.waitForTimeout(700);
     coloured += (await report(`${mode} · Statistik ${t.trim()}`)).coloured;
   }

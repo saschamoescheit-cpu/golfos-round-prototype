@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react';
 import type { Club } from '../types';
 import { clubCode, getLang, tr } from '../lib/i18n';
-import { TickRow } from './Settings';
+import { ChoiceRow, SettingsList, TickRow } from './Settings';
 import { clubName } from '../lib/caddie';
 import { loadLaunch, measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, saveLaunch, summarize, type LmClub, type LmData, type LmImport, type LmSession } from '../lib/launchmonitor';
-import { Segmented } from './ui';
 
 // Launch monitor data in "My bag" (Sascha 25.10.2026: "carry distances backed by measured launch monitor data"): a session
 // exported as CSV – Garmin R10, Trackman, Foresight to begin with (Sascha 26.10.2026) – read, shown per club, and on
@@ -136,15 +135,18 @@ export function LaunchImport(props: {
             </span>
             {/* the unit: from the file, or the player says it */}
             {!parsed.unitSure && <span className="small good-text">{tr('The file names no unit – choose it:', 'Die Datei nennt keine Einheit – bitte wählen:')}</span>}
-            <Segmented<'yd' | 'm'>
-              label={tr('Distances in the file', 'Weiten in der Datei')}
-              value={parsed.unit}
-              onChange={(v) => v && setUnit(v)}
-              options={[
-                { value: 'yd', label: 'Yards' },
-                { value: 'm', label: tr('Metres', 'Meter') },
-              ]}
-            />
+            {/* a setting chosen seldom: a row with its sheet (Facelift 11.11.2026), not a block of two buttons */}
+            <SettingsList>
+              <ChoiceRow<'yd' | 'm'>
+                label={tr('Distances in the file', 'Weiten in der Datei')}
+                value={parsed.unit}
+                onChange={setUnit}
+                options={[
+                  { value: 'yd', name: 'Yards', text: tr('Converted to metres for your bag', 'Werden für dein Bag in Meter umgerechnet') },
+                  { value: 'm', name: tr('Metres', 'Meter'), text: tr('Taken over as they are', 'Werden übernommen, wie sie sind') },
+                ]}
+              />
+            </SettingsList>
             <div className="launch-table" role="table" aria-label={tr('Per club', 'Je Schläger')}>
               <span className="muted small" role="columnheader" />
               <span className="muted small" role="columnheader">{tr('shots', 'Schläge')}</span>

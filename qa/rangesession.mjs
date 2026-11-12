@@ -4,6 +4,7 @@
 // with four tabs, the spread first every time; in the stats the range's shots as rings, off at first, remembered.
 // Data: made up in the devices' formats (no real player's session). Usage: node qa/rangesession.mjs [url]  (SHOTS=<dir>)
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { onOff, flip } from './onoff.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
@@ -64,7 +65,7 @@ await p.evaluate((d) => {
 await p.reload();
 await p.waitForTimeout(1500);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
-await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(500);
 const card = p.getByRole('region', { name: 'Launch-Monitor' });
 const had4i = (await p.getByLabel('4i Carry in Metern').count()) > 0;
@@ -115,6 +116,9 @@ ok((await p.evaluate(() => window.scrollY)) < 5, `the session's page opens at it
 const tabs = p.getByRole('group', { name: 'Sitzung' });
 const pressed = async () => (await tabs.locator('button[aria-pressed="true"]').innerText()).trim();
 ok((await tabs.locator('button').allInnerTexts()).join('|') === 'Streuung|Abstände|Flugbahn|Schwung' && (await pressed()) === 'Streuung', 'four tabs, "Streuung" chosen');
+// the views as the app's green chips, the titles as eyebrows above the cards (Facelift 11.11.2026, "range" and O6)
+ok((await p.locator('main .segmented').count()) === 0 && (await tabs.evaluate((el) => el.classList.contains('chip-row'))), 'the four views as chips, not a block of four buttons');
+ok((await p.locator('main h2').count()) === 0 && (await p.locator('main .eb-block > .eyebrow').first().textContent()) === 'Jeder Schlag von oben', 'no heading inside a card – "Jeder Schlag von oben" small above it');
 const chips = await p.getByRole('group', { name: 'Schläger' }).locator('button').allInnerTexts();
 ok(chips.join('|') === '4i · 5×|7i · 10×|PW · 8×' && /7i/.test(await p.getByRole('group', { name: 'Schläger' }).locator('button[aria-pressed="true"]').innerText()), `clubs in order, the one with the most shots first chosen: ${chips.join(' ')}`);
 const dots = p.locator('.range-dots circle');
@@ -159,7 +163,7 @@ ok(after.length === 1 && /^Garmin/.test(after[0]) && (await inBag('7i')) === car
 // 4 · the stats: the range's shots as rings, off at first, remembered
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(600);
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
+await pickTopic(p, 'Schläger');
 await p.waitForTimeout(600);
 const sw = onOff(p, /Range-Schläge zeigen/);
 ok((await sw.count()) === 1 && (await sw.getAttribute('data-on')) === 'false' && (await p.locator('.spread-dot.range').count()) === 0, 'stats: "Range-Schläge zeigen" – off at first, no rings');
@@ -173,7 +177,7 @@ await p.reload();
 await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(500);
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
+await pickTopic(p, 'Schläger');
 await p.waitForTimeout(500);
 ok((await onOff(p, /Range-Schläge zeigen/).getAttribute('data-on')) === 'true', 'remembered after a reload');
 

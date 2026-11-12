@@ -793,7 +793,7 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
  * kept for this course, these loops and this tee (Sascha 21.10.2026). The round setup and the game setup use the same
  * (Sascha 25.10.2026: Games like Rounds).
  */
-export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onSave: (v: { cr: number; slope: number }) => void }) {
+export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onSave: (v: { cr: number; slope: number }) => void; /** the line under "eintragen" – the scorecard's own (Facelift 11.11.2026, R12) */ hint?: string }) {
   const { rating, nine } = props;
   const [edit, setEdit] = useState(false);
   const [crIn, setCrIn] = useState('');
@@ -839,7 +839,7 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
           ) : (
             <>
               <strong>{tr('Enter course rating and slope', 'Course Rating und Slope eintragen')}</strong>
-              <span className="muted small" style={{ display: 'block' }}>{tr('From the club’s scorecard – until then the playing handicap is estimated from the HCP', 'Von der Scorekarte des Clubs – bis dahin ist die Vorgabe aus dem HCP geschätzt')}</span>
+              <span className="muted small" style={{ display: 'block' }}>{props.hint ?? tr('From the club’s scorecard – until then the playing handicap is estimated from the HCP', 'Von der Scorekarte des Clubs – bis dahin ist die Vorgabe aus dem HCP geschätzt')}</span>
             </>
           )}
         </span>

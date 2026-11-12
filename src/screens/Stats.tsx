@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { Block } from '../components/Block';
 import type { Club, Flight, Round, Strike } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { SgCard } from '../components/SgCard';
@@ -145,13 +146,9 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
         </div>
       ) : (
         <>
-          <div className="chip-row section-chips" role="group" aria-label={tr('Topic', 'Thema')}>
-            {sections.map((x) => (
-              <button key={x.id} type="button" aria-pressed={section === x.id} onClick={() => setSection(x.id)}>
-                {x.label}
-              </button>
-            ))}
-          </div>
+          {/* the topics as the same switch as the rounds above, "‹ Abschlag ›" (Facelift 11.11.2026, R13 – before six chips
+              scrolling sideways) */}
+          <StepPick<Section> label={tr('Topic', 'Thema')} value={section} onChange={setSection} options={sections.map((x) => ({ value: x.id, name: x.label }))} />
           <p className="muted small" style={{ margin: 0 }}>
             {/* what the numbers rest on (Sascha 22.10.2026: "aus 6 geprüften Runden · 2 warten noch") */}
             {tr(`From ${a.rounds} checked ${a.rounds === 1 ? 'round' : 'rounds'}`, `Aus ${a.rounds} geprüften ${a.rounds === 1 ? 'Runde' : 'Runden'}`)}
@@ -166,14 +163,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 <Big value={dec(per(a.stablefordPer18) ?? '–')} label="Stableford" />
                 <Big value={dec(per(a.puttsPer18) ?? '–')} label="Putts" />
               </section>
+              <Block title={tr('Your key figures', 'Deine Kennzahlen')}>
               <section className="card stats-card airy">
-                <h2>{tr('Your key figures', 'Deine Kennzahlen')}</h2>
                 <div className="ring-row">
                   <Ring label="Fairways" r={a.fairways} />
                   <Ring label={tr('Greens', 'Grüns')} r={a.gir} />
                   <Ring label="Scrambling" r={a.scrambling} />
                 </div>
               </section>
+              </Block>
 
               {sg ? (
                 <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={base} defaultGroup={comparisonGroup(profileIndex() ?? a.handicap)} />
@@ -184,8 +182,8 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               )}
 
               {f && f.focus.length > 0 && (
+                <Block title={tr('Where you lose strokes', 'Wo du Schläge verlierst')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('Where you lose strokes', 'Wo du Schläge verlierst')}</h2>
                   <p className="muted small" style={{ margin: 0 }}>
                     {tr(`Compared with players of ${f.target} (you: ${f.band}).`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}).`)}
                   </p>
@@ -197,17 +195,18 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                           {x.metric}
                         </span>
                         <span>
-                          <strong className="bad-text">{dec(x.yours)}</strong> <span className="muted">→ {dec(x.target)}</span>
+                          <strong className="bad-text">{dec(x.yours)}</strong> <span className="muted"><DirIcon dir="right" small /> {dec(x.target)}</span>
                         </span>
                       </li>
                     ))}
                   </ol>
                 </section>
+                </Block>
               )}
 
               {f && f.focus.length > 0 && (
+                <Block title={tr('Practice plan', 'Trainingsplan')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('Practice plan', 'Trainingsplan')}</h2>
                   <p className="muted small" style={{ margin: 0 }}>
                     {tr(`About ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} minutes, built from the areas above.`, `Etwa ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} Minuten, aus den Bereichen oben.`)}
                   </p>
@@ -225,23 +224,25 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     ))}
                   </ol>
                 </section>
+                </Block>
               )}
             </>
           )}
 
           {section === 'tee' && (
             <>
+              <Block title={tr('Off the tee', 'Vom Abschlag')}>
               <section className="card stats-card airy">
-                <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
                 {/* the findings as tiles above the rings (Sascha 22.10.2026: "the text hints more visual, as tiles") */}
                 {a.fairways.of > 0 && <TeeInsights left={a.missLeft} hit={a.fairways} right={a.missRight} lies={a.missLies} />}
                 <TeeBar left={a.missLeft} hit={a.fairways} right={a.missRight} />
               </section>
+              </Block>
               {/* by the club off the tee (Sascha 21.10.2026: "more visual elements and analyses") */}
               {tee.byClub.length > 0 && (
+                <Block title={tr('Fairway hits off the tee', 'Fairway-Treffer vom Tee')}>
                 <section className="card stats-card airy">
-                  {/* the heading, its source right below (Sascha 22.10.2026) */}
-                  <h2>{tr('Fairway hits off the tee', 'Fairway-Treffer vom Tee')}</h2>
+                  {/* the heading, its source right below (Sascha 22.10.2026) – the heading above the card (Facelift 11.11.2026) */}
                   <p className="muted small stats-sub">{tr('From your checked tee shots on par 4 and 5', 'Aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
                   <div className="tee-clubs">
                     {tee.byClub.map((c) => {
@@ -255,20 +256,21 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                             {c.ob > 0 && <Insight num={`${c.ob}×`} label={tr('out of bounds', 'ins Aus')} tone="bad" />}
                           </div>
                           <div className="ring-row">
-                            <Ring label={tr('← missed left', '← links verfehlt')} r={{ n: c.left, of: c.n }} miss />
+                            <Ring label={tr('missed left', 'links verfehlt')} dir="left" r={{ n: c.left, of: c.n }} miss />
                             <Ring label="Fairway" r={{ n: c.hit, of: c.n }} />
-                            <Ring label={tr('missed right →', 'rechts verfehlt →')} r={{ n: c.right, of: c.n }} miss />
+                            <Ring label={tr('missed right', 'rechts verfehlt')} dir="right" r={{ n: c.right, of: c.n }} miss />
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 </section>
+                </Block>
               )}
               {/* what a missed fairway costs: strokes over par on the hole after a hit or missed tee shot */}
               {tee.cost.nHit + tee.cost.nMissed > 0 && (
+                <Block title={tr('What a missed fairway costs', 'Was ein verfehltes Fairway kostet')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('What a missed fairway costs', 'Was ein verfehltes Fairway kostet')}</h2>
                   {tee.cost.hit != null && tee.cost.missed != null && (
                     <div className="insight-row">
                       {tee.cost.missed > tee.cost.hit ? (
@@ -296,6 +298,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   </div>
                   <p className="muted small" style={{ margin: 0 }}>{tr('Average over par on the hole, par 4 and 5', 'Ø über Par am Loch, Par 4 und 5')}</p>
                 </section>
+                </Block>
               )}
               <div className="tile-row">
                 <div className="tile">
@@ -321,8 +324,8 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
 
           {section === 'green' && (
             <>
+              <Block title={tr('Approach & short game', 'Annäherung & kurzes Spiel')}>
               <section className="card stats-card airy">
-                <h2>{tr('Approach & short game', 'Annäherung & kurzes Spiel')}</h2>
                 <div className="ring-row">
                   <Ring label="GIR" r={a.gir} />
                   <Ring label="Scrambling" r={a.scrambling} />
@@ -340,9 +343,10 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   </p>
                 )}
               </section>
+              </Block>
               {bands.length > 0 && (
+                <Block title={tr('Approach by distance', 'Annäherung nach Entfernung')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('Approach by distance', 'Annäherung nach Entfernung')}</h2>
                   <p className="muted small stats-sub">{tr('Greens hit and how close to the pin, from your checked shots – a layup does not count', 'Grüns getroffen und wie nah an der Fahne, aus deinen geprüften Schlägen – Vorlegen zählt nicht')}</p>
                   <div className="hbars">
                     {bands.map((b) => (
@@ -361,11 +365,13 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     ))}
                   </div>
                 </section>
+                </Block>
               )}
+              <Block title={tr('Results by par', 'Ergebnis nach Par')}>
               <section className="card stats-card airy">
-                <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>
                 <ParBars byPar={a.byPar} />
               </section>
+              </Block>
             </>
           )}
 
@@ -381,16 +387,17 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <span className="muted small">{tr('Putts per green hit', 'Putts je getroffenem Grün')}</span>
                 </div>
               </div>
+              <Block title={"Putting"}>
               <section className="card stats-card airy">
-                <h2>Putting</h2>
                 <div className="ring-row two">
                   <Ring label={tr('1-putts', '1-Putts')} r={a.onePutts} />
                   <Ring label={tr('3-putts', '3-Putts')} r={a.threePutts} bad />
                 </div>
               </section>
+              </Block>
               {misses.missed >= 3 && (
+                <Block title={tr('How your putts miss', 'Wie deine Putts verfehlen')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('How your putts miss', 'Wie deine Putts verfehlen')}</h2>
                   <p className="muted small stats-sub">{tr(`From ${misses.missed} missed putts`, `Aus ${misses.missed} verfehlten Putts`)}</p>
                   <div className="ring-row">
                     <Ring label={tr('short', 'zu kurz')} r={{ n: misses.short, of: misses.short + misses.long }} miss />
@@ -402,10 +409,11 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     <Insight num={`${misses.right}×`} label={tr('missed right', 'rechts vorbei')} />
                   </div>
                 </section>
+                </Block>
               )}
               {a.puttsByFirstPutt.some((b) => b.holes > 0) && (
+                <Block title={tr('Putts by length of the first putt', 'Putts nach Länge des ersten Putts')}>
                 <section className="card stats-card airy">
-                  <h2>{tr('Putts by length of the first putt', 'Putts nach Länge des ersten Putts')}</h2>
                   <div className="hbars">
                     {a.puttsByFirstPutt.map((b) => (
                       <div key={b.label} className="hbar">
@@ -421,13 +429,14 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     {tr('Average putts per hole; in brackets the number of holes.', 'Durchschnittliche Putts je Loch; in Klammern die Zahl der Löcher.')}
                   </p>
                 </section>
+                </Block>
               )}
             </>
           )}
 
           {section === 'clubs' && (
+            <Block title={tr('Your club distances', 'Deine Schlägerweiten')}>
             <section className="card stats-card airy">
-              <h2>{tr('Your club distances', 'Deine Schlägerweiten')}</h2>
               {a.clubs.length === 0 ? (
                 <p className="muted small" style={{ margin: 0 }}>
                   {tr(
@@ -460,19 +469,21 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 </>
               )}
             </section>
+            </Block>
           )}
           {section === 'clubs' && bagReports.some((c) => c.median >= 40) && (
             // the spread over all clubs as one cone – to plan holes and shots with it (Sascha 23.10.2026)
+            <Block title={tr('Your spread', 'Deine Streuung')}>
             <section className="card stats-card airy">
-              <h2>{tr('Your spread', 'Deine Streuung')}</h2>
               <p className="muted small stats-sub">{tr('80 % of your balls land in each club’s ellipse · solid: from your checked shots, dashed: estimated from your handicap', 'In der Ellipse je Schläger landen 80 % deiner Bälle · durchgezogen: aus deinen geprüften Schlägen, gestrichelt: geschätzt nach Handicap')}</p>
               <SpreadCone reports={bagReports} playing={profileIndex()} />
             </section>
+            </Block>
           )}
           {section === 'clubs' && bagReports.length > 0 && (
             // how each club is struck and where its balls end (Sascha 22.10.2026: the misses and the corridor; 23.10.: the spread)
+            <Block title={tr('Strikes and spread per club', 'Treffer und Streuung je Schläger')}>
             <section className="card stats-card airy">
-              <h2>{tr('Strikes and spread per club', 'Treffer und Streuung je Schläger')}</h2>
               <p className="muted small stats-sub">{tr('Each dot a shot around the target line – green a good strike, red a mishit · the ellipse holds 80 % of your balls', 'Jeder Punkt ein Schlag um die Ziellinie – grün ein guter Treffer, rot ein Fehlschlag · in der Ellipse landen 80 % deiner Bälle')}</p>
               {rangeShots.size > 0 && (
                 <div className="drawer-list settings-switches range-switch">
@@ -523,6 +534,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 </div>
               </div>
             </section>
+            </Block>
           )}
 
           {section === 'courses' && <CoursesCard rounds={finished} onOpen={props.onOpenCourse} />}
@@ -554,7 +566,7 @@ function Big(props: { value: string | number; label: string }) {
 }
 
 /** A ring for a rate (fairways, greens …): the share in the middle, n of m below. */
-function Ring(props: { label: string; r: Rate; bad?: boolean; miss?: boolean }) {
+function Ring(props: { label: string; r: Rate; bad?: boolean; miss?: boolean; /** the side as an arrow beside the label (Facelift 11.11.2026, R13 – before "← links verfehlt") */ dir?: 'left' | 'right' }) {
   const p = pct(props.r);
   const c = 2 * Math.PI * 26;
   return (
@@ -566,7 +578,11 @@ function Ring(props: { label: string; r: Rate; bad?: boolean; miss?: boolean }) 
           {p == null ? '–' : `${p}%`}
         </text>
       </svg>
-      <span className="small">{props.label}</span>
+      <span className="small ring-label">
+        {props.dir === 'left' && <DirIcon dir="left" small />}
+        {props.label}
+        {props.dir === 'right' && <DirIcon dir="right" small />}
+      </span>
       <span className="muted small">
         {props.r.n}/{props.r.of}
       </span>
@@ -604,9 +620,9 @@ function TeeBar(props: { left: Rate; hit: Rate; right: Rate }) {
   return (
     <>
       <div className="ring-row" aria-label={tr(`Fairway: ${l}% left, ${h}% hit, ${r}% right`, `Fairway: ${l} % links, ${h} % getroffen, ${r} % rechts`)}>
-        <Ring label={tr('← missed left', '← links verfehlt')} r={props.left} miss />
+        <Ring label={tr('missed left', 'links verfehlt')} dir="left" r={props.left} miss />
         <Ring label="Fairway" r={props.hit} />
-        <Ring label={tr('missed right →', 'rechts verfehlt →')} r={props.right} miss />
+        <Ring label={tr('missed right', 'rechts verfehlt')} dir="right" r={props.right} miss />
       </div>
     </>
   );
@@ -623,10 +639,10 @@ function Insight(props: { num: ReactNode; label: string; tone?: 'good' | 'bad'; 
 }
 
 /** Which side the misses go: an arrow, the words below. */
-function tendency(left: number, right: number): { num: string; label: string } {
-  if (left + right === 0) return { num: '↑', label: tr('fairway hit', 'Fairway getroffen') }; // Sascha 24.10.2026: rather than "never missed to a side"
-  if (left === right) return { num: '← →', label: tr('missed left as often as right', 'links wie rechts verfehlt') };
-  return left > right ? { num: '←', label: tr('missed more often left', 'öfter links verfehlt') } : { num: '→', label: tr('missed more often right', 'öfter rechts verfehlt') };
+function tendency(left: number, right: number): { num: ReactNode; label: string } {
+  if (left + right === 0) return { num: <DirIcon dir="up" />, label: tr('fairway hit', 'Fairway getroffen') }; // Sascha 24.10.2026: rather than "never missed to a side"
+  if (left === right) return { num: <DirIcon dir="both" />, label: tr('missed left as often as right', 'links wie rechts verfehlt') };
+  return left > right ? { num: <DirIcon dir="left" />, label: tr('missed more often left', 'öfter links verfehlt') } : { num: <DirIcon dir="right" />, label: tr('missed more often right', 'öfter rechts verfehlt') };
 }
 
 /** Off the tee in three tiles: fairways hit, which side the misses go, where they end up. */
@@ -661,4 +677,16 @@ function tendencyText(d: { shots: number; sideMean: number; lengthMean: number }
   const side = Math.abs(d.sideMean) >= 3 ? `${Math.abs(d.sideMean)} m ${d.sideMean > 0 ? 'R' : 'L'}` : tr('straight', 'gerade');
   const len = Math.abs(d.lengthMean) >= 5 ? ` · ${Math.abs(d.lengthMean)} m ${d.lengthMean > 0 ? tr('long', 'lang') : tr('short', 'kurz')}` : '';
   return side + len;
+}
+
+/** A direction as an SVG arrow (Facelift 11.11.2026, R13 – before the glyphs ←, →, ↑, ← →): big in a tile, small beside a word. */
+function DirIcon(props: { dir: 'left' | 'right' | 'up' | 'both'; small?: boolean }) {
+  const s = props.small ? 14 : 30;
+  const d = { left: 'M19 12H5M11 6l-6 6 6 6', right: 'M5 12h14M13 6l6 6-6 6', up: 'M12 19V5M6 11l6-6 6 6', both: 'M3 12h18M8 7l-5 5 5 5M16 7l5 5-5 5' }[props.dir];
+  const label = { left: tr('left', 'links'), right: tr('right', 'rechts'), up: tr('straight', 'gerade'), both: tr('both sides', 'beide Seiten') }[props.dir];
+  return (
+    <svg className={`dir-icon${props.small ? ' small' : ''}`} width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={props.small ? 2.4 : 2.2} strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={label}>
+      <path d={d} />
+    </svg>
+  );
 }

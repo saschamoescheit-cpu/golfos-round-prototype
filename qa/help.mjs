@@ -23,13 +23,17 @@ await p.reload();
 await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(500);
-const card = p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Hilfe' }) });
-ok(await card.isVisible(), 'profile: a section "Hilfe"');
-const order = await p.locator('main h2').allInnerTexts();
-ok(order.indexOf('Hilfe') > order.indexOf('Mitteilungen') && order.indexOf('Hilfe') < order.indexOf('Deine Daten'), `between "Mitteilungen" and "Deine Daten" (${order.join(' · ')})`);
+// the block with its eyebrow above (Facelift 11.11.2026), the two rows of a settings list
+const card = p.getByRole('region', { name: 'Hilfe', exact: true });
+ok(await card.isVisible() && (await card.locator('.settings-list .settings-row').count()) === 2, 'profile: a block "Hilfe" – "Videos ›" and "Häufige Fragen ›" as rows of one list');
+const order = (await p.locator('main .eyebrow').allInnerTexts()).map((t) => t.trim().toLowerCase());
+ok(order.indexOf('hilfe') > order.indexOf('mitteilungen') && order.indexOf('hilfe') < order.indexOf('deine daten'), `between "Mitteilungen" and "Deine Daten" (${order.join(' · ')})`);
 await card.getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1500);
 ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page opens');
+// the two views as the app's green chips, not a block of two buttons (Facelift 11.11.2026, "hilfe")
+const views = p.getByRole('group', { name: 'Hilfe' });
+ok((await p.locator('main .segmented').count()) === 0 && (await views.evaluate((el) => el.classList.contains('chip-row'))) && (await views.locator('button[aria-pressed="true"]').innerText()).trim() === 'Videos', 'Videos | Häufige Fragen as chips, "Videos" chosen');
 const vids = p.locator('.help-video');
 ok((await vids.count()) === 15, `the whole tour and 14 videos – the launch monitor, bets, tournaments, the balance and a tournament over rounds too (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
@@ -84,7 +88,9 @@ await p.waitForTimeout(300);
 // the questions
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
-const topics = await p.locator('.help-faq h2').allInnerTexts();
+// each topic small above its list (Facelift 11.11.2026, H1) – no heading inside a card
+ok((await p.locator('.help-faq h2').count()) === 0 && (await p.locator('.help-faq .eb-block > .eyebrow + .card.faq-list').count()) === 6, 'the topics as eyebrows above their cards');
+const topics = await p.locator('.help-faq .eb-block > .eyebrow').allTextContents();
 ok(topics.join(' · ') === 'Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Games · Konto & Daten', `the questions by topic: ${topics.join(' · ')}`);
 const q = p.getByRole('button', { name: 'Warum prüfen und signieren?' });
 await q.click();
@@ -97,20 +103,20 @@ ok(/help\/review\.mp4$/.test(await p.locator('.help-player video').evaluate((el)
 await p.getByRole('button', { name: 'Schließen' }).click();
 await p.getByRole('button', { name: /^Zurück/ }).first().click();
 await p.waitForTimeout(500);
-ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible() && (await p.locator('.help-faq').count()) === 0, 'back to the profile');
+ok(await p.getByRole('region', { name: 'Hilfe', exact: true }).isVisible() && (await p.locator('.help-faq').count()) === 0, 'back to the profile');
 // opened in Games: its own video and questions first (night 25./26.10.2026)
 await p.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await p.reload();
 await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(500);
-await p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Hilfe' }) }).getByRole('button', { name: /^Videos/ }).click();
+await p.getByRole('region', { name: 'Hilfe', exact: true }).getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1200);
 const gTitles = await p.locator('.help-video strong').allInnerTexts();
 ok(gTitles.length === 15 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Wetten' && gTitles[2] === 'Bilanz' && gTitles[3] === 'Turniere' && gTitles[4] === 'Turnier über mehrere Runden' && gTitles[5] === 'Der ganze Rundgang' && gTitles[14] === 'Launch-Monitor', `in Games the Games videos first: ${gTitles.slice(0, 5).join(' · ')} …`);
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
-const gTopics = await p.locator('.help-faq h2').allInnerTexts();
+const gTopics = await p.locator('.help-faq .eb-block > .eyebrow').allTextContents();
 ok(gTopics.join(' · ') === 'Games · Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Konto & Daten', `in Games the Games questions first: ${gTopics.join(' · ')}`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

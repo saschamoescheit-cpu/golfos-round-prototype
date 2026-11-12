@@ -1,3 +1,4 @@
+import { Block } from './Block';
 import { useMemo, useState } from 'react';
 import type { Round } from '../types';
 import { personalBests, playedCourses, roundPoints, sgTrends, trendChange, courseStats } from '../lib/history';
@@ -87,8 +88,8 @@ export function TrendCard(props: { rounds: Round[] }) {
   }
 
   return (
+    <Block title={tr('Your progress', 'Dein Verlauf')}>
     <section className="card stats-card">
-      <h2>{tr('Your progress', 'Dein Verlauf')}</h2>
       <div className="chip-row" role="group" aria-label={tr('Value', 'Wert')}>
         {available.map((x) => (
           <button key={x.id} type="button" aria-pressed={m.id === x.id} onClick={() => setMetric(x.id)}>
@@ -126,6 +127,7 @@ export function TrendCard(props: { rounds: Round[] }) {
             : tr(`Values ${nine ? 'per 9 holes' : 'per 18 holes'}; the dashed line shows the trend.`, `Werte je ${nine ? 9 : 18} Löcher; die gestrichelte Linie zeigt den Trend.`)}
       </p>
     </section>
+    </Block>
   );
 }
 
@@ -133,8 +135,8 @@ export function BestsCard(props: { rounds: Round[]; onOpen: (r: Round) => void }
   const bests = useMemo(() => personalBests(props.rounds), [props.rounds]);
   if (!bests.length) return null;
   return (
+    <Block title={tr('Personal bests', 'Deine Bestleistungen')}>
     <section className="card stats-card">
-      <h2>{tr('Personal bests', 'Deine Bestleistungen')}</h2>
       <div className="bests">
         {bests.map((b) => (
           <button key={b.key} type="button" className="best" onClick={() => props.onOpen(b.round)}>
@@ -147,6 +149,7 @@ export function BestsCard(props: { rounds: Round[]; onOpen: (r: Round) => void }
         ))}
       </div>
     </section>
+    </Block>
   );
 }
 
@@ -154,8 +157,8 @@ export function CoursesCard(props: { rounds: Round[]; onOpen: (courseName: strin
   const courses = useMemo(() => playedCourses(props.rounds), [props.rounds]);
   if (!courses.length) return null;
   return (
+    <Block title={tr('Your courses', 'Deine Plätze')}>
     <section className="card stats-card">
-      <h2>{tr('Your courses', 'Deine Plätze')}</h2>
       {courses.map((c) => {
         const s = courseStats(props.rounds, c.courseName);
         return (
@@ -173,5 +176,6 @@ export function CoursesCard(props: { rounds: Round[]; onOpen: (courseName: strin
         );
       })}
     </section>
+    </Block>
   );
 }

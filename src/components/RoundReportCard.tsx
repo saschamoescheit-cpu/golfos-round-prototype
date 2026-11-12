@@ -5,6 +5,7 @@ import { roundSummary } from '../lib/summary';
 import { GROUPS, SG_LABELS } from '../lib/sg';
 import { tr } from '../lib/i18n';
 import { toTraining } from './RoundSummaryCard';
+import { Block } from './Block';
 
 // The round report after signing (Sascha 22.10.2026, round check): strokes gained per area against players of the same
 // handicap and the last five rounds, the three most expensive holes and why, and the drill for the weakest area –
@@ -31,8 +32,9 @@ function ReportBody(props: { round: Round; history: Round[]; highlight?: boolean
   const max = Math.max(1, ...rep.areas.map((a) => Math.abs(a.round)));
   const drill = (rep.weakest && plan.find((d) => d.area === rep.weakest)) ?? plan[0] ?? null;
   return (
-    <section ref={ref} className={`card stats-card airy round-report${props.highlight ? ' fresh' : ''}`} aria-label={tr('Your round report', 'Dein Rundenbericht')}>
-      <h2>{tr('Your round report', 'Dein Rundenbericht')}</h2>
+    // the title small above the card (Facelift 11.11.2026, O6)
+    <Block title={tr('Your round report', 'Dein Rundenbericht')} className="round-report-block">
+    <section ref={ref} className={`card stats-card airy round-report${props.highlight ? ' fresh' : ''}`}>
       <p className="muted small stats-sub">
         {tr(`From ${rep.holes} checked holes · against players with ${group}`, `Aus ${rep.holes} geprüften Löchern · gegen Spieler mit ${group}`)}
       </p>
@@ -114,6 +116,7 @@ function ReportBody(props: { round: Round; history: Round[]; highlight?: boolean
         </>
       )}
     </section>
+    </Block>
   );
 }
 

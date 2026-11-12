@@ -3,6 +3,7 @@
 // the ball, and a line "Streuung" in the caddie card. Data: the tutorial's example player (five signed rounds).
 // Usage: node qa/spread.mjs [url]   (SHOTS=<dir> keeps screenshots)
 import { webkit, devices } from 'playwright';
+import { pickTopic } from './topic.mjs';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
 
@@ -36,14 +37,14 @@ await p.waitForTimeout(1500);
 // 1 · the stats
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
 await p.waitForTimeout(600);
-await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
+await pickTopic(p, 'Schläger');
 await p.waitForTimeout(600);
-ok((await p.getByRole('heading', { name: 'Deine Streuung' }).count()) === 1, 'stats: "Deine Streuung" with the cone');
+ok((await p.getByRole('region', { name: 'Deine Streuung' }).count()) === 1, 'stats: "Deine Streuung" with the cone');
 const cone = p.getByRole('img', { name: 'Deine Streuung je Schläger' });
 ok((await cone.locator('ellipse').count()) >= 3, `the cone: an ellipse per club (${await cone.locator('ellipse').count()})`);
 await cone.scrollIntoViewIfNeeded();
 await shot('spread-cone');
-ok((await p.getByRole('heading', { name: 'Treffer und Streuung je Schläger' }).count()) === 1, 'per club: "Treffer und Streuung je Schläger"');
+ok((await p.getByRole('region', { name: 'Treffer und Streuung je Schläger' }).count()) === 1, 'per club: "Treffer und Streuung je Schläger"');
 const dots = p.locator('.spread-chart.dots');
 ok((await dots.count()) >= 1 && (await p.locator('.spread-chart.dots circle.spread-dot').count()) >= 1, `per club: the shots as dots (${await dots.count()} clubs, ${await p.locator('.spread-chart.dots circle.spread-dot').count()} shots)`);
 await dots.first().scrollIntoViewIfNeeded();

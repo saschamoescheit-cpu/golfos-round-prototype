@@ -1,10 +1,11 @@
-// QA (Sascha 11.11.2026: "Reihenfolge: Alle, letzte 10, letzte 5. optisch passt es allerdings nicht zu den Facelift
+// QA (and the topics as "‹ Abschlag ›", Facelift 11.11.2026 R13) (Sascha 11.11.2026: "Reihenfolge: Alle, letzte 10, letzte 5. optisch passt es allerdings nicht zu den Facelift
 // Änderungen in der App"): the statistics' rounds as the app's switch "‹ Runden ›" (pool, live view) – no block of three
 // buttons; the order Alle → Letzte 10 → Letzte 5, "Letzte 5" at first; the numbers follow the pick.
 // Usage: node qa/statsrange.mjs [url]
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
+import { pickTopic } from './topic.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const r16 = JSON.parse(readFileSync(new URL('../../_data/golfos-runde-2026-10-16-golfclub-hetzenhof.json', import.meta.url), 'utf-8')).round;
@@ -55,6 +56,23 @@ ok(names.join('|') === 'Alle|Letzte 10|Letzte 5', `the list: ${names.join(' · '
 await dlg.locator('.pick-option').filter({ hasText: 'Letzte 5' }).click();
 await p.waitForTimeout(300);
 ok(/Letzte 5/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 5 geprüften/.test(await basis()), 'picked from the list: "Letzte 5"');
+// the topics as the same switch "‹ Abschlag ›" (Facelift 11.11.2026, R13 – before six chips scrolling sideways), the
+// directions as SVG arrows (before ←, →, ↑), every block's title small above its card (O6)
+{
+  const topic = p.getByRole('group', { name: 'Thema' });
+  ok((await topic.locator('.step-pick-now').count()) === 1 && (await p.locator('.section-chips').count()) === 0 && /Überblick/.test(await topic.locator('.step-pick-now').innerText()) && /1 von 6/.test(await topic.locator('.step-pick-now').innerText()), `the topics as a switch: ${(await topic.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ')}`);
+  ok((await p.locator('main h2').count()) === 0 && (await p.locator('main .eb-block > .eyebrow').count()) >= 1, 'Überblick: the titles as eyebrows, no heading in a card');
+  await topic.getByRole('button', { name: 'Nächste' }).click();
+  await p.waitForTimeout(300);
+  ok(/Abschlag/.test(await topic.locator('.step-pick-now').innerText()), '› goes to "Abschlag"');
+  const text = await p.locator('main').innerText();
+  ok(!/[←→↑]/.test(text), 'Abschlag: no arrow glyphs in the text');
+  ok((await p.locator('.insight-num svg.dir-icon').count()) >= 1 && (await p.locator('.ring-label svg.dir-icon').count()) >= 2, `the tendency tile and the rings "links/rechts verfehlt" with SVG arrows (${await p.locator('.insight-num svg.dir-icon').count()} tiles, ${await p.locator('.ring-label svg.dir-icon').count()} rings)`);
+  ok((await p.locator('main h2').count()) === 0 && (await p.locator('main .eb-block > .eyebrow').allTextContents()).includes('Vom Abschlag'), 'Abschlag: "Vom Abschlag" small above its card');
+  await pickTopic(p, 'Putten');
+  ok(/Putten/.test(await topic.locator('.step-pick-now').innerText()) && /4 von 6/.test(await topic.locator('.step-pick-now').innerText()), 'a tap lists the topics – "Putten" picked from the sheet');
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stats-topic.png`, fullPage: true });
+}
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

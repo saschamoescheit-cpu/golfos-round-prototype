@@ -4,10 +4,21 @@
 // a day to come: today's rate – "≈", it changes until the day. Offline: the last rate known; none: not converted.
 import { loadProfile } from './profile';
 
-export type Money = 'EUR' | 'USD';
+/** a currency – its ISO 4217 code ("EUR", "USD", "GBP" …); games and bets are in EUR or USD, the profile's standard
+ *  currency may be any of the catalogue (Sascha 12.11.2026, lib/currencies.ts) */
+export type Money = string;
 const KEY = 'golfos.fx.v1';
-const SYM: Record<Money, string> = { EUR: '€', USD: '$' };
-export const symOf = (c: Money): string => SYM[c];
+const SYM: Record<string, string> = { EUR: '€', USD: '$' };
+/** "€", "$", "£", "CHF" … – the short sign the phone knows for it, else the code */
+export const symOf = (c: Money): string => {
+  if (SYM[c]) return SYM[c];
+  try {
+    const part = new Intl.NumberFormat('de-DE', { style: 'currency', currency: c, currencyDisplay: 'narrowSymbol' }).formatToParts(1).find((x) => x.type === 'currency');
+    return part?.value || c;
+  } catch {
+    return c;
+  }
+};
 export const moneyOfSym = (sym: string): Money | null => (sym === '€' ? 'EUR' : sym === '$' ? 'USD' : null);
 
 /** the player's standard currency (profile) – none chosen: nothing converted, each in its own currency (a trip in

@@ -65,7 +65,15 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
           {props.options.map((o) => (
             <button key={String(o.value)} type="button" className="pick-option" aria-pressed={o.value === props.current} onClick={() => props.onPick(o.value)}>
               <span className="grow">
-                <strong>{o.name}</strong>
+                <strong>
+                  {/* over (a round played): the tick as an SVG before the name (Facelift 11.11.2026, O5 – before "✓ …") */}
+                  {(o as { done?: boolean }).done && (
+                    <svg className="step-pick-tick" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={tr('played', 'gespielt')}>
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  )}
+                  {o.name}
+                </strong>
                 {o.text && <span className="muted small">{o.text}</span>}
               </span>
               {o.value === props.current && (
@@ -441,7 +449,7 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
       {open && (
         <PickSheet
           title={props.label}
-          options={props.options.map((o) => ({ value: o.value, name: o.done ? `✓ ${o.name}` : o.name, ...(o.text ? { text: o.text } : {}) }))}
+          options={props.options.map((o) => ({ value: o.value, name: o.name, ...(o.done ? { done: true } : {}), ...(o.text ? { text: o.text } : {}) }))}
           current={props.value}
           onPick={(v) => {
             props.onChange(v);

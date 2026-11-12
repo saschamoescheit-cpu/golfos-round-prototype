@@ -117,7 +117,13 @@ const signedAs = (p, n) => until(() => p.locator('.profile-account').getByText(`
 // iPhone: create the account
 const phone = await device('iPhone', 'iPhone 13');
 ok(await phone.getByRole('button', { name: 'Mit Google anmelden' }).isVisible(), 'not signed in: Google stays');
-await phone.getByRole('group', { name: 'Anmelden oder Konto anlegen' }).getByRole('button', { name: 'Konto anlegen' }).click();
+// the two ways as the app's green chips (Sascha 12.11.2026, newer review of "konto") – no block of two buttons
+{
+  const modes = phone.getByRole('group', { name: 'Anmelden oder Konto anlegen' });
+  ok((await phone.locator('.segmented').count()) === 0 && (await modes.evaluate((el) => el.classList.contains('chip-row'))) && (await modes.locator('button[aria-pressed="true"]').innerText()).trim() === 'Anmelden' && (await phone.getByRole('form', { name: 'Anmelden' }).count()) === 1, '"Anmelden | Konto anlegen" as green chips, "Anmelden" chosen');
+  await modes.getByRole('button', { name: 'Konto anlegen' }).click();
+  ok((await modes.locator('button[aria-pressed="true"]').innerText()).trim() === 'Konto anlegen' && (await phone.locator('#acc-email').count()) === 1, '"Konto anlegen" chosen: the e-mail field comes');
+}
 await phone.fill('#acc-name', 'Sascha.M');
 await phone.fill('#acc-email', 'sascha@example.com');
 await phone.fill('#acc-pw', 'kurz');
@@ -133,12 +139,32 @@ await ipad.fill('#acc-name', ' sascha.M ');
 await ipad.fill('#acc-pw', 'falsch123');
 await ipad.locator('.account-form button[type=submit]').click();
 ok(await until(() => ipad.getByRole('alert').filter({ hasText: 'stimmt nicht' }).isVisible()), 'iPad: a wrong password is said');
+ok(await ipad.getByRole('alert').evaluate((el) => el.classList.contains('notice') && !el.classList.contains('bad-text')), 'said as the green notice, not as a red error (Facelift O4)');
 await ipad.fill('#acc-pw', 'geheim123');
 await ipad.locator('.account-form button[type=submit]').click();
 ok(await signedAs(ipad, 'sascha.m'), 'iPad: signed in with user name + password');
 
-// signed in: only "Abmelden" – no user name / password editor (Sascha 22.10.2026)
-ok((await ipad.getByRole('button', { name: /Benutzername & Passwort|Benutzername festlegen/ }).count()) === 0 && (await ipad.getByRole('button', { name: 'Abmelden' }).count()) >= 1, 'iPad signed in: only "Abmelden"');
+// signed in: the block "Konto" – the sign-in details as rows (Facelift 11.11.2026, P6: "Benutzername ›", "Passwort ändern ›",
+// the password confirmed with the save button in the sheet's head), "Abmelden" and "Konto löschen" in one bar (P4)
+{
+  const acc = ipad.getByRole('region', { name: 'Konto', exact: true });
+  const rows = (await acc.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  ok(rows.length === 2 && /^Benutzername sascha\.m ›$/.test(rows[0]) && /^Passwort ändern ›$/.test(rows[1]), `iPad signed in: the rows ${rows.join(' | ')}`);
+  const bar = (await acc.locator('.sc-actions .sc-action').allInnerTexts()).map((t) => t.trim());
+  ok(bar.join('|') === 'Abmelden|Konto löschen' && (await acc.locator('.sc-action.danger').innerText()).trim() === 'Konto löschen' && (await ipad.locator('main .btn-ghost').count()) === 0, `one bar: ${bar.join(' | ')} – deleting red and last, no ghost buttons`);
+  await acc.locator('.settings-row').filter({ hasText: 'Passwort' }).click();
+  const sh = ipad.getByRole('dialog', { name: 'Passwort ändern' });
+  await sh.waitFor();
+  const save = sh.locator('.sheet-head').getByRole('button', { name: 'Speichern' });
+  ok(await save.isDisabled(), 'the password sheet: the save button in its head, locked while too short');
+  await sh.locator('#ed-pw').fill('neu12345');
+  await save.click();
+  ok((await until(async () => (await ipad.getByRole('dialog', { name: 'Passwort ändern' }).count()) === 0)) && users.get('sascha@example.com')?.password === 'neu12345', 'a tap on the save button: the new password on the server, the sheet closed');
+  await acc.locator('.settings-row').filter({ hasText: 'Passwort' }).click();
+  await ipad.getByRole('dialog', { name: 'Passwort ändern' }).locator('#ed-pw').fill('geheim123');
+  await ipad.getByRole('dialog', { name: 'Passwort ändern' }).locator('#ed-pw').press('Enter');
+  ok(await until(async () => users.get('sascha@example.com')?.password === 'geheim123'), 'Enter confirms as the save button does (back to the old password)');
+}
 
 // a third device: the user name is taken; then the e-mail with the new password
 const pc = await device('PC', 'Desktop Chrome');
@@ -154,20 +180,15 @@ await pc.fill('#acc-pw', 'geheim123');
 await pc.locator('.account-form button[type=submit]').click();
 ok(await signedAs(pc, 'sascha.m'), 'PC: signed in with the e-mail and the new password');
 
-// delete the account (final list, Sascha 22.10.2026): at the end of the profile, asked once more; the phone keeps its data
+// delete the account (final list, Sascha 22.10.2026): asked once more; the phone keeps its data – since the Facelift
+// (11.11.2026, P4) the red last action of the account's bar, asked as everywhere (ConfirmSheet: head with ✕, "Zurück")
 await pc.evaluate(() => localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'keep-me' }])));
-// its own place: the button alone, apart from "Deine Daten" (Sascha 23.10.2026)
-{
-  const del = pc.getByRole('button', { name: 'Konto löschen' });
-  await del.scrollIntoViewIfNeeded();
-  const inData = await del.evaluate((el) => !!el.closest('section.card'));
-  const card = await pc.locator('section.card').filter({ has: pc.getByRole('heading', { name: 'Deine Daten' }) }).boundingBox();
-  const box = await del.boundingBox();
-  ok(!inData && !!card && !!box && box.y - (card.y + card.height) >= 20, `"Konto löschen" alone, ${box && card ? Math.round(box.y - card.y - card.height) : '?'} px below "Deine Daten"`);
-}
 await pc.getByRole('button', { name: 'Konto löschen' }).click();
-const ask = pc.getByRole('group', { name: 'Konto löschen?' });
-ok(/auf diesem Handy bleiben/.test(await ask.innerText()), 'deleting asks once more: the data on this phone stay');
+const ask = pc.getByRole('dialog', { name: 'Konto löschen?' });
+ok(/auf diesem Handy bleiben/.test(await ask.innerText()) && (await ask.getByRole('button', { name: 'Zurück' }).count()) === 1 && (await ask.getByRole('button', { name: 'Schließen' }).count()) === 1, 'deleting asks once more (ConfirmSheet): the data on this phone stay');
+await ask.getByRole('button', { name: 'Zurück' }).click();
+ok((await pc.getByRole('dialog', { name: 'Konto löschen?' }).count()) === 0 && (await pc.getByRole('button', { name: 'Konto löschen' }).count()) === 1, '"Zurück": nothing deleted');
+await pc.getByRole('button', { name: 'Konto löschen' }).click();
 await ask.getByRole('button', { name: 'Endgültig löschen' }).click();
 ok(await until(() => pc.getByText('Dein Konto ist gelöscht').isVisible()), 'the account deleted, said so');
 ok(!users.has('sascha@example.com') && ![...names.keys()].includes('sascha.m'), 'on the server: the account and its user name gone');

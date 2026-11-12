@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Block } from '../components/Block';
 import type { Round } from '../types';
 import { courseStats, type CourseHoleStat } from '../lib/history';
 import { TopBar, formatToPar } from '../components/ui';
@@ -43,8 +44,8 @@ export function CourseStats(props: { rounds: Round[]; courseName: string; onBack
         </div>
       )}
 
+      <Block title={tr('Hole by hole', 'Loch für Loch')}>
       <section className="card stats-card">
-        <h2>{tr('Hole by hole', 'Loch für Loch')}</h2>
         <p className="muted small" style={{ margin: 0 }}>{tr('Your average against par.', 'Dein Schnitt gegen Par.')}</p>
         <ol className="course-holes">
           {s.holes.map((h) => (
@@ -65,9 +66,10 @@ export function CourseStats(props: { rounds: Round[]; courseName: string; onBack
           ))}
         </ol>
       </section>
+      </Block>
 
+      <Block title={tr('Your rounds here', 'Deine Runden hier')}>
       <section className="card stats-card">
-        <h2>{tr('Your rounds here', 'Deine Runden hier')}</h2>
         {s.rounds.map((r) => {
           const me = r.players.find((p) => p.isMe)!;
           const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
@@ -84,6 +86,7 @@ export function CourseStats(props: { rounds: Round[]; courseName: string; onBack
           );
         })}
       </section>
+      </Block>
     </main>
   );
 }

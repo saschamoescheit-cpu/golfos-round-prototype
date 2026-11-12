@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { OnOffRow } from './Settings';
+import { Block } from './Block';
 import { disablePush, enablePush, loadPush, pushAvailability, PushError, setPushKind, type PushKind } from '../lib/push';
 
 // Notifications in the profile (final list, Sascha 23.10.2026): a slider right of the heading turns them on for this
@@ -49,13 +50,14 @@ export function PushCard(props: { signedIn: boolean }) {
   };
 
   return (
-    <section className="card stats-card push-card">
-      {/* rows with An/Aus, no sliders (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App"; before: the main
-          slider right of the heading, 23.10.2026) */}
-      <h2>{tr('Notifications', 'Mitteilungen')}</h2>
+    // the title small above (Facelift 11.11.2026, P3), the rows as the Golf block (12.11.2026)
+    <Block title={tr('Notifications', 'Mitteilungen')} className="push-block">
+    <div className="push-card">
+      {/* rows of a settings list as the Golf block (Sascha 12.11.2026): the switch for this phone, then one per kind */}
       {can && (
         <div className="settings-list onoff-card-row">
           <OnOffRow label={tr('Notifications on this phone', 'Mitteilungen auf diesem Handy')} on={state.on} disabled={busy} onChange={(v) => void (v ? turnOn() : turnOff())} />
+          {state.on && KINDS.map((k) => <OnOffRow key={k.kind} className="push-kind" label={k.label()} text={k.hint()} on={state.kinds[k.kind]} onChange={async (v) => setState(await setPushKind(k.kind, v))} />)}
         </div>
       )}
       {why === 'homescreen' && (
@@ -71,14 +73,8 @@ export function PushCard(props: { signedIn: boolean }) {
       {can && !state.on && (
         <span className="muted small">{tr('A round not checked yet, games, bets, the settlement, tournaments and your tee time, special prizes, a thunderstorm on the course.', 'Runde noch nicht geprüft, Spiele, Wetten, Abrechnung, Turniere und deine Startzeit, Sonderpreise, Gewitter auf dem Platz.')}</span>
       )}
-      {can && state.on && (
-        <div className="drawer-list settings-switches">
-          {KINDS.map((k) => (
-            <OnOffRow key={k.kind} label={k.label()} text={k.hint()} on={state.kinds[k.kind]} onChange={async (v) => setState(await setPushKind(k.kind, v))} />
-          ))}
-        </div>
-      )}
       {msg && <span className="muted small" role="status">{msg}</span>}
-    </section>
+    </div>
+    </Block>
   );
 }

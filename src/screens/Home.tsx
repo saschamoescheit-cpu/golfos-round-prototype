@@ -34,8 +34,6 @@ export function Home(props: {
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {/* each round of the bets settled (Sascha 09.11.2026) – once, above the modules */}
-      {props.tab === 'start' && <RoundSettleCards />}
       {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} tours={props.tours} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} running={props.running} onRunning={props.onRunning} />}
       {props.tab === 'friends' && <Friends float onSignIn={() => props.onTab('profile')} />}
       {props.tab === 'profile' && props.profile}
@@ -158,6 +156,8 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
       </div>
       <div className="home-hero">
         {props.running && props.onRunning && <RunningCard items={props.running} onOpen={props.onRunning} />}
+        {/* each round of the bets settled (Sascha 09.11.2026) – rows of "Jetzt dran", its eyebrow when the card is not there (Facelift 11.11.2026, S1) */}
+        <RoundSettleCards eyebrow={!props.running?.length} />
         <ModuleCardList {...props} describe />
       </div>
     </>

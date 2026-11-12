@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
 import { tr } from '../lib/i18n';
-import { OnOffRow } from './Settings';
+import { ChoiceRow, OnOffRow } from './Settings';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
 // and how he plans (green speed dropped, Sascha 15.10.2026). The miss map is gone until it is good; language and sun mode sit in
@@ -15,68 +15,32 @@ const STYLES: { value: CaddieSettings['style']; label: () => string; hint: () =>
 
 export function CaddieSettingsFields() {
   const [s, setS] = useState<CaddieSettings>(loadCaddieSettings);
-  const [picking, setPicking] = useState(false);
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...s, ...patch };
     setS(next);
     saveCaddieSettings(next);
   };
   return (
-    <>
-      {/* switches as in the hole overview (Sascha 15.10.2026: "a slider looks better and is what users know") */}
-      <div className="drawer-list settings-switches">
-        {(
-          [
-            ['caddie', tr('Club advice on every hole', 'Schlägerempfehlung an jedem Loch'), tr('wind, temperature, slope', 'Wind, Temperatur, Höhe')],
-            ['greenSlope', tr('Green slope on the green', 'Grün-Neigung auf dem Grün'), null],
-            ['voice', tr('Read aloud by itself', 'Von selbst vorlesen'), tr('with headphones', 'mit Kopfhörern')],
-          ] as const
-        ).map(([k, label, sub]) => (
-          // a row with An/Aus and its sheet, no slider (Sascha 11.11.2026: "ohne Schieberegler – einheitlich")
-          <OnOffRow key={k} label={label} text={sub ?? undefined} on={s[k]} onChange={(v) => set({ [k]: v })} />
-        ))}
-        {/* how the caddie plans: a row of the same list, the choice in a sheet (Sascha 17.10.2026: "does not fit the style") */}
-        <button type="button" className="drawer-row" aria-haspopup="dialog" onClick={() => setPicking(true)}>
-          <span className="switch-label">
-            <span>{tr('How the caddie plans', 'Wie der Caddie plant')}</span>
-          </span>
-          <span className="drawer-value">
-            {STYLES.find((x) => x.value === s.style)?.label()} <span aria-hidden="true">›</span>
-          </span>
-        </button>
-      </div>
-      {picking && (
-        <div className="sheet-backdrop" onClick={() => setPicking(false)}>
-          <section className="sheet" role="dialog" aria-label={tr('How the caddie plans', 'Wie der Caddie plant')} onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-head">
-              <strong>{tr('How the caddie plans', 'Wie der Caddie plant')}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPicking(false)}>
-                ✕
-              </button>
-            </div>
-            <div className="pick-list">
-              {STYLES.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  className="pick-option"
-                  aria-pressed={s.style === o.value}
-                  onClick={() => {
-                    set({ style: o.value });
-                    setPicking(false);
-                  }}
-                >
-                  <span className="grow">
-                    <strong>{o.label()}</strong>
-                    <span className="muted small">{o.hint()}</span>
-                  </span>
-                  {s.style === o.value && <span className="pick-check" aria-hidden="true">✓</span>}
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-    </>
+    // rows of a settings list, as the Golf block above (Sascha 12.11.2026: Caddie, Mitteilungen, Hilfe in exactly the same
+    // row style); each with one line what it does
+    <div className="settings-list caddie-list">
+      {(
+        [
+          ['caddie', tr('Club advice', 'Schlägerempfehlungen'), tr('wind, temperature, slope', 'Wind, Temperatur, Höhe')],
+          ['greenSlope', tr('Green slope on the green', 'Grün-Neigung auf dem Grün'), tr('arrow and gradient on the map', 'Pfeil und Gefälle auf der Karte')],
+          ['voice', tr('Read aloud by itself', 'Von selbst vorlesen'), tr('with headphones', 'mit Kopfhörern')],
+        ] as const
+      ).map(([k, label, sub]) => (
+        // a row with An/Aus and its sheet, no slider (Sascha 11.11.2026: "ohne Schieberegler – einheitlich")
+        <OnOffRow key={k} label={label} text={sub} on={s[k]} onChange={(v) => set({ [k]: v })} />
+      ))}
+      {/* how the caddie plans: a row of the same list, the choice in a sheet (Sascha 17.10.2026: "does not fit the style") */}
+      <ChoiceRow<CaddieSettings['style']>
+        label={tr('How the caddie plans', 'Wie der Caddie plant')}
+        value={s.style}
+        onChange={(v) => set({ style: v })}
+        options={STYLES.map((o) => ({ value: o.value, name: o.label(), text: o.hint() }))}
+      />
+    </div>
   );
 }

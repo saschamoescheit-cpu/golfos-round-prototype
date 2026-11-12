@@ -38,7 +38,7 @@ await p.waitForTimeout(1500);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(600);
 ok((await p.locator('.drawer-switch, [role="switch"]').count()) === 0, 'the profile: no slider anywhere');
-const golf = p.locator('section').filter({ has: p.locator('h2', { hasText: /^Golf$/ }) });
+const golf = p.getByRole('region', { name: 'Golf', exact: true }); // the block with its eyebrow since the Facelift (11.11.2026)
 for (const [l, v] of [['Tee', 'keins'], ['Distanzen in', 'Meter'], ['Du spielst', 'Rechtshänder'], ['Währung', 'Keine']]) {
   const row = golf.locator('.settings-row').filter({ hasText: new RegExp(`^\\s*${l}`) });
   ok((await row.count()) === 1 && new RegExp(v).test(await row.innerText()), `Golf: the row "${l} · ${v}"`);

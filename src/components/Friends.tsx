@@ -289,7 +289,8 @@ export function FriendAskHost() {
       <section className="sheet" role="dialog" aria-label={tr('New friend', 'Neuer Freund')} onClick={(e) => e.stopPropagation()}>
         <div className="friend-ask">
           <strong>{tr(`${joined[0]} accepted your friend request`, `${joined[0]} hat deine Freundschaftsanfrage angenommen`)}</strong>
-          <p className="good-text">{tr('You are GolfOS friends now ✓ – name, handicap, home club and photo come from each other\'s profile.', 'Ihr seid jetzt GolfOS-Freunde ✓ – Name, HCP, Heimatclub und Bild kommen gegenseitig aus dem Profil.')}</p>
+          {/* the tick as an SVG, not a glyph in the text (Facelift 11.11.2026, O5) */}
+          <p className="good-text friend-done"><DoneTick />{tr('You are GolfOS friends now – name, handicap, home club and photo come from each other’s profile.', 'Ihr seid jetzt GolfOS-Freunde – Name, HCP, Heimatclub und Bild kommen gegenseitig aus dem Profil.')}</p>
           <button type="button" className="btn-primary" onClick={close}>
             {tr('Great', 'Prima')}
           </button>
@@ -362,7 +363,7 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
             {who.is_me ? (
               <p className="muted">{tr('That is your own code.', 'Das ist dein eigener Code.')}</p>
             ) : who.is_friend || state === 'done' ? (
-              <p className="good-text">{tr(`You and ${name} are friends ✓ – you are in ${name}'s list too.`, `Du und ${name} seid befreundet ✓ – du stehst jetzt auch in der Liste von ${name}.`)}</p>
+              <p className="good-text friend-done"><DoneTick />{tr(`You and ${name} are friends – you are in ${name}'s list too.`, `Du und ${name} seid befreundet – du stehst jetzt auch in der Liste von ${name}.`)}</p>
             ) : (
               <>
                 <p>{tr(`${name} would like to be your friend. You both see each other's name, handicap, home club and photo.`, `${name} möchte mit dir befreundet sein. Ihr seht dann gegenseitig Name, HCP, Heimatclub und Bild.`)}</p>
@@ -415,5 +416,14 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
         )}
       </section>
     </div>
+  );
+}
+
+/** "Done" before a sentence: the app's tick as an SVG (Facelift 11.11.2026, O5 – before "✓" in the text). */
+function DoneTick() {
+  return (
+    <svg className="done-tick" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
   );
 }

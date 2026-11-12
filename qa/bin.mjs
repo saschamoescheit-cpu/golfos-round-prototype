@@ -120,6 +120,12 @@ ok((await p.locator('ul.list button.list-item:not(.bin-item)').count()) === 0 &&
 // the row as a played one (03.11.2026), a tap opens its sheet
 ok((await p.locator('.bin-item .bin-actions').count()) === 0 && (await p.locator('.bin-item [aria-label="gelöscht"]').count()) === 1, 'the deleted row as a round row: the bin mark, no buttons below it');
 await p.locator('.bin-item').first().click();
+// the row's sheet: a head with ✕, the two actions in one bar – "Endgültig löschen" red and last (Facelift 11.11.2026, O2)
+{
+  const sh = p.getByRole('dialog').filter({ has: p.locator('.sheet-head') });
+  const acts = (await sh.locator('.sc-actions .sc-action').allInnerTexts()).map((t) => t.trim());
+  ok((await sh.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 1 && acts.join('|') === 'Wiederherstellen|Endgültig löschen' && (await sh.locator('.sc-action.danger').innerText()).trim() === 'Endgültig löschen' && (await sh.locator('.btn-primary, .btn-danger').count()) === 0, `the row's sheet: head with ✕, one bar ${acts.join(' | ')}`);
+}
 await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);
@@ -181,18 +187,26 @@ await fill(3);
 await openBin();
 ok((await binN()) === 3 && (await p.locator('.bin-item').count()) === 3, 'three rounds in the bin');
 await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
-ok((await p.locator('.bin-check').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).first().isVisible().catch(() => false)), 'select: a tick per row, no single buttons');
+// ticked as a TickRow (the round green tick on the right, the row a checkbox), one bar [Alle | Abbrechen | Löschen]
+// (Facelift 11.11.2026, O2 – before native boxes and a row of text buttons)
+const ticked = () => p.locator('.bin-item[aria-checked="true"]').count();
+ok((await p.locator('.bin-check').count()) === 3 && (await p.locator('input[type=checkbox]').count()) === 0 && (await p.getByRole('checkbox').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).first().isVisible().catch(() => false)), 'select: a tick per row (no native box), no single buttons');
+{
+  const acts = (await p.locator('.bin-bar .sc-action').allInnerTexts()).map((t) => t.trim());
+  ok(acts.join('|') === 'Alle|Abbrechen|0 löschen' && (await p.locator('.bin-bar .sc-action.danger').innerText()).trim() === '0 löschen' && (await p.locator('.bin-bar .sc-action svg').count()) === 3, `one bar of icon actions: ${acts.join(' | ')}`);
+}
 ok(await p.getByRole('button', { name: '0 löschen' }).isDisabled(), 'nothing ticked: "0 löschen" not tappable');
-await p.locator('.bin-check').nth(0).check();
+await p.getByRole('checkbox').nth(0).click();
 await p.locator('.bin-item').nth(1).locator('.grow').click(); // the row itself ticks it too
-ok((await p.locator('.bin-check:checked').count()) === 2, 'ticked by box and by row');
+ok((await ticked()) === 2 && (await p.locator('.bin-check.on svg').count()) === 2, 'two ticked, each with the green tick');
 await p.getByRole('button', { name: '2 löschen' }).click();
 await p.waitForTimeout(200);
-ok((await binN()) === 3 && (await p.getByText('2 endgültig löschen?').isVisible()), '"2 löschen" alone deletes nothing – it asks');
-await p.getByRole('button', { name: 'Behalten' }).click();
-ok((await binN()) === 3 && (await p.locator('.bin-check:checked').count()) === 2, '"Behalten": nothing gone, still ticked');
+const ask = p.getByRole('dialog', { name: '2 endgültig löschen?' });
+ok((await binN()) === 3 && (await ask.isVisible()) && (await ask.getByRole('button', { name: 'Zurück' }).count()) === 1, '"2 löschen" alone deletes nothing – it asks (ConfirmSheet)');
+await ask.getByRole('button', { name: 'Zurück' }).click();
+ok((await binN()) === 3 && (await ticked()) === 2, '"Zurück": nothing gone, still ticked');
 await p.getByRole('button', { name: '2 löschen' }).click();
-await p.locator('.bin-bar').getByRole('button', { name: 'Endgültig löschen' }).click();
+await p.getByRole('dialog', { name: '2 endgültig löschen?' }).getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(400);
 ok((await binN()) === 1 && (await p.locator('.bin-item').count()) === 1 && (await p.locator('.bin-check').count()) === 0, 'two deleted for good, one left with its own buttons');
 ok((await p.locator('.bin-bar').count()) === 0, 'one left: no "Auswählen"');
@@ -200,10 +214,10 @@ await fill(3);
 await openBin();
 await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
 await p.getByRole('button', { name: 'Alle auswählen' }).click();
-ok((await p.locator('.bin-check:checked').count()) === 4 && (await p.getByRole('button', { name: 'Keine auswählen' }).isVisible()), '"Alle auswählen" ticks all four');
+ok((await ticked()) === 4 && (await p.getByRole('button', { name: 'Keine auswählen' }).isVisible()), '"Alle auswählen" ticks all four');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin-many.png' });
 await p.getByRole('button', { name: '4 löschen' }).click();
-await p.locator('.bin-bar').getByRole('button', { name: 'Endgültig löschen' }).click();
+await p.getByRole('dialog', { name: '4 endgültig löschen?' }).getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(400);
 ok((await binN()) === 0, 'all deleted for good');
 const many = p.locator('.tile').filter({ hasText: 'gelöscht' });

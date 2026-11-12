@@ -151,13 +151,13 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.l
     await p.locator('.hole-bar-handle').click();
     await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click();
     const y = async (loc) => (await loc.boundingBox())?.y ?? -1;
-    const stats = p.getByRole('heading', { name: 'Deine Statistik' });
+    const stats = p.locator('.eyebrow').filter({ hasText: 'Deine Statistik' }); // an eyebrow since the Facelift (11.11.2026, O6)
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
     // the state on top after saving – changed there (Sascha 20.10.2026: "the state above the scorecard")
     const st = p.locator('.sc-status');
     const stText = await st.innerText().catch(() => '');
-    ok((await st.count()) === 1 && /Runde gespeichert ✓/.test(stText) && (await y(st)) < (await y(p.locator('.sc-hero'))) && (await p.locator('.sign-card').count()) === 0, `${label}: finished – the state on top ("${stText.split(String.fromCharCode(10))[0]}")`);
+    ok((await st.count()) === 1 && /Runde gespeichert ·/.test(stText) && !/✓/.test(stText) && (await y(st)) < (await y(p.locator('.sc-hero'))) && (await p.locator('.sign-card').count()) === 0, `${label}: finished – the state on top ("${stText.split(String.fromCharCode(10))[0]}")`);
     void stats;
     // whose the big figures are, on top – the partners below (Sascha 12.11.2026)
     {

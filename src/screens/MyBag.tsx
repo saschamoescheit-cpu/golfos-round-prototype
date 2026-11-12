@@ -5,7 +5,9 @@ import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
-import { Segmented, TopBar } from '../components/ui';
+import { TopBar } from '../components/ui';
+import { Block } from '../components/Block';
+import { SwipeRow } from '../components/SwipeRow';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, WEDGES, type Partials } from '../lib/partials';
@@ -27,9 +29,7 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     return (
       <main className="screen">
         <TopBar title={tr('Caddie', 'Caddie')} onBack={props.onBack} />
-        <section className="card stats-card">
-          <CaddieSettingsFields />
-        </section>
+        <CaddieSettingsFields />
       </main>
     );
   return <Bag rounds={props.rounds} onBack={props.onBack} />;
@@ -105,16 +105,33 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     setBag(next);
     persist(next);
   };
+  // the bag as it is now – the "Rückgängig" of a club swiped away runs later, after other changes
+  const now = useRef({ inBag, bag });
+  now.current = { inBag, bag };
+  const add = (c: Club) => {
+    const { inBag: cur, bag: b } = now.current;
+    if (cur.includes(c)) return;
+    const next = byOrder([...cur, c].map((club) => ({ club }))).map((x) => x.club);
+    setInBag(next);
+    persist(b, next);
+  };
+  // swiped away as a mail (Facelift 11.11.2026, P5) – "Rückgängig" in the toast puts it back
+  const undoToast = (label: string, undo: () => void) =>
+    window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'purged', id: label, label, text: tr('Removed from the bag', 'Aus dem Bag entfernt'), undo } }));
   const remove = (c: Club) => {
     const next = inBag.filter((x) => x !== c);
     setInBag(next);
     persist(bag, next);
     setNote(null);
+    undoToast(clubCode(c), () => add(c));
   };
-  const add = (c: Club) => {
-    const next = byOrder([...inBag, c].map((club) => ({ club }))).map((x) => x.club);
-    setInBag(next);
-    persist(bag, next);
+  const removePutter = () => {
+    setStyleP({ putter: false });
+    undoToast('Putter', () => {
+      const next = { ...loadBagStyle(), putter: true };
+      setStyle(next);
+      saveBagStyle(next);
+    });
   };
   const setFav = (patch: Partial<CaddieSettings>) => {
     const next = { ...settings, ...patch };
@@ -170,24 +187,28 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
           round green tick at the same place only ends the editing: "Fertig" */}
       <FloatActions pen={!editing ? { label: tr('Edit your bag', 'Bag bearbeiten'), onClick: () => setEditing(true) } : null} save={editing ? { label: tr('Done', 'Fertig'), onClick: () => setEditing(false) } : null} />
       {!editing && (
-        <Segmented<Tab>
-          label={tr('Distances', 'Distanzen')}
-          value={tab}
-          onChange={(v) => v && setTab(v)}
-          options={[
-            { value: 'full', label: tr('Full swing', 'Voller Schwung') },
-            { value: 'pitch', label: tr('Pitches', 'Pitches') },
-          ]}
-        />
+        // the two views as the app's green chips (Facelift 11.11.2026), not a block of two buttons
+        <div className="chip-row bag-tabs" role="group" aria-label={tr('Distances', 'Distanzen')}>
+          {(
+            [
+              ['full', tr('Full swing', 'Voller Schwung')],
+              ['pitch', tr('Pitches', 'Pitches')],
+            ] as const
+          ).map(([v, label]) => (
+            <button key={v} type="button" aria-pressed={tab === v} onClick={() => setTab(v)}>
+              {label}
+            </button>
+          ))}
+        </div>
       )}
 
       {editing ? (
         <>
-          <section className="card stats-card">
-            <h2>{tr('In your bag', 'In deinem Bag')}</h2>
-            <div className="bag-grid">
+          {/* a club out of the bag swiped away as a mail, "Rückgängig" in the toast (Facelift 11.11.2026, P5) – no ✕ per club */}
+          <Block title={tr('In your bag', 'In deinem Bag')}>
+            <div className="bag-grid bag-edit-list">
               {inBag.map((c) => (
-                <div key={c} className="bag-row edit">
+                <SwipeRow key={c} className="bag-row edit" label={clubCode(c)} onDelete={() => remove(c)}>
                   <strong className="bag-code">{clubCode(c)}</strong>
                   {WEDGES.includes(c) && (
                     <span className="bag-input">
@@ -202,24 +223,19 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                       °
                     </span>
                   )}
-                  <button type="button" className="bag-remove" aria-label={tr(`Remove ${clubCode(c)} from the bag`, `${clubCode(c)} aus dem Bag entfernen`)} onClick={() => remove(c)}>
-                    ✕
-                  </button>
-                </div>
+                </SwipeRow>
               ))}
               {style.putter && (
-                <div className="bag-row edit">
+                <SwipeRow className="bag-row edit" label="Putter" onDelete={removePutter}>
                   <strong className="bag-code">Putter</strong>
-                  <button type="button" className="bag-remove" aria-label={tr('Remove the putter from the bag', 'Putter aus dem Bag entfernen')} onClick={() => setStyleP({ putter: false })}>
-                    ✕
-                  </button>
-                </div>
+                </SwipeRow>
               )}
             </div>
+            <span className="muted small">{tr('Swipe a club to the left to take it out.', 'Einen Schläger nach links wischen, um ihn herauszunehmen.')}</span>
             {countLine}
-          </section>
+          </Block>
+          <Block title={tr('Add clubs', 'Schläger hinzufügen')}>
           <section className="card stats-card">
-            <h2>{tr('Add clubs', 'Schläger hinzufügen')}</h2>
             {groups.map((g) => {
               const missing = CLUB_CATALOG.filter((c) => c.group === g.id && !inBag.includes(c.club));
               if (!missing.length) return null;
@@ -247,6 +263,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               </div>
             )}
           </section>
+          </Block>
         </>
       ) : tab === 'full' ? (
         <section className="card stats-card">
@@ -319,8 +336,8 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
         </section>
       ) : (
         <>
+          <Block title={tr('Favourite approach', 'Lieblingsdistanz')}>
           <section className="card stats-card">
-            <h2>{tr('Favourite approach', 'Lieblingsdistanz')}</h2>
             <div className="bag-row full">
               <span className="muted small">{tr('Layups leave this distance to the green.', 'Beim Vorlegen bleibt diese Distanz zum Grün.')}</span>
               <span />
@@ -341,8 +358,9 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               </span>
             </div>
           </section>
+          </Block>
+          <Block title={tr('Pitches with the wedges', 'Pitches mit den Wedges')}>
           <section className="card stats-card">
-            <h2>{tr('Pitches with the wedges', 'Pitches mit den Wedges')}</h2>
             <div className="pitch-grid" role="table" aria-label={tr('Partial swings', 'Teilschwünge')}>
               <span className="pitch-h" role="columnheader" />
               <span className="pitch-h muted small" role="columnheader">{tr('full', 'voll')}</span>
@@ -376,6 +394,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             </div>
             {!wedges.length && <p className="muted small">{tr('No wedges in your bag.', 'Keine Wedges in deinem Bag.')}</p>}
           </section>
+          </Block>
         </>
       )}
       {/* measured on a launch monitor (Sascha 25.10.2026, feature 037): the carries into the bag, the spread for the ellipse */}

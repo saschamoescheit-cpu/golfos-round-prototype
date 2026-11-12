@@ -1,79 +1,45 @@
-import { useState } from 'react';
 import type { Round } from '../types';
 import { handicapIndex, playedHandicap, roundRating } from '../lib/handicap';
 import { teeName } from '../data/tees';
 import { dec, getLang, tr } from '../lib/i18n';
+import { Block } from './Block';
+import { RatingLine } from '../screens/RoundSetup';
 
 // The handicap played today (WHS score differential) on the scorecard of a finished 18-hole round,
 // and across rounds in the stats. Course rating and slope come with the course or from the player's scorecard.
 
-const num = (s: string) => Number(s.replace(',', '.'));
 const fmt = (v: number) => dec(v.toFixed(1));
 
+/** Facelift 11.11.2026 (R12): the title small above, course rating and slope the same row as in "Neue Runde" (RatingLine),
+ *  a change saved by itself – no "Ändern" link, no "Speichern" button. */
 export function PlayedHcpCard(props: { round: Round; onChange: (r: Round) => void }) {
   const { round } = props;
   const rating = roundRating(round);
-  const [editing, setEditing] = useState(false);
-  const [cr, setCr] = useState(rating ? dec(String(rating.cr)) : '');
-  const [slope, setSlope] = useState(rating ? String(rating.slope) : '');
   if (round.holes.length !== 18 || !round.finishedAt) return null;
   const p = playedHandicap(round);
   if (rating && !p) return null; // a hole without a score
-  const valid = num(cr) >= 50 && num(cr) <= 85 && num(slope) >= 55 && num(slope) <= 155 && Number.isInteger(num(slope));
 
   return (
-    <section className="card stats-card">
-      <h2>{tr('Handicap played today', 'Heute gespieltes Handicap')}</h2>
-      {p && !editing && (
-        <>
+    <Block title={tr('Handicap played today', 'Heute gespieltes Handicap')} className="played-hcp-block">
+      {p && (
+        <section className="card stats-card">
           <div className="played-hcp">
             <span className="num">{fmt(p.differential)}</span>
             <span className="muted small">{tr('score differential (WHS)', 'Score Differential nach WHS')}</span>
           </div>
           <p className="muted small" style={{ margin: 0 }}>
-            {tr(
-              `${p.adjustedGross} adjusted strokes · course rating ${fmt(p.rating.cr)} · slope ${p.rating.slope}`,
-              `${p.adjustedGross} bereinigte Schläge · Course Rating ${fmt(p.rating.cr)} · Slope ${p.rating.slope}`,
-            )}
-            {round.tee && !round.rating ? ` (${teeName(round.tee)})` : ''}.{' '}
-            <button type="button" className="link-btn" onClick={() => setEditing(true)}>
-              {tr('Change', 'Ändern')}
-            </button>
+            {tr(`${p.adjustedGross} adjusted strokes`, `${p.adjustedGross} bereinigte Schläge`)}
+            {round.tee && !round.rating ? ` · ${teeName(round.tee)}` : ''}
           </p>
-        </>
+        </section>
       )}
-      {(!p || editing) && (
-        <>
-          <p className="muted small" style={{ margin: 0 }}>
-            {tr(
-              'Enter course rating and slope of your tee from the club’s scorecard – then you see the handicap you played today.',
-              'Trag Course Rating und Slope deines Abschlags von der Scorekarte des Clubs ein – dann siehst du, welches Handicap du heute gespielt hast.',
-            )}
-          </p>
-          <div className="rating-form">
-            <label>
-              <span className="muted small">Course Rating</span>
-              <input className="input" inputMode="decimal" value={cr} placeholder={dec('72.2')} onChange={(e) => setCr(e.target.value)} />
-            </label>
-            <label>
-              <span className="muted small">Slope</span>
-              <input className="input" inputMode="numeric" value={slope} placeholder="136" onChange={(e) => setSlope(e.target.value)} />
-            </label>
-            <button
-              type="button"
-              className="btn-secondary"
-              disabled={!valid}
-              onClick={() => {
-                props.onChange({ ...round, rating: { cr: num(cr), slope: num(slope) } });
-                setEditing(false);
-              }}
-            >
-              {tr('Save', 'Speichern')}
-            </button>
-          </div>
-        </>
-      )}
-    </section>
+      <RatingLine
+        rating={rating}
+        nine={false}
+        hint={tr('From the club’s scorecard – then you see the handicap you played today', 'Von der Scorekarte des Clubs – dann siehst du, welches Handicap du heute gespielt hast')}
+        onSave={(v) => props.onChange({ ...round, rating: v })}
+      />
+    </Block>
   );
 }
 
@@ -87,8 +53,8 @@ export function PlayedHcpStats(props: { rounds: Round[]; /** a round tapped: its
   const idx = handicapIndex(played.map((x) => x.p.differential));
   const date = (r: Round) => new Date(r.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: 'numeric', month: 'numeric' });
   return (
+    <Block title={tr('Handicap played', 'Gespieltes Handicap')}>
     <section className="card stats-card">
-      <h2>{tr('Handicap played', 'Gespieltes Handicap')}</h2>
       <div className="played-hcp">
         <span className="num">{fmt(played[0].p.differential)}</span>
         <span className="muted small">
@@ -142,5 +108,6 @@ export function PlayedHcpStats(props: { rounds: Round[]; /** a round tapped: its
         </table>
       )}
     </section>
+    </Block>
   );
 }

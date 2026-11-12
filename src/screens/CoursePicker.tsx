@@ -141,7 +141,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
 
       {results != null ? (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2>{tr('Results', 'Ergebnisse')}</h2>
+          <span className="eyebrow">{tr('Results', 'Ergebnisse')}</span>
           {searching && <span className="spinner" aria-label={tr('Searching', 'Sucht')} />}
           {searchError && (
             <p className="muted small" style={{ margin: 0 }}>
@@ -155,12 +155,12 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
         <>
         {recent.length > 0 && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <h2>{tr('Played last', 'Zuletzt gespielt')}</h2>
+            <span className="eyebrow">{tr('Played last', 'Zuletzt gespielt')}</span>
             {renderList(recent)}
           </section>
         )}
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2>{tr('Nearby', 'In der Nähe')}</h2>
+          <span className="eyebrow">{tr('Nearby', 'In der Nähe')}</span>
           {nearby.status === 'locating' && (
             <div className="row" style={{ justifyContent: 'flex-start' }}>
               <span className="spinner" aria-hidden="true" />
