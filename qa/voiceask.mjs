@@ -86,7 +86,7 @@ await p.waitForFunction(() => /Gespeichert/.test(document.querySelector('.autosa
   ok(/Gespeichert/.test(status) && /Blinder Abschlag/.test(kept), `saved a moment after typing, the sheet still open ("${status.trim()}")`);
 }
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/caddie-notes-sheet.png` });
-await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // a note there: saves by itself, "Fertig" (13.11.2026)
 await p.waitForTimeout(500);
 const cardText = await card.innerText();
 ok(/Deine Notiz\s+Blinder Abschlag – auf den rechten Baum · Aus links und rechts/.test(cardText), 'the own text shows in the caddie at once');
@@ -95,14 +95,14 @@ ok(cardText.split('Blinder Abschlag').length === 2, 'once in the card, not also 
 await notesBtn.click();
 await p.waitForTimeout(300);
 await p.fill('#hole-note', 'Ball unbedingt ins Spiel bringen.\n ');
-await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // a note there: saves by itself, "Fertig" (13.11.2026)
 await p.waitForTimeout(500);
 const cardText2 = await card.innerText();
 ok(cardText2.split('Ball unbedingt ins Spiel').length === 2 && (await card.locator('.plan.warn').filter({ hasText: 'Ball unbedingt' }).count()) === 0, 'a note with a line break at the end: once, not in red too');
 await notesBtn.click();
 await p.waitForTimeout(300);
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
-await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // a note there: saves by itself, "Fertig" (13.11.2026)
 await p.waitForTimeout(500);
 // no note at all (text emptied, choices off): no dot, no row – then the text again
 await notesBtn.click();
@@ -110,7 +110,7 @@ await p.waitForTimeout(300);
 await p.getByRole('checkbox', { name: /Aus links/ }).click();
 await p.getByRole('checkbox', { name: /Aus rechts/ }).click();
 await p.fill('#hole-note', '');
-await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // a note there: saves by itself, "Fertig" (13.11.2026)
 await p.waitForTimeout(500);
 ok((await notesBtn.locator('.note-dot').count()) === 0 && (await card.locator('.caddie-note').count()) === 0, 'no note left: no dot, no row');
 await notesBtn.click();
