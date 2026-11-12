@@ -32,7 +32,7 @@ import type { TrainingTab } from './screens/Training';
 import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
-import { exchangeRound } from './lib/sharedround';
+import { cachedEvent, exchangeRound, liveFlights } from './lib/sharedround';
 import { loadPools, myPoolBalances, reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
 import { dayOf } from './lib/wagers';
 import { loadTours, startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
@@ -517,6 +517,11 @@ export function App() {
     }
     for (const code of toursTodayCodes()) {
       const t = loadTours().find((e) => e.code === code);
+      // over once every flight has finished – not "running" any more (Sascha 12.11.2026: "Turnier ist vorbei, alle sind
+      // fertig und die Scorekarten unterschrieben – es sollte unter Läuft gerade nicht mehr angezeigt werden")
+      const ev = cachedEvent(code) ?? t?.ev;
+      const flights = ev ? liveFlights(ev) : [];
+      if (flights.length && flights.every((f) => f.finishedAt)) continue;
       // not joined yet: the row takes part right away (Sascha 13.11.2026) – joined: it is the paused round's row
       const joined = rounds.some((r) => r.shared?.code === code);
       if (t) out.push({ key: `tour:${code}`, kind: 'tour', title: t.ev.name, line: joined ? tr('Tournament today', 'Turnier heute') : tr('Tournament today · take part', 'Turnier heute · teilnehmen') });

@@ -100,6 +100,22 @@ await trow.click();
 await p.waitForTimeout(1200);
 const where = [await p.locator('.brand-claim').count(), await p.locator('.module-pill').first().innerText().catch(() => ''), (await p.locator('main').first().innerText().catch(() => '')).slice(0, 80).replace(/s+/g, ' ')];
 ok(where[0] === 0 && /Training|Übung 1 von 1/i.test(where[1] + where[2]), `a tap goes to Training – the paused session (${where.join(' · ')})`);
+// today's tournament: "Turnier heute" – once every flight has finished, no more (Sascha 12.11.2026: "Turnier ist vorbei,
+// alle sind fertig und die Scorekarten unterschrieben – es sollte unter Läuft gerade nicht mehr angezeigt werden")
+{
+  const holes = Array.from({ length: 18 }, (_, i) => ({ index: i, number: i + 1, label: String(i + 1), par: 4, strokeIndex: i + 1 }));
+  const tour = (finished) => ({
+    code: 'TOUR01',
+    ev: { kind: 'round-event', id: 'ev-t', name: 'StoneGate Oaks', tournament: true, planned: true, date: day(0), course: { id: 'test-course', name: 'StoneGate Golf Club – Oaks' }, loopOrder: ['A'], holes, createdAt: now,
+      flights: Object.fromEntries(['f1', 'f2'].map((id) => [id, { id, players: [{ id: `${id}a`, name: id === 'f1' ? 'Sascha' : 'Erik' }], scores: {}, ...(finished ? { finishedAt: now } : {}) }])) },
+  });
+  await seed([], { 'golfos.tours.v1': [tour(false)] });
+  const row = () => p.locator('.running-card .running-row').filter({ hasText: 'Turnier heute' });
+  ok((await row().count()) === 1, 'today\'s tournament still played: "Turnier heute"');
+  await seed([], { 'golfos.tours.v1': [tour(true)] });
+  ok((await row().count()) === 0, 'every flight finished: no "Turnier heute" any more');
+}
+
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(bad ? 1 : 0);
