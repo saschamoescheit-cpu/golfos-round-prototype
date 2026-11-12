@@ -69,12 +69,16 @@ async function run(o) {
   if (!o.oldPush) ok(pushes.some((x) => x.action === 'invite' && x.friend === 'Cedric' && x.code === code), 'push: the invitation to Cedric (by his account)');
   else ok(/Push-Funktion auf dem Server ist nicht aktuell/.test(await friends.innerText()), 'the function from before: let in by the host\'s phone – "öffnet er GolfOS, ist die Anfrage da"');
 
-  // Cedric's app, open: asked straight away
+  // Cedric's app, open: in his inbox, no sheet on the screen (Sascha 13.11.2026: "nur ausschließlich in der Box")
   await C.reload();
-  const ask = C.getByRole('dialog', { name: 'Einladung zur Runde' });
-  await ask.waitFor({ timeout: 15000 }).catch(() => {});
-  ok(/Sascha lädt dich zu seiner Runde in .*Hetzenhof.* ein/.test(await ask.innerText().catch(() => '')), `Cedric: "Sascha lädt dich zu seiner Runde … ein" (${(await ask.innerText().catch(() => '–')).replace(/\s+/g, ' ').slice(0, 90)})`);
-  await ask.getByRole('button', { name: 'Beitreten' }).click();
+  const count = C.locator('.bell-count').first();
+  await count.waitFor({ timeout: 15000 }).catch(() => {});
+  ok((await C.getByRole('dialog', { name: 'Einladung zur Runde' }).count()) === 0 && (await count.innerText().catch(() => '')).trim() === '1', `Cedric: no sheet – the inbox shows "1" (${(await count.innerText().catch(() => '–')).trim()})`);
+  await C.locator('.bell-btn').first().click();
+  const ask = C.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Sascha lädt dich zu einer Runde ein' });
+  await ask.waitFor({ timeout: 8000 }).catch(() => {});
+  ok(/Hetzenhof/.test(await ask.innerText().catch(() => '')), `Cedric's inbox: "Sascha lädt dich zu einer Runde ein" (${(await ask.innerText().catch(() => '–')).replace(/\s+/g, ' ').slice(0, 90)})`);
+  await ask.click();
   // let in already: straight into the round, no "Anfrage an den Gastgeber"
   await C.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
   const cr = await round(C).catch(() => null);
@@ -92,7 +96,7 @@ async function run(o) {
   // asked once only
   await C.reload();
   await C.waitForTimeout(3000);
-  ok((await C.getByRole('dialog', { name: 'Einladung zur Runde' }).count()) === 0, 'joined: not asked again');
+  ok((await C.locator('.bell-count').count()) === 0, 'joined: not in the inbox any more');
   ok([host, guest].every((x) => x.errs.length === 0), `no page errors ${[host, guest].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);
 }
 
