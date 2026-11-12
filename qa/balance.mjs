@@ -2,10 +2,12 @@
 // the −35 € add up; mark that I paid Cedric (he gets told and confirms); an overview of what I am still owed, and
 // booking it out when someone gave me the money". Three confirmed games with Cedric on this phone: two lost (−5 €,
 // −30 €), one won (+2 €). The Bilanz: "Offene Beträge" – Sascha owes Cedric; Cedric tapped: the games, "Zusammen";
-// "Bezahlt" – nothing open, "Cedric bestätigt noch"; ↺ – open again. Erik owes Sascha: "Erhalten" books it out.
+// "Bezahlt" – nothing open, "Cedric bestätigt noch"; a payment swiped left, "Zurücknehmen" (the arrow back, no bin –
+// Facelift-Abnahme G4) – open again. Erik owes Sascha: "Erhalten" books it out.
 // Usage: node qa/balance.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { swipeLeft, tapAction } from './swipeleft.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -82,8 +84,16 @@ const paidSum = stored.filter((g) => g.id !== 'g3').flatMap((g) => g.payments).r
 ok(paidSum === 35, `paid: payments from Sascha to Cedric in both games, 35 € (${JSON.stringify(stored)})`);
 ok((await sheet.locator('.paid-list').getByText('Cedric bestätigt noch').count()) === 2 && /Alles bezahlt – Cedric bestätigt noch/.test(await txt(sheet.locator('.balance-done'))) && (await sheet.getByRole('button', { name: /^Bezahlt – / }).count()) === 0, 'paid: Cedric still confirms, nothing left to pay');
 ok((await oweRows.count()) === 0, 'paid: "Du schuldest" empty');
-// taken back: open again
-await sheet.getByRole('button', { name: 'Zurücknehmen' }).first().click();
+// taken back: swiped left (Sascha 11.11.2026, Facelift-Abnahme G4: "Nach links wischen ok, aber Mülleimer ist löschen statt
+// zurücknehmen") – the action "Zurücknehmen" with the arrow back, grey, no bin; the ↺ button is gone
+ok((await sheet.locator('.paid-undo').count()) === 0 && (await sheet.getByText('↺').count()) === 0 && (await sheet.locator('.paid-list .swipe').count()) === 2, 'payments: rows that swipe, no ↺ button');
+ok((await sheet.locator('.balance-done svg').count()) === 1 && !(await sheet.locator('.balance-done').innerText()).includes('✓'), 'the end line with an SVG tick, no ✓ glyph');
+await swipeLeft(p, sheet.locator('.paid-list .swipe').first());
+const back = sheet.locator('.paid-list .swipe-bin');
+const backHtml = await back.innerHTML().catch(() => '');
+ok((await back.count()) === 1 && /Zurücknehmen/.test(await back.innerText()) && (await back.getAttribute('class')).includes('neutral') && backHtml.includes('M4 12a8 8 0 1 0 2.4-5.7') && !backHtml.includes('M4 7h16'), 'swiped left: "Zurücknehmen" with the arrow back, grey – no bin');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance-takeback.png' });
+await tapAction(back);
 await p.waitForTimeout(400);
 ok((await sheet.getByRole('button', { name: /^Bezahlt – 5 €|^Bezahlt – 30 €/ }).count()) === 1, 'one payment taken back: its amount open again');
 await sheet.getByRole('button', { name: 'Schließen' }).click();

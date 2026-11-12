@@ -23,6 +23,10 @@ export function SwipeRow(props: {
   /** the delete only asks first (the bin: for good) – swiped all the way the row does not fly off, it opens the
    *  question and stays (Sascha 03.11.2026: "it jumps back") */
   asks?: boolean;
+  /** the action behind the row – the red bin "Löschen" when left out; another one says what it does instead (Sascha
+   *  11.11.2026, Facelift-Abnahme G4: "Nach links wischen ok, aber Mülleimer ist löschen statt zurücknehmen"): its word,
+   *  its icon (ACTION_ICONS of ActionBar), 'neutral' grey instead of red; the button then reads "<word>: <label>" */
+  action?: { word: string; icon: ReactNode; tone?: 'danger' | 'neutral' };
 }) {
   const [id] = useState(() => ++seq);
   const [off, setOffState] = useState(0);
@@ -114,12 +118,22 @@ export function SwipeRow(props: {
   return (
     <div className="swipe">
       {off < 0 && (
-        <button type="button" className="swipe-bin" tabIndex={-1} aria-label={tr(`Delete ${props.label}`, `${props.label} löschen`)} onClick={() => void remove()}>
+        <button
+          type="button"
+          className={`swipe-bin${props.action?.tone === 'neutral' ? ' neutral' : ''}`}
+          tabIndex={-1}
+          aria-label={props.action ? `${props.action.word}: ${props.label}` : tr(`Delete ${props.label}`, `${props.label} löschen`)}
+          onClick={() => void remove()}
+        >
           <span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-            </svg>
-            <span className="swipe-bin-text">{tr('Delete', 'Löschen')}</span>
+            {props.action ? (
+              props.action.icon
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+              </svg>
+            )}
+            <span className="swipe-bin-text">{props.action ? props.action.word : tr('Delete', 'Löschen')}</span>
           </span>
         </button>
       )}

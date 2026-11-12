@@ -68,7 +68,7 @@ const openPool = async (P) => {
   await P.waitForTimeout(2000);
 };
 await openPool(H);
-const cardOf = (P, n) => P.locator('section.pool-player').filter({ has: P.locator('h2', { hasText: new RegExp(`^${n}$`) }) });
+const cardOf = (P, n) => P.locator('section.pool-player').filter({ has: P.locator('.pool-player-name', { hasText: new RegExp(`^${n}$`) }) });
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/pool-host.png', fullPage: true });
 ok((await cardOf(H, 'Chris').getByRole('button', { name: 'Chris einladen' }).count()) === 1 && (await cardOf(H, 'Sascha').getByRole('button', { name: /einladen/ }).count()) === 0, 'at Chris (made by hand): "Chris einladen" – not at Sascha himself');
 await cardOf(H, 'Chris').getByRole('button', { name: 'Chris einladen' }).click();

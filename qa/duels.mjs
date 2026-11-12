@@ -140,7 +140,7 @@ await play(H, 'Sascha', PARS);
 
 // Erik's phone, in neither flight nor duel: the standing and the settlement
 await openPool(E);
-const chrisCard = E.locator('section.pool-player').filter({ has: E.locator('h2', { hasText: /^Chris$/ }) });
+const chrisCard = E.locator('section.pool-player').filter({ has: E.locator('.pool-player-name', { hasText: /^Chris$/ }) });
 const duelRow = chrisCard.locator('.pool-wager').filter({ hasText: /gegen Sascha/ });
 const rowText = (await duelRow.innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/\+10 \$/.test(rowText) && /vorne ✓ hinten ✗ gesamt ✓/.test(rowText), `Erik's phone: Chris against Sascha +10 $ – front won, back lost, 18 won (${rowText.slice(0, 140)})`);

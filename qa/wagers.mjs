@@ -9,6 +9,7 @@
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 import { pickPrize } from './prize.mjs';
+import { swipeLeft, tapAction } from './swipeleft.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
 const pickSetting = async (page, label, option) => {
   await page.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -177,7 +178,10 @@ await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
   await holesRow.click();
   ok((await grid.locator('.choice').count()) > 2 && (await grid.locator('.choice[aria-pressed="true"]').innerText()).startsWith('A'), 'rounds: "Löcher" tapped – every combination again, A marked');
   await grid.locator('.choice').filter({ has: H.locator('strong', { hasText: /^A$/ }) }).first().click();
-  await trip.getByRole('button', { name: 'Runde hinzufügen' }).click();
+  // a real sheet "Runde anlegen" with the round green tick above it, as "Flight anlegen" (Facelift-Abnahme W8)
+  const addSheet = H.getByRole('dialog', { name: 'Runde anlegen' });
+  ok((await addSheet.count()) === 1 && (await addSheet.locator('.btn-primary').count()) === 0 && (await addSheet.getByRole('button', { name: 'Schließen' }).count()) === 1 && (await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Runde hinzufügen' }).count()) === 1, 'rounds: a sheet "Runde anlegen" with ✕ – saved with the floating tick, no button in it');
+  await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Runde hinzufügen' }).click();
   // the round on its own, as the rounds of a series; "Weitere Runde" apart below (Sascha 04.11.2026)
   const added = (await trip.locator('.trip-round').first().innerText()).replace(/\s+/g, ' ');
   ok(/Hetzenhof A · nur diese Runde/.test(added) && /Weitere Runde/.test(await trip.getByRole('group', { name: 'Runde hinzufügen' }).innerText()), `rounds: the round on its own – A, this round only; "Weitere Runde" apart below (${added})`);
@@ -227,7 +231,17 @@ const choose = async (label, option, inside = H) => {
     ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `score entry: the three ways (${opts})`);
   }
   await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click();
-  ok(/Mit Zähler/.test(await who.innerText()) && !/vorläufig|Für alle Wetten des Pools/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), 'score entry: "Mit Zähler" chosen – no hint under it (04.11.2026)');
+  ok(/Mit Zähler/.test(await who.innerText()) && !/vorläufig|Für alle Wetten des Pools/.test(await H.locator('.setup-part').filter({ has: who }).innerText()), 'score entry: "Mit Zähler" chosen – no hint under it (04.11.2026)');
+  // "Wer erfasst" right after the players, in the players' block (Facelift-Abnahme O1); "Worum" a block of its own,
+  // "Einstellungen" only "Abrechnung" (W7)
+  const eyebrows = (await H.locator('.setup-part > .eyebrow').allTextContents()).join('|');
+  const players = H.locator('.setup-part').filter({ has: H.locator('.player-row') });
+  const yAdd = (await players.getByRole('button', { name: '+ Spieler hinzufügen' }).boundingBox())?.y ?? -1;
+  const yWho = (await who.boundingBox())?.y ?? -1;
+  const worum = H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Worum$/ }) });
+  const settings = H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Einstellungen$/ }) });
+  ok(!eyebrows.includes('Score-Erfassung') && /Spieler\|Worum\|Einstellungen$/.test(eyebrows) && (await players.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).count()) === 1 && yWho > yAdd && yAdd > 0, `order: Spieler (Wer erfasst right after them) → Worum → Einstellungen (${eyebrows})`);
+  ok((await worum.locator('.settings-row').allInnerTexts()).map((t) => t.split('\n')[0]).join('|') === 'Worum wird gespielt' && (await settings.locator('.settings-row').allInnerTexts()).map((t) => t.split('\n')[0]).join('|') === 'Abrechnung', 'Worum: the stake alone; Einstellungen: Abrechnung');
 }
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
@@ -244,14 +258,18 @@ await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 const lib = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
 // three tabs, no player to switch to (Sascha 03.11.2026): "Bibliothek · Eigene Wetten" – "Schon angelegt" once there are bets
 ok(JSON.stringify(await lib.getByRole('group', { name: 'Auswählen aus' }).getByRole('button').allInnerTexts()) === '["Bibliothek","Eigene Wetten"]' && (await lib.getByRole('group', { name: 'Wessen Wetten' }).count()) === 0, 'library: "Bibliothek · Eigene Wetten", no player tabs, no "set up before" yet');
-ok((await lib.locator('.lib-row').count()) >= 20, `library: ${await lib.locator('.lib-row').count()} bets to pick from`);
-for (const name of [/^Birdies in Folge/, /^Pars in Folge/, /^Birdies Birdie oder besser/, /^Grüns getroffen/, /^Brutto zu Par/]) await lib.getByRole('button', { name }).click();
+// where to pick from: green chips, no Segmented block (Facelift-Abnahme "wetten"); each bet a row to tick (W2)
+ok((await lib.locator('.segmented').count()) === 0 && (await lib.locator('.chip-row').getByRole('button', { name: 'Bibliothek' }).getAttribute('aria-pressed')) === 'true' && (await lib.locator('.lib-check').count()) === 0 && (await lib.getByRole('checkbox').count()) >= 20, 'library: chips to pick from, the bets as rows to tick – no ✓ boxes');
+ok((await lib.locator('.lib-tick').count()) >= 20, `library: ${await lib.locator('.lib-tick').count()} bets to pick from`);
+for (const name of [/^Birdies in Folge/, /^Pars in Folge/, /^Birdies Birdie oder besser/, /^Grüns getroffen/, /^Brutto zu Par/]) await lib.getByRole('checkbox', { name }).click();
 const minus = lib.getByRole('group', { name: 'Brutto zu Par' }).getByRole('button', { name: /minus eins/ });
 for (let k = 0; k < 15; k++) await minus.click(); // +10 → −5
-if (process.env.SHOTS) await lib.screenshot({ path: process.env.SHOTS + '/wagers-library.png' });
-await lib.getByRole('button', { name: '5 Wetten für Chris anlegen' }).click();
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-library.png' });
+// ticked: the number right below the row; a new bet saved with the round green tick above the sheet, its words kept (W1)
+ok((await lib.getByRole('checkbox', { name: /^Brutto zu Par/ }).getAttribute('aria-checked')) === 'true' && (await lib.locator('.lib-tick.on').filter({ hasText: 'Brutto zu Par' }).getByRole('group', { name: 'Brutto zu Par' }).count()) === 1 && (await lib.locator('.btn-primary').count()) === 0 && (await H.locator('.fab-stack.over-sheet').getByRole('button', { name: '5 Wetten für Chris anlegen' }).count()) === 1, 'library: ticked with its number below – "5 Wetten für Chris anlegen" the floating tick, no button in the sheet');
+await H.getByRole('button', { name: '5 Wetten für Chris anlegen' }).click();
 await H.waitForTimeout(1000);
-const chrisCard = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
+const chrisCard = H.locator('.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Chris$/ }) });
 const rows = await chrisCard.locator('.pool-wager .title').allInnerTexts();
 ok(rows.length === 5 && rows.includes('2 Birdies in Folge') && rows.includes('9 Grüns auf 18') && rows.includes('−5 brutto'), `Chris's five bets: ${rows.join(' · ')}`);
 ok((await chrisCard.locator('.pool-wager').first().innerText()).includes('20 $ · nur bei Erfolg · mit Zähler'), 'the rules in the row: 20 $, paid when made, with marker');
@@ -262,11 +280,11 @@ ok(newBets.length === 1 && newBets[0].body.wagers?.length === 5 && /^[A-Z0-9]{6}
 // a free bet for Erik – from his library
 await H.getByRole('button', { name: 'Wetten für Erik hinzufügen' }).click();
 const libE = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
-await libE.getByRole('button', { name: /^Freie Wette/ }).click();
+await libE.getByRole('checkbox', { name: /^Freie Wette/ }).click();
 await libE.getByRole('textbox', { name: 'Die Wette in Worten' }).fill('Längster Drive an Loch 7');
-await libE.getByRole('button', { name: '1 Wette für Erik anlegen' }).click();
+await H.getByRole('button', { name: '1 Wette für Erik anlegen' }).click();
 await H.waitForTimeout(1000);
-ok((await H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Erik$/ }) }).innerText()).includes('Längster Drive an Loch 7'), "Erik's free bet in the pool");
+ok((await H.locator('.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Erik$/ }) }).innerText()).includes('Längster Drive an Loch 7'), "Erik's free bet in the pool");
 
 // bets set up before as templates ("once I have set up bets, pick from those"): Chris's −5 for Cedric
 await H.getByRole('button', { name: 'Wetten für Cedric hinzufügen' }).click();
@@ -275,10 +293,10 @@ await libC.getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { 
 const groups = await libC.locator('.lib-from').allInnerTexts();
 ok(groups.includes('USA 2026 · Chris') && groups.includes('USA 2026 · Erik'), `"set up before": ${groups.join(' · ')}`);
 if (process.env.SHOTS) await libC.screenshot({ path: process.env.SHOTS + '/wagers-earlier.png' });
-await libC.locator('.lib-group').filter({ hasText: 'USA 2026 · Chris' }).getByRole('button', { name: /^−5 brutto/ }).click();
-await libC.getByRole('button', { name: '1 Wette für Cedric anlegen' }).click();
+await libC.locator('.lib-group').filter({ hasText: 'USA 2026 · Chris' }).getByRole('checkbox', { name: /^−5 brutto/ }).click();
+await H.getByRole('button', { name: '1 Wette für Cedric anlegen' }).click();
 await H.waitForTimeout(1000);
-const cedric = await H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Cedric$/ }) }).locator('.pool-wager .title').allInnerTexts();
+const cedric = await H.locator('.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Cedric$/ }) }).locator('.pool-wager .title').allInnerTexts();
 ok(cedric.length === 1 && cedric[0] === '−5 brutto', `Cedric took Chris's −5 as a template: ${cedric.join(' · ')}`);
 // Sascha 02.11.2026: "5+5+10 is no bet but a game – to choose under Games": not in the library any more
 await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
@@ -293,7 +311,7 @@ const invite = H.getByRole('region', { name: 'Mitspieler einladen' });
 {
   // below the settlement, right before "Runde starten" (Sascha 03.11.2026)
   const top = async (l) => (await l.boundingBox())?.y ?? -1;
-  const yS = await top(H.locator('.card').filter({ hasText: 'Abrechnung' }).first());
+  const yS = await top(H.getByRole('region', { name: 'Abrechnung' }));
   const yI = await top(invite);
   const yR = await top(H.getByRole('button', { name: 'Runde starten' }));
   ok(yS >= 0 && yS < yI && (yR < 0 || yI < yR), `invite: below the settlement, before "Runde starten" (${Math.round(yS)} < ${Math.round(yI)} < ${Math.round(yR)})`);
@@ -312,7 +330,7 @@ await G.waitForTimeout(3000);
 ok((await G.locator('.topbar h1').innerText()).includes('USA 2026'), 'Chris: in the pool');
 // no box "Geschafft" with "OK" – the standing and the badges say it (Sascha 03.11.2026)
 ok((await G.locator('.pool-made').count()) === 0 && (await G.getByRole('button', { name: 'OK', exact: true }).count()) === 0, 'Chris: no "made it" box to dismiss');
-const gChris = G.locator('.pool-player').filter({ has: G.locator('h2', { hasText: /^Chris$/ }) });
+const gChris = G.locator('.pool-player').filter({ has: G.locator('.pool-player-name', { hasText: /^Chris$/ }) });
 const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen ' }).locator('.badge').allInnerTexts(); // the 5+5+10 rows show money
 ok(badges.filter((x) => /^(1× g|G)eschafft$/.test(x)).length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
 ok((await gChris.innerText()).includes('der Zähler hat 1 Loch anders gezählt – seine Zahlen zählen'), "Chris: Erik counted hole 4 with 2 putts – the bets count the marker's figures and say so");
@@ -346,12 +364,12 @@ ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.lo
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab.png' });
 await H.locator('.list-item').filter({ hasText: 'USA 2026' }).click();
 await H.waitForTimeout(2000);
-const hChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
+const hChris = H.locator('.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Chris$/ }) });
 ok((await hChris.locator('.badge').allInnerTexts()).filter((x) => /^(1× g|G)eschafft$/.test(x)).length === 4, "Sascha sees Chris's 4 bets made");
 await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).click();
 await choose('Entschieden', 'Geschafft');
 await H.waitForTimeout(1200);
-const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
+const settle = (await H.getByRole('region', { name: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
 // set off only between the same two (Sascha 11.11.2026): Chris gets 80 from each, Erik 20 from each – Erik and Chris
 // set off against each other: 60
@@ -467,6 +485,15 @@ ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',
 // delete the pool – for everyone: gone from the menu here, on Chris's phone it says so
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { name: 'Pool löschen' }).click();
+{
+  // the one confirmation of the app (Facelift-Abnahme W9): head with ✕, the red-outlined action, "Zurück" – "Zurück" keeps it
+  const ask = H.locator('.confirm-sheet');
+  const del = ask.getByRole('button', { name: 'Für alle löschen' });
+  ok((await ask.count()) === 1 && (await ask.getByRole('button', { name: 'Schließen' }).count()) === 1 && (await ask.getByRole('button', { name: 'Zurück', exact: true }).count()) === 1 && /btn-danger/.test(await del.getAttribute('class')) && !/btn-danger-fill/.test(await del.getAttribute('class')), 'delete: the one confirmation – ✕, red-outlined "Für alle löschen", "Zurück"');
+  await ask.getByRole('button', { name: 'Zurück', exact: true }).click();
+  ok((await H.locator('.confirm-sheet').count()) === 0 && (await H.getByRole('dialog', { name: 'Pool bearbeiten' }).count()) === 1 && !shared.get(code).game.deletedAt, '"Zurück": nothing deleted, the sheet "Pool bearbeiten" still there');
+  await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { name: 'Pool löschen' }).click();
+}
 await H.getByRole('button', { name: 'Für alle löschen' }).click();
 await H.waitForTimeout(1200);
 ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'delete: marked deleted for everyone, gone from the menu');
@@ -512,19 +539,20 @@ await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
 ok(JSON.stringify(await libO.getByRole('group', { name: 'Auswählen aus' }).getByRole('button').allInnerTexts()) === '["Bibliothek","Eigene Wetten","Schon angelegt"]', 'library: "Eigene Wetten" between "Bibliothek" and "Schon angelegt"');
 await libO.getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { name: 'Eigene Wetten' }).click();
-await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
+await libO.getByRole('button', { name: 'Eigene Wette bauen', exact: true }).click();
 const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
 await choose('Wo', 'Par 3s', build); if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-build.png' });
 ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
-await build.getByRole('button', { name: 'In „Eigene Wetten“ speichern' }).click();
-ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Eigene Wetten", ticked');
-await libO.getByRole('button', { name: '1 Wette für Sascha anlegen' }).click();
+ok((await build.locator('.btn-primary').count()) === 0 && (await H.locator('.fab-stack.over-sheet').count()) === 1, 'own bet: saved with the floating tick (Facelift-Abnahme W3) – one, the library’s hidden meanwhile');
+await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'In „Eigene Wetten“ speichern' }).click();
+ok((await libO.locator('.lib-tick.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Eigene Wetten", ticked');
+await H.getByRole('button', { name: '1 Wette für Sascha anlegen' }).click();
 await H.waitForTimeout(1500);
 const ownBet = shared.get(code).game.wagers.find((w) => w.kind === 'custom');
 ok(!!ownBet && ownBet.metric === 'birdie' && ownBet.where === 'par3' && ownBet.target === 2 && ownBet.text === 'Mindestens 2 Birdies auf den Par 3s', `own bet on the server, with its words for the push (${JSON.stringify(ownBet ?? null).slice(0, 160)})`);
 await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { name: 'Eigene Wetten' }).click();
-ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Eigene Wetten"');
+ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-tick').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Eigene Wetten"');
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
 
 // paid and received (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them")
@@ -563,7 +591,12 @@ await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', {
       ok(!!shared.get(code).game.payments?.[0]?.receivedAt && !shared.get(code).game.payments?.[0]?.how, 'payments: for a player without the app the host confirms – received, no "how"');
     }
   }
-  await paid.first().getByRole('button', { name: /^Zurücknehmen/ }).click();
+  // taken back by swiping left – "Zurücknehmen" with the arrow back, no bin (Facelift-Abnahme G4)
+  ok((await H.locator('.paid-undo').count()) === 0 && (await paid.first().locator('.swipe').count()) === 1, 'payments: the row swipes – no ↺ button');
+  await swipeLeft(H, paid.first().locator('.swipe'));
+  const back = paid.first().locator('.swipe-bin');
+  ok(/Zurücknehmen/.test(await back.innerText().catch(() => '')) && (await back.getAttribute('aria-label')).startsWith('Zurücknehmen: '), 'payments: swiped – "Zurücknehmen"');
+  await tapAction(back);
   await H.waitForTimeout(1500);
   ok((shared.get(code).game.payments ?? []).length === 0 && (await open.count()) === before, 'payments: taken back – open again');
 }

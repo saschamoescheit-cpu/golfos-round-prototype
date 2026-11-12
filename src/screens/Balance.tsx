@@ -12,6 +12,8 @@ import { balances, dayOf, ledger, withDuels } from '../lib/wagers';
 import { isMoney, paidWord, prizeOf, prizeSym } from '../lib/prize';
 import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
+import { SwipeRow } from '../components/SwipeRow';
+import { TAKE_BACK } from '../components/PaidMarks';
 import { loadProfile, shownName } from '../lib/profile';
 
 // The menu "Bilanz" (Sascha 03.11.2026): what I won and lost, against each player – which games and bets make it up –,
@@ -588,7 +590,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
 }
 
 /** A player tapped: each game and pool between us with what it came to and what is open, the payments, settling. */
-function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /** a game or pool tapped: there (Sascha 10.11.2026) */ onOpen?: (i: Item) => (() => void) | undefined; onSettle: (as: 'paid' | 'received') => void; onUndo: (i: Item, x: GamePayment) => void; word: (p: Person, as: 'paid' | 'received') => string }) {
+function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /** a game or pool tapped: there (Sascha 10.11.2026) */ onOpen?: (i: Item) => (() => void) | undefined; onSettle: (as: 'paid' | 'received') => void; onUndo: (i: Item, x: GamePayment) => void | Promise<void>; word: (p: Person, as: 'paid' | 'received') => string }) {
   const { p } = props;
   const left = sums(p.items, (i) => i.open);
   const iOwe = Object.values(left).some((v) => v < -0.004);
@@ -652,10 +654,14 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
           <>
             <span className="eyebrow">{tr('Payments', 'Zahlungen')}</span>
             <ul className="balance-items paid-list" aria-label={tr('Payments', 'Zahlungen')}>
-              {pays.map(({ i, x }) => (
-                <li key={x.id}>
+              {pays.map(({ i, x }) => {
+                const who = x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`);
+                return (
+                <li key={x.id} className="paid-swipe">
+                  {/* taken back by swiping left – "Zurücknehmen" with the arrow back, no bin (Sascha 11.11.2026, Facelift-Abnahme G4) */}
+                  <SwipeRow label={`${who} · ${money(x.amount, i.sym)}`} className="paid-row" action={TAKE_BACK()} onDelete={() => (props.busy ? false : props.onUndo(i, x))}>
                   <span className="grow">
-                    <strong>{x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`)}</strong>
+                    <strong>{who}</strong>
                     <span className="muted small">
                       {[x.paidAt ? dm(x.paidAt.slice(0, 10)) : x.receivedAt ? dm(x.receivedAt.slice(0, 10)) : null].filter(Boolean).join('')}
                       {(x.paidAt || x.receivedAt) && ' · '}
@@ -676,12 +682,16 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
                   <span className="balance-item-end">
                     <strong>{money(x.amount, i.sym)}</strong>
                   </span>
-                  <button type="button" className="icon-btn paid-undo" disabled={props.busy} aria-label={tr('Take back', 'Zurücknehmen')} onClick={() => props.onUndo(i, x)}>
-                    ↺
+                  {/* for the keyboard and VoiceOver – the swipe is for the finger */}
+                  <button type="button" className="sr-only" disabled={props.busy} aria-label={tr('Take back', 'Zurücknehmen')} onClick={() => props.onUndo(i, x)}>
+                    {tr('Take back', 'Zurücknehmen')}
                   </button>
+                  </SwipeRow>
                 </li>
-              ))}
+                );
+              })}
             </ul>
+            <span className="muted small paid-hint">{tr('Swipe a payment left to take it back.', 'Eine Zahlung nach links wischen nimmt sie zurück.')}</span>
           </>
         )}
         {iOwe && (
@@ -698,7 +708,9 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
         )}
         {!iOwe && !heOwes && (
           <p className="balance-done">
-            <span aria-hidden="true">✓</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
             {pays.some(({ i, x }) => !x.receivedAt && x.from === i.me) ? tr(`All paid – ${p.name} still confirms.`, `Alles bezahlt – ${p.name} bestätigt noch.`) : tr('All settled between you.', 'Zwischen euch ist alles erledigt.')}
           </p>
         )}
