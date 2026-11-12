@@ -53,7 +53,7 @@ const gender = p.getByRole('region', { name: 'Persönliche Daten' }).locator('.s
 ok((await p.locator('select#pf-gender').count()) === 0 && /Keine Angabe/.test(await gender.innerText()), `gender as a row: ${(await gender.innerText()).replace(/\s+/g, ' ')}`);
 await gender.click();
 const gSheet = p.getByRole('dialog', { name: 'Geschlecht' });
-ok((await gSheet.locator('.pick-option').count()) === 4 && /Course Rating der Damen, Start von Rot/.test(await gSheet.innerText()), 'its sheet: four choices, each with what follows');
+ok((await gSheet.locator('.pick-option').count()) === 4 && (await gSheet.locator('.pick-option .muted').count()) === 0, 'its sheet: four choices, no hints under them (Sascha 13.11.2026: "der Hinweis ergibt keinen Sinn")');
 await gSheet.locator('.pick-option').filter({ hasText: /^weiblich/ }).click();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).gender)) === 'f' && /weiblich/.test(await gender.innerText()), '"weiblich" chosen and kept in the profile');
