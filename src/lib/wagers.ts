@@ -1075,10 +1075,13 @@ export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players
   const per = perRoundOf(w, inTime);
   const perRound = per.length ? { perRound: per } : {};
   if (shapeOf(w.kind) === 'sum') {
-    // made once its rounds are played and the total is at most the target
-    const used = b.used ?? 0;
-    const done = used >= (w.rounds ?? 6) && reached(w, b.best);
-    return { best: b.best, done, rounds: used, ...(differ ? { differ } : {}), ...perRound, at: now };
+    // made once its rounds are played and the total is at most the target – the rounds not signed yet counted too, as
+    // they stand (Sascha 12.11.2026: "in die Wetten müssen die Scores schon reingerechnet werden, zumindest vorläufig,
+    // auch wenn die Scorekarten noch nicht unterschrieben sind"); with a marker his figures
+    const s = bestOf(w, inTime);
+    const used = s.used ?? 0;
+    const done = used >= (w.rounds ?? 6) && reached(w, s.best);
+    return { best: s.best, done, rounds: used, ...(differ ? { differ } : {}), ...perRound, at: now };
   }
   const all = w.counted ? bestOf(w, inTime).best : b.best;
   const better = all != null && (b.best == null || (lower(w) ? all < b.best : all > b.best));

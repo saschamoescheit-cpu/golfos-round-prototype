@@ -52,6 +52,16 @@ describe('a round decided', () => {
     expect(sumSoFar(w, p([4, 5]))?.verdict).toBe('made');
     expect(sumSoFar(w, p([4, 7]))?.verdict).toBe('missed');
   });
+  it('a round still played counts as it stands – not decided while it runs (Sascha 12.11.2026: Erik +22 instead of +28)', () => {
+    // Erik's "+30 in 6 Runden": Kissimmee +6, Cypress +16, Oaks +6 still being played
+    const w = bet({ kind: 'scoreSum', target: 30, rounds: 6 });
+    const per = [6, 16, 6].map((v, k) => ({ day: `2026-11-1${k}`, course: 'X', value: v, counted: false, ...(k === 2 ? { open: true } : {}) }));
+    expect(sumSoFar(w, { best: null, done: false, rounds: 0, at: '', perRound: per })).toEqual({ sum: 28, played: 3, of: 6, verdict: null });
+    const two = bet({ kind: 'scoreSum', target: 30, rounds: 2 });
+    const p2 = { best: null, done: false, rounds: 0, at: '', perRound: per.slice(1) };
+    expect(sumSoFar(two, p2)?.verdict).toBe(null);
+    expect(sumSoFar(two, { ...p2, perRound: p2.perRound.map(({ open: _o, ...r }) => r) })?.verdict).toBe('made');
+  });
 });
 
 // Sascha 11.11.2026, USA: "Cedric hat 2 von 6 für brutto über Par in 6 Runden in der Wertung, nicht 1 von 6" – a round

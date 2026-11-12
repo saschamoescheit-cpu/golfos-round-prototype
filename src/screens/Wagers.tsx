@@ -1261,9 +1261,12 @@ export function roundVerdict(w: Wager, r: RoundResult | undefined, inPlay = fals
  *  played added up, how many of how many; decided once all are played. */
 export function sumSoFar(w: Wager, p: Progress | undefined): { sum: number; played: number; of: number; verdict: 'made' | 'missed' | null } | null {
   if (shapeOf(w.kind) !== 'sum' || !w.rounds) return null;
-  const done = (p?.perRound ?? []).filter((r) => r.value != null && !r.open).slice(0, w.rounds);
+  // a round still played counts as it stands (Sascha 12.11.2026: Erik "+22" – his round of the day was missing while it
+  // was played); decided once all are played and none is still running
+  const done = (p?.perRound ?? []).filter((r) => r.value != null).slice(0, w.rounds);
   const sum = done.reduce((a, r) => a + (r.value ?? 0), 0);
-  return { sum, played: done.length, of: w.rounds, verdict: done.length < w.rounds ? null : sum <= w.target ? 'made' : 'missed' };
+  const over = done.length >= w.rounds && !done.some((r) => r.open);
+  return { sum, played: done.length, of: w.rounds, verdict: !over ? null : sum <= w.target ? 'made' : 'missed' };
 }
 /** A bet's target as the cells write it: "3", "−5", "E". */
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
