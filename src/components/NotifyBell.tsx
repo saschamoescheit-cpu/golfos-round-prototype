@@ -57,8 +57,9 @@ function inviteItem(inv: RoundInvite): InboxItem {
   };
 }
 
-/** The cards asked to be opened again whose host this account is – tournaments and shared rounds this phone knows. */
-async function reopenAsks(): Promise<ReopenAsk[]> {
+/** The cards asked to be opened again whose host this account is – tournaments and shared rounds this phone knows.
+ *  `ask`: false – only what this phone knows (the number on the inbox), no server; true – the host asked on the server. */
+async function reopenAsks(ask = true): Promise<ReopenAsk[]> {
   const tours = loadTours();
   const codes = new Map<string, { tournament: boolean; where: string; host: boolean }>();
   for (const t of tours) codes.set(t.code, { tournament: true, where: t.ev.name, host: isTourHost(t) });
@@ -69,7 +70,7 @@ async function reopenAsks(): Promise<ReopenAsk[]> {
     const asks = Object.entries(ev?.flights ?? {}).flatMap(([fid, f]) => f.players.filter((p) => reopenAsked(f, p.id)).map((p) => ({ fid, pid: p.id, by: f.reopen![p.id].by, player: p.name })));
     if (!asks.length) continue;
     // the host asked on the server when this phone does not know it (a tournament kept without its owner)
-    if (!c.host && !amHost(await eventOwner(code))) continue;
+    if (!c.host && (!ask || !amHost(await eventOwner(code)))) continue;
     for (const a of asks) out.push({ code, tournament: c.tournament, where: c.where, ...a });
   }
   return out;
@@ -109,33 +110,38 @@ export function NotifyBell() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [, setTick] = useState(0);
+  // the number from what this phone knows – the server asked only when the inbox is opened (its lookups in the
+  // background disturbed the screens below, 13.11.2026)
   useEffect(() => {
     let gone = false;
-    const look = async () => {
-      if (gone || document.visibilityState !== 'visible') return;
-      void reopenAsks().then((a) => !gone && setAsks(a));
-      if (!canLink()) return;
-      const joined = [...loadRounds().map((r) => r.shared?.code), ...loadGames().map((g) => g.shared?.code)].filter((c): c is string => !!c);
-      const found = await roundInvites(joined, true);
-      if (!gone) setInvites(found);
+    const local = () => void reopenAsks(false).then((a) => !gone && setAsks((now) => (now.length > a.length ? now : a)));
+    const redraw = () => {
+      setTick((n) => n + 1);
+      local();
     };
-    const redraw = () => setTick((n) => n + 1);
-    const first = window.setTimeout(() => void look(), 3000);
-    const t = window.setInterval(() => void look(), 60000);
-    document.addEventListener('visibilitychange', look);
-    window.addEventListener('golfos:synced', look);
+    local();
+    const t = window.setInterval(redraw, 30000);
     window.addEventListener('golfos:pools-changed', redraw);
     window.addEventListener('golfos:friend-ask', redraw);
     return () => {
       gone = true;
-      window.clearTimeout(first);
       window.clearInterval(t);
-      document.removeEventListener('visibilitychange', look);
-      window.removeEventListener('golfos:synced', look);
       window.removeEventListener('golfos:pools-changed', redraw);
       window.removeEventListener('golfos:friend-ask', redraw);
     };
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    let gone = false;
+    void reopenAsks().then((a) => !gone && setAsks(a));
+    if (canLink()) {
+      const joined = [...loadRounds().map((r) => r.shared?.code), ...loadGames().map((g) => g.shared?.code)].filter((c): c is string => !!c);
+      void roundInvites(joined, true).then((found) => !gone && setInvites(found));
+    }
+    return () => {
+      gone = true;
+    };
+  }, [open]);
   const askItems: InboxItem[] = asks.map((a) => ({
     key: `reopen:${a.code}:${a.pid}`,
     title: tr(`${a.by} asks to correct ${a.player}'s card`, `${a.by} möchte die Karte von ${a.player} korrigieren`),
