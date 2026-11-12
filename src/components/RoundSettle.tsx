@@ -42,7 +42,7 @@ export function roundsSettled(pools: PoolEntry[], today = dayOf(new Date()), sho
   return out;
 }
 
-export function RoundSettleCards(props: { /** no longer used – the title is always "Runde abgerechnet" (12.11.2026) */ eyebrow?: boolean }) {
+export function RoundSettleCards() {
   const [pools, setPools] = useState(loadPools);
   const [shown, setShown] = useState(seen);
   useEffect(() => {
