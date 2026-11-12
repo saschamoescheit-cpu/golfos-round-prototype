@@ -111,6 +111,21 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
   };
   return (
     <>
+      {/* Was – gross or net first (Facelift 11.11.2026, g2: Was → Wo → Wann → Wer → Worum → Einstellungen) */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Scoring', 'Wertung')}</span>
+        <SettingsList>
+          <ChoiceRow<'gross' | 'net'>
+            label={tr('Scoring', 'Wertung')}
+            value={net ? 'net' : 'gross'}
+            onChange={(v) => setNet(v === 'net')}
+            options={[
+              { value: 'gross', name: tr('Gross', 'Brutto'), text: tr('The strokes as played.', 'Die Schläge, wie gespielt.') },
+              { value: 'net', name: tr('Net', 'Netto'), text: tr('Minus the strokes received on each hole – from the playing handicap of each one’s round.', 'Abzüglich der Vorgabeschläge je Loch – aus der Spielvorgabe der eigenen Runde.') },
+            ]}
+          />
+        </SettingsList>
+      </section>
       {/* Wo – the pool of bets the duel goes into; without one a new one of the day */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
@@ -170,23 +185,20 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
           />
         </SettingsList>
       </section>
-      {/* Worum – the stakes and gross or net */}
+      {/* Worum – the stakes (Facelift 11.11.2026, g2) */}
       <section className="setup-part">
-        <span className="eyebrow">{tr('Stakes', 'Einsätze')}</span>
+        <span className="eyebrow">{tr('Played for', 'Worum')}</span>
         <SettingsList>
           <StakeRow label={tr('Front nine', 'Vorne (9)')} value={parts.front} sym={sym} stakes={stakes} onChange={(front) => setParts({ ...parts, front })} />
           <StakeRow label={tr('Back nine', 'Hinten (9)')} value={parts.back} sym={sym} stakes={stakes} onChange={(back) => setParts({ ...parts, back })} />
           <StakeRow label={tr('All 18', 'Gesamt (18)')} value={parts.total} sym={sym} stakes={stakes} onChange={(total) => setParts({ ...parts, total })} />
-          <ChoiceRow<'gross' | 'net'>
-            label={tr('Scoring', 'Wertung')}
-            value={net ? 'net' : 'gross'}
-            onChange={(v) => setNet(v === 'net')}
-            options={[
-              { value: 'gross', name: tr('Gross', 'Brutto'), text: tr('The strokes as played.', 'Die Schläge, wie gespielt.') },
-              { value: 'net', name: tr('Net', 'Netto'), text: tr('Minus the strokes received on each hole – from the playing handicap of each one’s round.', 'Abzüglich der Vorgabeschläge je Loch – aus der Spielvorgabe der eigenen Runde.') },
-            ]}
-          />
-          {net && (
+        </SettingsList>
+      </section>
+      {/* Einstellungen – with how much of the handicap, when net */}
+      {net && (
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+          <SettingsList>
             <ChoiceRow<number>
               label={tr('Handicap share', 'Vorgabe')}
               title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
@@ -194,13 +206,14 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
               onChange={setShare}
               options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
             />
-          )}
-        </SettingsList>
-      </section>
+          </SettingsList>
+        </section>
+      )}
+      {/* no connection: a green notice – nothing done wrong (Facelift 11.11.2026, o4) */}
       {msg && (
-        <span className="small bad-text" role="alert">
+        <p className="notice" role="alert">
           {msg}
-        </span>
+        </p>
       )}
       {/* at the end, after the settings – not floating (docs/DESIGN.md) */}
       <button type="button" className="btn-primary" disabled={!chosen.length || busy} onClick={() => void go()}>
@@ -212,10 +225,10 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             <div className="sheet-head">
               <strong>{tr('Against whom', 'Gegen wen')}</strong>
               <span className="sheet-head-acts">
-                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setWhoOpen(false)} />
                 <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setWhoOpen(false)}>
                   ✕
                 </button>
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setWhoOpen(false)} />
               </span>
             </div>
             {others.length > 0 && <span className="eyebrow">{pool!.name}</span>}
@@ -316,47 +329,50 @@ export function Challenges(props: { entry: PoolEntry; onChanged?: () => void }) 
     else props.onChanged?.();
   };
   return (
-    <section className="card duel-challenges" aria-label={tr('Challenges', 'Herausforderungen')}>
-      <h2>{tr('5+5+10 challenges', '5+5+10-Herausforderungen')}</h2>
-      {toMe.map((w) => (
-        <div key={w.id} className="duel-challenge">
-          <span className="grow">
-            <span className="title">{tr(`${name(w.player)} challenges you`, `${name(w.player)} fordert dich heraus`)}</span>
-            <span className="muted small">{duelText(w, sym)}</span>
-          </span>
-          <div className="duel-answer">
-            <button type="button" className="btn-secondary" disabled={busy === w.id} onClick={() => void act(w.id, () => answerDuel(entry.code, w.id, 'declined'))}>
-              {tr('Decline', 'Ablehnen')}
-            </button>
-            <button type="button" className="btn-primary" disabled={busy === w.id} onClick={() => void act(w.id, () => answerDuel(entry.code, w.id, 'accepted'))}>
-              {tr('Accept', 'Annehmen')}
+    // the title above the card, as every section's (Facelift 11.11.2026, o6)
+    <section className="setup-part duel-challenges-part" aria-label={tr('Challenges', 'Herausforderungen')}>
+      <span className="eyebrow">{tr('5+5+10 challenges', '5+5+10-Herausforderungen')}</span>
+      <div className="card duel-challenges">
+        {toMe.map((w) => (
+          <div key={w.id} className="duel-challenge">
+            <span className="grow">
+              <span className="title">{tr(`${name(w.player)} challenges you`, `${name(w.player)} fordert dich heraus`)}</span>
+              <span className="muted small">{duelText(w, sym)}</span>
+            </span>
+            <div className="duel-answer">
+              <button type="button" className="btn-secondary" disabled={busy === w.id} onClick={() => void act(w.id, () => answerDuel(entry.code, w.id, 'declined'))}>
+                {tr('Decline', 'Ablehnen')}
+              </button>
+              <button type="button" className="btn-primary" disabled={busy === w.id} onClick={() => void act(w.id, () => answerDuel(entry.code, w.id, 'accepted'))}>
+                {tr('Accept', 'Annehmen')}
+              </button>
+            </div>
+          </div>
+        ))}
+        {/* one's own challenge in the same box as one to answer (Sascha 11.11.2026, design round 2: "Gegen Chris mit
+            Zurückziehen geht optisch unter – im gleichen Stil wie ‚Erik fordert dich …‘") */}
+        {mine.map((w) => (
+          <div key={w.id} className="duel-challenge duel-mine">
+            <span className="grow">
+              <span className="title">
+                {w.challenge!.state === 'open' ? tr(`You challenge ${name(w.opponent)}`, `Du forderst ${name(w.opponent)} heraus`) : tr(`${name(w.opponent)} declined`, `${name(w.opponent)} hat abgelehnt`)}
+              </span>
+              <span className="muted small">{duelText(w, sym)}</span>
+            </span>
+            <span className="duel-wait muted small">
+              <DuelMark state={w.challenge!.state === 'open' ? 'open' : 'declined'} />
+              {w.challenge!.state === 'open' ? tr(`Waiting for ${name(w.opponent)}`, `Wartet auf ${name(w.opponent)}`) : tr('Declined', 'Abgelehnt')}
+            </span>
+            <button type="button" className="btn-secondary duel-takeback" disabled={busy === w.id} onClick={() => void act(w.id, () => takeBackDuel(entry.code, w.id))}>
+              {w.challenge!.state === 'open' ? tr('Take back', 'Zurückziehen') : tr('Remove', 'Entfernen')}
             </button>
           </div>
-        </div>
-      ))}
-      {/* one's own challenge in the same box as one to answer (Sascha 11.11.2026, design round 2: "Gegen Chris mit
-          Zurückziehen geht optisch unter – im gleichen Stil wie ‚Erik fordert dich …‘") */}
-      {mine.map((w) => (
-        <div key={w.id} className="duel-challenge duel-mine">
-          <span className="grow">
-            <span className="title">
-              {w.challenge!.state === 'open' ? tr(`You challenge ${name(w.opponent)}`, `Du forderst ${name(w.opponent)} heraus`) : tr(`${name(w.opponent)} declined`, `${name(w.opponent)} hat abgelehnt`)}
-            </span>
-            <span className="muted small">{duelText(w, sym)}</span>
-          </span>
-          <span className="duel-wait muted small">
-            <DuelMark state={w.challenge!.state === 'open' ? 'open' : 'declined'} />
-            {w.challenge!.state === 'open' ? tr(`Waiting for ${name(w.opponent)}`, `Wartet auf ${name(w.opponent)}`) : tr('Declined', 'Abgelehnt')}
-          </span>
-          <button type="button" className="btn-secondary duel-takeback" disabled={busy === w.id} onClick={() => void act(w.id, () => takeBackDuel(entry.code, w.id))}>
-            {w.challenge!.state === 'open' ? tr('Take back', 'Zurückziehen') : tr('Remove', 'Entfernen')}
-          </button>
-        </div>
-      ))}
+        ))}
+      </div>
       {msg && (
-        <span className="small bad-text" role="alert">
+        <p className="notice" role="alert">
           {msg}
-        </span>
+        </p>
       )}
     </section>
   );
@@ -450,7 +466,7 @@ function SideGameSetup(props: { form: FormId; preset: SideBetPreset; roundId?: s
             <ToggleRow key={p.name} inList pick label={p.name} text={p.playing != null ? tr(`Playing handicap ${p.playing}`, `Spielvorgabe ${p.playing}`) : undefined} on={chosen.includes(p.name)} onChange={(v) => setChosen(v ? [...new Set([...chosen, p.name])] : chosen.filter((x) => x !== p.name))} />
           ))}
         </ToggleList>
-        {!fits && <span className="small bad-text">{tr(`${f.name()} needs ${playersText(f)} – ${n} chosen.`, `${f.name()} braucht ${playersText(f)} – ${n} gewählt.`)}</span>}
+        {!fits && <span className="small good-text">{tr(`${f.name()} needs ${playersText(f)} – ${n} chosen.`, `${f.name()} braucht ${playersText(f)} – ${n} gewählt.`)}</span>}
       </section>
       <section className="setup-part">
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
@@ -495,7 +511,7 @@ export function SideBetRow(props: { preset: SideBetPreset }) {
   const value = [duels ? (duels === 1 ? tr('1 duel 5+5+10', '1 Duell 5+5+10') : tr(`${duels} duels 5+5+10`, `${duels} Duelle 5+5+10`)) : '', ...games].filter(Boolean).join(', ');
   return (
     <section className="setup-part">
-      <span className="eyebrow">{tr('Side bet', 'Sidebet')}</span>
+      <span className="eyebrow">{tr('Played for', 'Worum')}</span>
       <SettingsList>
         <SettingsRow label={tr('Side bet', 'Sidebet')} value={value || tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
       </SettingsList>

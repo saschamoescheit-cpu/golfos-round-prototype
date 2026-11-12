@@ -18,6 +18,7 @@ import { defaultWho, setMoneySym, WHO, type Currency, type ScoreWho } from '../l
 import { currencySymbol } from '../lib/gameforms';
 import { isMoney, isNone, oweText, prizeAmount, prizeSym, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
+import { CheckGlyph } from '../components/Glyph';
 import { gamePrize, gameTransfers } from '../lib/gamepay';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
@@ -996,6 +997,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const fits = fitsPlayers(f, n);
   const sides = sidesOf(d.form, n, Number(d.settings.partner ?? 1));
   const set = (patch: Partial<Draft>) => props.onChange(withWhs({ ...d, ...patch }));
+  const latest = useRef(d); // the draft as it is now – for "Rückgängig" after a player swiped away
+  latest.current = d;
   const whs = f.hcpFor?.(n);
   const setPlayer = (id: string, patch: Partial<DraftPlayer>) => set({ players: d.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
   const label = (i: number) => d.players[i].name.trim() || tr(`Player ${i + 1}`, `Spieler ${i + 1}`);
@@ -1085,38 +1088,6 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         </div>
       )}
 
-      {/* how the scores are entered on several phones (Sascha 07.11.2026: "show how the score entry is done – the
-          defaults by the game"), as "Score-Erfassung" in Rounds */}
-      {chosen && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-          <SettingsList>
-            <ChoiceRow<ScoreWho>
-              label={tr('Who enters', 'Wer erfasst')}
-              title={tr('Who enters the scores', 'Wer erfasst die Scores')}
-              value={d.who ?? defaultWho(d.form)}
-              onChange={(who) => set({ who })}
-              options={WHO.map((w) => ({ value: w.v, name: w.name(), text: w.text() }))}
-            />
-            {(d.who ?? defaultWho(d.form)) === 'one' && (
-              <ChoiceRow<string>
-                label={tr('Scorer', 'Schreiber')}
-                value={d.players.some((p) => p.id === d.scorer) ? d.scorer! : (d.players[0]?.id ?? '')}
-                onChange={(scorer) => set({ scorer })}
-                options={d.players.map((p, k) => ({ value: p.id, name: label(k) }))}
-              />
-            )}
-            {(d.who ?? defaultWho(d.form)) === 'one' && (
-              <OwnDetailsRow
-                names={d.players.map((p, k) => ({ p, k })).filter(({ p }) => p.id !== (d.players.some((x) => x.id === d.scorer) ? d.scorer : d.players[0]?.id)).map(({ k }) => label(k))}
-                value={d.ownDetails ?? []}
-                onChange={(ownDetails) => set({ ownDetails })}
-              />
-            )}
-          </SettingsList>
-        </section>
-      )}
-
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">
           {tr('Players', 'Spieler')}
@@ -1135,7 +1106,18 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             nine={nine}
             tees={teeChoices.length ? teeChoices : undefined}
             onChange={(np) => setPlayer(p.id, { name: np.name, hcp: np.index, tee: np.tee })}
-            onRemove={i > 0 ? () => set({ players: d.players.filter((x) => x.id !== p.id) }) : undefined}
+            onRemove={
+              i > 0
+                ? () => {
+                    set({ players: d.players.filter((x) => x.id !== p.id) });
+                    return () => {
+                      const cur = latest.current;
+                      if (cur.players.some((x) => x.id === p.id) || cur.players.length >= 4) return;
+                      props.onChange(withWhs({ ...cur, players: [...cur.players.slice(0, i), p, ...cur.players.slice(i)] }));
+                    };
+                  }
+                : undefined
+            }
           />
         ))}
         {/* course rating and slope as in the round setup – shown, or typed from the club's scorecard (Sascha 25.10.2026) */}
@@ -1187,6 +1169,40 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
           </span>
         )}
       </section>
+
+      {/* how the scores are entered on several phones (Sascha 07.11.2026: "show how the score entry is done – the
+          defaults by the game"), as "Score-Erfassung" in Rounds; right after the players (Facelift 11.11.2026, g1/o1 –
+          in every setup the same place) */}
+      {chosen && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+          <SettingsList>
+            <ChoiceRow<ScoreWho>
+              label={tr('Who enters', 'Wer erfasst')}
+              title={tr('Who enters the scores', 'Wer erfasst die Scores')}
+              value={d.who ?? defaultWho(d.form)}
+              onChange={(who) => set({ who })}
+              options={WHO.map((w) => ({ value: w.v, name: w.name(), text: w.text() }))}
+            />
+            {(d.who ?? defaultWho(d.form)) === 'one' && (
+              <ChoiceRow<string>
+                label={tr('Scorer', 'Schreiber')}
+                value={d.players.some((p) => p.id === d.scorer) ? d.scorer! : (d.players[0]?.id ?? '')}
+                onChange={(scorer) => set({ scorer })}
+                options={d.players.map((p, k) => ({ value: p.id, name: label(k) }))}
+              />
+            )}
+            {(d.who ?? defaultWho(d.form)) === 'one' && (
+              <OwnDetailsRow
+                names={d.players.map((p, k) => ({ p, k })).filter(({ p }) => p.id !== (d.players.some((x) => x.id === d.scorer) ? d.scorer : d.players[0]?.id)).map(({ k }) => label(k))}
+                value={d.ownDetails ?? []}
+                onChange={(ownDetails) => set({ ownDetails })}
+              />
+            )}
+          </SettingsList>
+        </section>
+      )}
+
 
       {/* Worum – what is played for, then the stakes (docs/DESIGN.md: Was → Wo → Wer → Worum → Einstellungen, Sascha 03.11.2026) */}
       {chosen && (
@@ -2036,6 +2052,7 @@ function CapRow(props: { label: string; stake: number; value: number; onChange: 
             close();
           }}
           onClose={close}
+          {...(typing ? { onSave: take, saveLabel: tr('Use', 'Übernehmen') } : {})}
         >
           {typing && (
             <div className="cap-input">
@@ -2052,12 +2069,9 @@ function CapRow(props: { label: string; stake: number; value: number; onChange: 
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && take()}
               />
-              <button type="button" className="btn-secondary" onClick={take}>
-                {tr('Use', 'Übernehmen')}
-              </button>
             </div>
           )}
-          {error && <span className="small bad-text" role="alert">{error}</span>}
+          {error && <span className="small good-text" role="alert">{error}</span>}
         </PickSheet>
       )}
     </>
@@ -2141,7 +2155,7 @@ function GameDrawer(props: { game: Game; onGo: (k: number) => void; onClose: () 
                 onClick={() => props.onGo(k)}
               >
                 <span className="drawer-hole-no">{h.label}</span>
-                {done ? <span className="drawer-hole-score">✓</span> : n > 0 ? <span className="drawer-hole-score">{n}/{g.players.length}</span> : null}
+                {done ? <span className="drawer-hole-score" aria-hidden="true"><CheckGlyph /></span> : n > 0 ? <span className="drawer-hole-score">{n}/{g.players.length}</span> : null}
               </button>
             );
           })}

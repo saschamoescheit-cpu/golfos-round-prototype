@@ -8,7 +8,7 @@ import { tr } from '../lib/i18n';
 // "Round deleted · Undo" for 8 seconds after the player deleted a round or a game (Sascha 15.10.2026: one tap to
 // delete, no second question – a slip can still be undone; later from the bin).
 // A pool or a tournament (marked deleted on the server) brings its own way back.
-type Deleted = { kind: 'round' | 'game' | 'training' | 'mobility' | 'pool' | 'tour' | 'purged' | 'friend'; id: string; label: string; undo?: () => void };
+type Deleted = { kind: 'round' | 'game' | 'training' | 'mobility' | 'pool' | 'tour' | 'purged' | 'friend' | 'player'; id: string; label: string; undo?: () => void };
 
 export function UndoToast() {
   const [shown, setShown] = useState<Deleted | null>(null);
@@ -29,7 +29,7 @@ export function UndoToast() {
   return (
     <div className="undo-toast" role="status">
       <span>
-        {shown.kind === 'purged' ? tr('Deleted for good', 'Endgültig gelöscht') : shown.kind === 'friend' ? tr('Friend removed', 'Freund entfernt') : shown.kind === 'pool' ? tr('Bet deleted', 'Wette gelöscht') : shown.kind === 'tour' ? tr('Tournament deleted', 'Turnier gelöscht') : shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : shown.kind === 'mobility' ? tr('Screening deleted', 'Screening gelöscht') : tr('Round deleted', 'Runde gelöscht')}
+        {shown.kind === 'purged' ? tr('Deleted for good', 'Endgültig gelöscht') : shown.kind === 'friend' ? tr('Friend removed', 'Freund entfernt') : shown.kind === 'player' ? tr('Player removed', 'Spieler entfernt') : shown.kind === 'pool' ? tr('Bet deleted', 'Wette gelöscht') : shown.kind === 'tour' ? tr('Tournament deleted', 'Turnier gelöscht') : shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : shown.kind === 'mobility' ? tr('Screening deleted', 'Screening gelöscht') : tr('Round deleted', 'Runde gelöscht')}
         {shown.label ? <span className="muted"> · {shown.label}</span> : null}
       </span>
       <button

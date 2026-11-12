@@ -41,7 +41,7 @@ ok((await H.getByText(/Spieler 1 & 2 und 3 & 4 als Team mit einem Ball/).count()
 const aids = onOff(H, /Alle Funktionen/);
 ok((await aids.count()) === 1 && (await aids.getAttribute('data-on')) === 'false', '"Alle Funktionen" in the format, off (Rule 4.3)');
 // a row of the format list (Sascha 08.11.2026)
-ok((await H.locator('.settings-list').filter({ hasText: 'Rundenart' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the format list');
+ok((await H.locator('.settings-list').filter({ hasText: 'HCP-Vorgabe' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the settings list (Facelift 11.11.2026, t5: under "Einstellungen")');
 await flip(aids);
 await H.locator('input[id^="hcp-"]').first().fill('10');
 for (const [n, h] of [['Erik', '4'], ['Cedric', '20'], ['Christopher', '0']]) {

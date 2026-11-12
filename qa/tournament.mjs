@@ -85,7 +85,7 @@ await p.locator('.settings-row').filter({ hasText: 'Rundenart' }).click();
 await p.locator('.sheet .pick-option').filter({ hasText: /^Turnier/ }).click();
 ok((await aids.count()) === 1 && (await aids.getAttribute('data-on')) === 'false', 'Rundenart Turnier: "Alle Funktionen", off (Rule 4.3)');
 // a row of the format list (Sascha 08.11.2026: "Alle Funktionen vllt auch in Format integrieren?")
-ok((await p.locator('.settings-list').filter({ hasText: 'Rundenart' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the format list');
+ok((await p.locator('.settings-list').filter({ hasText: 'HCP-Vorgabe' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the settings list (Facelift 11.11.2026, t5: under "Einstellungen")');
 await flip(aids);
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();

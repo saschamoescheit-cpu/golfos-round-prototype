@@ -39,15 +39,27 @@ export interface Choice<T> {
 /** The sheet of choices behind a row (as "Modus" or "Wer erfasst" in the round setup): the chosen one ticked. */
 /** Rendered beside the screen (a portal) – opened from inside another sheet or the score panel it lies on top of it
  *  (11.11.2026: the An/Aus rows open it everywhere). */
-export function PickSheet<T>(props: { title: string; options: Choice<T>[]; current: T; onPick: (v: T) => void; onClose: () => void; children?: ReactNode }) {
+/** `onSave`: an own value typed below the choices ("Anderer Betrag …") – taken with the round save button in the head,
+ *  after the ✕, as a SheetRow's (Facelift 11.11.2026, o3: no "Übernehmen" / "Weiter" button under the field). */
+export function PickSheet<T>(props: { title: string; options: Choice<T>[]; current: T; onPick: (v: T) => void; onClose: () => void; children?: ReactNode; onSave?: () => void; saveLabel?: string }) {
+  const close = (
+    <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+      ✕
+    </button>
+  );
   return createPortal(
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
+          {props.onSave ? (
+            <span className="sheet-head-acts">
+              {close}
+              <SaveButton label={props.saveLabel} onClick={props.onSave} />
+            </span>
+          ) : (
+            close
+          )}
         </div>
         <div className="pick-list">
           {props.options.map((o) => (

@@ -157,7 +157,9 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
 // WHS allowance to start with, 95 %
 {
   const rows = (await H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Format$/ }) }).locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
-  ok(rows.slice(0, 4).join(' | ') === 'Rundenart Turnier | Modus Einfaches Spiel | Scoring Zählspiel | HCP-Vorgabe 95 %', `Format: ${rows.join(' | ')}`);
+  // the allowance under "Einstellungen" (Facelift 11.11.2026, t5)
+  const settings = (await H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Einstellungen$/ }) }).locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
+  ok(rows.slice(0, 4).join(' | ') === 'Rundenart Turnier | Modus Einfaches Spiel | Scoring Zählspiel | Runden 1 Runde' && settings[0] === 'HCP-Vorgabe 95 %', `Format: ${rows.join(' | ')} – Einstellungen: ${settings.join(' | ')}`);
   await H.locator('.settings-row').filter({ hasText: /^Modus/ }).click();
   const modes = (await H.locator('.sheet .pick-option strong').allInnerTexts()).join(', ');
   ok(/Einfaches Spiel/.test(modes) && /Better Ball/.test(modes) && /Scramble/.test(modes) && /Vierer/.test(modes) && !/Lochspiel/.test(modes), `the modes – no match play in a field: ${modes}`);
@@ -211,7 +213,8 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
 // rows under them, the flights last
 {
   const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
-  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SCORE-ERFASSUNG|SPIELER|SONDERWERTUNGEN (OPTIONAL)|FLIGHTS UND STARTZEITEN', `the order: ${heads.join(' · ')}`);
+  // Facelift 11.11.2026 (t5): Was → Wo/Wann → Wer (Spieler, Flights, Wer erfasst) → Einstellungen → Sonderwertungen
+  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `the order: ${heads.join(' · ')}`);
 }
 for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();

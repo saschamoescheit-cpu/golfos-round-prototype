@@ -69,13 +69,14 @@ await C.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await C.locator('.sheet .pick-option').filter({ has: C.locator('strong', { hasText: /^5\+5\+10$/ }) }).first().click();
 await C.waitForTimeout(400);
 const eyebrows = (await C.locator('main .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
-ok(eyebrows.join('|') === 'SPIELFORM|WETTEN|TAG|GEGEN WEN|EINSÄTZE' && (await C.getByRole('button', { name: 'Spiel starten' }).count()) === 0, `5+5+10 with a pool: the duel – ${eyebrows.join(' · ')}, no "Spiel starten"`);
+// Was → Wo → Wann → Wer → Worum (Facelift 11.11.2026, g2): the scoring first, the stakes under "Worum"
+ok(eyebrows.join('|') === 'SPIELFORM|WERTUNG|WETTEN|TAG|GEGEN WEN|WORUM' && (await C.getByRole('button', { name: 'Spiel starten' }).count()) === 0, `5+5+10 with a pool: the duel – ${eyebrows.join(' · ')}, no "Spiel starten"`);
 const stakes = (await C.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
 ok(stakes.includes('Vorne (9) 5 $') && stakes.includes('Hinten (9) 5 $') && stakes.includes('Gesamt (18) 10 $') && stakes.includes('Wertung Brutto') && stakes.includes('Wer erfasst Ich für beide') && stakes.includes('Pool USA-Wetten'), `the stakes 5/5/10 $, gross, the challenger keeps the score, the pool: ${stakes.join(' | ')}`);
 // net: with how much of the handicap (Sascha 10.11.2026)
 await C.locator('.settings-row').filter({ hasText: /^Wertung/ }).click();
 await C.getByRole('dialog', { name: 'Wertung' }).locator('.pick-option').filter({ hasText: /^Netto/ }).first().click();
-ok(/Vorgabe 100 %/.test((await C.locator('.settings-row').filter({ hasText: /^Vorgabe/ }).innerText()).replace(/\s+/g, ' ')), 'net: the share of the handicap, 100 % to start');
+ok(/Vorgabe 100 %/.test((await C.locator('.settings-row').filter({ hasText: /^Vorgabe/ }).innerText()).replace(/\s+/g, ' ')) && (await C.locator('main .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase()).pop() === 'EINSTELLUNGEN', 'net: the share of the handicap, 100 % to start – under "Einstellungen", the last block');
 await C.locator('.settings-row').filter({ hasText: /^Wertung/ }).click();
 await C.getByRole('dialog', { name: 'Wertung' }).locator('.pick-option').filter({ hasText: /^Brutto/ }).first().click();
 ok((await C.getByRole('button', { name: 'Herausfordern' }).isDisabled()) && /Gegner wählen/.test(await C.locator('.settings-row').filter({ hasText: 'Gegner' }).innerText()), 'no opponent yet: "Gegner wählen" in green, "Herausfordern" not yet');

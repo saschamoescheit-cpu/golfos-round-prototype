@@ -161,7 +161,14 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
             nine={nine}
             tees={teeChoices.length ? teeChoices : undefined}
             onChange={(np) => setWho(who.map((x) => (x.id === p.id ? { ...x, hcp: np.index, tee: np.tee } : x)))}
-            onRemove={p.id === entry.me ? undefined : () => setWho(who.map((x) => (x.id === p.id ? { ...x, on: false } : x)))}
+            onRemove={
+              p.id === entry.me
+                ? undefined
+                : () => {
+                    setWho((ws) => ws.map((x) => (x.id === p.id ? { ...x, on: false } : x)));
+                    return () => setWho((ws) => ws.map((x) => (x.id === p.id ? { ...x, on: true } : x)));
+                  }
+            }
           />
         ))}
         {/* those of the pool not playing this round: back with a tap, as the friends in Rounds */}
