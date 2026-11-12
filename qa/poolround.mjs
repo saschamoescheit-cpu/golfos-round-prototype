@@ -87,7 +87,7 @@ ok(/3 geschafft/.test(bar) && !/vorläufig/.test(bar), `the bar: "${bar}"`);
 // finished: into the round analysis
 await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
-await H.getByRole('button', { name: 'Speichern & beenden' }).click();
+await H.getByRole('button', { name: 'Beenden & abrechnen' }).click();
 await H.waitForTimeout(2000);
 const kept = await H.evaluate(() => ({ rounds: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').filter((r) => r.finishedAt).length, inPlay: JSON.parse(localStorage.getItem('golfos.poolrounds.v1') ?? '[]').length }));
 ok(kept.rounds === 1 && kept.inPlay === 0, `finished: the round in the round analysis, none in play (${JSON.stringify(kept)})`);

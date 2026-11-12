@@ -219,7 +219,7 @@ for (const c of cases) {
   const live = await gameSheet((sh) => sh.locator('.game-standing').innerText().catch(() => ''));
   await p.locator('.hole-bar-handle').click();
   await p.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
-  await p.getByRole('button', { name: /Speichern & beenden/ }).click();
+  await p.getByRole('button', { name: /Beenden & abrechnen/ }).click();
   await p.waitForTimeout(500);
 
   // what is stored = what was typed

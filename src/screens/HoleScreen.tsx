@@ -789,8 +789,9 @@ export function HoleScreen(props: {
                   <span>{tr('Delete', 'Löschen')}</span>
                 </button>
                 </div>
+              {/* a game ends and is settled (Sascha 13.11.2026: "Speichern & beenden umbenennen in Beenden & abrechnen") */}
               <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
-                {tr('Save & finish', 'Speichern & beenden')}
+                {props.game ? tr('Finish & settle', 'Beenden & abrechnen') : tr('Save & finish', 'Speichern & beenden')}
               </button>
             </div>
           </>
@@ -1823,7 +1824,8 @@ export function HoleScreen(props: {
                 }
           }
           aimPoint={null}
-          spread={spreadOnMap}
+          // the green's slope shown: no spread over it – no green dashed circle, no green (Sascha 13.11.2026)
+          spread={chart && greenVisible ? null : spreadOnMap}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}

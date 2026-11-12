@@ -465,13 +465,23 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
 
 /** Adding one more (a player, bets, a flight, a day, a friend): a quiet row with a green plus – not a text button with "+"
  *  (Sascha 12.11.2026: "+ Wetten usw. – folgen wir deiner Empfehlung"). */
-export function AddRow(props: { label: string; onClick: () => void; disabled?: boolean; ariaLabel?: string; className?: string }) {
+/** icon: another sign than the "+" – e.g. two people for "Freunde hinzufügen" (Sascha 13.11.2026) */
+export function AddRow(props: { label: string; onClick: () => void; disabled?: boolean; ariaLabel?: string; className?: string; icon?: 'friends' }) {
   return (
     <div className={`settings-list add-list${props.className ? ' ' + props.className : ''}`}>
       <button type="button" className="settings-row add-row" aria-label={props.ariaLabel} disabled={props.disabled} onClick={props.onClick}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
+        {props.icon === 'friends' ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.4" />
+            <path d="M2.5 20c.9-3.4 3.4-5.2 6.5-5.2s5.6 1.8 6.5 5.2" />
+            <circle cx="17" cy="9" r="2.7" />
+            <path d="M16.5 14.8c2.5.2 4.2 1.8 5 4.6" />
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        )}
         <span>{props.label}</span>
       </button>
     </div>

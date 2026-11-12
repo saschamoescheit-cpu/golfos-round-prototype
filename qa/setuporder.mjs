@@ -95,7 +95,7 @@ await P.getByRole('button', { name: /A · 9 Löcher/ }).click();
 
 // r11: no friends – a row, its sheet titled "Freunde"
 {
-  const row = P.getByRole('button', { name: /^Freunde\s*verknüpfen/ });
+  const row = P.getByRole('button', { name: /^Freunde hinzufügen/ });
   ok((await row.count()) === 1 && (await P.getByText(/Golffreunde verknüpfen/).count()) === 0, 'r11: the row "Freunde · verknüpfen ›" – no grey text link');
   await row.click();
   const sheet = P.getByRole('dialog', { name: 'Freunde' });

@@ -174,7 +174,7 @@ ok(hv2 === '5,6' && gv2 === '5,6', `both enter at once: host ${hv2}, guest ${gv2
 // the host finishes: the guest's phone hears of it (as a round in Rounds), the last scores with it
 await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
-await H.getByRole('button', { name: /Speichern & beenden/ }).click();
+await H.getByRole('button', { name: /Beenden & abrechnen/ }).click();
 await H.waitForTimeout(1500);
 ok([...shared.values()].some((v) => v.game.finishedAt), 'host finished: "finished" is on the server');
 await G.waitForTimeout(7000);

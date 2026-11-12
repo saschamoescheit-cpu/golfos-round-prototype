@@ -6,7 +6,7 @@ import { Friends } from '../components/Friends';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { PausedIcon } from '../components/PausedIcon';
-import { SettingsList, SettingsRow } from '../components/Settings';
+import { AddRow } from '../components/Settings';
 
 // The start page of GolfOS (Sascha 15.10.2026): the two modules, the friends you play with and your profile – with a
 // menu at the bottom like inside the modules. The profile is the same everywhere.
@@ -316,9 +316,8 @@ export function FriendChips(props: { taken: string[]; onAdd: (f: Friend) => void
   if (!all.length)
     return (
       <div className="friend-chips">
-        <SettingsList>
-          <SettingsRow label={tr('Friends', 'Freunde')} value={tr('link', 'verknüpfen')} onClick={() => setLinking(true)} />
-        </SettingsList>
+        {/* as "Spieler hinzufügen", with two people for its sign (Sascha 13.11.2026) */}
+        <AddRow label={tr('Add friends', 'Freunde hinzufügen')} icon="friends" onClick={() => setLinking(true)} />
         {linking && (
           <div className="sheet-backdrop" onClick={() => setLinking(false)}>
             <section className="sheet friends-sheet" role="dialog" aria-label={tr('Friends', 'Freunde')} onClick={(e) => e.stopPropagation()}>

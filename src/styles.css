@@ -926,8 +926,7 @@ button.tile:disabled { opacity: 1; }
   font: 600 13px var(--body); color: var(--text-2); display: inline-flex; align-items: center; justify-content: center;
 }
 .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
-.chip.fact { border-style: dashed; }
-.chip.fact.on { border-style: solid; }
+/* GIR, Sand Saves, Up & Down: the app's chips, not dashed (Sascha 13.11.2026) – green once they happened */
 .putt-place { background: var(--surface-2); min-height: 58px; }
 
 /* putt editor */
@@ -935,7 +934,7 @@ button.tile:disabled { opacity: 1; }
 .putt-green { width: 100%; aspect-ratio: 1; max-height: 52vh; border-radius: 16px; background: #2f5d23; touch-action: none; user-select: none; }
 .putt-green-shape { fill: #5aa63a; stroke: #c9f1a3; }
 /* on the aerial photo (11.11.2026): the green only outlined, the photo shows through – bunkers, water, paths */
-.putt-green-shape.on-photo { fill: #5aa63a; fill-opacity: 0.18; } /* ci-allow: green turf */
+.putt-green-shape.on-photo { fill: #5aa63a; fill-opacity: 0.18; stroke: none; } /* ci-allow: green turf – no outline over the photo (Sascha 13.11.2026) */
 .putt-photo { pointer-events: none; }
 .putt-bunker.on-photo { fill-opacity: 0.35; } /* the mapped bunkers over the photo, the photo shows through */
 .putt-zoom { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1374,12 +1373,12 @@ button.tile:disabled { opacity: 1; }
 .bag-row.full .bag-tracked.differs .bag-tracked-text > span:last-child { color: var(--brand-text); }
 .bag-row.full .bag-tracked button.use-btn, .use-btn {
   width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong);
-  background: var(--surface-2); color: var(--brand-text); display: inline-flex; align-items: center; justify-content: center; flex: none;
+  background: var(--surface-2); color: var(--text); display: inline-flex; align-items: center; justify-content: center; flex: none;
 }
 .use-btn.small { width: 44px; height: 44px; min-height: 44px; } /* small in look only: the tap target stays thumb-sized */
 .use-btn:active { background: var(--brand); color: #fff; }
 .use-all { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.use-all svg { color: var(--brand-text); }
+.use-all svg { color: var(--text); } /* white like every icon button (Sascha 13.11.2026) */
 .pitch-tracked { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .bag-input .input:disabled { opacity: 1; color: var(--muted); text-align: right; -webkit-text-fill-color: var(--muted); }
 

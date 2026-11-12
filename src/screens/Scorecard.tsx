@@ -347,22 +347,27 @@ export function Scorecard(props: {
         <section className="card finish-card">
           <strong>{tr('Finish the round', 'Runde abschließen')}</strong>
           <span className="muted small">{tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}</span>
-          <div className="finish-actions">
-            <button type="button" className="btn-primary" onClick={() => props.onFinish(finishRound(round, !canReview))}>
-              {tr('Save & finish', 'Speichern & beenden')}
-            </button>
-            {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}
+          {/* as when finishing on the course (Sascha 13.11.2026: "mit Icons darstellen wie an anderen Stellen"): deleting as a
+              red tile with its sign, then the one main button. One tap deletes – "Rückgängig" brings it back (15.10.2026) */}
+          <div className="sc-actions" role="group" aria-label={tr('Finish the round', 'Runde abschließen')}>
             <button
               type="button"
-              className="btn-secondary btn-danger"
+              className="sc-action danger"
+              aria-label={tr('Delete round', 'Runde löschen')}
               onClick={() => {
                 deleteRound(round.id, true);
                 props.onDeleted();
               }}
             >
-              {tr('Delete round', 'Runde löschen')}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+              </svg>
+              <span>{tr('Delete', 'Löschen')}</span>
             </button>
           </div>
+          <button type="button" className="btn-primary" onClick={() => props.onFinish(finishRound(round, !canReview))}>
+            {tr('Save & finish', 'Speichern & beenden')}
+          </button>
         </section>
       )}
 

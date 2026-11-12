@@ -84,7 +84,7 @@ await p.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).c
 await p.waitForTimeout(300);
 await shot('gamemap-finish');
 ok(await p.getByRole('button', { name: 'Spiel löschen' }).isVisible(), 'finish question says "Spiel löschen"');
-await p.getByRole('button', { name: /Speichern & beenden/ }).click();
+await p.getByRole('button', { name: /Beenden & abrechnen/ }).click();
 await p.waitForTimeout(800);
 const res = await p.locator('main').innerText();
 ok(/Abrechnung/i.test(res) && /Ben zahlt an Anna/.test(res), 'result with the settlement');
