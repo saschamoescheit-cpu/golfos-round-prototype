@@ -2636,3 +2636,8 @@ body:has(.fab-stack.over-sheet) .fab-stack:not(.over-sheet) { display: none; }
 .currency-sheet { height: 88vh; }
 .currency-search { flex: none; }
 .photo-cropper { padding-bottom: 92px; }
+
+/* the start page's settled round: each player's amount right-aligned under each other (Sascha 12.11.2026) */
+.settle-lines { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 1px; margin-top: 3px; font-size: 13px; color: var(--muted); max-width: 240px; }
+.settle-line { display: contents; }
+.settle-line .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }

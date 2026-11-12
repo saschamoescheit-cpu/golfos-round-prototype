@@ -155,9 +155,10 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
         <TopTools />
       </div>
       <div className="home-hero">
+        {/* each round of the bets settled (Sascha 09.11.2026) – above "Läuft gerade" with its own title (12.11.2026: "Der Bereich
+            sollte über Läuft gerade platziert werden") */}
+        <RoundSettleCards />
         {props.running && props.onRunning && <RunningCard items={props.running} onOpen={props.onRunning} />}
-        {/* each round of the bets settled (Sascha 09.11.2026) – rows of "Jetzt dran", its eyebrow when the card is not there (Facelift 11.11.2026, S1) */}
-        <RoundSettleCards eyebrow={!props.running?.length} />
         <ModuleCardList {...props} describe />
       </div>
     </>

@@ -95,7 +95,7 @@ const settle = p.getByRole('region', { name: 'Runde abgerechnet' });
 const label = `USA-Wetten · Runde ${iso(-2).slice(8, 10)}.${iso(-2).slice(5, 7)}.`;
 ok((await settle.count()) === 1, 'S1: the settled round on the start page');
 const hasRunning = (await p.locator('.running-card').count()) > 0;
-ok(hasRunning ? (await settle.locator('> .eyebrow').count()) === 0 : (await settle.locator('> .eyebrow').textContent()) === 'Jetzt dran', hasRunning ? 'right under the card "Jetzt dran" – no second eyebrow' : 'under the eyebrow "Jetzt dran"');
+ok((await settle.locator('> .eyebrow').textContent()) === 'Runde abgerechnet' && (!hasRunning || (await settle.boundingBox()).y < (await p.locator('.running-card').boundingBox()).y), 'its own title "Runde abgerechnet", above "Läuft gerade" (12.11.2026)');
 const row = settle.locator('.swipe .list-item');
 const rowText = (await row.innerText()).replace(/\s+/g, ' ');
 ok((await row.count()) === 1 && rowText.includes(label) && /Du −20/.test(rowText) && /Chris \+40/.test(rowText), `a list row: ${rowText}`);

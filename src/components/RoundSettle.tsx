@@ -42,7 +42,7 @@ export function roundsSettled(pools: PoolEntry[], today = dayOf(new Date()), sho
   return out;
 }
 
-export function RoundSettleCards(props: { /** "Jetzt dran" above it – not when the card "Jetzt dran" stands right above */ eyebrow?: boolean }) {
+export function RoundSettleCards(props: { /** no longer used – the title is always "Runde abgerechnet" (12.11.2026) */ eyebrow?: boolean }) {
   const [pools, setPools] = useState(loadPools);
   const [shown, setShown] = useState(seen);
   useEffect(() => {
@@ -69,7 +69,7 @@ export function RoundSettleCards(props: { /** "Jetzt dran" above it – not when
   };
   return (
     <section className="eb-block round-settle" aria-label={tr('Round settled', 'Runde abgerechnet')}>
-      {props.eyebrow !== false && <span className="eyebrow">{tr('Up now', 'Jetzt dran')}</span>}
+      <span className="eyebrow">{tr('Round settled', 'Runde abgerechnet')}</span>
       <ul className="list">
         {list.slice(0, 2).map(({ e, day, money: m }) => {
           const sym = prizeSym(prizeOf(e.pool));
@@ -91,7 +91,15 @@ export function RoundSettleCards(props: { /** "Jetzt dran" above it – not when
                   </span>
                   <span className="grow">
                     <span className="title">{title}</span>
-                    <span className="muted small">{rows.map((p) => `${p.id === e.me ? tr('You', 'Du') : p.name} ${sign(m[p.id] ?? 0)}`).join(' · ')}</span>
+                    {/* every player's amount right-aligned under each other (Sascha 12.11.2026) */}
+                    <span className="settle-lines">
+                      {rows.map((p) => (
+                        <span key={p.id} className="settle-line">
+                          <span>{p.id === e.me ? tr('You', 'Du') : p.name}</span>
+                          <span className={`num${(m[p.id] ?? 0) > 0 ? ' good-text' : (m[p.id] ?? 0) < 0 ? ' bad-text' : ''}`}>{sign(m[p.id] ?? 0)}</span>
+                        </span>
+                      ))}
+                    </span>
                   </span>
                   {e.me && mine !== 0 && <strong className={`running-value${mine > 0 ? ' good-text' : ''}`}>{sign(mine)}</strong>}
                   <span className="muted" aria-hidden="true">
