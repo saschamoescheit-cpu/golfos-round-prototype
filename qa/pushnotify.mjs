@@ -114,11 +114,11 @@ const openProfile = async (p) => {
   const { ctx, p, calls, errs } = await context(devices['Pixel 7']);
   await p.waitForFunction(() => navigator.serviceWorker?.controller != null || navigator.serviceWorker?.ready, null, { timeout: 15000 }).catch(() => {});
   const card = await openProfile(p);
-  ok(await card.getByRole('heading', { name: 'Mitteilungen' }).isVisible(), 'profile: a section "Mitteilungen"');
+  ok((await p.getByRole('region', { name: 'Mitteilungen' }).isVisible()) && (await card.locator('h2').count()) === 0, 'profile: a block "Mitteilungen" – its title small above the card (Facelift 11.11.2026, P3)');
   // a row "Mitteilungen auf diesem Handy · Aus" under the heading (since 11.11.2026 no sliders – before: right of the heading)
   const on = onOff(card, 'Mitteilungen auf diesem Handy');
   ok(await on.isVisible() && (await on.getAttribute('data-on')) === 'false', 'a row "Mitteilungen auf diesem Handy", off');
-  const head = await card.locator('h2').boundingBox();
+  const head = await p.locator('.push-block > .eyebrow').boundingBox();
   const sw = await on.boundingBox();
   ok(!!head && !!sw && sw.y > head.y + head.height - 2, 'below "Mitteilungen"');
   ok((await card.locator('.drawer-switch').count()) === 0 && /Aus/.test(await on.innerText()), 'in the design of the app: a row with An/Aus, no slider');

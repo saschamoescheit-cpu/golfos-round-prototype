@@ -103,7 +103,7 @@ await p.waitForTimeout(1200);
 ok(/Aus 1 geprüften Runde/.test(await p.locator('main').innerText().catch(() => '')), 'offline: the stats count the round');
 await pickTopic(p, 'Schläger').catch(() => {});
 await p.waitForTimeout(800);
-ok((await p.locator('.putter-row').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Streuung' }).count()) === 1, 'offline: the clubs with their spread and the putter');
+ok((await p.locator('.putter-row').count()) === 1 && (await p.getByRole('region', { name: 'Deine Streuung' }).count()) === 1, 'offline: the clubs with their spread and the putter');
 
 // —— back online: nothing lost ——
 await ctx.setOffline(false);

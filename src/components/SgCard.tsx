@@ -1,3 +1,4 @@
+import { Block } from './Block';
 import { useState } from 'react';
 import { GROUPS, SG_CATEGORIES, SG_LABELS, groupSg, type SgCategory, type SgValues } from '../lib/sg';
 import { SgHole } from './SgHole';
@@ -23,8 +24,8 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
   const diff = Math.round((values.total - g.total) * 10) / 10;
   const diffs = Object.fromEntries(SG_CATEGORIES.map((c) => [c, Math.round((values[c] - g[c]) * 10) / 10])) as Record<SgCategory, number>;
   return (
+    <Block title={props.title}>
     <section className="card stats-card">
-      <h2>{props.title}</h2>
       <p className="muted small" style={{ margin: 0 }}>
         {tr(
           `Per ${base} holes · ${props.holes} holes checked${props.holes < 9 ? ' – values still swing' : ''}`,
@@ -94,5 +95,6 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
         </p>
       )}
     </section>
+    </Block>
   );
 }
