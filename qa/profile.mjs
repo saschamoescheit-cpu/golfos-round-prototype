@@ -47,9 +47,14 @@ const golf = p.getByRole('region', { name: 'Golf', exact: true });
 ok(/Mein Bag[\s\S]*Distanzen in/.test(await golf.innerText()), 'distances under Golf, below "Mein Bag"');
 // P2: the home club and the strokes gained comparison rows of the same list as Tee and Distanzen ("Name · Wert ›")
 const golfRows = (await golf.locator('.settings-list > .settings-row').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-ok(golfRows.join('|') === 'Mein Bag|Heimatclub|Tee|Sprache|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await golf.locator('.card, .list-item').count()) === 0 && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
+ok(golfRows.join('|') === 'Mein Bag|Heimatclub|Tee|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await golf.locator('.card, .list-item').count()) === 0 && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
 // P1: gender a row with its sheet – one line each what follows from it; no menu
 const gender = p.getByRole('region', { name: 'Persönliche Daten' }).locator('.settings-row').filter({ hasText: 'Geschlecht' });
+// the language under "Persönliche Daten", right after the gender – not under Golf (Sascha 13.11.2026)
+{
+  const personal = (await p.getByRole('region', { name: 'Persönliche Daten' }).locator('.settings-row').allInnerTexts()).map((t) => t.split('\n')[0].trim());
+  ok(personal.join('|') === 'Geschlecht|Sprache', `"Persönliche Daten": Geschlecht, then Sprache (${personal.join(' · ')})`);
+}
 ok((await p.locator('select#pf-gender').count()) === 0 && /Keine Angabe/.test(await gender.innerText()), `gender as a row: ${(await gender.innerText()).replace(/\s+/g, ' ')}`);
 await gender.click();
 const gSheet = p.getByRole('dialog', { name: 'Geschlecht' });

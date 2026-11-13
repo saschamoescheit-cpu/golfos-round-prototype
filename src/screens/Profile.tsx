@@ -222,6 +222,14 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                 { value: '', name: tr('Not stated', 'Keine Angabe') },
               ]}
             />
+            {/* the language in the profile, not a button on top (Sascha 13.11.2026: "die Sprache mit in das Profil – oben nur
+                noch Tag-/Nachtmodus und Inbox"), under "Persönliche Daten" (13.11.2026: "nicht unter Golf") – each in its own name */}
+            <ChoiceRow<Lang>
+              label={tr('Language', 'Sprache')}
+              value={getLang()}
+              onChange={(v) => setLang(v)}
+              options={LANGS.map((l) => ({ value: l.code, name: l.name }))}
+            />
           </SettingsList>
         </section>
       </Block>
@@ -248,14 +256,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             </span>
             <span aria-hidden="true">›</span>
           </button>
-          {/* the language in the profile, not a button on top (Sascha 13.11.2026: "die Sprache mit in das Profil – oben nur
-              noch Tag-/Nachtmodus und Inbox, aufgeräumter") – each in its own name */}
-          <ChoiceRow<Lang>
-            label={tr('Language', 'Sprache')}
-            value={getLang()}
-            onChange={(v) => setLang(v)}
-            options={LANGS.map((l) => ({ value: l.code, name: l.name }))}
-          />
           <ChoiceRow<'m' | 'yd'>
             label={tr('Distances in', 'Distanzen in')}
             value={unit}
