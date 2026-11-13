@@ -38,7 +38,9 @@ export const DETECT = {
  * path at the side of the hole, not by the ball; the player walks over to the ball. Then a stop well off the hole line
  * is pulled towards it (half its way off, at most 20 m). The tee and the green stay as they are.
  */
-export const CART = { fastMs: 4.5, maxMs: 12, rideM: 60, rides: 2, freeM: 8, pull: 0.5, maxPullM: 20 };
+// on: measured on Sascha's checked Oaks round (13.11.2026) the pull neither helped nor hurt (mean miss 32 m either way) –
+// the big misses are the partners' balls the cart stopped at; off until that is solved
+export const CART = { on: false, fastMs: 4.5, maxMs: 12, rideM: 60, rides: 2, freeM: 8, pull: 0.5, maxPullM: 20 };
 
 /** Rides faster than anyone walks (4.5–12 m/s, measured over 10 s or more – a fix a second wanders a few metres even
  *  standing), each at least 60 m in one go – twice on the stretch (a jog is slower): a cart. A single GPS jump (Sascha's walk at
@@ -173,7 +175,7 @@ interface Place {
 function places(track: TrackPoint[], hole: HoleMapData): Place[] {
   const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
   // in a cart the stops are where the cart parked – pulled towards the hole line, not at the tee or by the green
-  const cart = rodeCart(pts);
+  const cart = CART.on && rodeCart(pts);
   const cartMove = (p: LngLat): LngLat =>
     cart && distanceM(p, hole.tee) > 40 && distanceM(p, hole.greenCenter) > greenRadius(hole) + 20 ? cartSpot(p, hole.line) : p;
   const out: Place[] = findStops(pts).map((s) => {

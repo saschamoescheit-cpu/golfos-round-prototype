@@ -1,5 +1,5 @@
 {
  "Delete this shot?": "删除这一杆？",
  "Where do the suggested shot type and club come from?": "建议的击球类型和球杆从何而来？",
- "From your own checked shots: from how far and which lie you pitched, chipped or swung full, and which wedge you took for it. Until there are enough of them: up to 30 m a chip, up to 80 m a pitch. Around the green (the fringe, up to 10 m off it) a chip is chosen first, the putter off the green is always a chip, shot 1 is always from the tee. Riding a cart, the phone stops where the cart parks – those places are moved towards the middle of the hole; with the watch its own place counts.": "来自你自己核对过的击球：你从多远、什么球位打了切杆、短切或全挥杆，以及用了哪支挖起杆。在数据不足之前：30 米以内为短切，80 米以内为切杆。果岭周围（果岭环、果岭外 10 米以内）默认选短切；果岭外用推杆始终算短切；第 1 杆始终从发球台。乘球车时，手机停在球车停靠的地方——这些位置会向球道中间移动；有手表时以手表自己的位置为准。"
+ "From your own checked shots: from how far and which lie you pitched, chipped or swung full, and which wedge you took for it. Until there are enough of them: up to 30 m a chip, up to 80 m a pitch. Around the green (the fringe, up to 10 m off it) a chip is chosen first, the putter off the green is always a chip, shot 1 is always from the tee.": "来自你自己核对过的击球：你从多远、什么球位打了切杆、短切或全挥杆，以及用了哪支挖起杆。在数据不足之前：30 米以内为短切，80 米以内为切杆。果岭周围（果岭环、果岭外 10 米以内）默认选短切；果岭外用推杆始终算短切；第 1 杆始终从发球台。"
 }
