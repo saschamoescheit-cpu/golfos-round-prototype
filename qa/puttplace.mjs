@@ -129,6 +129,30 @@ const e1 = await entry();
 ok(e1.putts === 3 && e1.puttsAt?.balls?.length === 3 && !!e1.puttsAt?.pin, `saved: 3 putts, flag and three balls (${e1.putts} · ${e1.puttsAt?.balls?.length})`);
 ok(e1.strokes === strokes0, `the score entered stays (${strokes0} → ${e1.strokes})`);
 ok(/3 Putts/.test(await row.innerText()) && /1: .* · 2: .* · 3: /.test((await row.innerText()).replace(/\s+/g, ' ')), `the row: "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
+// the balls on the review's map, dragged (Sascha 13.11.2026: "Die Putts lassen sich nicht auf dem Grün platzieren" – P1
+// jumped back: two saves in a row, the second from the round as it was, put the first ball back; the putt editor worked)
+await p.locator('.review-map').scrollIntoViewIfNeeded();
+await p.waitForTimeout(1500);
+// the last ball first: the balls lie close together, the later ones on top
+for (const n of [2, 1, 0]) {
+  const before = (await entry()).puttsAt.balls[n];
+  const dot = p.locator('.review-map .map-shot-dot.green').filter({ hasText: new RegExp(`^P${n + 1}$`) }).first();
+  const bb = await dot.boundingBox();
+  if (!bb) {
+    ok(false, `P${n + 1} on the map`);
+    continue;
+  }
+  await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(bb.x + bb.width / 2 + 30 * (n - 1), bb.y + bb.height / 2 + 30, { steps: 10 });
+  await p.mouse.up();
+  await p.waitForTimeout(900);
+  const after = await entry();
+  const now = after.puttsAt.balls[n];
+  const moved = Math.hypot(now[0] - before[0], now[1] - before[1]) > 1e-6;
+  const greenToo = n > 0 || (after.detail?.onGreen && Math.hypot(after.detail.onGreen[0] - now[0], after.detail.onGreen[1] - now[1]) < 1e-9);
+  ok(moved && greenToo && after.puttsAt.balls.length === 3, `the map: P${n + 1} dragged stays where it was put${n === 0 ? ' – also where the ball reached the green' : ''} (${before.map((v) => v.toFixed(6))} → ${now.map((v) => v.toFixed(6))})`);
+}
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

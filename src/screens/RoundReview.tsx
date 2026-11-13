@@ -1086,9 +1086,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               // Drag a shot (or the ball on the green) to where it really was; lengths and strokes gained follow.
               if (id === 'green' || id.startsWith('putt-')) {
                 // a placed putt ball moved: the putts keep it, the first one is where the ball reached the green
+                // one save: two in a row both start from the round as it was – the second put the first ball back
+                // (Sascha 13.11.2026: "Die Putts lassen sich nicht auf dem Grün platzieren")
                 const n = id === 'green' ? 0 : Number(id.slice(5));
-                if (placedPutts && e.puttsAt) save(k, { puttsAt: { ...e.puttsAt, balls: placedPutts.map((b, j) => (j === n ? pos : b)) } });
-                if (n === 0) saveDetail(k, { ...d, onGreen: pos });
+                const balls: Partial<HoleEntry> = placedPutts && e?.puttsAt ? { puttsAt: { ...e.puttsAt, balls: placedPutts.map((b, j) => (j === n ? pos : b)) } } : {};
+                if (n === 0) saveDetail(k, { ...d, onGreen: pos }, undefined, balls);
+                else if (balls.puttsAt) save(k, balls);
               }
               else if (id.startsWith('miss-')) {
                 const n = Number(id.slice(5));
