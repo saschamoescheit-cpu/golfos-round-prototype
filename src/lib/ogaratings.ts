@@ -7,6 +7,7 @@
 // "Male").
 import type { TeeRating } from '../data/ratings';
 import { teeId } from '../data/tees';
+import { distanceM } from './geo';
 
 const API = 'https://api.opengolfapi.org/api/v1/courses';
 const KEY = 'golfos.ogatees.v1.';
@@ -63,20 +64,16 @@ const words = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2 && !['golf', 'club', 'course', 'country', 'the', 'and', 'resort'].includes(w));
-const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
-  const r = Math.PI / 180;
-  const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
-  const y = (b.lat - a.lat) * r;
-  return Math.hypot(x, y) * 6371;
-};
+const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => distanceM([a.lon, a.lat], [b.lon, b.lat]) / 1000;
 
-/** The OpenGolfAPI id of a course: its own (an "oga:" course), else the entry of its name nearest to it (2.5 km). */
+/** The OpenGolfAPI id of a course: its own (an "oga:" course), else the entry of its name nearest to it (2.5 km) – null
+ *  when there is none. Throws when OpenGolfAPI did not answer (asked again next time, not kept as "none"). */
 export async function ogaIdOf(c: { id: string; name: string; lat: number; lon: number }): Promise<string | null> {
   if (c.id.startsWith('oga:')) return c.id.slice(4);
   const mine = words(c.name);
   if (!mine.length) return null;
   const res = await fetch(`${API}/search?q=${encodeURIComponent(mine.slice(0, 3).join(' '))}`, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`OpenGolfAPI ${res.status}`); // busy, down, a hotel Wi-Fi's login page: not "none"
   const found = ((await res.json()) as { courses?: { id: string; course_name?: string; name?: string; lat?: number; lng?: number; latitude?: number; longitude?: number }[] }).courses ?? [];
   const near = found
     .map((x) => ({ id: x.id, name: x.course_name ?? x.name ?? '', at: { lat: Number(x.lat ?? x.latitude), lon: Number(x.lng ?? x.longitude) } }))
@@ -107,6 +104,11 @@ const plain = (s: string) => s.toLowerCase().split(/[/(,]/)[0].trim();
 /** A tee's name as the app knows it: a colour ("blue" → "Blue", "Silver/Green" → "Silver"), else the course's own word
  *  ("Championship"). */
 const norm = (s: string) => teeId(plain(s)) ?? plain(s);
+const combo = (s: string) => s.includes('/');
+/** A combination tee ("Blue/White") where the course has the colour itself too ("Blue") is a tee of its own – never
+ *  mixed up with it (review 13.11.2026); without it, "Silver/Green" is the silver tee. */
+const own = (t: OgaTee, all: OgaTee[]) => combo(t.name) && all.some((x) => !combo(x.name) && norm(x.name) === norm(t.name));
+const keyOf = (t: OgaTee, all: OgaTee[]) => (own(t, all) ? t.name.toLowerCase().replace(/s+/g, '') : norm(t.name));
 /** The tees of a course as OpenGolfAPI has them, longest first – the app's names for colours, the course's for the rest
  *  ("Championship") – none kept: []. */
 export function ogaTees(courseId: string): string[] {
@@ -114,7 +116,7 @@ export function ogaTees(courseId: string): string[] {
   if (!kept?.tees.length) return [];
   const longest = new Map<string, number>();
   for (const t of kept.tees) {
-    const id = teeId(plain(t.name)) ?? t.name.split(/[/(,]/)[0].trim();
+    const id = own(t, kept.tees) ? t.name.trim() : (teeId(plain(t.name)) ?? t.name.split(/[/(,]/)[0].trim());
     longest.set(id, Math.max(longest.get(id) ?? 0, t.yards ?? 0));
   }
   return [...longest.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
@@ -124,6 +126,7 @@ export function ogaTees(courseId: string): string[] {
 export function ogaRating(courseId: string, tee: string, lady = false): (TeeRating & { source: 'opengolfapi' }) | null {
   const kept = read(courseId);
   if (!kept?.tees.length) return null;
-  const t = kept.tees.find((x) => x.lady === lady && norm(x.name) === norm(tee));
+  const want = combo(tee) ? tee.toLowerCase().replace(/s+/g, '') : norm(tee);
+  const t = kept.tees.find((x) => x.lady === lady && keyOf(x, kept.tees) === want);
   return t ? { cr: t.cr, slope: t.slope, source: 'opengolfapi' } : null;
 }

@@ -118,6 +118,17 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
     return { id: 'me', name: shownName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false), tee: startTee };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
+  // the course's tees came later (OpenGolfAPI, a map fetched again): the start tee picked anew where it is not among them
+  // and nobody chose one (review 13.11.2026 – else "Yellow" on a course with "Championship" and "Member")
+  const autoTee = useRef(startTee);
+  useEffect(() => {
+    const was = me.tee;
+    if (!offered.known || !was || offered.tees.includes(was) || was !== autoTee.current || startTee === was) return;
+    autoTee.current = startTee;
+    setMe((m) => ({ ...m, tee: startTee }));
+    setOthers((os) => os.map((o) => (o.tee === was ? { ...o, tee: startTee } : o)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offered]);
   const tee = me.tee; // my tee: the lengths, the caddie, the round's course rating
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
@@ -154,7 +165,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       alive = false;
     };
   }, [props.course.id]);
-  const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes, lady) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen, lady]);
+  const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes, lady) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen, ratingsIn, lady]);
   // every player by his own tee
   const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);
   // the tees to choose from, with their length for the chosen holes and their course rating
@@ -427,7 +438,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           />
         )}
         {others.length < 3 && (
-          <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])} />
+          <AddRow focusNew label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])} />
         )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (

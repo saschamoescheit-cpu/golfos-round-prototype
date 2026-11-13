@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { StepPick } from '../components/Settings';
 import { dec, tr } from '../lib/i18n';
-import { ratingFor } from '../lib/handicap';
+import { courseRating } from '../lib/handicap';
 import { RATINGS } from '../data/ratings';
 import { teeName } from '../data/tees';
 import { fetchLive, type LiveView } from '../lib/live';
@@ -139,7 +139,7 @@ function RatingRows(props: { ev: RoundEvent }) {
   const played = [...new Set([...Object.values(ev.flights).flatMap((f) => f.players.map((p) => p.tee)), ev.tee].filter((t): t is string => !!t))];
   // no tee known (players set up without one): every tee of the course with a rating, longest first
   const tees = played.length ? played : [...new Set(Object.keys(RATINGS[ev.course.id] ?? {}).map((k) => k.split('@')[0]))];
-  const rated = tees.map((t) => ({ t, r: ratingFor(ev.course.id, t, ev.holes) })).filter((x): x is { t: string; r: NonNullable<typeof x.r> } => !!x.r);
+  const rated = tees.map((t) => ({ t, r: courseRating(ev.course.id, t, ev.holes) })).filter((x): x is { t: string; r: NonNullable<typeof x.r> } => !!x.r);
   if (!rated.length) return null;
   rated.sort((a, b) => b.r.cr - a.r.cr);
   return (

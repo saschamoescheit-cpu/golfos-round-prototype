@@ -1,7 +1,8 @@
 import { withAliases } from './seedAliases';
 // Snapshot of OpenStreetMap hole data for the test course (© OpenStreetMap contributors, ODbL),
 // taken 2026-10-10 via Overpass. Bundled so the course works even when the OSM servers are busy.
-export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[] }> = {
+/** fixed: the day its holes were corrected – a phone that kept the course before takes the corrected holes once */
+export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[]; fixed?: string }> = {
   'osm:relation/1326323': {
     name: 'Golfclub Hetzenhof',
     lat: 48.7802,
@@ -527,26 +528,28 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
     name: 'Legends Golf and Country Club',
     lat: 28.5064,
     lon: -81.7259,
-    // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026)
+    // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026); the
+    // men's stroke index from the club's card 8/25 (13.11.2026 – OSM had another order: hole 1 18, hole 17 5 …)
+    fixed: '2026-11-13',
     holeTags: [
-      {"handicap": "18", "par": "4", "ref": "1"},
-      {"handicap": "8", "par": "5", "ref": "2"},
-      {"handicap": "2", "par": "4", "ref": "3"},
-      {"handicap": "14", "par": "3", "ref": "4"},
+      {"handicap": "17", "par": "4", "ref": "1"},
+      {"handicap": "9", "par": "5", "ref": "2"},
+      {"handicap": "3", "par": "4", "ref": "3"},
+      {"handicap": "13", "par": "3", "ref": "4"},
       {"handicap": "7", "par": "4", "ref": "5"},
       {"handicap": "1", "par": "4", "ref": "6"},
-      {"handicap": "17", "par": "5", "ref": "7"},
+      {"handicap": "15", "par": "5", "ref": "7"},
       {"handicap": "11", "par": "3", "ref": "8"},
-      {"handicap": "3", "par": "4", "ref": "9"},
-      {"handicap": "15", "par": "4", "ref": "10"},
-      {"handicap": "16", "par": "5", "ref": "11"},
-      {"handicap": "9", "par": "4", "ref": "12"},
-      {"handicap": "10", "par": "3", "ref": "13"},
-      {"handicap": "12", "par": "5", "ref": "14"},
-      {"handicap": "13", "par": "3", "ref": "15"},
-      {"handicap": "4", "par": "4", "ref": "16"},
-      {"handicap": "5", "par": "4", "ref": "17"},
-      {"handicap": "6", "par": "4", "ref": "18"},
+      {"handicap": "5", "par": "4", "ref": "9"},
+      {"handicap": "12", "par": "4", "ref": "10"},
+      {"handicap": "18", "par": "5", "ref": "11"},
+      {"handicap": "4", "par": "4", "ref": "12"},
+      {"handicap": "6", "par": "3", "ref": "13"},
+      {"handicap": "10", "par": "5", "ref": "14"},
+      {"handicap": "16", "par": "3", "ref": "15"},
+      {"handicap": "2", "par": "4", "ref": "16"},
+      {"handicap": "8", "par": "4", "ref": "17"},
+      {"handicap": "14", "par": "4", "ref": "18"},
     ],
   },
   'osm:relation/4039887': {

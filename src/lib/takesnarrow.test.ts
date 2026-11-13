@@ -33,3 +33,14 @@ describe('a round reported while played, finished now', () => {
     expect(takes(pars, 's', before, still, open)).toBe(false);
   });
 });
+
+// review 13.11.2026: a phone that knows only the finished round (the host played only that one with him) never wipes the
+// player's other rounds
+describe('a finished round from a phone with fewer rounds', () => {
+  const pars: Wager = { id: 'p', player: 'm', kind: 'parRun', target: 9, stake: 20, payout: 'success', attempts: 'any' } as unknown as Wager;
+  const before: Progress = { best: 8, done: false, rounds: 2, at: 'x', perRound: [{ day: '2026-11-09', course: 'K', value: 8 }, { day: '2026-11-12', course: 'Oaks', value: 3, open: true }] } as Progress;
+  const onlyOaks: Progress = { best: 7, done: false, rounds: 1, at: 'y', perRound: [{ day: '2026-11-12', course: 'Oaks', value: 7 }] } as Progress;
+  it('kept as it was – his own phone brings the finished round', () => {
+    expect(takes(pars, 's', before, onlyOaks, { from: '2026-11-05', to: '2026-11-18' })).toBe(false);
+  });
+});

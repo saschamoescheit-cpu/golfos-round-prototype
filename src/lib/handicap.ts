@@ -34,6 +34,12 @@ export function ratingFor(courseId: string, tee: string, holes: { loop: string }
   // a value entered before a tee could be chosen ("–") counts until there is one for this tee (22.10.2026)
   const own = ownRatings()[`${courseId}|${tee}|${key}`] ?? ownRatings()[`${courseId}|–|${key}`];
   if (own) return own;
+  return courseRating(courseId, tee, holes, lady);
+}
+/** The course's own rating of a tee – bundled, OpenGolfAPI, other players' – without what this phone's owner typed
+ *  (the spectators' page: the round's values, not the viewer's, review 13.11.2026). */
+export function courseRating(courseId: string, tee: string, holes: { loop: string }[], lady = false): TeeRating | null {
+  const key = loopsKey(holes);
   // a lady's course rating from the same tee is higher than a man's (Hetzenhof red 66.2 men, 71.3 ladies): her own
   // bundled values (13.11.2026), never the men's. Nothing bundled: what other players of the same sex entered for this
   // course, loops and tee (night run 22./23.10.2026), else none – she enters hers from the scorecard (Sascha 22.10.2026)

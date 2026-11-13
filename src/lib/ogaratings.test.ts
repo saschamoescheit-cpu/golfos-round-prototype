@@ -88,3 +88,32 @@ describe('the tees of a course from OpenGolfAPI', () => {
     expect(courseTees('osm:relation/4039888', [], ['Championship']).tees).toEqual(['Teal', 'White', 'Yellow']); // bundled first
   });
 });
+
+describe('OpenGolfAPI: combination tees and a server that does not answer', () => {
+  const mem = () => {
+    const store = new Map<string, string>();
+    globalThis.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: () => {}, clear: () => {}, key: () => null, length: 0 } as Storage;
+    return store;
+  };
+  it('"Blue/White" is its own tee where the course has "Blue" too – never Blue\'s rating', async () => {
+    const store = mem();
+    store.set('golfos.ogatees.v1.osm:way/8', JSON.stringify({ at: Date.now(), oga: 'x', tees: [
+      { name: 'Blue/White', lady: false, cr: 69.1, slope: 125, yards: 6300 },
+      { name: 'Blue', lady: false, cr: 71.0, slope: 131, yards: 6600 },
+      { name: 'White', lady: false, cr: 68.0, slope: 122, yards: 6050 },
+    ] }));
+    const { ogaTees, ogaRating } = await import('./ogaratings');
+    expect(ogaTees('osm:way/8')).toEqual(['Blue', 'Blue/White', 'White']);
+    expect(ogaRating('osm:way/8', 'Blue')?.cr).toBe(71.0);
+    expect(ogaRating('osm:way/8', 'Blue/White')?.cr).toBe(69.1);
+  });
+  it('a busy server (503) is asked again next time, not kept as "no such course"', async () => {
+    const store = mem();
+    globalThis.window = Object.assign(globalThis.window ?? {}, { dispatchEvent: () => true }) as unknown as Window & typeof globalThis;
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('busy', { status: 503 }));
+    const { ensureOgaRatings } = await import('./ogaratings');
+    await ensureOgaRatings({ id: 'osm:way/9', name: 'Lakeside Golf Club', lat: 28.1, lon: -81.5 });
+    expect(store.get('golfos.ogatees.v1.osm:way/9')).toBeUndefined();
+  });
+});

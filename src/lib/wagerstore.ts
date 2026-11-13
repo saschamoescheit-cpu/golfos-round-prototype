@@ -451,7 +451,8 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
   if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
   // a round reported while it was still played, over now (audit 13.11.2026: Moritz's phone stopped reporting in the middle
   // of the Oaks round – pars in a row 3 instead of 7): the finished round from the host's card
-  if (old.perRound?.some((r) => r.open && now.perRound?.some((x) => x.day === r.day && x.course === r.course && !x.open && x.value != null))) return true;
+  // – only from a phone that knows as many of his rounds (review 13.11.2026: else the others would vanish from his bet)
+  if (now.rounds >= old.rounds && old.perRound?.some((r) => r.open && now.perRound?.some((x) => x.day === r.day && x.course === r.course && !x.open && x.value != null))) return true;
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
   if (now.rounds !== old.rounds) return now.rounds > old.rounds;

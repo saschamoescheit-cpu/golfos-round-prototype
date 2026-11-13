@@ -8,23 +8,12 @@ import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 import { loadHoleLines } from './storage';
 
 const KEY = 'golfos.communitylines.v1.';
-/** the lines other phones of the event set up (the flight's exchange) – kept apart from the player's own, so they never
- *  win over the course map and a correction of them comes through (Sascha 11.11.2026, Moritz on Cypress) */
+/** the lines other phones of the event set up (the flight's exchange) – kept apart from the player's own, so a correction
+ *  of them comes through; they replace the map's hole, the player's own and "Platzkarte verwenden" win over them
+ *  (storage.ts flightLines/loadGeometry, Sascha 11.11.2026, Moritz on Cypress) */
 const FLIGHT = 'golfos.flightlines.v1.';
 const table = () => `${SUPABASE_URL}/rest/v1/golfos_course_lines`;
 
-/** The lines of the course as other players set them, kept from the last read: "loop#number" → tee … green. */
-export function loadCommunityLines(courseId: string): Record<string, LngLat[]> {
-  const read = (k: string): Record<string, LngLat[]> => {
-    try {
-      return JSON.parse(localStorage.getItem(k + courseId) ?? '{}') as Record<string, LngLat[]>;
-    } catch {
-      return {};
-    }
-  };
-  // the flight's lines, the server's latest over them
-  return { ...read(FLIGHT), ...read(KEY) };
-}
 /** The lines of the event's other phones taken – replacing what came before (a hole marked anew comes through). True
  *  when something changed. */
 export function keepFlightLines(courseId: string, lines: Record<string, LngLat[]>): boolean {

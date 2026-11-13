@@ -231,7 +231,9 @@ async function loadCourseOnly(summary: CourseSummary, forceRefresh = false): Pro
   const seed = SEED_COURSES[summary.id];
   // A course first played without data (18 empty holes) gets the bundled data once it exists.
   const emptyCache = cached != null && seed != null && cached.holes.every((h) => h.par == null);
-  if (cached && cached.holes.length > 0 && !forceRefresh && !emptyCache) {
+  // the bundled holes corrected since this copy was kept (Legends Clermont's stroke index, 13.11.2026): taken once
+  const corrected = cached != null && seed?.fixed != null && cached.fixed !== seed.fixed;
+  if (cached && cached.holes.length > 0 && !forceRefresh && !emptyCache && !corrected) {
     // the map copy is gone (it made room when the storage was full, or never fitted): fetch the map again – the course
     // itself stays as it is, with the player's own par and stroke index (night check 22.10.2026)
     if (summary.source === 'osm' && !seed && !hasGeometry(summary.id)) await refetchGeometry({ ...summary, bbox: summary.bbox ?? cached.bbox }, cached);
@@ -243,7 +245,7 @@ async function loadCourseOnly(summary: CourseSummary, forceRefresh = false): Pro
   if (summary.source === 'opengolfapi' && !forceRefresh && !seed) {
     const osm = await osmCourseAt(summary).catch(() => null);
     if (osm) {
-      const course = await loadCourse(osm).catch(() => null);
+      const course = await loadCourseOnly(osm).catch(() => null); // its ratings: by loadCourse with the OpenGolfAPI id
       if (course && course.holes.length >= 9) {
         // par and Hcp the OSM holes lack come from the OpenGolfAPI scorecard (in the USA often complete there)
         const merged = withCardValues(course, await ogaHoles(summary.id).catch(() => []));
@@ -260,7 +262,8 @@ async function loadCourseOnly(summary: CourseSummary, forceRefresh = false): Pro
   // no holes in OpenStreetMap, but the scorecard known: par and stroke index from it (the holes are drawn on the map)
   if (!holes.length && CARDS[summary.id]) holes = holesFromTags(CARDS[summary.id]);
   const loops = [...new Set(holes.map((h) => h.loop))];
-  const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(summary.bbox ? { bbox: summary.bbox } : {}) };
+  const bbox = summary.bbox ?? cached?.bbox;
+  const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(bbox ? { bbox } : {}), ...(seed?.fixed ? { fixed: seed.fixed } : {}) };
   if (holes.length > 0) saveCachedCourse(course);
   return course;
 }

@@ -59,6 +59,8 @@ export interface Course {
   loops: string[];
   /** The course area (west, south, east, north) – to fetch the map again when its copy is gone. */
   bbox?: [number, number, number, number];
+  /** The bundled course's correction this copy has (SEED_COURSES fixed) – an older copy takes the corrected holes once. */
+  fixed?: string;
 }
 
 export interface CourseSummary {
