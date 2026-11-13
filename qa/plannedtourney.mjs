@@ -131,7 +131,7 @@ for (const name of ['Sascha', 'Cedric', 'Ben', 'Max']) {
   const { rows } = await board(name);
   ok(rows.length === 4 && rows.every((r) => /nach 1/.test(r)), `${name}'s leaderboard: all four after hole 1 – ${rows.join(' | ')}`);
   if (name === 'Sascha') {
-    ok(/Sascha · A/.test(rows.join()) && /Max · B/.test(rows.join()), 'the classes beside the names');
+    ok(/Sascha Klasse A/.test(rows.join()) && /Max Klasse B/.test(rows.join()), 'the classes beside the names');
     // net (the strokes on the hardest holes): Max (30) and Cedric (24) get theirs on hole 1 – a bogey of theirs is net par
     ok(!/Sascha/.test(rows[0]) || rows.length === 4, `net order: ${rows.map((r) => r.split(' ')[1]).join(' > ')}`);
   }

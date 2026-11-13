@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
-import { shareView, type ShareView } from '../lib/sharedround';
+import { eventCard, shareView, type ShareView } from '../lib/sharedround';
+import { LiveBoard } from './LiveBoard';
 import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
@@ -19,7 +20,6 @@ import { ScanCodeButton } from './QrScan';
 
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
-import { Avatar } from './Avatar';
 import { ConfirmSheet } from './ConfirmSheet';
 import { leaderText } from './Specials';
 import { specialName } from '../lib/specials';
@@ -703,68 +703,76 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
     ) : (
       <span className="eyebrow">{ev.name}</span>
     )}
-    <section className="card stats-card leaderboard event-board" aria-label={ev.name}>
-      <span className="muted small">
-        {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
-      </span>
-      {ev.tournament && (net || classes.length > 0) && (
-        <div className="chip-set lb-filters">
-          {net && (
-            <>
-              <button type="button" className={`chip${!gross ? ' on' : ''}`} aria-pressed={!gross} onClick={() => setGross(false)}>
-                {ev.format?.scoring === 'stableford' ? 'Stableford' : tr('Net', 'Netto')}
-              </button>
-              <button type="button" className={`chip${gross ? ' on' : ''}`} aria-pressed={gross} onClick={() => setGross(true)}>
-                {tr('Gross', 'Brutto')}
-              </button>
-            </>
+    <LiveBoard
+      className="stats-card leaderboard event-board"
+      label={ev.name}
+      // the same card as the live leaderboard under Tournaments (Sascha 13.11.2026: "optisch genauso") – "● LIVE" while played,
+      // a player tapped: his scorecard below
+      title={running ? tr('Live leaderboard', 'Live-Leaderboard') : played ? tr('Result', 'Ergebnis') : 'Leaderboard'}
+      live={running}
+      chips={
+        <>
+          <span className="muted small">
+            {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
+          </span>
+          {ev.tournament && (net || classes.length > 0) && (
+            <div className="chip-set lb-filters">
+              {net && (
+                <>
+                  <button type="button" className={`chip${!gross ? ' on' : ''}`} aria-pressed={!gross} onClick={() => setGross(false)}>
+                    {ev.format?.scoring === 'stableford' ? 'Stableford' : tr('Net', 'Netto')}
+                  </button>
+                  <button type="button" className={`chip${gross ? ' on' : ''}`} aria-pressed={gross} onClick={() => setGross(true)}>
+                    {tr('Gross', 'Brutto')}
+                  </button>
+                </>
+              )}
+              {classes.length > 0 && (
+                <>
+                  <button type="button" className={`chip${cls == null ? ' on' : ''}`} aria-pressed={cls == null} onClick={() => setCls(null)}>
+                    {tr('All', 'Alle')}
+                  </button>
+                  {classes.map((c) => (
+                    <button key={c} type="button" className={`chip${cls === c ? ' on' : ''}`} aria-pressed={cls === c} onClick={() => setCls(c)}>
+                      {tr(`Class ${c}`, `Klasse ${c}`)}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           )}
-          {classes.length > 0 && (
+        </>
+      }
+      rows={b.rows.map((r) => {
+        const d = diff(r.key);
+        return {
+          key: r.key,
+          pos: r.pos,
+          name: r.name,
+          value: r.value,
+          thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–',
+          extra: (
             <>
-              <button type="button" className={`chip${cls == null ? ' on' : ''}`} aria-pressed={cls == null} onClick={() => setCls(null)}>
-                {tr('All', 'Alle')}
-              </button>
-              {classes.map((c) => (
-                <button key={c} type="button" className={`chip${cls === c ? ' on' : ''}`} aria-pressed={cls === c} onClick={() => setCls(c)}>
-                  {tr(`Class ${c}`, `Klasse ${c}`)}
-                </button>
-              ))}
+              {r.cls && <small className="muted">{tr(`Class ${r.cls}`, `Klasse ${r.cls}`)}</small>}
+              {/* the own flight said in words, not a green frame nobody can read (Sascha 12.11.2026: "Warum sind einige
+                  Spieler grün umrandet und andere nicht?") */}
+              {mine.has(r.key) && <small className="muted lb-flight">{tr('your flight', 'dein Flight')}</small>}
+              {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
+              {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
+              {r.signed && (
+                <small className="lb-signed">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                  {tr('signed', 'unterschrieben')}
+                </small>
+              )}
             </>
-          )}
-        </div>
-      )}
-      <ol className="lb-rows">
-        {b.rows.map((r) => {
-          const d = diff(r.key);
-          return (
-            <li key={r.key} className={mine.has(r.key) ? 'lb-mine' : undefined}>
-              <span className="lb-rank">{r.pos}</span>
-              <span className="lb-name">
-                <Avatar name={r.name} me={mine.has(r.key)} size={24} />
-                <span>
-                  {r.name}
-                  {r.cls && <small className="muted"> · {r.cls}</small>}
-                  {/* the own flight said in words, not a green frame nobody can read (Sascha 12.11.2026: "Warum sind einige
-                      Spieler grün umrandet und andere nicht?") */}
-                  {mine.has(r.key) && <small className="muted lb-flight">{tr('your flight', 'dein Flight')}</small>}
-                  {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
-                  {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
-                  {r.signed && (
-                    <small className="lb-signed">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M5 12.5l4.5 4.5L19 7.5" />
-                      </svg>
-                      {tr('signed', 'unterschrieben')}
-                    </small>
-                  )}
-                </span>
-              </span>
-              <span className="lb-value">{r.value}</span>
-              <span className="lb-thru muted small">{r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
-            </li>
-          );
-        })}
-      </ol>
+          ),
+          ...(r.thru ? { cards: [{ label: '', card: () => eventCard(ev, r.key) }] } : {}),
+        };
+      })}
+    >
       {/* the special prizes with their leaders (Sascha 01.11.2026) */}
       {(ev.specials?.length ?? 0) > 0 && (
         <div className="flight-status special-leaders">
@@ -804,7 +812,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
         />
       )}
       {liveOpen && <LiveSheet code={series?.code ?? props.code} name={series?.name ?? ev.name} onClose={() => setLiveOpen(false)} />}
-    </section>
+    </LiveBoard>
     </>
   );
 }

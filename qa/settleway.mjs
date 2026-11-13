@@ -122,7 +122,7 @@ await H.locator('.wager-sheet').getByRole('button', { name: /Welche Runden/ }).c
 await H.locator('.pick-option').filter({ hasText: 'Ausgewählte Runden' }).click();
 await H.locator('.wager-sheet').getByRole('button', { name: /^Runden/ }).click();
 await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Diesen Tag hinzufügen' }).click();
-await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Schließen' }).click();
+await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Fertig', exact: true }).click();
 await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
 let w1 = shared.get(code).game.wagers.find((w) => w.id === 'w1');

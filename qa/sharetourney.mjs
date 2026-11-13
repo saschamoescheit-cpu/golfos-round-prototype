@@ -44,7 +44,15 @@ await board.waitFor({ timeout: 5000 });
 const rows = async () => (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
 const net = await rows();
 ok(net.length === 3 && net.every((r) => /nach 1/.test(r)) && /Ben/.test(net[0]), `net – Ben's 27 strokes on 9 holes put him first: ${net.join(' | ')}`);
-ok(/Ben · B/.test(net.join()) && /Sascha · A/.test(net.join()), 'the classes beside the names (Sascha A, Ben B)');
+ok(/Ben Klasse B/.test(net.join()) && /Sascha Klasse A/.test(net.join()), 'the classes beside the names (Sascha A, Ben B)');
+// Sascha 13.11.2026 ("Hier sehe ich kein Live im Leaderboard auf der Runde – optisch genauso wie unter Tournaments"):
+// the same card – "● LIVE" while played, a player tapped: his scorecard below
+ok((await board.locator('.tour-live-badge').count()) === 1 && /LIVE/.test(await board.locator('.tour-live-head').innerText()) && (await board.locator('.lb-rows.tour-lb').count()) === 1, "the round's board as under Tournaments: ● LIVE, the same rows");
+await board.locator('.lb-rows li').first().click();
+await H.waitForTimeout(400);
+ok((await board.locator('.lb-rows li .lb-card').count()) === 1, 'a player tapped: his scorecard opens below');
+await board.locator('.lb-rows li').first().click();
+await H.waitForTimeout(300);
 await board.getByRole('button', { name: 'Klasse B' }).click();
 const onlyB = await rows();
 ok(onlyB.length === 2 && /Ben/.test(onlyB[0]) && /Max/.test(onlyB[1]) && !/Sascha/.test(onlyB.join()), `class B – Ben, and Max without a handicap: ${onlyB.join(' | ')}`);

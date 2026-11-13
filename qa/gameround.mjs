@@ -119,7 +119,7 @@ await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
   const capLabel = (await capRow.locator('span').first().innerText()).trim();
   await capRow.click();
   await p.getByRole('dialog', { name: capLabel }).locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
-  await p.getByRole('dialog', { name: 'Press (Einsatz verdoppeln)' }).getByRole('button', { name: 'Speichern', exact: true }).click();
+  await p.getByRole('dialog', { name: 'Press (Einsatz verdoppeln)' }).getByRole('button', { name: 'Fertig', exact: true }).click();
 }
 await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();

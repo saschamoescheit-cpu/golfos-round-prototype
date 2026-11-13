@@ -84,7 +84,7 @@ for (const k of [8, 3, 4]) await rows.nth(k).click();
 ok(/Alle 3 Runden ausgewählt/.test(await dlg.innerText()), 'three chosen: "Alle 3 Runden ausgewählt"');
 ok(await rows.nth(0).isDisabled(), 'a fourth cannot be switched on');
 if (process.env.SHOTS) await dlg.screenshot({ path: `${process.env.SHOTS}/pickrounds.png` });
-await dlg.getByRole('button', { name: 'Schließen' }).click();
+await dlg.getByRole('button', { name: 'Fertig', exact: true }).click(); // the sheet's round tick (13.11.2026: no ✕)
 ok(/3 von 3 ausgewählt/.test(await row.innerText()), `the row: "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
 await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await H.waitForTimeout(1500);
