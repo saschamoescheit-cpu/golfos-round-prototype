@@ -383,6 +383,26 @@ export const FAQ: FaqTopic[] = [
         video: 'review',
       },
       {
+        // Sascha 13.11.2026 (click paths): the tee changed in the middle of a round
+        q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
+        a: () =>
+          tr(
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee. Your partners keep theirs. In a tournament the tee stays as planned.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag. Deine Mitspieler behalten ihren. Im Turnier bleibt der Abschlag wie geplant.',
+          ),
+        video: 'map',
+      },
+      {
+        // Sascha 13.11.2026: a shot or the putts edited and closed – kept
+        q: () => tr('Do I have to tap the tick after changing a shot?', 'Muss ich nach dem Ändern eines Schlags auf den Haken tippen?'),
+        a: () =>
+          tr(
+            'No. A shot or the putts you change in "Check shots" are kept when you close the sheet – with ✕ or a tap beside it. The tick only closes it faster.',
+            'Nein. Was du in „Schläge prüfen“ an einem Schlag oder an den Putts änderst, bleibt beim Schließen erhalten – mit ✕ oder einem Tipp daneben. Der Haken schließt nur schneller.',
+          ),
+        video: 'review',
+      },
+      {
         // Sascha 13.11.2026: "Bei der Schlagnachbereitung werden oft falsche Positionen und Schläger vorgeschlagen"
         q: () => tr('Where do the suggested shot type and club come from?', 'Woher kommen die vorgeschlagenen Schlagarten und Schläger?'),
         a: () =>

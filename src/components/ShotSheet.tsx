@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, STRIKES, toggleStance } from '../lib/shotfacts';
@@ -79,8 +79,7 @@ export function ShotSheet(props: {
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
   // the putter off the green is always a chip (Sascha 13.11.2026: "Wenn Texas Wedge gewählt wird, muss der Schlag immer Chip sein")
   const shownKind = club === 'Pt' ? 'chip' : (kind ?? suggestKind(lie, props.toPinM, club, props.offGreenM));
-  const save = (c: Club | null) =>
-    props.onSave({
+  const valueOf = (c: Club | null) => ({
       lie,
       club: c,
       penalty,
@@ -92,14 +91,19 @@ export function ShotSheet(props: {
       intent: intent ?? undefined,
       slope: slope.length ? slope : undefined,
       kind: c === 'Pt' ? 'chip' : shownKind,
-      review: false,
+      review: false as const,
     });
+  const save = (c: Club | null) => props.onSave(valueOf(c));
+  // what the sheet opened with – closed unchanged, nothing is saved (the shot stays "to check" as it was)
+  const opened = useRef<string | null>(null);
+  if (opened.current == null) opened.current = JSON.stringify(valueOf(club));
+  const close = () => (props.editing && JSON.stringify(valueOf(club)) !== opened.current ? save(club) : props.onCancel());
   return (
-    <div className="sheet-backdrop" onClick={props.onCancel}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onCancel}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
         </div>

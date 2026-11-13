@@ -42,6 +42,8 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
+import { TeeSwitchSheet, roundTees, withTee } from '../components/TeeSwitch';
+import { teeName } from '../data/tees';
 import { fetchCourseLines, keepFlightLines, shareCourseLine } from '../lib/courselines';
 import { cachedEvent, differences, exchangeRound, quietKeeper, setRetired, settle, shareLine, sharedLines, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -704,6 +706,10 @@ export function HoleScreen(props: {
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
   const [sideBetOpen, setSideBetOpen] = useState(false); // 5+5+10 as a side bet (Sascha 10.11.2026)
+  const [teeOpen, setTeeOpen] = useState(false); // the tee changed in the round (Sascha 13.11.2026)
+  // not in a tournament (its playing handicaps are the tournament's) nor in the preview; a course with one tee: nothing to choose
+  const manyTees = useMemo(() => roundTees(round).length > 1, [round.courseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const teeRow = !round.preview && !round.shared?.tournament && !props.game && manyTees;
   // a bet counts this round: the marked player in detail too (Sascha 02.11.2026) – looked at when the sheet opens
   const withBets = useMemo(() => !round.preview && betLinked(round), [round.id, scoreSheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const [canShareRound, setCanShareRound] = useState(false);
@@ -2079,6 +2085,16 @@ export function HoleScreen(props: {
         )}
         {boardOpen && <LeaderboardSheet round={round} tab={boardTab} onClose={() => { setBoardOpen(false); setBoardTab('board'); }} />}
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
+        {teeOpen && (
+          <TeeSwitchSheet
+            round={round}
+            onClose={() => setTeeOpen(false)}
+            onPick={(t) => {
+              setTeeOpen(false);
+              if (t !== round.tee) props.onChange(withTee(round, t));
+            }}
+          />
+        )}
         {sideBetOpen && (
           <SideBetSheet
             roundId={round.id}
@@ -2121,6 +2137,7 @@ export function HoleScreen(props: {
                       // a side bet in the round – in a tournament too (Sascha 10.11.2026: "in the menu by the code, the bag
                       // and the caddie")
                       { label: tr('Side bet', 'Side-Bet'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
+                      ...(teeRow ? [{ label: `Tee · ${round.tee ? teeName(round.tee) : '–'}`, onClick: () => { setDrawerOpen(false); setTeeOpen(true); } }] : []),
                       ...(round.shared || canShareRound
                         ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
                         : []),

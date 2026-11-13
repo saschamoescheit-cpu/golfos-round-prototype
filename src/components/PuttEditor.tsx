@@ -80,6 +80,9 @@ export function PuttEditor(props: {
   const up = bearingDeg(props.from, c); // playing direction: up on the screen
   const [pin, setPin] = useState<LngLat>(props.pin);
   const [balls, setBalls] = useState<LngLat[]>(() => startBalls(props));
+  // closed by ✕ or beside the sheet: what was moved is kept (Sascha 13.11.2026) – unchanged, nothing is saved
+  const opened = useRef(JSON.stringify({ pin: props.pin, balls }));
+  const close = () => (JSON.stringify({ pin, balls }) !== opened.current ? props.onSave({ pin, balls, putts: balls.length }) : props.onCancel());
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<number | 'pin' | null>(null);
   // finer and visible (Sascha 16.10.2026: "the finger covers the metres … much too sensitive"): the dragged ball moves
@@ -304,12 +307,12 @@ export function PuttEditor(props: {
   })();
 
   return (
-    <div className="sheet-backdrop" onClick={props.onCancel}>
+    <div className="sheet-backdrop" onClick={close}>
       <section className="sheet putt-editor" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
-        {/* ✕ = leave without saving; the save floating bottom right, above the sheet (Sascha 11.11.2026: "der Speicherbutton
-            soll auch in der Rundennachbereitung schweben") */}
+        {/* ✕ = close, what was moved kept (Sascha 13.11.2026); the save floating bottom right, above the sheet (Sascha
+            11.11.2026: "der Speicherbutton soll auch in der Rundennachbereitung schweben") */}
         <div className="sheet-head">
-          <button type="button" className="icon-btn" aria-label={tr('Cancel – do not save', 'Abbrechen – nicht speichern')} onClick={props.onCancel}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={close}>
             ✕
           </button>
           <strong>{props.title}</strong>

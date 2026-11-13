@@ -207,8 +207,17 @@ ok(o1.length === o0.length && o1[0] === o0[o0.length - 1] && o1[1] === o0[0], `t
   await rows.first().click();
   await p.waitForTimeout(300);
   ok((await p.locator('.sheet').count()) === 1, 'a short tap still opens the shot');
+  // Sascha 13.11.2026: edited and closed with ✕ – kept ("Bearbeiten speichert automatisch"), no tick needed
+  const clubOf = () => p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots[0].club ?? null);
+  const before = await clubOf();
+  const other = p.locator('.sheet .club-grid button:not([aria-pressed="true"])').nth(3);
+  const otherText = (await other.innerText()).trim();
+  await other.click();
+  await p.waitForTimeout(150);
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(400);
+  const after = await clubOf();
+  ok((await p.locator('.sheet').count()) === 0 && after != null && after !== before, `closed with ✕ after choosing "${otherText}": the club kept (${before} → ${after})`);
 }
 // the iPhone (Sascha 20.10.2026: "neither holding nor the grip works"): a finger goes by its own touch events – the grip
 // at once, a row after a moment held still
