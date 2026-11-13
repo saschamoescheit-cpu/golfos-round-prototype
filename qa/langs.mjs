@@ -16,7 +16,8 @@ const start = async (locale) => {
   const p = await ctx.newPage();
   await mockNet(p);
   const errs = [];
-  p.on('pageerror', (e) => errs.push(e.message));
+  // the service worker of the built preview (as in every QA): not the app's
+  p.on('pageerror', (e) => { if (!/sw.js load failed|due to access control/.test(e.message)) errs.push(e.message); });
   await p.goto(url);
   await p.evaluate(() => {
     localStorage.clear();
