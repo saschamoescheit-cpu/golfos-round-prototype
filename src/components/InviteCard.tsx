@@ -121,10 +121,17 @@ const me = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler
 /** The linked friends (Friends, by their accounts) invited with a tap (Sascha 03.11.2026: "invite linked friends directly –
  *  for every 'invite players' in the whole app"): let in at once, a push on his phone – and his app, open, asks him
  *  straight away. Below the InviteCard of a round, tournament, series, game or pool of bets – `code` its code. */
-export function FriendInvite(props: { code: string; /** only these – the flight's players by name (Sascha 03.11.2026: "only the linked friends I added to the flight") */ only?: string[] }) {
+export function FriendInvite(props: {
+  code: string;
+  /** only these – the flight's players by name (Sascha 03.11.2026: "only the linked friends I added to the flight") */
+  only?: string[];
+  /** not these (by name) – invited right at their own player card instead (a pool's players without the app, 13.11.2026) */
+  except?: string[];
+}) {
   const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'old' | 'failed'>>({});
   const wanted = props.only?.map((n) => n.trim().toLowerCase()).filter(Boolean);
-  const friends = canLink() ? loadFriends().filter((f) => f.uid && (!wanted || wanted.includes(f.name.trim().toLowerCase()) || wanted.includes((f.fullName ?? '').trim().toLowerCase()))) : [];
+  const left = props.except?.map((n) => n.trim().toLowerCase()).filter(Boolean) ?? [];
+  const friends = canLink() ? loadFriends().filter((f) => f.uid && (!wanted || wanted.includes(f.name.trim().toLowerCase()) || wanted.includes((f.fullName ?? '').trim().toLowerCase())) && !left.includes(f.name.trim().toLowerCase())) : [];
   // who is in already – from the server, on opening and when the page shows again (Sascha 06.11.2026: "Christopher is
   // in – at mine it still says 'Einladen'")
   const [members, setMembers] = useState<string[]>([]);

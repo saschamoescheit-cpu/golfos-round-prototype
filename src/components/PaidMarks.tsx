@@ -66,7 +66,8 @@ export function PaidMarks(props: {
         <ul className="pool-pays">
           {props.open.map((t) => {
             // the receiver confirms, the payer says he paid – each his own; the others' only shown
-            const as = mine(t.to) ? 'received' : mine(t.from) ? 'paid' : null;
+            // – one's own side first: the host owing a player without the app pays him ("Bezahlt", click paths 13.11.2026)
+            const as = t.from === props.me ? 'paid' : t.to === props.me ? 'received' : mine(t.to) ? 'received' : mine(t.from) ? 'paid' : null;
             return (
               <li key={`${t.from}-${t.to}`} className={props.why ? 'pays-with-why' : undefined}>
                 <span className="grow">

@@ -935,6 +935,13 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   // 5+5+10: one against one, a duel each (Sascha 09.11.2026) – in the pool of bets of the day, without one a new one
   // (10.11.2026: "against linked friends or players made as in a round")
   const duel = d.formChosen !== false && d.form === 'fivefiveten' && !!props.onDuel;
+  const duelBox = useRef<HTMLDivElement>(null);
+  const wasDuel = useRef(duel);
+  useEffect(() => {
+    // the first part after the rules card ("Gegner")
+    if (duel && !wasDuel.current) (duelBox.current?.nextElementSibling ?? duelBox.current)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    wasDuel.current = duel;
+  }, [duel]);
   // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
   const currency: Currency = typeof d.settings.currency === 'string' && /^[A-Z]{3}$/.test(d.settings.currency) ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
   // what is played for (Sascha 03.11.2026) – money in its currency, a thing, nothing; the stakes shown in it
@@ -1047,7 +1054,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <>
           {/* its rules as every form's – one or more opponents, who keeps the score (Sascha 10.11.2026: "that belongs in the
               form's description") */}
-          <div className="card">
+          <div ref={duelBox} className="card">
             <FormRules form={f} />
           </div>
           <DuelSetup onDone={props.onDuel!} />

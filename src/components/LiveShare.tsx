@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { liveLink, liveState, setLive, type LiveState } from '../lib/live';
@@ -21,6 +21,8 @@ export function LiveShare(props: {
   money?: boolean;
 }) {
   const [st, setSt] = useState<LiveState | null>(null);
+  const box = useRef<HTMLElement>(null);
+  const shown = useRef(false); // switched on here: its link and "Teilen" scrolled into view once rendered
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -37,6 +39,7 @@ export function LiveShare(props: {
     const s = await setLive(props.code, on, money, renew);
     setBusy(false);
     if (s) {
+      shown.current = on && !renew && !st?.live;
       setSt(s);
       setFailed(false);
       if (renew) setMsg(tr('New link – the old one no longer opens.', 'Neuer Link – der alte öffnet nicht mehr.'));
@@ -44,9 +47,14 @@ export function LiveShare(props: {
   };
   const on = !!st?.live;
   const url = st?.live ? liveLink(st.live) : null;
+  useEffect(() => {
+    if (!on || !shown.current) return;
+    shown.current = false;
+    box.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [on]);
   const text = tr(`"${props.name}" live – the leaderboard, no app needed`, `„${props.name}“ live – das Leaderboard, ohne App`);
   return (
-    <section className="setup-part live-share" aria-label={tr('Spectators', 'Zuschauer')}>
+    <section ref={box} className="setup-part live-share" aria-label={tr('Spectators', 'Zuschauer')}>
       <span className="eyebrow">{tr('Spectators', 'Zuschauer')}</span>
       <div className="card invite-card">
         {/* a row with An/Aus, no slider (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App") */}

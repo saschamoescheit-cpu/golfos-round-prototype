@@ -46,6 +46,8 @@ const start = async (locale) => {
   await p.getByRole('dialog').locator('.pick-option').filter({ hasText: 'Deutsch' }).first().click();
   await p.waitForTimeout(2500);
   ok((await p.evaluate(() => localStorage.getItem('golfos.lang.v1'))) === 'de' && /Freunde/.test(await p.locator('body').innerText()), 'chosen "Deutsch": the app in German, kept on the phone');
+  // click paths 13.11.2026: after the reload still on the profile (it landed on the start page)
+  ok((await p.locator('.settings-row').filter({ hasText: 'Sprache' }).count()) === 1 && /Deutsch/.test(await p.locator('.settings-row').filter({ hasText: 'Sprache' }).first().innerText()), 'after the switch: still on the profile, "Sprache · Deutsch"');
   ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
   await p.context().close();
 }

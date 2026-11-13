@@ -58,6 +58,17 @@ export const getLang = (): Lang => lang;
 /** The language's locale for dates and numbers ("de-DE", "es-ES" …). */
 export const langLocale = (l: Lang = lang): string => LANGS.find((x) => x.code === l)?.locale ?? 'en-GB';
 
+export const AFTER_LANG = 'golfos.afterlang.v1';
+/** True once after a language switch's reload (and forgotten): the app opens the profile again. */
+export function afterLangSwitch(): boolean {
+  try {
+    const v = sessionStorage.getItem(AFTER_LANG);
+    sessionStorage.removeItem(AFTER_LANG);
+    return v === '1';
+  } catch {
+    return false;
+  }
+}
 /** Switches the language and reloads the app (every screen reads its texts on render). */
 export function setLang(l: Lang): void {
   lang = l;
@@ -65,6 +76,12 @@ export function setLang(l: Lang): void {
     localStorage.setItem(KEY, l);
   } catch {
     // storage blocked – the choice lives for this session
+  }
+  // back on the profile after the reload (click paths 13.11.2026: it landed on "Play golf")
+  try {
+    sessionStorage.setItem(AFTER_LANG, '1');
+  } catch {
+    /* blocked – the start page then */
   }
   if (typeof location !== 'undefined') location.reload();
 }

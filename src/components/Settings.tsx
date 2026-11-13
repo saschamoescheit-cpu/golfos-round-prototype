@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { SaveButton } from './ui';
 
@@ -471,10 +471,20 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
 /** Adding one more (a player, bets, a flight, a day, a friend): a quiet row with a green plus – not a text button with "+"
  *  (Sascha 12.11.2026: "+ Wetten usw. – folgen wir deiner Empfehlung"). */
 /** icon: another sign than the "+" – e.g. two people for "Freunde hinzufügen" (Sascha 13.11.2026) */
-export function AddRow(props: { label: string; onClick: () => void; disabled?: boolean; ariaLabel?: string; className?: string; icon?: 'friends' }) {
+/** focusNew: the field the tap added (a new player's name) gets the cursor – within the tap, so the phone's keyboard opens
+ *  too (iOS opens it only from the tap itself; click paths 13.11.2026). */
+export function AddRow(props: { label: string; onClick: () => void; disabled?: boolean; ariaLabel?: string; className?: string; icon?: 'friends'; focusNew?: boolean }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const click = () => {
+    if (!props.focusNew) return props.onClick();
+    const scope: ParentNode = ref.current?.closest('section, form, .sheet') ?? document;
+    const before = new Set(scope.querySelectorAll('input, textarea'));
+    flushSync(props.onClick);
+    [...scope.querySelectorAll<HTMLInputElement>('input, textarea')].find((x) => !before.has(x) && !x.readOnly)?.focus();
+  };
   return (
     <div className={`settings-list add-list${props.className ? ' ' + props.className : ''}`}>
-      <button type="button" className="settings-row add-row" aria-label={props.ariaLabel} disabled={props.disabled} onClick={props.onClick}>
+      <button ref={ref} type="button" className="settings-row add-row" aria-label={props.ariaLabel} disabled={props.disabled} onClick={click}>
         {props.icon === 'friends' ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="9" cy="8" r="3.4" />

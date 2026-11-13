@@ -1600,6 +1600,15 @@ export const LIBRARY: LibraryBet[] = [
   { id: 'free', group: 'own', kind: 'free', start: 0, name: () => tr('Free bet', 'Freie Wette'), hint: () => tr('In words – what the app cannot measure, decided by the host (longest drive …); an own bet it judges: "+ Build an own bet"', 'In Worten – was die App nicht messen kann, entscheidet der Host (längster Drive …); eine eigene Wette, die sie auswertet: „+ Eigene Wette bauen“') },
 ];
 
+/** The number a library bet starts at for a player: the score bets from his handicap index (+5 for 4,6; over 6 rounds
+ *  +30) – what he plays to his handicap; the others, and without a handicap, the library's own. */
+export function libraryStart(b: LibraryBet, hcp?: string | null): number {
+  const t = (hcp ?? '').trim().replace(',', '.');
+  const n = Number(t.replace('+', ''));
+  if (t === '' || !Number.isFinite(n) || !(b.id === 'scoreGross' || b.id === 'scoreSum')) return b.start;
+  const per = Math.max(0, Math.round(t.startsWith('+') ? -n : n));
+  return b.id === 'scoreSum' ? per * (b.patch?.rounds ?? 1) : per;
+}
 /** A bet from the library for a player: the number chosen, the stake and the rest as set. */
 export function fromLibrary(b: LibraryBet, base: Omit<Wager, 'id' | 'kind' | 'target'>, target: number, id: string, text?: string): Wager {
   return { ...base, ...b.patch, id, kind: b.kind, target, ...(b.kind === 'free' ? { text: (text ?? '').trim() } : {}) };

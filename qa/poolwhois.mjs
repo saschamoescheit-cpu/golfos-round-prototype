@@ -89,6 +89,9 @@ ok(await C.evaluate((c) => JSON.parse(localStorage.getItem('golfos.pools.v1')).f
 
 // Erik invited right at Erik
 await openPool(H);
+// click paths 13.11.2026: "Erik einladen" once – at his card; the friends below the code leave him out (it was twice:
+// one invited him as Erik, the other generally, then "Wer bist du?")
+ok((await H.getByRole('button', { name: 'Erik einladen' }).count()) === 1 && (await H.locator('.invite-friend').filter({ hasText: 'Erik' }).count()) === 0, '"Erik einladen" once – at his card, not again among the friends');
 await cardOf(H, 'Erik').getByRole('button', { name: 'Erik einladen' }).click();
 const whoE = H.getByRole('dialog', { name: 'Wer ist Erik?' });
 await whoE.getByRole('button', { name: 'Erik als Erik einladen' }).click();

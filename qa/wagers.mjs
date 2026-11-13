@@ -263,7 +263,11 @@ ok((await lib.locator('.segmented').count()) === 0 && (await lib.locator('.chip-
 ok((await lib.locator('.lib-tick').count()) >= 20, `library: ${await lib.locator('.lib-tick').count()} bets to pick from`);
 for (const name of [/^Birdies in Folge/, /^Pars in Folge/, /^Birdies Birdie oder besser/, /^Grüns getroffen/, /^Brutto zu Par/]) await lib.getByRole('checkbox', { name }).click();
 const minus = lib.getByRole('group', { name: 'Brutto zu Par' }).getByRole('button', { name: /minus eins/ });
-for (let k = 0; k < 15; k++) await minus.click(); // +10 → −5
+// the start from Chris's handicap (click paths 13.11.2026), not +10 for everyone – then down to −5
+const startGross = (await lib.getByRole('group', { name: 'Brutto zu Par' }).locator('.value').innerText()).trim();
+ok(startGross !== '+10' && startGross !== '10', `"Brutto zu Par" starts from his handicap: ${startGross}`);
+const startN = Number(startGross.replace('+', '').replace('−', '-'));
+for (let k = 0; k < startN + 5; k++) await minus.click();
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-library.png' });
 // ticked: the number right below the row; a new bet saved with the round green tick above the sheet, its words kept (W1)
 ok((await lib.getByRole('checkbox', { name: /^Brutto zu Par/ }).getAttribute('aria-checked')) === 'true' && (await lib.locator('.lib-tick.on').filter({ hasText: 'Brutto zu Par' }).getByRole('group', { name: 'Brutto zu Par' }).count()) === 1 && (await lib.locator('.btn-primary').count()) === 0 && (await H.locator('.fab-stack.over-sheet').getByRole('button', { name: '5 Wetten für Chris anlegen' }).count()) === 1, 'library: ticked with its number below – "5 Wetten für Chris anlegen" the floating tick, no button in the sheet');

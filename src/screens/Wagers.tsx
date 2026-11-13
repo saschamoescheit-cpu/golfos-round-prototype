@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -360,7 +360,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
           }}
         />
         {names.length < 12 && (
-          <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setNames([...names, { id: newId(), name: '', hcp: '' }])} />
+          <AddRow focusNew label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setNames([...names, { id: newId(), name: '', hcp: '' }])} />
         )}
         {/* "Wer erfasst" right after the players, in every setup the same (Sascha 11.11.2026, Facelift-Abnahme O1) */}
         <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
@@ -1059,7 +1059,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           me={entry.me}
           // only one's own payments (Sascha 12.11.2026) – the host's phone also for a player without the app
           standIn={(id) => host && !pool.players.find((x) => x.id === id)?.joined}
-          onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
+          // paid to a player without the app: nobody else could confirm it – settled at once
+          onMark={(t, as, how) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now(), ...(host && !pool.players.find((x) => x.id === t.to)?.joined ? { receivedAt: now() } : {}) } : { receivedAt: now() }), ...(how ? { how } : {}) }])}
           onConfirm={(id, how) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now(), ...(how ? { how } : {}) } : x)))}
           paypalOf={(id) => pool.players.find((x) => x.id === id)?.joined?.paypal}
           currency={(() => { const pz = prizeOf(pool); return isMoney(pz) ? pz.currency : (pool.currency ?? 'EUR'); })()}
@@ -1073,7 +1074,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         // a row only – tapped, the invitation as a sheet (one more joining late)
         <SettingsList>
           <SheetRow label={tr('Invite players', 'Mitspieler einladen')} value={pool.finishedAt ? tr('finished', 'beendet') : tr('everyone in', 'alle dabei')}>
-            <PoolInvite code={props.code} name={pool.name} />
+            <PoolInvite code={props.code} name={pool.name} except={host ? pool.players.filter((p) => !p.joined?.uid && p.id !== entry.me).map((p) => p.name) : undefined} />
           </SheetRow>
         </SettingsList>
       ) : (
@@ -1081,7 +1082,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         // right before "Runde starten" (Sascha 03.11.2026)
         <section className="setup-part" aria-label={tr('Invite players', 'Mitspieler einladen')}>
           <span className="eyebrow">{tr('Invite players', 'Mitspieler einladen')}</span>
-          <PoolInvite code={props.code} name={pool.name} />
+          <PoolInvite code={props.code} name={pool.name} except={host ? pool.players.filter((p) => !p.joined?.uid && p.id !== entry.me).map((p) => p.name) : undefined} />
         </section>
       ))}
       {/* the standing for people outside (Sascha 08.11.2026) – the money only when switched on */}
@@ -2569,7 +2570,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                   const on = b.id in picked;
                   const k = KINDS.find((x) => x.kind === b.kind)!;
                   return (
-                    <LibTick key={b.id} label={b.name()} text={b.hint()} on={on} onToggle={() => toggle(b.id, b.start)}>
+                    <LibTick key={b.id} label={b.name()} text={b.hint()} on={on} onToggle={() => toggle(b.id, libraryStart(b, pool.players.find((p) => p.id === player)?.hcp))}>
                       {b.kind !== 'free' ? (
                         <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />
                       ) : (
@@ -2700,7 +2701,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
                 setPlayers(k >= 0 ? players.map((p, j) => (j === k ? { ...p, name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) } : p)) : [...players, { id: newId(), name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) }]);
               }}
             />
-            <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...players, { id: newId(), name: '' }])} />
+            <AddRow focusNew label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...players, { id: newId(), name: '' }])} />
             {asking && (
               <div className="card pool-remove" role="alertdialog" aria-label={tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}>
                 <strong>{tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}</strong>
@@ -2747,7 +2748,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
   );
 }
 
-function PoolInvite(props: { code: string; name: string }) {
+function PoolInvite(props: { code: string; name: string; /** players invited at their own card – not offered twice */ except?: string[] }) {
   // the one look of every QR code in the app (Sascha 03.11.2026: "identical everywhere, as under Friends")
   const [msg, setMsg] = useState<string | null>(null);
   const url = joinLink(props.code);
@@ -2767,7 +2768,7 @@ function PoolInvite(props: { code: string; name: string }) {
       />
       {msg && <span className="muted small">{msg}</span>}
       {/* linked friends invited with a tap (Sascha 03.11.2026: "for every 'invite players' in the whole app") */}
-      <FriendInvite code={props.code} />
+      <FriendInvite code={props.code} except={props.except} />
     </div>
   );
 }

@@ -789,7 +789,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           />
         ))}
         <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
-        <AddRow label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...d.players, newPlayer('', '')])} />
+        <AddRow focusNew label={tr('Add player', 'Spieler hinzufügen')} onClick={() => setPlayers([...d.players, newPlayer('', '')])} />
       </section>
 
       {/* Wer: the flights right after the players (Facelift 11.11.2026, t5) – several rounds: a row each, to its page */}

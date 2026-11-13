@@ -107,6 +107,8 @@ await P.getByRole('button', { name: /A · 9 Löcher/ }).click();
 
 // r10: Ben removed by swiping, back with "Rückgängig"
 await P.getByRole('button', { name: 'Spieler hinzufügen' }).click();
+// click paths 13.11.2026: the new player's name has the cursor at once – no tap into it
+ok(await P.evaluate(() => /^name-/.test(document.activeElement?.id ?? '') && document.activeElement.value === ''), 'added player: his name field focused at once');
 await P.getByLabel('Spieler 2', { exact: true }).fill('Ben');
 await P.getByRole('button', { name: 'Spieler hinzufügen' }).click();
 await P.getByLabel('Spieler 3', { exact: true }).fill('Chris');

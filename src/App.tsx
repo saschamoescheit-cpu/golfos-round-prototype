@@ -1,5 +1,5 @@
 import { openModuleSheet } from './components/ModuleSheet';
-import { tr } from './lib/i18n';
+import { afterLangSwitch, tr } from './lib/i18n';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NAV_EVENT, type NavTarget } from './lib/nav';
 import type { Course, Round, RoundHole } from './types';
@@ -170,6 +170,8 @@ function saveScreen(s: Screen): void {
     /* storage blocked */
   }
 }
+// a language switch reloads the app: back on the profile it was chosen in (click paths 13.11.2026)
+const AFTER_LANG_SWITCH = afterLangSwitch();
 function savedScreen(rounds: Round[]): Screen | null {
   // only while Rounds is the module of this tab (reloaded in Games, Games opens)
   if (sessionModule() !== 'rounds') return null;
@@ -211,6 +213,7 @@ export function App() {
   });
   const [screen, setScreen] = useState<Screen>(() => {
     if (location.hash.startsWith('#round=')) return HOME; // a round's join link: Rounds' start page asks to join
+    if (AFTER_LANG_SWITCH && sessionModule() === 'rounds') return { name: 'tab', tab: 'profile' };
     const kept = savedScreen(rounds);
     if (kept) return kept;
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
@@ -230,15 +233,15 @@ export function App() {
   const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : FRIEND_LINK ? null : sessionModule()));
   // a friend's invitation (#friend=, Sascha 02.11.2026: "a friend request by WhatsApp"): the friends tab asks to accept
   const [homeTab, setHomeTab] = useState<HomeTab>(() => {
-    if (!FRIEND_LINK) return 'start';
+    if (!FRIEND_LINK) return AFTER_LANG_SWITCH ? 'profile' : 'start';
     if (location.hash.startsWith('#friend=')) {
       setPendingAsk(FRIEND_LINK);
       history.replaceState(null, '', `${location.pathname}${location.search}`);
     }
     return 'friends';
   });
-  const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
-  const [toursTab, setToursTab] = useState<GamesTab | undefined>(undefined); // the module "Tournaments" (03.11.2026)
+  const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(AFTER_LANG_SWITCH && sessionModule() === 'games' ? 'profile' : undefined);
+  const [toursTab, setToursTab] = useState<GamesTab | undefined>(AFTER_LANG_SWITCH && sessionModule() === 'tournaments' ? 'profile' : undefined); // the module "Tournaments" (03.11.2026)
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
   const [mobilityTab, setMobilityTab] = useState<MobilityTab | undefined>(undefined);
   // the bag and the caddie settings opened from the profile of the start page or of Games
