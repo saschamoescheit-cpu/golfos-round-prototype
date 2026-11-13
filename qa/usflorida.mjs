@@ -127,6 +127,14 @@ await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(8000);
 ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === '1' && (await p.getByText('Loch einrichten').count()) === 0, 'Orange Lake Reserve: the map of hole 1 at once, nothing to set up');
 ok(/Par 4/.test(await p.locator('body').innerText()), 'Orange Lake Reserve: hole 1 is a par 4');
+// the county's 2026 flight reaches north of the county line there (13.11.2026: us.json's Osceola outline extended to
+// 28.388 N by scripts/us-imagery.py --extend) – the county aerial, not Esri
+let olrAttrib = '';
+for (let k = 0; k < 10 && !/Osceola/i.test(olrAttrib); k++) {
+  olrAttrib = await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '');
+  if (!/Osceola/i.test(olrAttrib)) await p.waitForTimeout(1000);
+}
+ok(/Osceola/i.test(olrAttrib), `Orange Lake Reserve: the Osceola County aerial, not Esri (${olrAttrib.replace(/\s+/g, ' ').slice(0, 80)})`);
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/orangelakereserve-1.png` });
 await p.unroute(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/);
 // the four OSM courses are bundled (night 17./18.10.2026): found and loaded with no course database and no OSM at all –

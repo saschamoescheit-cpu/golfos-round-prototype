@@ -582,7 +582,8 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
     // Kissimmee, Florida (USA trip, played 13.11.2026). OSM has the course area and 18 greens but no holes; OpenGolfAPI no
     // scorecard. Tees and the routing read off the Osceola County 2026 aerial (GolfOS/lidar/us_olr_holes.py), par and Hcp
     // from the current card (golfingrecord.com, GolfPass and Hole19 agree). Holes 3–6, 8 and 10–16 sure; 1, 2, 7, 9, 17
-    // and 18 likely (the par sequence and which green lies next to which tee) – to be confirmed on the course.
+    // and 18 likely (the par sequence and which green lies next to which tee) – to be confirmed on the course. Tees moved
+    // to the back of each tee complex (raised pads in the USGS 3DEP lidar, 13.11.2026 morning; see courses/README.md).
     holeTags: [
       {"handicap": "16", "par": "4", "ref": "1"},
       {"handicap": "10", "par": "4", "ref": "2"},

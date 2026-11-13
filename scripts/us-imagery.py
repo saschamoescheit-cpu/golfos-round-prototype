@@ -4,6 +4,8 @@ checked live – it answers, allows the app's origin (CORS) and returns a real p
 written as public/imagery/us.json for the app (loaded only for courses in the USA).
 
 Usage: python scripts/us-imagery.py <imagery.geojson> <out json> [report.md]
+       python scripts/us-imagery.py --extend public/imagery/us.json   (only adds the EXTEND areas below to that file,
+       each checked live; every other source and entry stays as it is)
 Rank on the device (src/lib/imagery.ts): marked best by the index, then newest, then the finest zoom. Esri stays the
 fallback (tiles failing → Esri)."""
 import json, math, re, subprocess, sys, time, urllib.error, urllib.request
@@ -13,8 +15,20 @@ import cv2
 import numpy as np
 
 sys.stdout.reconfigure(encoding='utf-8')
-SRC, OUT = sys.argv[1:3]
-REPORT = sys.argv[3] if len(sys.argv) > 3 else None
+EXTEND_ONLY = len(sys.argv) > 1 and sys.argv[1] == '--extend'
+SRC, OUT = (None, sys.argv[2]) if EXTEND_ONLY else sys.argv[1:3]
+REPORT = sys.argv[3] if len(sys.argv) > 3 and not EXTEND_ONLY else None
+# Where a service has imagery beyond the outline the index gives it (the index draws the county; the county flew
+# further). Each area is added only when every probe point returns a real picture at zoom 18.
+# Osceola 2026 (13.11.2026, Orange Lake – The Reserve at 28.36 N was outside the index's outline, north edge ~28.35):
+# the Property Appraiser's 2026 flight reaches 28.388 N between -81.668 and -81.579 (tiles probed every 0.0025° at z17/18;
+# north of 28.39 and west of -81.67 empty, east of -81.578 only to ~28.36).
+EXTEND = {
+    'Osceola_Ortho_2026': {
+        'ring': [[-81.668, 28.347], [-81.668, 28.388], [-81.579, 28.388], [-81.579, 28.347]],
+        'probe': [(-81.621, 28.358), (-81.607, 28.375), (-81.66, 28.383), (-81.585, 28.385)],
+    },
+}
 ORIGIN = 'https://saschamoescheit-cpu.github.io'
 SKIP = re.compile(r'CIR|Infrared|NDVI|NAIP|imagico|USGS-Imagery|USGS Imagery|Color Infrared|Leaf-Off 6-Inch', re.I)
 STATES = {
@@ -156,6 +170,33 @@ def check(c):
     return res
 
 
+def extension(c):
+    """The EXTEND area of this source when every one of its probe points returns a real picture, else None."""
+    ext = EXTEND.get(c['id'])
+    if not ext:
+        return None
+    for pt in ext['probe']:
+        r = check({**c, 'probe': [pt]})
+        if not r['ok']:
+            print('extension', c['id'], 'not added:', pt, r['why'])
+            return None
+    return ext['ring']
+
+
+def extend_only(path):
+    """Adds the checked EXTEND areas to an existing us.json; every other byte of it stays."""
+    d = json.load(open(path, encoding='utf-8'))
+    for s in d['sources']:
+        if s['id'] not in EXTEND:
+            continue
+        ring = extension(s)
+        if ring is None:
+            continue
+        s['coverage'] = [r for r in s['coverage'] if r != ring] + [ring]
+        print('extended', s['id'])
+    json.dump(d, open(path, 'w', encoding='utf-8'), separators=(',', ':'), ensure_ascii=False)
+
+
 def main():
     d = json.load(open(SRC, encoding='utf-8'))
     cands = []
@@ -182,6 +223,9 @@ def main():
     for c, r in zip(cands, results):
         report.append((c, r))
         if r['ok']:
+            ring = extension(c)
+            if ring is not None:
+                c['coverage'] = c['coverage'] + [ring]
             keep.append({k: c[k] for k in ('id', 'name', 'tiles', 'scheme', 'maxzoom', 'year', 'best', 'attribution', 'coverage')})
     # one series, one entry: an older year of the same programme is dropped when a newer one covers the same place
     def series(x):
@@ -206,4 +250,4 @@ def main():
         print(('OK  ' if r['ok'] else 'FAIL'), c['name'], '' if r['ok'] else r['why'])
 
 
-main()
+extend_only(OUT) if EXTEND_ONLY else main()
