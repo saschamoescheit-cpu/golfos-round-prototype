@@ -414,3 +414,22 @@ describe('a round\'s GPS track on two devices (Sascha 10.11.2026: from hole 10 o
     expect(await syncOnce(ipad, srv, clock)).toMatchObject({ pushed: 0, pulled: 0 });
   });
 });
+
+// Sascha 14.11.2026: Supabase blocked the project – the data quota used up. A track growing while a round is played went
+// up with every sync (every 20 s); now at most every 5 minutes – the phone keeps every fix, nothing is lost.
+describe('a growing GPS track sent at most every 5 minutes', () => {
+  it('changed 1 min after it was sent: later; 6 min after: sent – whole', async () => {
+    const srv = server();
+    const at = (min: number) => () => new Date(Date.UTC(2026, 10, 13, 14, min, 0)).toISOString();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3])], 'golfos.track.v1.r1': [[1, 2, 3, 4]] });
+    await syncOnce(phone, srv, at(0));
+    phone.set('golfos.track.v1.r1', '[[1,2,3,4],[2,3,4,5]]');
+    const soon = await syncOnce(phone, srv, at(1));
+    expect(soon.pushed).toBe(0);
+    expect(JSON.stringify(srv.rows.get('track|r1')?.data)).toBe('[[1,2,3,4]]');
+    phone.set('golfos.track.v1.r1', '[[1,2,3,4],[2,3,4,5],[3,4,5,6]]');
+    const later = await syncOnce(phone, srv, at(6));
+    expect(later.pushed).toBe(1);
+    expect(JSON.stringify(srv.rows.get('track|r1')?.data)).toBe('[[1,2,3,4],[2,3,4,5],[3,4,5,6]]');
+  });
+});

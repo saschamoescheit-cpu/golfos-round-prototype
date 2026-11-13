@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import type { Round } from '../types';
 import { tr } from '../lib/i18n';
 import { ScoreTable } from './ScoreTable';
+import { ServerStale } from './ServerStale';
 
 /** The live leaderboard of a tournament and of a series (Sascha 03.11.2026: "a live leaderboard for single tournaments
  *  and for series"): always there – before the start every player with "–", while played "● LIVE", "nach 9", "F". */
@@ -22,6 +23,7 @@ export function LiveBoard(props: { label: string; title: string; live: boolean; 
           </span>
         )}
       </div>
+      <ServerStale />
       {props.chips}
       <ol className="lb-rows tour-lb">
         {props.rows.map((r, i) => {

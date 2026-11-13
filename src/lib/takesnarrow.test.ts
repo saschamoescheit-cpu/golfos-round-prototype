@@ -44,3 +44,23 @@ describe('a finished round from a phone with fewer rounds', () => {
     expect(takes(pars, 's', before, onlyOaks, { from: '2026-11-05', to: '2026-11-18' })).toBe(false);
   });
 });
+
+// Sascha 14.11.2026 on the Reserve: Moritz's two birdies entered by mistake and corrected at once – the standing kept them:
+// a lower figure from the scorer's phone was never taken. A corrected card counts, up or down – from a phone that knows
+// every round reported before.
+describe('a finished round corrected', () => {
+  const birdies: Wager = { id: 'b', player: 'm', kind: 'birdieRun', target: 2, stake: 20, payout: 'success', attempts: 'any' } as unknown as Wager;
+  const wrong: Progress = { best: 2, done: true, rounds: 2, at: 'x', perRound: [{ day: '2026-11-12', course: 'Oaks', value: 1, counted: true }, { day: '2026-11-13', course: 'Reserve', value: 2, counted: true }] } as Progress;
+  const right: Progress = { best: 1, done: false, rounds: 2, at: 'y', perRound: [{ day: '2026-11-12', course: 'Oaks', value: 1, counted: true }, { day: '2026-11-13', course: 'Reserve', value: 1, counted: true }] } as Progress;
+  const span = { from: '2026-11-05', to: '2026-11-18' };
+  it('the scorer\'s corrected Reserve card: 2 → 1, made → not made', () => {
+    expect(takes(birdies, 's', wrong, right, span)).toBe(true);
+  });
+  it('a phone that lacks one of his rounds: kept as it was', () => {
+    const onlyReserve = { ...right, rounds: 1, perRound: [right.perRound![1]] } as Progress;
+    expect(takes(birdies, 's', wrong, onlyReserve, span)).toBe(false);
+  });
+  it('the same figures: nothing new', () => {
+    expect(takes(birdies, 's', right, { ...right, at: 'z' }, span)).toBe(false);
+  });
+});

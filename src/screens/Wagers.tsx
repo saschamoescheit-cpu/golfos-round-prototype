@@ -38,6 +38,7 @@ import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
 import { LiveShare } from '../components/LiveShare';
+import { ServerStale } from '../components/ServerStale';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
 // Games, everything selectable and adjustable, invite people to the bets, and the flight counts each other as in a real
@@ -1458,6 +1459,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         <span className="eyebrow">{tr('Standing', 'Stand')}</span>
         <span className="muted small">{tr('live from the rounds', 'live aus den Runden')}</span>
       </div>
+      <ServerStale />
     <div className="card pool-standings">
       {/* the total, then each round – as the series' rounds (Sascha 08.11.2026) */}
       {rows.length > 0 && roundsShown.length > 0 && (
@@ -1598,6 +1600,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           {props.pending > 0 && tr(` · ${props.pending} provisional`, ` · ${props.pending} vorläufig`)}
         </span>
       </div>
+      <ServerStale />
     <span className="eyebrow">{tr('Overview', 'Übersicht')}</span>
     <div className="card pool-settle-card">
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>

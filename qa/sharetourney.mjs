@@ -48,6 +48,16 @@ ok(/Ben Klasse B/.test(net.join()) && /Sascha Klasse A/.test(net.join()), 'the c
 // Sascha 13.11.2026 ("Hier sehe ich kein Live im Leaderboard auf der Runde – optisch genauso wie unter Tournaments"):
 // the same card – "● LIVE" while played, a player tapped: his scorecard below
 ok((await board.locator('.tour-live-badge').count()) === 1 && /LIVE/.test(await board.locator('.tour-live-head').innerText()) && (await board.locator('.lb-rows.tour-lb').count()) === 1, "the round's board as under Tournaments: ● LIVE, the same rows");
+// "● LIVE" in GolfOS green, as the leader's place – never red (Sascha 14.11.2026: "im Grün von GolfOS überall in der App")
+{
+  const c = await board.evaluate((el) => {
+    const badge = el.querySelector('.tour-live-badge');
+    const dot = el.querySelector('.tour-live-badge i');
+    const first = el.querySelector('.lb-rows li .lb-rank');
+    return { text: badge ? getComputedStyle(badge).color : '', dot: dot ? getComputedStyle(dot).backgroundColor : '', brand: first ? getComputedStyle(first).backgroundColor : '' };
+  });
+  ok(!!c.brand && c.text === c.brand && c.dot === c.brand, `"● LIVE" in the brand green (${c.text} · ${c.dot} = ${c.brand})`);
+}
 await board.locator('.lb-rows li').first().click();
 await H.waitForTimeout(400);
 ok((await board.locator('.lb-rows li .lb-card').count()) === 1, 'a player tapped: his scorecard opens below');

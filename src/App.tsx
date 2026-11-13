@@ -345,8 +345,9 @@ export function App() {
       liveConnect(); // the phone was locked: the channel may have dropped
     };
     document.addEventListener('visibilitychange', onShow);
-    // while the app is on screen, a look every 20 s: a change on the PC shows on the open iPhone without reloading
-    const t = window.setInterval(() => document.visibilityState === 'visible' && syncNow(), 20 * 1000);
+    // while the app is on screen, a look every 2 min (every 20 s until 14.11.2026 – each one lists every row: the server's
+    // data quota used up); a change on another device comes at once by its nudge
+    const t = window.setInterval(() => document.visibilityState === 'visible' && syncNow(), 2 * 60 * 1000);
     return () => {
       document.removeEventListener('visibilitychange', onShow);
       window.removeEventListener('golfos:open-profile', toProfile);

@@ -21,6 +21,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './styles.css';
 import { applyTheme } from './lib/theme';
 import { reloadForNewVersion } from './lib/staleChunk';
+import { watchServer } from './lib/serverstate';
 import { guardStorage } from './lib/storageguard';
 import { cancelBigStore, openBigStore } from './lib/bigstore';
 import { startErrorLog } from './lib/errorlog';
@@ -31,6 +32,7 @@ import { loadLang } from './lib/i18n';
 import { installSwipeBack } from './lib/swipeback';
 
 applyTheme(); // sun mode before the first paint
+watchServer(); // a standing says when it is not up to date (14.11.2026)
 installNativeShims(); // the iOS app: its share sheet for sharing and downloads (01.11.2026)
 installSwipeBack(); // back by a swipe from the left edge (Sascha 10.11.2026)
 guardStorage(); // storage full: course map copies make room, nothing the player entered is lost silently

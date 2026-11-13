@@ -2284,8 +2284,8 @@ button.tile:disabled { opacity: 1; }
 /* the live leaderboard of a tournament and of a series (03.11.2026) */
 .tour-live { display: flex; flex-direction: column; gap: 10px; }
 .tour-live-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tour-live-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--body); letter-spacing: .08em; color: var(--bad, #e5484d); }
-.tour-live-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad, #e5484d); animation: tour-live 1.4s ease-in-out infinite; }
+.tour-live-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--body); letter-spacing: .08em; color: var(--brand); } /* GolfOS green everywhere (Sascha 14.11.2026) */
+.tour-live-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); animation: tour-live 1.4s ease-in-out infinite; }
 @keyframes tour-live { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .tour-live-badge i { animation: none; } }
 .tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; align-items: flex-start; text-align: left; } /* names left, one under the other (03.11.2026) */
@@ -2743,3 +2743,9 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 /* the inbox in two groups – asked of you, to do (Sascha 13.11.2026) */
 .bell-group { display: flex; flex-direction: column; gap: 6px; }
 .bell-group > .eyebrow { padding-inline: 2px; }
+
+/* not up to date: the server does not answer (14.11.2026) – a real warning, red as --warn */
+.server-stale { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--warn); font-size: 14px; line-height: 1.35; }
+.server-stale svg { flex: none; margin-top: 1px; }
+.server-stale span { color: var(--text); }
+.server-stale strong { color: var(--warn); }

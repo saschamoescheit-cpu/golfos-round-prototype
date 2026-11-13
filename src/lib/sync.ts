@@ -110,6 +110,9 @@ const LISTS = [
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time
+/** a round's GPS track grows every second while played: sent at most every 5 minutes, not with every sync (14.11.2026,
+ *  the server's data quota used up) – the phone keeps it all, nothing is lost */
+const TRACK_EVERY = 5 * 60 * 1000;
 const k = (kind: string, id: string) => `${kind}|${id}`;
 
 /** A short fingerprint of a value (FNV-1a) – to see whether it changed on the device since the last sync. */
@@ -282,6 +285,7 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
         push.push({ kind: r.kind, id: r.id, updated_at: at, deleted: true });
       } else pullKeys.push({ kind: r.kind, id: r.id });
     } else if (l && r) {
+      if (l.kind === 'track' && m && localChanged && !remoteChanged && Date.parse(at) - Date.parse(m.at) < TRACK_EVERY) continue; // later
       if (r.deleted && remoteChanged && !localChanged) deletedRemote.push({ kind: l.kind, id: l.id });
       else if (localChanged && !remoteChanged) push.push({ kind: l.kind, id: l.id, data: JSON.parse(l.json), updated_at: at, deleted: false });
       else if (remoteChanged && !localChanged) pullKeys.push({ kind: r.kind, id: r.id });
@@ -963,7 +967,11 @@ export function liveClose(): void {
   ws?.close();
 }
 
+let nudged = 0;
 function nudgeOthers(): void {
+  // at most every 30 s – two devices must never wake each other in a loop (14.11.2026: the realtime quota used up)
+  if (Date.now() - nudged < 30 * 1000) return;
+  nudged = Date.now();
   if (!live || live.readyState !== WebSocket.OPEN) return liveConnect();
   live.send(JSON.stringify({ topic: liveTopic, event: 'broadcast', payload: { type: 'broadcast', event: 'changed', payload: {} }, ref: String(liveRef++) }));
 }

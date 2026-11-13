@@ -453,6 +453,15 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
   // of the Oaks round – pars in a row 3 instead of 7): the finished round from the host's card
   // – only from a phone that knows as many of his rounds (review 13.11.2026: else the others would vanish from his bet)
   if (now.rounds >= old.rounds && old.perRound?.some((r) => r.open && now.perRound?.some((x) => x.day === r.day && x.course === r.course && !x.open && x.value != null))) return true;
+  // a finished round's card corrected (Sascha 14.11.2026 on the Reserve: Moritz's two birdies entered by mistake and corrected
+  // at once – the standing kept them, a lower figure was never taken): its figure from a phone that knows every round
+  // reported before counts – up or down
+  {
+    const same = (a: { day: string; course: string }, b: { day: string; course: string }) => a.day === b.day && a.course === b.course;
+    const was = old.perRound ?? [];
+    const is = now.perRound ?? [];
+    if (was.length && was.every((r) => is.some((x) => same(x, r))) && is.some((x) => !x.open && was.some((r) => same(r, x) && !r.open && (r.value !== x.value || !!r.unknown !== !!x.unknown)))) return true;
+  }
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
   if (now.rounds !== old.rounds) return now.rounds > old.rounds;

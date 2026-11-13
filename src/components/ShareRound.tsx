@@ -662,7 +662,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   useEffect(() => {
     const on = () => setEv(cachedEvent(props.code));
     window.addEventListener('golfos:event-changed', on);
-    const t = props.refresh ? window.setInterval(() => document.visibilityState === 'visible' && void refreshEvent(props.code), 10000) : 0;
+    const t = props.refresh ? window.setInterval(() => document.visibilityState === 'visible' && void refreshEvent(props.code), 30000) : 0;
     if (props.refresh) void refreshEvent(props.code);
     return () => {
       window.removeEventListener('golfos:event-changed', on);
