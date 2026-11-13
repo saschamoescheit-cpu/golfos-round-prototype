@@ -89,6 +89,28 @@ await H.getByRole('button', { name: 'Zurück zum Loch' }).click();
 await H.locator('.map-score').click();
 const mine = block(H, 'Sascha');
 ok(/unterschrieben – gesperrt/.test(await mine.innerText()) && (await mine.getByRole('button', { name: /Schläge plus eins/ }).count()) === 0, 'Sascha: his score locked – no steppers');
+// a correction (Sascha 13.11.2026 on the Reserve: "Korrektur beantragt … nichts in die Inbox"): Cedric, not the host,
+// asks the host; Sascha, the host, opens his own card at once – no detour through his own inbox
+const gs2 = G.locator('.sign-card');
+await gs2.locator('.reopen-ask').first().waitFor({ timeout: 10000 }).catch(() => {});
+await gs2.locator('.reopen-ask').filter({ hasText: 'Meine Karte korrigieren' }).click();
+const gAsk = G.getByRole('dialog', { name: /zur Korrektur öffnen/ });
+ok(/Der Host bestätigt es/.test(await gAsk.innerText()) && (await gAsk.getByRole('button', { name: 'Korrektur beantragen' }).count()) === 1, 'Cedric (not the host): "Korrektur beantragen" – the host confirms it');
+await gAsk.getByRole('button', { name: 'Zurück' }).click();
+await H.mouse.click(30, 60); // beside the score panel: closed
+await H.waitForTimeout(600);
+const hs2 = await openCard(H);
+await H.waitForTimeout(1500);
+await hs2.locator('.reopen-ask').filter({ hasText: 'Meine Karte korrigieren' }).click();
+const hAsk = H.getByRole('dialog', { name: /zur Korrektur öffnen/ });
+ok(/Du bist der Host/.test(await hAsk.innerText()), `Sascha (the host): "${(await hAsk.innerText()).replace(/\s+/g, ' ').slice(0, 120)}"`);
+await hAsk.getByRole('button', { name: 'Zur Korrektur öffnen' }).click();
+await H.waitForTimeout(3000);
+{
+  const fl = Object.values(sim.event().flights)[0];
+  const sid = fl.players.find((x) => x.name === 'Sascha').id;
+  ok(!fl.signed?.[sid] && !!fl.reopen?.[sid]?.ok, `the host's own card opened at once: its signatures taken back (${JSON.stringify(fl.reopen ?? {}).slice(0, 100)})`);
+}
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

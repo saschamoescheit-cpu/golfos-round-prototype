@@ -10,6 +10,11 @@ import { linkBase } from './native';
 import type { Special, SpecialEntries, SpecialEntry } from './specials';
 import { pushReopen, pushSigned, pushSpecial } from './push';
 
+// every request of a shared round with a time limit (Sascha 13.11.2026, poor reception on the Reserve: "Korrektur
+// beantragen" stayed grey for minutes) – given up after 20 s, the caller says "Keine Verbindung"
+const fetch = (u: RequestInfo | URL, init: RequestInit = {}): Promise<Response> =>
+  globalThis.fetch(u, { ...(!init.signal && typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? { signal: AbortSignal.timeout(20000) } : {}), ...init });
+
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
 // it must also be possible to set up a kind of tournament over several flights, with a live leaderboard").
 // One mechanism for both: the host shares his round as an event with a 6-letter code – already while setting it up,
@@ -352,17 +357,32 @@ export async function confirmReopen(code: string, fid: string, tournament: boole
   if (ev) keepEvent(code, ev);
   return ev;
 }
-/** The account that set the event up – its host (a tournament's host, the round's creator). Null offline. */
-export async function eventOwner(code: string): Promise<string | null> {
-  const h = await headers();
-  if (!h) return null;
+/** The account that set the event up – its host (a tournament's host, the round's creator); kept on the phone, so it is
+ *  known without reception too (13.11.2026). Null when never read. */
+export const keptOwner = (code: string): string | null => {
   try {
-    const r = await fetch(`${table()}?select=owner&code=eq.${encodeURIComponent(code)}`, { headers: h });
-    if (!r.ok) return null;
-    const rows = (await r.json()) as { owner?: string }[];
-    return rows[0]?.owner ?? null;
+    return localStorage.getItem(OWNER + code);
   } catch {
     return null;
+  }
+};
+const OWNER = 'golfos.eventowner.v1.';
+export async function eventOwner(code: string): Promise<string | null> {
+  const h = await headers();
+  if (!h) return keptOwner(code);
+  try {
+    const r = await fetch(`${table()}?select=owner&code=eq.${encodeURIComponent(code)}`, { headers: h });
+    if (!r.ok) return keptOwner(code);
+    const rows = (await r.json()) as { owner?: string }[];
+    const o = rows[0]?.owner ?? null;
+    try {
+      if (o) localStorage.setItem(OWNER + code, o);
+    } catch {
+      /* storage full */
+    }
+    return o;
+  } catch {
+    return keptOwner(code);
   }
 }
 /** This phone's account hosts the event. */

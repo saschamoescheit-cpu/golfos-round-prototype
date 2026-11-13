@@ -185,13 +185,13 @@ await p.waitForTimeout(600);
 const card = (await p.locator('.module-card').filter({ hasText: 'Rounds' }).innerText()).replace(/\s+/g, ' ');
 ok(/3 Runden prüfen & signieren/.test(card) && !/pausiert|Schläge prüfen/.test(card), `home: the Rounds card names only the rounds to check & sign (${card})`);
 // the card's line is where a tap goes (night 10./11.11.2026: click paths): the rounds to sign – a round tapped there
-// opens the check straight away, its "Fertig" leads back to the scorecard and on to the list
+// opens its scorecard first (Sascha 13.11.2026: "springt direkt in die Nachbereitung statt zur Scorekarte")
 await p.locator('.module-card').filter({ hasText: 'Rounds' }).click();
 await p.waitForTimeout(800);
 ok((await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).getAttribute('aria-pressed')) === 'true' && (await listed()) === 3, `home card: straight to the rounds to sign (${await listed()})`);
 await p.locator('ul.list button.list-item').first().click();
 await p.waitForTimeout(1200);
-ok((await p.locator('.topbar h1').innerText()).trim() === 'Schläge prüfen', `a round to sign tapped: the check at once (${(await p.locator('.topbar h1').innerText()).trim()})`);
+ok((await p.locator('.topbar h1').innerText()).trim() !== 'Schläge prüfen' && (await p.getByRole('button', { name: /Schläge prüfen/ }).count()) > 0, `a round to sign tapped: its scorecard first, "Schläge prüfen" there (${(await p.locator('.topbar h1').innerText()).trim()})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

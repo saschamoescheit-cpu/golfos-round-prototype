@@ -3,7 +3,7 @@ import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
 import { eventCard, shareView, type ShareView } from '../lib/sharedround';
 import { LiveBoard } from './LiveBoard';
-import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, keptOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -1045,13 +1045,13 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
 function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev: RoundEvent) => void }) {
   const s = props.round.shared!;
   const f = props.f;
-  const [owner, setOwner] = useState<string | null>(null);
+  const [owner, setOwner] = useState<string | null>(() => keptOwner(s.code));
   const [ask, setAsk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
     let on = true;
-    void eventOwner(s.code).then((o) => on && setOwner(o));
+    void eventOwner(s.code).then((o) => on && o && setOwner(o));
     return () => {
       on = false;
     };
@@ -1109,16 +1109,22 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
       {ask && (
         <ConfirmSheet
           title={tr(`Open ${nameOf(ask)}'s card for a correction?`, `Karte von ${nameOf(ask)} zur Korrektur öffnen?`)}
-          text={host ? tr('As the host you confirm it afterwards in the inbox (the bell).', 'Als Host bestätigst du es danach in der Inbox (Glocke oben).') : tr('The host confirms it – he gets a notification. Then the hole is corrected and the card signed anew.', 'Der Host bestätigt es – er bekommt eine Mitteilung. Danach wird das Loch korrigiert und die Karte neu unterschrieben.')}
-          confirmLabel={tr('Ask for the correction', 'Korrektur beantragen')}
+          text={host ? tr('You host it: the card opens at once – correct the hole, then sign it anew.', 'Du bist der Host: die Karte öffnet sich sofort – Loch korrigieren, dann neu unterschreiben.') : tr('The host confirms it – he gets a notification. Then the hole is corrected and the card signed anew.', 'Der Host bestätigt es – er bekommt eine Mitteilung. Danach wird das Loch korrigiert und die Karte neu unterschrieben.')}
+          confirmLabel={host ? tr('Open for correction', 'Zur Korrektur öffnen') : tr('Ask for the correction', 'Korrektur beantragen')}
           danger={false}
           busy={busy}
           onClose={() => setAsk(null)}
           onConfirm={async () => {
             setBusy(true);
-            const ok = await askReopen(props.round, ask, myName() || nameOf(props.round.players.find((p) => p.isMe)?.id ?? ''));
-            setBusy(false);
-            setAsk(null);
+            let ok = false;
+            try {
+              ok = await askReopen(props.round, ask, myName() || nameOf(props.round.players.find((p) => p.isMe)?.id ?? ''));
+              // the host asking himself: confirmed at once – no detour through his own inbox (Sascha 13.11.2026)
+              if (ok && host) ok = !!(await confirmReopen(s.code, s.flight, !!s.tournament, ask));
+            } finally {
+              setBusy(false);
+              setAsk(null);
+            }
             const ev = cachedEvent(s.code);
             if (ev) props.onEv(ev);
             setMsg(ok ? null : tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));

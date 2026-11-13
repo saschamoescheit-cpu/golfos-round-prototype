@@ -428,7 +428,7 @@ export function App() {
         const r = loadRounds().find((x) => x.id === t.round);
         if (!r) return;
         setModule('rounds');
-        setScreen(r.signedAt ? { name: 'scorecard', round: r, back: ROUNDS } : { name: 'review', round: r });
+        setScreen({ name: 'scorecard', round: r, back: ROUNDS });
       }
     };
     window.addEventListener(NAV_EVENT, on);
@@ -462,8 +462,7 @@ export function App() {
       }
       setModule('rounds');
       const r = t.review ? loadRounds().find((x) => x.id === t.review) : undefined;
-      if (r && r.signedAt) setScreen({ name: 'scorecard', round: r, back: ROUNDS }); // signed meanwhile on another device
-      else if (r) setScreen({ name: 'review', round: r });
+      if (r) setScreen({ name: 'scorecard', round: r, back: ROUNDS }); // its scorecard first (Sascha 13.11.2026)
       else setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' }); // not on this phone yet: the list of rounds to sign
     };
     go();
@@ -704,12 +703,9 @@ export function App() {
           )}
           {tab !== 'play' && <RoundsTopBar onModules={sheet} />}
           {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => {
-            // the rounds to sign: a tap opens the check straight away (night 10./11.11.2026: four taps were one too many)
-            if (screen.filter === 'sign' && !round.signedAt) {
-              const r = { ...round, capture: 'full' as const };
-              persist(r);
-              setScreen({ name: 'review', round: r, back: { name: 'tab', tab: 'rounds', filter: 'sign' } });
-            } else setScreen({ name: 'scorecard', round, back: ROUNDS });
+            // a round to sign: its scorecard first, the check from there (Sascha 13.11.2026: "springt direkt in die
+            // Nachbereitung statt zur Scorekarte" – the shortcut of 10./11.11.2026 undone); back to the list it came from
+            setScreen({ name: 'scorecard', round, back: screen.filter === 'sign' ? { name: 'tab', tab: 'rounds', filter: 'sign' } : ROUNDS });
           }} onContinue={(round) => setScreen({ name: 'hole', round })} onNew={() => setScreen({ name: 'pickCourse' })} />}
           {tab === 'record' && (
             <RecordTab
