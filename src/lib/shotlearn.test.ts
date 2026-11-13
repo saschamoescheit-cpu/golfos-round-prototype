@@ -70,7 +70,7 @@ describe('riding a cart: the phone stands where the cart parks', () => {
     const ride = along(30, 30, 5);
     expect(rodeCart(ride)).toBe(false);
     const stop = Array.from({ length: 10 }, (_, k) => ({ ...ride[29], t: ride[29].t + (k + 1) * 5000 }));
-    const again = ride.map((x, k) => ({ t: stop[9].t + (k + 1) * 5000, p: [ride[29].p[0] + (k * 30) / 98000, 28.3] as LngLat, acc: 5 }));
+    const again = ride.map((_, k) => ({ t: stop[9].t + (k + 1) * 5000, p: [ride[29].p[0] + (k * 30) / 98000, 28.3] as LngLat, acc: 5 }));
     expect(rodeCart([...ride, ...stop, ...again])).toBe(true);
   });
   it('a stop 30 m off the hole line is pulled halfway to it (15 m); one 6 m off stays', () => {
