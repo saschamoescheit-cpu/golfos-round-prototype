@@ -77,9 +77,9 @@ export function Chips<T extends string | number>(props: {
 export function SaveButton(props: { label?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" className="icon-btn save-circle" aria-label={props.label ?? tr('Save', 'Speichern')} onClick={props.onClick} disabled={props.disabled}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-        <path d="M8 4v5h7V4M8 20v-6h8v6" />
+      {/* a tick, not a floppy disk (Sascha 13.11.2026: "die Speicherbuttons mit Diskette überall durch einen Haken ersetzen") */}
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
       </svg>
     </button>
   );

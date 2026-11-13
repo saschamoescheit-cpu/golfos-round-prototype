@@ -135,10 +135,8 @@ export function SheetRow(props: { label: string; value: ReactNode; title?: strin
             <div className="sheet-head">
               <strong>{props.title ?? props.label}</strong>
               <span className="sheet-head-acts">
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
-                  ✕
-                </button>
-                <SaveButton onClick={() => setOpen(false)} />
+                {/* the picker below counts at once: one round tick closes (Sascha 13.11.2026: "X hat was von abbrechen") */}
+                <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(false)} />
               </span>
             </div>
             {props.children}

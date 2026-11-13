@@ -1050,9 +1050,7 @@ function Specials(props: { d: TourDraft; holes: RoundHole[]; onChange: (s: Speci
             <div className="sheet-head">
               <strong>{specialName(open)}</strong>
               <span className="sheet-head-acts">
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(null)}>
-                  ✕
-                </button>
+                {/* the holes count at once: one round tick closes (Sascha 13.11.2026) */}
                 <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(null)} />
               </span>
             </div>

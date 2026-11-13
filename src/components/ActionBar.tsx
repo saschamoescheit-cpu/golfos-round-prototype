@@ -21,11 +21,10 @@ export const ACTION_ICONS = {
   ),
   // the green pen
   edit: svg(<path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7l3 3" />),
-  // saving: the disc, as the round save button – not a check (Sascha 04.11.2026: "a save symbol instead of a check, in the whole app")
+  // saving: a tick, as the round save button (Sascha 13.11.2026: "die Speicherbuttons mit Diskette überall durch einen Haken ersetzen" – on 04.11. the disc)
   save: svg(
     <>
-      <path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-      <path d="M8 4v5h7V4M8 20v-6h8v6" />
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
     </>,
   ),
   // finished: the flag on the green

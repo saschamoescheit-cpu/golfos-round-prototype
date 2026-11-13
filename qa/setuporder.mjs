@@ -5,7 +5,7 @@
 // r11 no friends yet: the row "Freunde · verknüpfen ›", its sheet titled "Freunde".
 // g1  Neues Spiel: Spielform → Platz → Spieler → Score-Erfassung → Worum → Einstellungen.
 // g2  5+5+10: Wertung first, the stakes under "Worum", the share of the handicap under "Einstellungen".
-// g3  the sheets "Gegen wen" / "Long Drive": ✕ before the save button, as every sheet head.
+// g3  the sheets "Gegen wen" / "Long Drive": only the round tick "Fertig" – the choices count at once (13.11.2026).
 // o3  an own value ("Anderer Betrag …", "Andere Anzahl …", "Eigener Einsatz") taken with the save button in the head.
 // t4–t6 Neues Turnier: Was → Wo/Wann → Wer (Spieler, Flights, Wer erfasst) → Einstellungen → Sonderwertungen; a
 //     round's page without "Fertig"; own classes saved in the head, "Vorlagen ›" a row.
@@ -197,8 +197,11 @@ await P.waitForTimeout(400);
   await shot('duel');
   await P.locator('.settings-row').filter({ hasText: /^Gegner/ }).click();
   const s = P.getByRole('dialog', { name: 'Gegner' });
-  ok(JSON.stringify(await headActs(s)) === '["Schließen","Fertig"]', `g3: "Gegen wen" – ✕ before the save button (${(await headActs(s)).join(', ')})`);
-  await s.getByRole('button', { name: 'Schließen' }).click();
+  // the ticks count at once: only the round tick "Fertig", no ✕ that reads as "cancel" (Sascha 13.11.2026)
+  ok(JSON.stringify(await headActs(s)) === '["Fertig"]', `g3: "Gegen wen" – only the tick "Fertig" (${(await headActs(s)).join(', ')})`);
+  // a tick, not a floppy disk (Sascha 13.11.2026: "die Speicherbuttons mit Diskette überall durch einen Haken ersetzen")
+  ok((await s.locator('.save-circle path').getAttribute('d')) === 'M5 12.5l4.5 4.5L19 7.5', 'the round button: a tick, no disc');
+  await s.getByRole('button', { name: 'Fertig' }).click();
 }
 
 // ---------- t4 / t5 / t6 / g3 / o3: Neues Turnier ----------
@@ -225,8 +228,8 @@ await shot('tour');
 await P.locator('.settings-row').filter({ hasText: 'Long Drive' }).click();
 {
   const s = P.getByRole('dialog', { name: 'Long Drive' });
-  ok(JSON.stringify(await headActs(s)) === '["Schließen","Fertig"]', `g3: "Long Drive" – ✕ before the save button (${(await headActs(s)).join(', ')})`);
-  await s.getByRole('button', { name: 'Schließen' }).click();
+  ok(JSON.stringify(await headActs(s)) === '["Fertig"]', `g3: "Long Drive" – only the tick "Fertig" (${(await headActs(s)).join(', ')})`);
+  await s.getByRole('button', { name: 'Fertig' }).click();
 }
 // t6: own classes – the save button in the head, "Vorlagen ›" a row
 await P.locator('.settings-row').filter({ hasText: /^HCP-Vorgabe/ }).click();

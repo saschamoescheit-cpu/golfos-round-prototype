@@ -20,10 +20,8 @@ export function OwnDetailsRow(props: { names: string[]; value: string[]; onChang
             <div className="sheet-head">
               <strong>{tr('Own details', 'Eigene Detailerfassung')}</strong>
               <span className="sheet-head-acts">
+                {/* the ticks count at once: one round tick closes – no ✕ that looks like "cancel" (Sascha 13.11.2026) */}
                 <SaveButton label={tr('Done', 'Fertig')} onClick={() => setOpen(false)} />
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
-                  ✕
-                </button>
               </span>
             </div>
             <span className="muted small">

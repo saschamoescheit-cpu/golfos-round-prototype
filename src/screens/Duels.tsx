@@ -225,9 +225,7 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             <div className="sheet-head">
               <strong>{tr('Against whom', 'Gegen wen')}</strong>
               <span className="sheet-head-acts">
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setWhoOpen(false)}>
-                  ✕
-                </button>
+                {/* the ticks count at once: one round tick closes (Sascha 13.11.2026) */}
                 <SaveButton label={tr('Done', 'Fertig')} onClick={() => setWhoOpen(false)} />
               </span>
             </div>
