@@ -3,7 +3,7 @@ import { FloatActions } from '../components/FloatActions';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
-import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
+import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, offGreen, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { hasOwnHoleLine, loadCachedCourse, loadCarryBag, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadUnit, removeAllHoleLines, removeHoleLine, saveHoleLine } from '../lib/storage';
 import { HoleSetup } from '../components/HoleSetup';
@@ -18,13 +18,14 @@ import { holeSg } from '../lib/sg';
 import { proximity } from '../lib/approachstats';
 import { loadRegionalImagery, pickImagery } from '../lib/imagery';
 import { analyse, playerBag } from '../lib/stats';
+import { learned, learnedClub, setLearnedShots } from '../lib/shotlearn';
 import { rollFactor } from '../lib/clubs';
 import { playedLengths } from '../lib/clubstats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { WindTag } from '../components/WindTag';
 import { ensureCourseMap } from '../lib/courses';
-import { PuttEditor } from '../components/PuttEditor';
+import { PuttEditor, startBalls } from '../components/PuttEditor';
 import { pickUpAllowed, ScoreSheet, scoreName } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
@@ -91,6 +92,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const bag = useMemo(() => {
     const own = loadCarryBag()?.filter((b) => !b.swing || b.swing === 'full');
     const others = loadRounds().filter((r) => r.finishedAt && r.id !== round.id);
+    // the suggestions of shot type and short-game club from the player's own checked shots (Sascha 13.11.2026)
+    setLearnedShots(others);
     if (own?.length) {
       // for the club from a measured length: what the player really hits with it (full shots, from 3 on – Sascha's
       // rounds 16./18.10.: the bag said 230 m driver carry, he hits 205 m in all), else the carry with its roll
@@ -374,6 +377,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the flag the player set with his putts wins
   const pin = e?.puttsAt?.pin ?? d?.pin ?? data?.greenCenter ?? null;
   const placedPutts = e?.puttsAt?.balls ?? null;
+  // the putts as the editor shows them – saved, or where it starts them – on the map and in the row on every hole
+  // (Sascha 13.11.2026: "die Putts, welche im Editor sind, auch vorne schon anzeigen – immer und auf allen Bahnen")
+  const greenWalkHere = useMemo(() => (data ? greenWalk(track, data.green, data.greenCenter) : null), [track, data]);
+  const shownPutts =
+    placedPutts ??
+    (e?.putts && e.putts > 0 && data && pin && !d?.holedOut
+      ? startBalls({ pin, from: approachFrom(data), putts: e.putts, balls: null, ballOnGreen: d?.onGreen ?? null, walk: greenWalkHere })
+      : null);
   const lengths = d ? shotLengths(d) : [];
   const playedLen = d ? playedLengths(d, e?.weather) : [];
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
@@ -416,12 +427,24 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // A tap on the map = where the ball lay: a shot is played from there. On the green = the ball for the putts.
   // Shots stay in playing order (further from the pin first); the tee shot is added by itself.
   const nearTee = (pos: LngLat, m: HoleMapData) => distanceM(pos, m.tee) <= 25;
-  const lieFor = (pos: LngLat, n: number, m: HoleMapData) => (n === 0 && nearTee(pos, m) ? 'tee' : lieAt(pos, m, false, true));
+  // shot 1 is always from the tee (Sascha 13.11.2026: "Abschlag muss auch immer Tee sein") – also on a tee far from the one drawn
+  const lieFor = (pos: LngLat, n: number, m: HoleMapData) => (n === 0 ? 'tee' : lieAt(pos, m, false, true));
   /** Clubs for shots without one, from the length as it played – with the hole's wind (Sascha 23.10.2026: 130 m into
    *  the wind wanted the 6-iron, not the 9-iron) – the player can change them. */
   const withClubs = (det: DetailEntry, par = round.holes[k].par, w = entries[k]?.weather): DetailEntry => {
     const len = playedLengths(det, w);
-    return { ...det, shots: det.shots.map((x, n) => (x.club || len[n] == null ? x : { ...x, club: clubForLength(len[n]!, n === 0 && par >= 4, bag) })) };
+    // the short game: the club the player takes from there, as his checked shots tell (Sascha 13.11.2026)
+    const flag = det.pin ?? det.onGreen ?? null;
+    return {
+      ...det,
+      shots: det.shots.map((x, n) => {
+        if (x.club || len[n] == null) return x;
+        const toFlag = x.pos && flag ? distanceM(x.pos, flag) : null;
+        const kind = x.kind ?? suggestKind(x.lie, toFlag);
+        const own = kind !== 'full' ? learnedClub(learned(), kind, toFlag) : null;
+        return { ...x, club: own ?? clubForLength(len[n]!, n === 0 && par >= 4, bag) };
+      }),
+    };
   };
   /** The shots of hole i from the places noted by hand ("shot here") – in the order they were noted, the tee shot
    *  added when the first one was not on the tee; a place on the green is where the putts began. */
@@ -647,8 +670,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   useEffect(() => {
     if (!d || !data) return;
     const falseTee = (s: Shot, n: number) => n > 0 && s.lie === 'tee' && !!s.pos && !atTheTee(s.pos, data) && !(d.shots[n - 1].pos && distanceM(d.shots[n - 1].pos!, s.pos) <= 10);
-    if (!d.shots.some(falseTee)) return;
-    const shots = d.shots.map((s, n) => (falseTee(s, n) ? { ...s, lie: lieFor(s.pos!, n, data), club: s.club === 'Dr' ? null : s.club, kind: undefined } : s));
+    // and shot 1 not from the tee (moved there before 13.11.2026): from the tee
+    const firstOff = d.shots[0] && d.shots[0].lie !== 'tee';
+    if (!d.shots.some(falseTee) && !firstOff) return;
+    const shots = d.shots.map((s, n) => (n === 0 && firstOff ? { ...s, lie: 'tee' as const } : falseTee(s, n) ? { ...s, lie: lieFor(s.pos!, n, data), club: s.club === 'Dr' ? null : s.club, kind: undefined } : s));
     saveDetail(k, withClubs({ ...d, shots }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [k, d, data]);
@@ -1053,9 +1078,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: '✕' }] : [];
                 return [...shot, ...miss];
               }),
-              ...(placedPutts?.length && pin
+              ...(shownPutts?.length && pin
                 ? // one label at the first ball (the balls lie close together on the whole hole), the others their number
-                  placedPutts.map((b, n) => ({
+                  shownPutts.map((b, n) => ({
                     id: n === 0 ? 'green' : `putt-${n}`,
                     pos: b,
                     label: `P${n + 1}`,
@@ -1089,7 +1114,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 // one save: two in a row both start from the round as it was – the second put the first ball back
                 // (Sascha 13.11.2026: "Die Putts lassen sich nicht auf dem Grün platzieren")
                 const n = id === 'green' ? 0 : Number(id.slice(5));
-                const balls: Partial<HoleEntry> = placedPutts && e?.puttsAt ? { puttsAt: { ...e.puttsAt, balls: placedPutts.map((b, j) => (j === n ? pos : b)) } } : {};
+                // the balls shown (saved, or as the editor starts them): moved, they are the hole's putts from now on
+                const balls: Partial<HoleEntry> = shownPutts && pin ? { puttsAt: { ...(e?.puttsAt ?? { pin }), balls: shownPutts.map((b, j) => (j === n ? pos : b)) } } : {};
                 if (n === 0) saveDetail(k, { ...d, onGreen: pos }, undefined, balls);
                 else if (balls.puttsAt) save(k, balls);
               }
@@ -1102,7 +1128,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 const n = Number(id.slice(5));
                 if (isOut(pos)) return dragOut(n, pos);
                 const shots = d.shots.slice();
-                shots[n] = { ...shots[n], pos, lie: data ? lieFor(pos, n, data) : shots[n].lie, review: false };
+                // its shot type follows the new spot (Sascha 13.11.2026: dragged next to the green – a chip to start with)
+                shots[n] = { ...shots[n], pos, lie: data ? lieFor(pos, n, data) : shots[n].lie, kind: shots[n].club === 'Pt' ? 'chip' : undefined, review: false };
                 saveDetail(k, { ...d, shots });
               }
             }}
@@ -1262,7 +1289,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <ol className="shot-list review-list" ref={listRef}>
           {d.shots.map((s, n) => {
             const toPin = s.pos && pin ? distanceM(s.pos, pin) : null;
-            const kind = s.kind ?? suggestKind(s.lie, toPin);
+            const kind = s.kind ?? suggestKind(s.lie, toPin, s.club, offGreen(s.pos, data));
             const odd = shotOdd(d, n);
             const cls = [s.review || odd ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : '', penDrag?.to === n ? 'drop-after' : ''].join(' ').trim();
             return (
@@ -1383,8 +1410,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 <span className="muted small" style={{ display: 'block' }}>
                   {e.putts == null
                     ? tr('Not entered – set flag and putts with the pencil', 'Nicht eingetragen – Fahne und Putts mit dem Stift setzen')
-                    : placedPutts?.length && pin
-                    ? placedPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
+                    : shownPutts?.length && pin
+                    ? shownPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
                     : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
                 {/* how the first putt missed (Sascha 22.10.2026) – placed putts tell it by themselves; in the row, small */}
@@ -1592,6 +1619,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           penalty={editing.penalty}
           kind={editing.kind}
           toPinM={editing.pos && pin ? distanceM(editing.pos, pin) : null}
+          offGreenM={offGreen(editing.pos, data)}
           where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null }}
           onPlace={data ? () => {
             const n = edit!;

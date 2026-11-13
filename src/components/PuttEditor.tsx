@@ -34,6 +34,27 @@ const mLon = (lat: number) => 111320 * Math.cos((lat * Math.PI) / 180);
 /** The zoom buttons over the green – off: pinch and drag are enough (Sascha 17.10.2026). */
 const SHOW_ZOOM_BUTTONS = false;
 
+/**
+ * The balls the editor starts with: those saved, else the first putt where the player stood on the green (else short
+ * of the pin on the way in) and each next one closer. The round check shows the same on its map and in the putts' row
+ * before the editor was opened (Sascha 13.11.2026: "immer und auf allen Bahnen").
+ */
+export function startBalls(o: { pin: LngLat; from: LngLat; putts: number; balls: LngLat[] | null; ballOnGreen: LngLat | null; walk?: { path: LngLat[]; stops: LngLat[] } | null }): LngLat[] {
+  if (o.balls && o.balls.length === o.putts) return o.balls;
+  if (o.putts <= 0) return [];
+  const back = bearingDeg(o.pin, o.from);
+  // the first spot he stood still on the green (GPS walk) is most likely the first putt
+  const stood = o.walk?.stops.find((s) => distanceM(s, o.pin) >= 1.5 && distanceM(s, o.pin) < 40);
+  const first = o.ballOnGreen && distanceM(o.ballOnGreen, o.pin) < 40 ? o.ballOnGreen : (stood ?? move(o.pin, back, Math.min(12, 3 + o.putts * 2.5)));
+  const d0 = distanceM(first, o.pin);
+  const out: LngLat[] = [first];
+  for (let k = 1; k < o.putts; k++) {
+    const d = k === o.putts - 1 ? Math.min(1, d0 * 0.15) : d0 * 0.3 ** k;
+    out.push(move(o.pin, back + (k % 2 ? 25 : -25), Math.max(0.3, d)));
+  }
+  return out;
+}
+
 export function PuttEditor(props: {
   title: string;
   green: LngLat[] | null; // outline of the green (null: only the centre is known)
@@ -58,22 +79,7 @@ export function PuttEditor(props: {
   const c = props.greenCenter;
   const up = bearingDeg(props.from, c); // playing direction: up on the screen
   const [pin, setPin] = useState<LngLat>(props.pin);
-  const [balls, setBalls] = useState<LngLat[]>(() => {
-    if (props.balls && props.balls.length === props.putts) return props.balls;
-    if (props.putts <= 0) return [];
-    // first putt: where the player stood on the green, else short of the pin on the way in; each next one closer
-    const back = bearingDeg(props.pin, props.from);
-    // the first spot he stood still on the green (GPS walk) is most likely the first putt
-    const stood = props.walk?.stops.find((s) => distanceM(s, props.pin) >= 1.5 && distanceM(s, props.pin) < 40);
-    const first = props.ballOnGreen && distanceM(props.ballOnGreen, props.pin) < 40 ? props.ballOnGreen : (stood ?? move(props.pin, back, Math.min(12, 3 + props.putts * 2.5)));
-    const d0 = distanceM(first, props.pin);
-    const out: LngLat[] = [first];
-    for (let k = 1; k < props.putts; k++) {
-      const d = k === props.putts - 1 ? Math.min(1, d0 * 0.15) : d0 * 0.3 ** k;
-      out.push(move(props.pin, back + (k % 2 ? 25 : -25), Math.max(0.3, d)));
-    }
-    return out;
-  });
+  const [balls, setBalls] = useState<LngLat[]>(() => startBalls(props));
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<number | 'pin' | null>(null);
   // finer and visible (Sascha 16.10.2026: "the finger covers the metres … much too sensitive"): the dragged ball moves

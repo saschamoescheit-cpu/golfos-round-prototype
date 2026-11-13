@@ -4,6 +4,7 @@ import { BAG, lieAt, onGreenAt, suggestKind } from './shots';
 import { expectedStrokes } from './sg';
 import { nearestOnSegment } from './terrain';
 import { decodeTrack, encodeTrack, unionTrack, type Row } from './trackcodec';
+import { learned, learnedClub } from './shotlearn';
 
 // Shot detection from the GPS track (features 004/007). A golfer walks to the ball, stands there while
 // choosing the club and hitting, then walks on towards the green. "Stand still, then move on towards the
@@ -31,6 +32,44 @@ export const DETECT = {
   corridorM: 60, // places further from the hole line do not belong to this hole
   gapS: 30, // no fix for this long = the phone was put away
 };
+
+/**
+ * Riding a cart (Sascha 13.11.2026, USA): the phone lies in the cart – it stands still where the cart parks, by the
+ * path at the side of the hole, not by the ball; the player walks over to the ball. Then a stop well off the hole line
+ * is pulled towards it (half its way off, at most 20 m). The tee and the green stay as they are.
+ */
+export const CART = { fastMs: 3.5, maxMs: 12, minFast: 3, freeM: 8, pull: 0.5, maxPullM: 20 };
+
+/** A few fixes faster than anyone walks (more than 3.5 m/s, at most 12 m/s – not a GPS jump): a cart. */
+export function rodeCart(track: TrackPoint[]): boolean {
+  const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
+  let fast = 0;
+  for (let k = 1; k < pts.length; k++) {
+    const dt = (pts[k].t - pts[k - 1].t) / 1000;
+    if (dt <= 0 || dt > 30) continue;
+    const d = distanceM(pts[k - 1].p, pts[k].p);
+    const v = d / dt;
+    if (d >= 10 && v >= CART.fastMs && v <= CART.maxMs) fast++;
+  }
+  return fast >= CART.minFast;
+}
+
+/** The spot of a cart stop: pulled towards the hole line (where balls lie more often than on the cart path). */
+export function cartSpot(p: LngLat, line: LngLat[]): LngLat {
+  let best: LngLat | null = null;
+  let bd = Infinity;
+  for (let i = 0; i + 1 < line.length; i++) {
+    const q = nearestOnSegment(p, line[i], line[i + 1]);
+    const dd = distanceM(p, q);
+    if (dd < bd) {
+      bd = dd;
+      best = q;
+    }
+  }
+  if (!best || bd <= CART.freeM) return p;
+  const f = Math.min(CART.pull * bd, CART.maxPullM) / bd;
+  return [p[0] + (best[0] - p[0]) * f, p[1] + (best[1] - p[1]) * f];
+}
 
 export interface Stop {
   p: LngLat;
@@ -121,9 +160,13 @@ interface Place {
 /** All places on this hole: stops, the first fix after opening the app, the last fix before the phone went away. */
 function places(track: TrackPoint[], hole: HoleMapData): Place[] {
   const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
+  // in a cart the stops are where the cart parked – pulled towards the hole line, not at the tee or by the green
+  const cart = rodeCart(pts);
+  const cartMove = (p: LngLat): LngLat =>
+    cart && distanceM(p, hole.tee) > 40 && distanceM(p, hole.greenCenter) > greenRadius(hole) + 20 ? cartSpot(p, hole.line) : p;
   const out: Place[] = findStops(pts).map((s) => {
     const dur = (s.to - s.from) / 1000;
-    return { p: s.p, from: s.from, to: s.to, q: dur > DETECT.maxStopS ? 0.3 : dur >= 20 ? 0.55 : 0.4, w: 3 };
+    return { p: cartMove(s.p), from: s.from, to: s.to, q: dur > DETECT.maxStopS ? 0.3 : dur >= 20 ? 0.55 : 0.4, w: 3 };
   });
   for (let k = 0; k < pts.length; k++) {
     // the app opened again – a golfer looks at the distance by his ball (alone a weak sign: a glance on the way
@@ -301,8 +344,9 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     const next = n + 1 < spots.length ? spots[n + 1] : end;
     const length = next ? distanceM(p, next) : toGreen(p);
     const lie = lieAt(p, hole, n === 0, true); // the fine lies (semi rough, fringe) for the player to check; the chain above keeps the coarse ones
-    const kind = suggestKind(lie, toGreen(p));
-    const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? clubForLength(Math.max(length, 50), false, bag) : clubForLength(length, n === 0 && par >= 4, bag);
+    const kind = suggestKind(lie, toGreen(p), null, hole.green?.length ? (pointInRing(p, hole.green) ? 0 : distToLine(p, hole.green)) : null);
+    // the short game: the club the player takes from here, as his checked shots tell (Sascha 13.11.2026)
+    const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? (learnedClub(learned(), kind, toGreen(p)) ?? clubForLength(Math.max(length, 50), false, bag)) : clubForLength(length, n === 0 && par >= 4, bag);
     return { pos: p, lie, club, penalty: false, kind, review: true };
   });
   return { detail: { shots, onGreen: end, pin: null, holedOut: false }, suggested, total };

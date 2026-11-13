@@ -20,6 +20,8 @@ export function ShotSheet(props: {
   penaltyKind?: PenaltyKind;
   kind?: ShotKind; // saved shot type; missing = suggested from lie and distance
   toPinM: number | null;
+  /** how far the spot lies off the green's edge – around the green a chip to start with */
+  offGreenM?: number | null;
   /** checking the shots afterwards (Sascha 12.11.2026: "set a point, then see how far it still was to the flag"): where
    *  it was played from – "noch 145 m zur Fahne · Schlag 160 m", or the place missing – and setting it on the map */
   where?: { toPin: string | null; length: string | null };
@@ -75,7 +77,8 @@ export function ShotSheet(props: {
   const again = penalty && (alwaysAgain(pk as PenaltyKind) || replay);
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
-  const shownKind = kind ?? suggestKind(lie, props.toPinM);
+  // the putter off the green is always a chip (Sascha 13.11.2026: "Wenn Texas Wedge gewählt wird, muss der Schlag immer Chip sein")
+  const shownKind = club === 'Pt' ? 'chip' : (kind ?? suggestKind(lie, props.toPinM, club, props.offGreenM));
   const save = (c: Club | null) =>
     props.onSave({
       lie,
@@ -88,7 +91,7 @@ export function ShotSheet(props: {
       flight: flight ?? undefined,
       intent: intent ?? undefined,
       slope: slope.length ? slope : undefined,
-      kind: shownKind,
+      kind: c === 'Pt' ? 'chip' : shownKind,
       review: false,
     });
   return (
@@ -154,6 +157,7 @@ export function ShotSheet(props: {
               className={props.club === 'Pt' && !props.editing ? 'suggested' : undefined}
               onClick={() => {
                 setClub('Pt');
+                setKind('chip');
                 if (!props.editing) save('Pt');
               }}
             >

@@ -54,6 +54,8 @@ import { move } from '../lib/aimpoint';
 import { clubSpread, spreadShape } from '../lib/spread';
 import { loadCaddieSettings, loadCarryBag, newId } from '../lib/storage';
 import { holdGeometry } from '../lib/storageguard';
+import { setLearnedShots } from '../lib/shotlearn';
+import { offGreen } from '../lib/shots';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, shotHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Chips, Stepper, TopBar, formatToPar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
@@ -270,6 +272,8 @@ export function HoleScreen(props: {
   const [editHole, setEditHole] = useState(false);
   const [unit] = useState<Unit>(loadUnit);
   // the player's record per hole from earlier rounds here (course book, feature 012)
+  // the shot type and short-game club suggested from the player's own checked shots (Sascha 13.11.2026)
+  useMemo(() => setLearnedShots(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
   const holeRecords = useMemo(() => new Map(courseStats(statRounds(loadRounds()), round.courseName).holes.map((h) => [h.hole.label, h])), [round.courseName]);
   // the player's strategy per hole from his rounds here – shown with the caddie (Sascha 22.10.2026)
   const holeHistories = useMemo(() => {
@@ -1466,6 +1470,7 @@ export function HoleScreen(props: {
         penaltyKind={existing?.penaltyKind}
         kind={existing?.kind}
         toPinM={toPin}
+        offGreenM={offGreen(pos, mapData)}
         editing={editing}
         onCancel={() => setSheet(null)}
         onSave={(v) => {

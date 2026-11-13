@@ -3,6 +3,7 @@ export type { Club, DetailEntry, Lie, Shot, ShotKind } from '../types';
 import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { tr } from './i18n';
 import { CLUB_CATALOG } from './clubs';
+import { learned, learnedKind } from './shotlearn';
 
 // Detailed tracking (feature 003): shot by shot with club and lie. The quick values of the hole
 // (strokes, fairway, penalties, greenside bunker, up & down) are derived from the shots, so scorecard
@@ -32,12 +33,19 @@ export const KINDS: { value: ShotKind; label: string }[] = [
 ];
 
 /**
- * Shot type suggested from lie and distance to the pin: bunker shot from a greenside bunker, punch from the trees,
- * chip up to 30 m, pitch up to 80 m, otherwise a full swing.
+ * Shot type suggested from lie and distance to the pin: the putter off the green (Texas wedge) is a chip; bunker shot
+ * from a greenside bunker, punch from the trees; then what the player's own checked shots say from here (Sascha
+ * 13.11.2026: "aus Pitch-Distanzen oft volle Schwünge" – src/lib/shotlearn.ts); without enough of them chip up to
+ * 30 m, pitch up to 80 m, otherwise a full swing.
  */
-export function suggestKind(lie: Lie, toPinM: number | null): ShotKind {
+export function suggestKind(lie: Lie, toPinM: number | null, club?: Club | null, offGreenM?: number | null): ShotKind {
+  if (club === 'Pt') return 'chip';
   if (lie === 'bunker' && toPinM != null && toPinM <= 40) return 'bunker';
   if (lie === 'recovery') return 'punch';
+  // around the green – the fringe, or a few metres off its edge: a chip (Sascha 13.11.2026)
+  if (lie === 'fringe' || lie === 'green' || (offGreenM != null && offGreenM <= AROUND_GREEN_M)) return 'chip';
+  const own = learnedKind(learned(), lie, toPinM);
+  if (own) return own;
   if (toPinM != null && toPinM <= 30) return 'chip';
   if (toPinM != null && toPinM <= 80) return 'pitch';
   return 'full';
@@ -48,6 +56,15 @@ export const BAG: { club: Club; m: number }[] = CLUB_CATALOG.filter((c) => c.sta
 
 export function emptyDetail(): DetailEntry {
   return { shots: [], onGreen: null, pin: null, holedOut: false };
+}
+
+/** Up to this far off the green's edge a shot is "around the green": a chip to start with (Sascha 13.11.2026). */
+export const AROUND_GREEN_M = 10;
+
+/** How far a spot lies off the green's edge (0 on it) – null without a drawn green. */
+export function offGreen(pos: LngLat | null | undefined, data: HoleMapData | null | undefined): number | null {
+  if (!pos || !data?.green?.length) return null;
+  return pointInRing(pos, data.green) ? 0 : distToLine(pos, data.green);
 }
 
 /** How far off the green edge counts as fringe, off the fairway edge as semi rough (metres). */

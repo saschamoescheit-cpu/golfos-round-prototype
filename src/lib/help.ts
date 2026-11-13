@@ -383,6 +383,16 @@ export const FAQ: FaqTopic[] = [
         video: 'review',
       },
       {
+        // Sascha 13.11.2026: "Bei der Schlagnachbereitung werden oft falsche Positionen und Schläger vorgeschlagen"
+        q: () => tr('Where do the suggested shot type and club come from?', 'Woher kommen die vorgeschlagenen Schlagarten und Schläger?'),
+        a: () =>
+          tr(
+            'From your own checked shots: from how far and which lie you pitched, chipped or swung full, and which wedge you took for it. Until there are enough of them: up to 30 m a chip, up to 80 m a pitch. Around the green (the fringe, up to 10 m off it) a chip is chosen first, the putter off the green is always a chip, shot 1 is always from the tee. Riding a cart, the phone stops where the cart parks – those places are moved towards the middle of the hole; with the watch its own place counts.',
+            'Aus deinen eigenen geprüften Schlägen: von wie weit und aus welcher Lage du gepitcht, gechippt oder voll geschlagen hast und welches Wedge du dafür genommen hast. Solange es dafür zu wenige gibt: bis 30 m Chip, bis 80 m Pitch. Ums Grün (Vorgrün, bis 10 m daneben) ist Chip vorgewählt, der Putter von außerhalb des Grüns ist immer ein Chip, Schlag 1 ist immer vom Tee. Fährst du Cart, bleibt das Handy dort stehen, wo das Cart parkt – diese Stellen rücken zur Mitte der Bahn; mit der Uhr zählt deren eigener Ort.',
+          ),
+        video: 'review',
+      },
+      {
         q: () => tr('Why check and sign a round?', 'Warum prüfen und signieren?'),
         a: () => tr('Only signed rounds count in the statistics. Checking puts the shots right – club, lie and how you hit them.', 'Nur signierte Runden zählen in der Statistik. Beim Prüfen stimmen danach Schläge, Schläger, Lage und Treffer.'),
         video: 'review',
