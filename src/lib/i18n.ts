@@ -92,7 +92,13 @@ export function useDict(d: Record<string, string>): void {
   templates.sort((a, b) => b.fixed - a.fixed);
 }
 
-const dicts = import.meta.glob<{ default: Record<string, string> }>('../i18n/dict/*.json');
+// Vite turns the call into the dictionaries' loaders; bundled for node (QA, esbuild) there is none – English and German
+let dicts: Record<string, () => Promise<{ default: Record<string, string> }>> = {};
+try {
+  dicts = import.meta.glob<{ default: Record<string, string> }>('../i18n/dict/*.json');
+} catch {
+  /* not under Vite */
+}
 /** The dictionary of the language chosen, before the app is drawn; none needed for English and German. */
 export async function loadLang(): Promise<void> {
   if (lang === 'en' || lang === 'de') return;

@@ -1,5 +1,5 @@
 // QA: profile and bag as Sascha wants them (15.10.2026) – home club searched like a course, the caddie's settings
-// under the unit (no language, no sun mode), the bag with tabs, short codes, the putter, the pencil, wedges by loft.
+// under the unit (no sun mode), the bag with tabs, short codes, the putter, the pencil, wedges by loft.
 // Usage: node qa/profile.mjs [url]   (SHOTS=<dir> for screenshots)
 import { webkit, devices } from 'playwright';
 import { onOff, flip } from './onoff.mjs';
@@ -38,7 +38,7 @@ await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(300);
 const prof = await p.locator('main').textContent();
-ok(!/Sprache/.test(prof) && !/Sonnenmodus/.test(prof), 'no language and no sun mode in the profile');
+ok(!/Sonnenmodus/.test(prof), 'no sun mode in the profile (the language is a row under Golf since 13.11.2026)');
 ok(!/Sicherung/.test(prof) && prof.indexOf('Auf allen Geräten') >= 0 && prof.indexOf('Auf allen Geräten') < prof.indexOf('Persönliche Daten'), 'Google sign-in above "Persönliche Daten", no backup section');
 // every block with its small title above it (Facelift 11.11.2026, P3) – no heading inside a card
 const heads = (await p.locator('main .eb-block > .eyebrow').allTextContents()).map((t) => t.trim());
@@ -47,7 +47,7 @@ const golf = p.getByRole('region', { name: 'Golf', exact: true });
 ok(/Mein Bag[\s\S]*Distanzen in/.test(await golf.innerText()), 'distances under Golf, below "Mein Bag"');
 // P2: the home club and the strokes gained comparison rows of the same list as Tee and Distanzen ("Name · Wert ›")
 const golfRows = (await golf.locator('.settings-list > .settings-row').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-ok(golfRows.join('|') === 'Mein Bag|Heimatclub|Tee|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await golf.locator('.card, .list-item').count()) === 0 && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
+ok(golfRows.join('|') === 'Mein Bag|Heimatclub|Tee|Sprache|Distanzen in|Du spielst|Währung|Strokes-Gained-Vergleich' && (await golf.locator('.card, .list-item').count()) === 0 && (await p.locator('main .field > label').filter({ hasText: /Heimatclub|Strokes-Gained/ }).count()) === 0, `Golf: one list of rows ${golfRows.join(' · ')}`);
 // P1: gender a row with its sheet – one line each what follows from it; no menu
 const gender = p.getByRole('region', { name: 'Persönliche Daten' }).locator('.settings-row').filter({ hasText: 'Geschlecht' });
 ok((await p.locator('select#pf-gender').count()) === 0 && /Keine Angabe/.test(await gender.innerText()), `gender as a row: ${(await gender.innerText()).replace(/\s+/g, ' ')}`);
