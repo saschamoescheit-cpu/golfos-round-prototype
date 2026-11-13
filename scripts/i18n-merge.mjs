@@ -15,6 +15,8 @@ for (const lang of langs) {
       if (!(k in source) || typeof v !== 'string' || !v.trim()) continue;
       // a locale or language code ("en-GB", "en"): the app puts the language's own in
       if (/^[a-z]{2}(-[A-Z]{2})?$/.test(k)) continue;
+      // an identifier, not a text (leadElbow, tiger-gate)
+      if (/^[a-z]+[A-Z][A-Za-z]*$/.test(k) || /^[a-z0-9]+(-[a-z0-9]+)+$/.test(k)) continue;
       if (slots(k) !== slots(v)) {
         bad++;
         continue;
