@@ -39,6 +39,8 @@ export interface TeeRating {
   cr: number; // course rating
   slope: number;
   par?: number; // the par this rating is for, where it differs from the holes' par (shorter tees)
+  /** where it came from when not bundled: OpenGolfAPI (ODbL – named where it shows) */
+  source?: 'opengolfapi';
 }
 
 const SON_ANTEM_WEST: Record<string, TeeRating> = {

@@ -5,6 +5,8 @@ import { sortTees, teeId } from '../data/tees';
 import { hasGeometry, loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 import { CARD_COURSES, CARDS, LINES } from '../data/cards';
+import { RATINGS } from '../data/ratings';
+import { ensureOgaRatings } from './ogaratings';
 
 // Course data sources (all ODbL – attribution in the app footer):
 //  - Photon (komoot): course search by name and courses nearby, filtered to leisure=golf_course.
@@ -217,6 +219,14 @@ async function searchOga(q: string): Promise<CourseSummary[]> {
  * (test course) → live course databases.
  */
 export async function loadCourse(summary: CourseSummary, forceRefresh = false): Promise<Course> {
+  const course = await loadCourseOnly(summary, forceRefresh);
+  // a US course not bundled: its course ratings and slopes from OpenGolfAPI in the background, kept on the phone
+  // (Sascha 13.11.2026: "für alle Golfplätze immer Slope und Course Rating")
+  if (!RATINGS[course.id]) void ensureOgaRatings({ id: course.id, name: course.name, lat: course.lat, lon: course.lon }, summary.source === 'opengolfapi' ? summary.id.replace(/^oga:/, '') : null);
+  return course;
+}
+
+async function loadCourseOnly(summary: CourseSummary, forceRefresh = false): Promise<Course> {
   const cached = loadCachedCourse(summary.id);
   const seed = SEED_COURSES[summary.id];
   // A course first played without data (18 empty holes) gets the bundled data once it exists.

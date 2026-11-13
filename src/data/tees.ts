@@ -55,9 +55,11 @@ export function sortTees(ids: string[]): string[] {
 
 /** The tees a course offers: its scorecard (bundled courses), else the tees OpenStreetMap knows for it, else the usual
  *  colours. `known` = from the course itself. */
-export function courseTees(courseId: string, mapped?: string[]): { tees: string[]; known: boolean } {
+export function courseTees(courseId: string, mapped?: string[], oga?: string[]): { tees: string[]; known: boolean } {
   const data = TEES[courseId];
   if (data) return { tees: data.tees, known: true };
+  // a US course not bundled: its tee sets from OpenGolfAPI, with their ratings (13.11.2026)
+  if (oga?.length) return { tees: oga, known: true };
   if (mapped?.length) return { tees: sortTees(mapped), known: true };
   return { tees: COMMON_TEES, known: false };
 }

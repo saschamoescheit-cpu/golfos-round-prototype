@@ -11,6 +11,7 @@ import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
 import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
+import { ogaTees } from '../lib/ogaratings';
 import { inUsa } from '../lib/weather';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
@@ -66,6 +67,13 @@ const ENTRY = [
 ] as const;
 
 export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[]; tee: string | null }; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null, playing: number | null) => void }) {
+  // course ratings arriving from OpenGolfAPI while the setup is open: drawn again (13.11.2026)
+  const [ratingsIn, setRatingsIn] = useState(0);
+  useEffect(() => {
+    const f = () => setRatingsIn((n) => n + 1);
+    window.addEventListener('golfos:ratings', f);
+    return () => window.removeEventListener('golfos:ratings', f);
+  }, []);
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   // back from the preview or the birdie book: the loops chosen before
   const [optionId, setOptionId] = useState(() => {
@@ -79,7 +87,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the tees the course offers: its scorecard, else what its map knows, else the usual colours (Sascha 22.10.2026:
   // "at Frielinghausen I cannot choose a tee at all"); a tee the player typed himself counts too
   const [geoTick, setGeoTick] = useState(0);
-  const offered = useMemo(() => courseTees(props.course.id, loadGeometry(props.course.id).teeColours), [props.course.id, geoTick]);
+  const offered = useMemo(() => courseTees(props.course.id, loadGeometry(props.course.id).teeColours, ogaTees(props.course.id)), [props.course.id, geoTick, ratingsIn]); // eslint-disable-line react-hooks/exhaustive-deps
   // a map saved before the app read the tees from it: fetched again once, then its tees are offered
   useEffect(() => {
     if (loadGeometry(props.course.id).teeColours !== undefined) return;
@@ -834,6 +842,8 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
             <>
               Course Rating <strong>{dec(rating.cr.toFixed(1))}</strong> · Slope <strong>{rating.slope}</strong>
               {nine ? tr(' · playing handicap for 9 holes', ' · Vorgabe für 9 Löcher') : ''}
+              {/* from OpenGolfAPI (ODbL): its name with the value (13.11.2026) */}
+              {rating.source === 'opengolfapi' && <span className="muted small" style={{ display: 'block' }}>{tr('From OpenGolfAPI (ODbL) – tap to correct', 'Aus OpenGolfAPI (ODbL) – zum Korrigieren antippen')}</span>}
             </>
           ) : (
             <>

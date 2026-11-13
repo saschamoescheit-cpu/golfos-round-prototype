@@ -4,6 +4,7 @@ import { grossForHole, handicapStrokes, netDoubleBogey } from './scoring';
 import { isTeamRound } from './games';
 import { isLady } from './profile';
 import { shareRating, sharedRating } from './sharedratings';
+import { ogaRating } from './ogaratings';
 
 // The handicap played today (World Handicap System): the score differential of an 18-hole round,
 //   differential = 113 / slope × (adjusted gross score − course rating),
@@ -36,7 +37,8 @@ export function ratingFor(courseId: string, tee: string, holes: { loop: string }
   // a lady's course rating from the same tee is higher than a man's (Hetzenhof red 66.2 men, 71.3 ladies): her own
   // bundled values (13.11.2026), never the men's. Nothing bundled: what other players of the same sex entered for this
   // course, loops and tee (night run 22./23.10.2026), else none – she enters hers from the scorecard (Sascha 22.10.2026)
-  return bundled((lady ? LADY_RATINGS : RATINGS)[courseId], tee, key) ?? sharedRating(courseId, tee, key, lady);
+  // then the course's tee sets from OpenGolfAPI (US courses not bundled, kept on the phone – 13.11.2026)
+  return bundled((lady ? LADY_RATINGS : RATINGS)[courseId], tee, key) ?? ogaRating(courseId, tee, lady) ?? sharedRating(courseId, tee, key, lady);
 }
 
 /** A bundled rating: for the 18-hole combination of loops, 9 holes of a loop the first combination with it, else the tee's. */
