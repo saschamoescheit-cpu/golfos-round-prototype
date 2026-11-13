@@ -110,6 +110,11 @@ ok(fit.bad.length === 0, `the card's marks inside their columns (${fit.col} px a
 // no tabs any more (Facelift-Abnahme T9): the leaderboard, below it the course as a row "Platz · … ›" – tapped, its holes
 // on the aerial image, the scores on each
 ok((await V.getByRole('tab').count()) === 0 && (await V.locator('.segmented').count()) === 0, 'no tabs on the page');
+// course rating and slope of the round, a row for each tee played (Sascha 13.11.2026)
+{
+  const rating = (await V.locator('.live-rating-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  ok(rating.length >= 1 && rating.every((t) => /CR \d{2},\d · Slope \d{2,3}/.test(t)), `course rating and slope under the board (${rating.join(' | ') || 'none'})`);
+}
 const courseRow = V.locator('.live-course-row .settings-row');
 ok((await courseRow.count()) === 1 && /^Platz/.test((await courseRow.innerText()).trim()) && (await courseRow.getAttribute('aria-expanded')) === 'false' && (await V.locator('.live-course').count()) === 0, `the course a row under the leaderboard, closed (${(await courseRow.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
 if (process.env.SHOTS) await V.screenshot({ path: process.env.SHOTS + '/live-event-board.png', fullPage: true });

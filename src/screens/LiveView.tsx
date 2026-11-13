@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { StepPick } from '../components/Settings';
-import { tr } from '../lib/i18n';
+import { dec, tr } from '../lib/i18n';
+import { ratingFor } from '../lib/handicap';
+import { RATINGS } from '../data/ratings';
+import { teeName } from '../data/tees';
 import { fetchLive, type LiveView } from '../lib/live';
 import { setMoneySym } from '../lib/gameforms';
 import { gamePrize } from '../lib/gamepay';
@@ -129,6 +132,30 @@ function CourseRow(props: { ev: RoundEvent }) {
   );
 }
 
+/** Course rating and slope of the round, one row for each tee played in it (Sascha 13.11.2026: "Slope und Course Rating
+ *  für die einzelnen Runden") – the values the app plays with; a tee without a rating (Yellow at the Reserve) left out. */
+function RatingRows(props: { ev: RoundEvent }) {
+  const { ev } = props;
+  const played = [...new Set([...Object.values(ev.flights).flatMap((f) => f.players.map((p) => p.tee)), ev.tee].filter((t): t is string => !!t))];
+  // no tee known (players set up without one): every tee of the course with a rating, longest first
+  const tees = played.length ? played : [...new Set(Object.keys(RATINGS[ev.course.id] ?? {}).map((k) => k.split('@')[0]))];
+  const rated = tees.map((t) => ({ t, r: ratingFor(ev.course.id, t, ev.holes) })).filter((x): x is { t: string; r: NonNullable<typeof x.r> } => !!x.r);
+  if (!rated.length) return null;
+  rated.sort((a, b) => b.r.cr - a.r.cr);
+  return (
+    <div className="settings-list live-rating-rows" role="group" aria-label={tr('Course rating and slope', 'Course Rating und Slope')}>
+      {rated.map(({ t, r }) => (
+        <div key={t} className="settings-row live-rating-row">
+          <span>{teeName(t)}</span>
+          <span className="settings-value">
+            CR {dec(r.cr.toFixed(1))} · Slope {r.slope}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** each player's strokes on a hole of the event – for the course's page */
 const holeScores = (ev: RoundEvent) => (hole: number): HoleScore[] =>
   Object.values(ev.flights)
@@ -225,6 +252,7 @@ function EventLive(props: { ev: RoundEvent }) {
       </span>
       <EventBoard ev={ev} />
       <CourseRow ev={ev} />
+      <RatingRows ev={ev} />
     </>
   );
 }
@@ -315,6 +343,7 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
           <span className="muted small">{tr(`Round ${k + 1} is on ${dm(series.rounds[k]?.date ?? '')}.`, `Runde ${k + 1} ist am ${dm(series.rounds[k]?.date ?? '')}.`)}</span>
         ))}
       {ev && <CourseRow key={k} ev={ev} />}
+      {ev && <RatingRows key={`r${k}`} ev={ev} />}
     </>
   );
 }
