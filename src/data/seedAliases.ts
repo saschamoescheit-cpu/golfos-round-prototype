@@ -16,6 +16,8 @@ export const SEED_ALIASES: Record<string, string> = {
   'oga:40d39071-0b96-4c69-b4ed-6c88447e6973': 'osm:relation/4040123',
   // Orange Lake – The Legends
   'oga:416a908a-22a1-4e6e-b6ef-c1c1450d41e9': 'osm:relation/4039887',
+  // Orange Lake – The Reserve (13.11.2026; the entry has no scorecard and sits on the resort centre, 2 km off the course)
+  'oga:d0952a8a-8edd-4cfd-aa02-d78fd1a70966': 'osm:relation/4039888',
   // Falcon's Fire
   'oga:7ffcc946-aa21-42f5-bac0-1088f238db61': 'osm:way/311994625',
 };

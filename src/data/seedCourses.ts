@@ -575,5 +575,34 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"par": "4", "ref": "18", "handicap": "4"},
     ],
   },
+  'osm:relation/4039888': {
+    name: 'Orange Lake Resort – The Reserve',
+    lat: 28.3555,
+    lon: -81.6210,
+    // Kissimmee, Florida (USA trip, played 13.11.2026). OSM has the course area and 18 greens but no holes; OpenGolfAPI no
+    // scorecard. Tees and the routing read off the Osceola County 2026 aerial (GolfOS/lidar/us_olr_holes.py), par and Hcp
+    // from the current card (golfingrecord.com, GolfPass and Hole19 agree). Holes 3–6, 8 and 10–16 sure; 1, 2, 7, 9, 17
+    // and 18 likely (the par sequence and which green lies next to which tee) – to be confirmed on the course.
+    holeTags: [
+      {"handicap": "16", "par": "4", "ref": "1"},
+      {"handicap": "10", "par": "4", "ref": "2"},
+      {"handicap": "18", "par": "3", "ref": "3"},
+      {"handicap": "2", "par": "5", "ref": "4"},
+      {"handicap": "6", "par": "3", "ref": "5"},
+      {"handicap": "4", "par": "4", "ref": "6"},
+      {"handicap": "8", "par": "4", "ref": "7"},
+      {"handicap": "14", "par": "4", "ref": "8"},
+      {"handicap": "12", "par": "4", "ref": "9"},
+      {"handicap": "7", "par": "5", "ref": "10"},
+      {"handicap": "13", "par": "4", "ref": "11"},
+      {"handicap": "17", "par": "3", "ref": "12"},
+      {"handicap": "11", "par": "4", "ref": "13"},
+      {"handicap": "9", "par": "3", "ref": "14"},
+      {"handicap": "3", "par": "5", "ref": "15"},
+      {"handicap": "1", "par": "4", "ref": "16"},
+      {"handicap": "5", "par": "4", "ref": "17"},
+      {"handicap": "15", "par": "4", "ref": "18"},
+    ],
+  },
 };
 withAliases(SEED_COURSES); // the same course under an OpenGolfAPI id (12.11.2026)

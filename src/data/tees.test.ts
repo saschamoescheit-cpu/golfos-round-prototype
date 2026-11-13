@@ -51,6 +51,21 @@ describe('Florida: the scorecards', () => {
     expect(courseTees('osm:way/311994625').tees).toEqual(['Gold', 'Blue', 'White', 'Red']);
     expect(courseTees('osm:relation/4039887').tees).toEqual(['Green', 'Black', 'Blue', 'White', 'Yellow']);
   });
+  // Orange Lake – The Reserve (13.11.2026): teal is the longest tee there – a colour of its own, "Petrol" in German
+  it('Orange Lake Reserve: teal, white, yellow – also under its OpenGolfAPI id', () => {
+    expect(courseTees('osm:relation/4039888').tees).toEqual(['Teal', 'White', 'Yellow']);
+    expect(courseTees('oga:d0952a8a-8edd-4cfd-aa02-d78fd1a70966').tees).toEqual(['Teal', 'White', 'Yellow']);
+    expect(sortTees(['White', 'Teal', 'Black'])).toEqual(['Black', 'Teal', 'White']);
+    expect(teeId('teal')).toBe('Teal');
+    const was = getLang();
+    useLangForTests('de');
+    expect(teeName('Teal')).toBe('Petrol');
+    useLangForTests('en');
+    expect(teeName('Teal')).toBe('Teal');
+    useLangForTests(was);
+    // the standard tee "Yellow" (5700 m at home) is white there (5515 m), not the 4681 m yellow
+    expect(profileTee(courseTees('osm:relation/4039888'), 'Yellow', 'osm:relation/4039888', true)).toBe('White');
+  });
 });
 
 // abroad the colours mean other lengths (night 22./23.10.2026): the standard tee "Yellow" by its length at home

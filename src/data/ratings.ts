@@ -38,6 +38,7 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:relation/1654444': { Yellow: { cr: 70.8, slope: 133 } },
   'osm:way/311994625': { Gold: { cr: 74.1, slope: 138 }, Blue: { cr: 71.0, slope: 128 }, White: { cr: 68.9, slope: 121 }, Red: { cr: 66.3, slope: 114 } }, // Falcon's Fire: GolfCourseAPI (night 22./23.10.2026), men's values; Southern Dunes checked the same way: identical
   'osm:relation/4053362': { Black: { cr: 70.2, slope: 133 }, Green: { cr: 67.8, slope: 126 }, Blue: { cr: 66.3, slope: 116 }, Gold: { cr: 64.9, slope: 112 } }, // Hawk's Landing, Orlando: GolfPass (27.10.2026), men's; Silver left out (68.5 for 4253 yd does not fit)
+  'osm:relation/4039888': { Teal: { cr: 71.8, slope: 137 }, White: { cr: 69.4, slope: 128 } }, // Orange Lake – The Reserve (13.11.2026): current card (golfingrecord.com, Chronogolf, GolfAdvisor agree), men's; Yellow left out (68.3 for 5119 yd is a ladies' value)
   'osm:relation/4039887': { Green: { cr: 73.7, slope: 135 }, Black: { cr: 71.9, slope: 131 }, Blue: { cr: 70.1, slope: 126 }, White: { cr: 67.5, slope: 121 }, Yellow: { cr: 65.0, slope: 112 } }, // Orange Lake – Legends: GolfCourseAPI (night 22./23.10.2026), men's values; Southern Dunes checked the same way: identical
   'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, White: { cr: 70.4, slope: 133 }, Gold: { cr: 67.2, slope: 121 } },
   'osm:relation/1326323': {

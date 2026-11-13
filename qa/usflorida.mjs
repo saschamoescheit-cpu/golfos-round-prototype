@@ -112,6 +112,22 @@ await p.waitForTimeout(8000);
 ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === '1' && (await p.getByText('Loch einrichten').count()) === 0, 'StoneGate Cypress: the map of hole 1 at once, nothing to set up');
 ok(/Par 4/.test(await p.locator('body').innerText()), 'StoneGate Cypress: hole 1 is a par 4');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stonegatecypress-1.png` });
+// Orange Lake – The Reserve (13.11.2026, played that day; OSM has no holes there, OpenGolfAPI no card): bundled from the
+// Osceola aerial – found offline by "Reserve", par 71, the map of hole 1 at once with nothing to set up
+await p.goto(url);
+await p.waitForTimeout(1000);
+await p.getByRole('button', { name: 'Neue Runde' }).click();
+await p.fill('#course-search', 'Reserve');
+const olr = p.locator('button.list-item').filter({ hasText: /The Reserve/ }).first();
+await olr.waitFor({ timeout: 30000 });
+await olr.click();
+await p.getByText('Runde starten').waitFor({ timeout: 60000 });
+ok(/18 Löcher|Par 71/.test(await p.locator('body').innerText()), 'Orange Lake Reserve: 18 holes, par 71, found offline');
+await p.getByRole('button', { name: 'Platzvorschau' }).click();
+await p.waitForTimeout(8000);
+ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === '1' && (await p.getByText('Loch einrichten').count()) === 0, 'Orange Lake Reserve: the map of hole 1 at once, nothing to set up');
+ok(/Par 4/.test(await p.locator('body').innerText()), 'Orange Lake Reserve: hole 1 is a par 4');
+if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/orangelakereserve-1.png` });
 await p.unroute(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/);
 // the four OSM courses are bundled (night 17./18.10.2026): found and loaded with no course database and no OSM at all –
 // in the USA without roaming
