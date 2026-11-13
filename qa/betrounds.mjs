@@ -109,6 +109,17 @@ ok((await now()).includes(label) && (await sw.getByRole('button', { name: 'Näch
 const inRound = await cellText('Birdies in Folge', 'Chris');
 ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
 {
+  // the round over, the bets not made (Sascha 13.11.2026: "nicht erfüllte Wetten nicht rot, nur erfüllte grün – überall"):
+  // no cell red or struck through, no red "Verloren" – only the made ones coloured
+  // a cell missed in a round and one behind in a duel, as the standing draws them – their colours as shown
+  await stand.evaluate((root) => { const cell = root.querySelector('.bet-cell'); for (const c of ['bet-cell miss qa-probe', 'bet-cell duel down qa-probe']) { const x = document.createElement('span'); x.className = c; x.textContent = '3'; cell?.parentElement?.appendChild(x); } });
+  const looks = await stand.locator('.bet-cell').evaluateAll((es) => es.map((e) => { const s = getComputedStyle(e); return [s.backgroundColor, s.color, s.textDecorationLine, e.className].join('|'); }));
+  const red = (c) => { const m = c.match(/\d+/g)?.map(Number) ?? []; return m.length >= 3 && m[0] > 150 && m[1] < 130 && m[2] < 130; };
+  const bad = looks.filter((l) => { const [bg, fg, deco] = l.split('|'); return red(bg) || red(fg) || deco.includes('line-through'); });
+  const notMade = looks.filter((l) => !/\bdone\b/.test(l.split('|')[3])).length;
+  ok(notMade >= 1 && bad.length === 0 && (await stand.locator('.qa-probe').count()) === 2, `not made: neither red nor struck through (${notMade} cells, ${bad.length} red${bad[0] ? ': ' + bad[0] : ''})`);
+}
+{
   const sum = stand.locator('tbody tr').filter({ hasText: 'in 7 Runden' }).first();
   const txt = (await sum.innerText().catch(() => '')).replace(/\s+/g, ' ');
   // a total over 7 rounds this round brought nothing to: not in this round's view (Sascha 12.11.2026: "bets in there

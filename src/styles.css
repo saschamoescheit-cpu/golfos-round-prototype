@@ -1251,7 +1251,8 @@ button.tile:disabled { opacity: 1; }
 .bet-cell small { display: block; font: 600 11px var(--body); color: var(--muted); text-decoration: none; }
 .bet-cell.done small { color: inherit; opacity: 0.85; }
 .bet-cell.duel.up { color: var(--brand-text); }
-.bet-cell.duel.down { color: #ff8a7f; }
+/* behind in a duel: plain in the standing – only green is coloured (Sascha 13.11.2026) */
+.bet-cell.duel.down { color: inherit; }
 .bet-free { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .bet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .bet-lines li { display: flex; align-items: center; gap: 10px; }
@@ -2376,9 +2377,9 @@ button.tile:disabled { opacity: 1; }
 .duel-add { display: flex; gap: 8px; align-items: center; }
 .duel-add .input { flex: 1; min-width: 0; }
 .duel-add .btn-secondary { width: auto; flex: none; padding-inline: 18px; }
-/* a bet missed in a round played (Sascha 10.11.2026: "green when made, else red") – white figures on the colour */
-.bet-cell.miss { background: var(--bad); color: #fff; }
-.bet-cell.miss small { color: inherit; opacity: 0.9; }
+/* a bet missed in a round played: in the standing as an open one – only made is green (Sascha 13.11.2026: "nur in diesen
+   Übersichten das Rot bei Nichterfüllung entfernen"; before 10.11.: red) */
+.bet-cell.miss { background: var(--surface-2); color: inherit; }
 .chip .chip-tick { margin-right: 4px; vertical-align: -2px; }
 
 /* one of a few views – the total and each round (Sascha 10.11.2026: one solution everywhere instead of rows of tabs) */
