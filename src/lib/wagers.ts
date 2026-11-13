@@ -1115,6 +1115,20 @@ export const sameProgress = (a: Progress | undefined, b: Progress): boolean => !
 
 export type WagerState = 'done' | 'missed' | 'open';
 /** Made, missed or still open: by hand if judged so; missed once its day or the period is over, or the pool finished. */
+/**
+ * A total over N rounds so far, summed from its rounds: a round still played counts as it stands (Sascha 12.11.2026:
+ * Erik "+22" – his round of the day was missing while it was played); decided once all are played and none is still
+ * running. The standing and the settlement both read it (audit 13.11.2026: the settlement read the stored total of an
+ * older app – Cedric "30 after 2 rounds" instead of +53 after 3 of 6).
+ */
+export function sumSoFar(w: Wager, p: Progress | undefined): { sum: number; played: number; of: number; verdict: 'made' | 'missed' | null } | null {
+  if (shapeOf(w.kind) !== 'sum' || !w.rounds) return null;
+  const done = (p?.perRound ?? []).filter((r) => r.value != null).slice(0, w.rounds);
+  const sum = done.reduce((a, r) => a + (r.value ?? 0), 0);
+  const over = done.length >= w.rounds && !done.some((r) => r.open);
+  return { sum, played: done.length, of: w.rounds, verdict: !over ? null : sum <= w.target ? 'made' : 'missed' };
+}
+
 export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): WagerState {
   const p = progressOf(pool, w);
   if (shapeOf(w.kind) === 'duel') {
@@ -1123,11 +1137,14 @@ export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): W
     return over ? 'done' : 'open';
   }
   if (p?.manual) return p.manual.done ? 'done' : 'missed';
-  if (w.kind !== 'free' && p?.done) return 'done';
+  // a total over N rounds with its rounds reported: decided by them, not by a stored total of an older app
+  const total = p?.perRound ? sumSoFar(w, p) : null;
+  if (total?.verdict) return total.verdict === 'made' ? 'done' : 'missed';
+  if (w.kind !== 'free' && p?.done && !total) return 'done';
   // each round on its own: made once in a round – made (and each round settled on its own, ledger)
   if (tally(w, p)?.made) return 'done';
   // a total over N rounds: decided once the N rounds are played
-  if (shapeOf(w.kind) === 'sum' && p && p.rounds >= (w.rounds ?? 6)) return 'missed';
+  if (shapeOf(w.kind) === 'sum' && p && !total && p.rounds >= (w.rounds ?? 6)) return 'missed';
   const roundDay = w.attempts === 'round' ? pool.rounds?.find((x) => x.id === w.round)?.day : undefined;
   const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && !!w.day && today > w.day) || (!!roundDay && today > roundDay);
   return over ? 'missed' : 'open';

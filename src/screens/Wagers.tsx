@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -1260,15 +1260,8 @@ export function roundVerdict(w: Wager, r: RoundResult | undefined, inPlay = fals
 }
 /** A score over N rounds so far (Sascha 10.11.2026: "in the total the rounds added up – where one stands"): the rounds
  *  played added up, how many of how many; decided once all are played. */
-export function sumSoFar(w: Wager, p: Progress | undefined): { sum: number; played: number; of: number; verdict: 'made' | 'missed' | null } | null {
-  if (shapeOf(w.kind) !== 'sum' || !w.rounds) return null;
-  // a round still played counts as it stands (Sascha 12.11.2026: Erik "+22" – his round of the day was missing while it
-  // was played); decided once all are played and none is still running
-  const done = (p?.perRound ?? []).filter((r) => r.value != null).slice(0, w.rounds);
-  const sum = done.reduce((a, r) => a + (r.value ?? 0), 0);
-  const over = done.length >= w.rounds && !done.some((r) => r.open);
-  return { sum, played: done.length, of: w.rounds, verdict: !over ? null : sum <= w.target ? 'made' : 'missed' };
-}
+// the total over N rounds so far – the same reckoning as the settlement's (src/lib/wagers.ts)
+export { sumSoFar };
 /** A bet's target as the cells write it: "3", "−5", "E". */
 export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
 /** What a round brought, under the target (Sascha 10.11.2026: "a 0 instead of the dash"): a count's 0 is "0"; a score
