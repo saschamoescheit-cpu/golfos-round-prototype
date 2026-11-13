@@ -45,6 +45,28 @@ describe('the shot type and club from the player\'s own checked shots', () => {
   });
 });
 
+describe("Sascha's checked round at StoneGate Oaks (12.11.2026, his export)", () => {
+  // his pitches – 9i from 120–124 m, PW 103–107, GW 110–111, SW 68 – his chips under 25 m, full swings from 150 m on
+  const oaks: LearnedShot[] = [
+    ...[[124, '9i'], [123, '9i'], [120, '9i'], [103, 'PW'], [107, 'PW'], [111, 'GW'], [110, 'GW'], [68, 'SW']].map(([m, c]) => ({ toPin: m as number, lie: 'fairway' as const, kind: 'pitch' as const, club: c as 'GW' })),
+    ...[[19, 'SW'], [21, 'SW'], [12, 'LW'], [24, 'GW'], [6, 'Pt'], [15, 'SW'], [10, 'LW']].map(([m, c]) => ({ toPin: m as number, lie: 'fringe' as const, kind: 'chip' as const, club: c as 'SW' })),
+    ...[[150, '5i'], [169, '6i'], [166, '4i'], [180, '3W']].map(([m, c]) => ({ toPin: m as number, lie: 'fairway' as const, kind: 'full' as const, club: c as '5i' })),
+  ];
+  it('from 115 m his own round says "Pitch" – the fixed bound said "Voll"', () => {
+    useLearned(oaks);
+    expect(suggestKind('fairway', 115)).toBe('pitch');
+    useLearned([]);
+    expect(suggestKind('fairway', 115)).toBe('full');
+  });
+  it('the pitch from 121 m: the 9-iron, from 108 m: a wedge', () => {
+    expect(learnedClub(oaks, 'pitch', 121)).toBe('9i');
+    expect(['PW', 'GW']).toContain(learnedClub(oaks, 'pitch', 108));
+  });
+  it('from 165 m: a full swing', () => {
+    expect(learnedKind(oaks, 'fairway', 165)).toBe('full');
+  });
+});
+
 describe('a chip where it is one', () => {
   it('the putter off the green (Texas wedge): always a chip', () => {
     expect(suggestKind('fairway', 25, 'Pt')).toBe('chip');

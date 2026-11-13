@@ -46,7 +46,7 @@ function near(list: LearnedShot[], toPin: number, ok: (s: LearnedShot) => boolea
   return list.filter((s) => ok(s) && Math.abs(s.toPin - toPin) <= band).map((s) => ({ s, w: 1 / (1 + Math.abs(s.toPin - toPin) / 5) }));
 }
 
-function vote<T>(items: { key: T; w: number }[], min: number): T | null {
+function vote<T>(items: { key: T; w: number }[], min: number, share = 0.5): T | null {
   if (items.length < min) return null;
   const sum = new Map<T, number>();
   let all = 0;
@@ -55,7 +55,7 @@ function vote<T>(items: { key: T; w: number }[], min: number): T | null {
     all += x.w;
   }
   const [best, w] = [...sum.entries()].sort((a, b) => b[1] - a[1])[0];
-  return w / all >= 0.5 ? best : null;
+  return w / all >= share ? best : null;
 }
 
 /** The shot type the player plays from here, as his checked shots tell – or null (too few of them, no clear one). */
@@ -68,7 +68,7 @@ export function learnedKind(list: LearnedShot[], lie: Lie, toPin: number | null)
 /** The club of a short-game shot (pitch, chip, bunker, punch) from here, as the player took it – or null. */
 export function learnedClub(list: LearnedShot[], kind: ShotKind, toPin: number | null): Club | null {
   if (toPin == null || kind === 'full' || !list.length) return null;
-  return vote(near(list, toPin, (s) => s.kind === kind && !!s.club, 0.2).map((x) => ({ key: x.s.club as Club, w: x.w })), 3);
+  return vote(near(list, toPin, (s) => s.kind === kind && !!s.club, 0.2).map((x) => ({ key: x.s.club as Club, w: x.w })), 3, 0.35); // the clubs spread more (PW or GW from 108 m): the most taken one
 }
 
 // The checked shots of this phone – set where rounds are checked or played (RoundReview, HoleScreen); suggestKind and
