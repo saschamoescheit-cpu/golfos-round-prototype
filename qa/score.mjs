@@ -186,6 +186,16 @@ for (let k = 0; k < 4 && (await stored(0)).putts !== 1; k++) await p.locator('.s
   await swipe(160);
   const back = await head();
   ok(/^Loch 2/.test(next) && back === before, `swiped: "${before}" → "${next}" → "${back}"`);
+  // the arrows at its foot as well (Sascha 13.11.2026: "zusätzlich unten mit Pfeilen im Stil der App")
+  const nav = p.locator('.score-panel-nav');
+  const prevDisabled = await nav.getByRole('button', { name: 'Voriges Loch' }).isDisabled();
+  await nav.getByRole('button', { name: 'Nächstes Loch' }).click();
+  await p.waitForTimeout(250);
+  const viaArrow = await head();
+  const label = (await nav.innerText()).replace(/\s+/g, ' ').trim();
+  await nav.getByRole('button', { name: 'Voriges Loch' }).click();
+  await p.waitForTimeout(250);
+  ok(prevDisabled && /^Loch 2/.test(viaArrow) && /^Loch 2\S* von \d+$/.test(label) && (await head()) === before, `the arrows below: "‹" off on hole 1, "›" → "${viaArrow}" ("${label}"), "‹" back`);
 }
 await p.locator('.score-panel').getByRole('button', { name: 'Zurück zur Scorekarte' }).click();
 await p.waitForTimeout(600);

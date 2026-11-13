@@ -340,6 +340,23 @@ export function Scorecard(props: {
             onClose={() => setEditHole(null)}
             closeLabel={tr('Back to the scorecard', 'Zurück zur Scorekarte')}
           />
+          {/* the arrows of the app's hole bar below it, besides the swipe (Sascha 13.11.2026: "zusätzlich unten mit Pfeilen
+              im Stil der App für links und rechts") */}
+          <div className="hole-nav score-panel-nav" role="group" aria-label={tr('Holes', 'Löcher')}>
+            <button type="button" className="icon-btn hole-step" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={editHole === 0} onClick={() => setEditHole(Math.max(0, editHole - 1))}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 5l-7 7 7 7" />
+              </svg>
+            </button>
+            <span className="muted small">
+              {tr(`Hole ${round.holes[editHole]?.label} of ${round.holes.length}`, `Loch ${round.holes[editHole]?.label} von ${round.holes.length}`)}
+            </span>
+            <button type="button" className="icon-btn hole-step" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={editHole === round.holes.length - 1} onClick={() => setEditHole(Math.min(round.holes.length - 1, editHole + 1))}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
