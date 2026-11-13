@@ -305,173 +305,181 @@ Am Ende ziehst du die Leiste hoch und tippst auf „Beenden“.
 Danach wählst du, ob du die Runde gleich prüfst.
 
 43
-00:04:15.377 --> 00:04:17.947 line:-2
+00:04:15.374 --> 00:04:17.944 line:-2
 Nach der Runde steht sie auf der Startseite bei
 
 43-2
-00:04:17.997 --> 00:04:21.039 line:-2
+00:04:17.994 --> 00:04:21.037 line:-2
 „Runden prüfen & signieren“ – und unter „Runden“.
 
 44
-00:04:21.139 --> 00:04:28.126 line:-2
+00:04:21.137 --> 00:04:26.653 line:-2
 Öffne die Runde und tippe unten rechts auf „Schläge prüfen“.
 
 45
-00:04:28.226 --> 00:04:31.356 line:-2
-Die App hat die Schläge aus deiner GPS-Spur gefunden.
+00:04:26.753 --> 00:04:30.843 line:-2
+Die App hat die Schläge aus deiner GPS-Spur gefunden –
 
 45-2
-00:04:31.406 --> 00:04:35.207 line:-2
+00:04:30.893 --> 00:04:34.123 line:-2
+Schlagart und Schläger schlägt sie so vor, wie du sie bisher gespielt hast.
+
+45-3
+00:04:34.173 --> 00:04:38.063 line:-2
 Stimmt ein Punkt nicht, ziehst du ihn auf der Karte an seine Stelle.
 
 46
-00:04:35.307 --> 00:04:38.717 line:-2
+00:04:38.163 --> 00:04:41.573 line:-2
 Ein Tipp auf einen Schlag öffnet Schläger, Lage und Schlagart.
 
 46-2
-00:04:38.767 --> 00:04:43.329 line:-2
+00:04:41.623 --> 00:04:46.174 line:-2
 Hat Wind den Schlag länger gemacht, steht dabei, wie lang er gespielt hat.
 
 47
-00:04:43.429 --> 00:04:48.599 line:-2
+00:04:46.274 --> 00:04:51.444 line:-2
 Darunter hältst du fest, wie du getroffen hast und welche Flugbahn der Ball hatte –
 
 47-2
-00:04:48.649 --> 00:04:51.839 line:-2
+00:04:51.494 --> 00:04:54.684 line:-2
 die neun von Pull-Hook bis Push-Slice, dazu Draw und Fade.
 
 47-3
-00:04:51.889 --> 00:04:54.998 line:-2
+00:04:54.734 --> 00:04:57.771 line:-2
 Aus guten Treffern lernt die App deine Weiten.
 
 48
-00:04:55.098 --> 00:04:59.249 line:-2
+00:04:57.871 --> 00:05:02.021 line:-2
 Passt alles, tippst du auf „Loch passt“ – und weiter zum nächsten Loch.
 
 49
-00:04:59.349 --> 00:05:01.159 line:-2
+00:05:02.121 --> 00:05:03.931 line:-2
 Am letzten Loch signierst du die Runde.
 
 49-2
-00:05:01.209 --> 00:05:07.215 line:-2
+00:05:03.981 --> 00:05:10.002 line:-2
 Nur signierte Runden zählen in deiner Statistik.
 
 50
-00:05:07.315 --> 00:05:11.985 line:-2
+00:05:10.102 --> 00:05:14.772 line:-2
 Danach siehst du dein Rundenfazit, deine Statistik und Strokes Gained dieser Runde.
 
 50-2
-00:05:12.035 --> 00:05:16.818 line:-2
+00:05:14.822 --> 00:05:19.503 line:-2
 Ganz unten teilst, exportierst oder löschst du die Runde.
 
 51
-00:05:16.849 --> 00:05:20.843 line:-2
+00:05:19.549 --> 00:05:23.543 line:-2
 Unter Statistik siehst du, wo du Schläge gewinnst und verlierst.
 
 52
-00:05:20.943 --> 00:05:22.933 line:-2
+00:05:23.643 --> 00:05:25.633 line:-2
 Strokes Gained vergleicht Abschlag,
 
 52-2
-00:05:22.983 --> 00:05:26.879 line:-2
+00:05:25.683 --> 00:05:29.579 line:-2
 Annäherung, kurzes Spiel und Putten mit deiner Vergleichsgruppe.
 
 53
-00:05:26.979 --> 00:05:29.809 line:-2
+00:05:29.679 --> 00:05:32.509 line:-2
 Oben wählst du mit den Pfeilen, welche Runden zählen –
 
 53-2
-00:05:29.859 --> 00:05:32.763 line:-2
+00:05:32.559 --> 00:05:35.463 line:-2
 alle, die letzten zehn oder die letzten fünf.
 
 54
-00:05:32.863 --> 00:05:36.773 line:-2
+00:05:35.563 --> 00:05:39.473 line:-2
 Darunter das Thema – ein Tipp zeigt alle. Zum Beispiel Schläger:
 
 54-2
-00:05:36.823 --> 00:05:40.478 line:-2
+00:05:39.523 --> 00:05:43.178 line:-2
 deine Weiten aus guten Treffern, umgerechnet auf Windstille.
 
 55
-00:05:40.578 --> 00:05:43.508 line:-2
+00:05:43.278 --> 00:05:46.208 line:-2
 Der Streukegel zeigt alle Schläger auf einen Blick:
 
 55-2
-00:05:43.558 --> 00:05:46.368 line:-2
+00:05:46.258 --> 00:05:49.068 line:-2
 je länger der Schlag, desto breiter die Ellipse.
 
 55-3
-00:05:46.418 --> 00:05:49.400 line:-2
+00:05:49.118 --> 00:05:52.100 line:-2
 Damit planst du Löcher und einzelne Schläge.
 
 56
-00:05:49.500 --> 00:05:52.650 line:-2
+00:05:52.200 --> 00:05:55.350 line:-2
 Je Schläger siehst du jeden Schlag als Punkt um die Ziellinie,
 
 56-2
-00:05:52.700 --> 00:05:55.682 line:-2
+00:05:55.400 --> 00:05:58.382 line:-2
 deine Treffer und deine häufigste Flugbahn.
 
 57
-00:05:55.782 --> 00:05:57.092 line:-2
+00:05:58.482 --> 00:05:59.792 line:-2
 Ganz unten der Putter:
 
 57-2
-00:05:57.142 --> 00:06:01.639 line:-2
+00:05:59.842 --> 00:06:04.339 line:-2
 wie oft du aus welcher Entfernung einlochst – und ab wo die 3-Putts kommen.
 
 58
-00:06:01.739 --> 00:06:06.550 line:-2
+00:06:04.439 --> 00:06:09.250 line:-2
 „Mein Golf“ zeigt deinen Verlauf und deine Bestleistungen.
 
 59
-00:06:06.569 --> 00:06:10.960 line:-2
+00:06:09.269 --> 00:06:13.649 line:-2
 Im Profil stehen deine persönlichen Daten mit deinem Handicap-Index.
 
 60
-00:06:11.060 --> 00:06:13.590 line:-2
+00:06:13.749 --> 00:06:16.799 line:-2
 Darunter unter Golf, Zeile für Zeile:
 
 60-2
-00:06:13.640 --> 00:06:18.890 line:-2
-dein Bag, dein Heimatclub, dein Standard-Tee und ob du in Meter oder Yards spielst.
+00:06:16.849 --> 00:06:18.799 line:-2
+dein Bag, dein Heimatclub, dein Standard-Tee,
+
+60-3
+00:06:18.849 --> 00:06:22.694 line:-2
+die Sprache der App und ob du in Meter oder Yards spielst.
 
 61
-00:06:18.990 --> 00:06:21.160 line:-2
+00:06:22.794 --> 00:06:24.964 line:-2
 Unter „Mein Bag“ trägst du deine Weiten ein –
 
 61-2
-00:06:21.210 --> 00:06:23.180 line:-2
+00:06:25.014 --> 00:06:26.984 line:-2
 für den vollen Schwung und für Pitches –
 
 61-3
-00:06:23.230 --> 00:06:26.035 line:-2
+00:06:27.034 --> 00:06:29.840 line:-2
 oder übernimmst die, die die App gelernt hat.
 
 62
-00:06:26.135 --> 00:06:28.965 line:-2
+00:06:29.940 --> 00:06:32.770 line:-2
 Mit einem Konto – Google oder Benutzername –
 
 62-2
-00:06:29.015 --> 00:06:33.860 line:-2
+00:06:32.820 --> 00:06:37.672 line:-2
 sind Runden und Einstellungen auf iPhone, iPad und Computer gleich.
 
 63
-00:06:33.960 --> 00:06:36.770 line:-2
+00:06:37.772 --> 00:06:40.582 line:-2
 Mitteilungen erinnern dich an ungeprüfte Runden,
 
 63-2
-00:06:36.820 --> 00:06:40.690 line:-2
+00:06:40.632 --> 00:06:44.502 line:-2
 melden Turniere, Wetten und die Abrechnung und warnen vor Gewitter.
 
 63-3
-00:06:40.740 --> 00:06:44.567 line:-2
+00:06:44.552 --> 00:06:48.384 line:-2
 Jede Art schaltest du in ihrer eigenen Zeile an oder aus.
 
 64
-00:06:44.667 --> 00:06:48.697 line:-2
+00:06:48.484 --> 00:06:52.514 line:-2
 Unter „Hilfe“ findest du diese Videos und Antworten auf häufige Fragen.
 
 64-2
-00:06:48.747 --> 00:06:51.794 line:-2
+00:06:52.564 --> 00:06:55.526 line:-2
 Viel Spaß auf der Runde!
