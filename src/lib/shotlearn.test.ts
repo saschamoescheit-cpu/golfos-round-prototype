@@ -64,9 +64,14 @@ describe('riding a cart: the phone stands where the cart parks', () => {
   const t0 = Date.UTC(2026, 10, 12, 15);
   const along = (n: number, metresPerFix: number, secs: number): TrackPoint[] =>
     Array.from({ length: n }, (_, k) => ({ t: t0 + k * secs * 1000, p: [-81.5 + (k * metresPerFix) / 98000, 28.3] as LngLat, acc: 5 }));
-  it('walking (1.2 m/s) is no cart, riding (6 m/s) is', () => {
+  it('walking (1.2 m/s) is no cart, riding (6 m/s) twice is', () => {
     expect(rodeCart(along(30, 6, 5))).toBe(false);
-    expect(rodeCart(along(30, 30, 5))).toBe(true);
+    // one ride is no cart yet (a jog to the next tee), two are
+    const ride = along(30, 30, 5);
+    expect(rodeCart(ride)).toBe(false);
+    const stop = Array.from({ length: 10 }, (_, k) => ({ ...ride[29], t: ride[29].t + (k + 1) * 5000 }));
+    const again = ride.map((x, k) => ({ t: stop[9].t + (k + 1) * 5000, p: [ride[29].p[0] + (k * 30) / 98000, 28.3] as LngLat, acc: 5 }));
+    expect(rodeCart([...ride, ...stop, ...again])).toBe(true);
   });
   it('a stop 30 m off the hole line is pulled halfway to it (15 m); one 6 m off stays', () => {
     const line: LngLat[] = [[-81.5, 28.3], [-81.5, 28.304]];

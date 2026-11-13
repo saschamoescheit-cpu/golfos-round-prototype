@@ -38,20 +38,32 @@ export const DETECT = {
  * path at the side of the hole, not by the ball; the player walks over to the ball. Then a stop well off the hole line
  * is pulled towards it (half its way off, at most 20 m). The tee and the green stay as they are.
  */
-export const CART = { fastMs: 3.5, maxMs: 12, minFast: 3, freeM: 8, pull: 0.5, maxPullM: 20 };
+export const CART = { fastMs: 4.5, maxMs: 12, rideM: 60, rides: 2, freeM: 8, pull: 0.5, maxPullM: 20 };
 
-/** A few fixes faster than anyone walks (more than 3.5 m/s, at most 12 m/s – not a GPS jump): a cart. */
+/** Rides faster than anyone walks (4.5–12 m/s, measured over 10 s or more – a fix a second wanders a few metres even
+ *  standing), each at least 60 m in one go – twice on the stretch (a jog is slower): a cart. A single GPS jump (Sascha's walk at
+ *  Hetzenhof 16.10.2026: 11, 23, 41 m now and then) is no ride. */
 export function rodeCart(track: TrackPoint[]): boolean {
   const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
-  let fast = 0;
-  for (let k = 1; k < pts.length; k++) {
-    const dt = (pts[k].t - pts[k - 1].t) / 1000;
-    if (dt <= 0 || dt > 30) continue;
-    const d = distanceM(pts[k - 1].p, pts[k].p);
-    const v = d / dt;
-    if (d >= 10 && v >= CART.fastMs && v <= CART.maxMs) fast++;
+  let rides = 0;
+  let from = -1; // where the ride on now began
+  let j = 0;
+  const end = (k: number) => {
+    if (from >= 0 && distanceM(pts[from].p, pts[k].p) >= CART.rideM) rides++;
+    from = -1;
+  };
+  for (let k = 0; k < pts.length; k++) {
+    if (j <= k) j = k + 1;
+    while (j < pts.length && pts[j].t - pts[k].t < 10000) j++;
+    if (j >= pts.length) break;
+    const dt = (pts[j].t - pts[k].t) / 1000;
+    const v = dt <= 40 ? distanceM(pts[k].p, pts[j].p) / dt : 0;
+    if (v >= CART.fastMs && v <= CART.maxMs) {
+      if (from < 0) from = k;
+    } else if (from >= 0) end(k);
   }
-  return fast >= CART.minFast;
+  if (from >= 0) end(pts.length - 1);
+  return rides >= CART.rides;
 }
 
 /** The spot of a cart stop: pulled towards the hole line (where balls lie more often than on the cart path). */
