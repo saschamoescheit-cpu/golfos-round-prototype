@@ -103,11 +103,18 @@ const erik = await sim.phone('Erik');
 const E = erik.p;
 await E.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await E.reload();
-// his app, open: the invitation asked at once (as for every invitation) – "Beitreten" opens the pool
-const askE = E.getByRole('dialog').filter({ hasText: /lädt dich/ });
-await askE.waitFor({ timeout: 15000 }).catch(() => {});
-ok(/Sascha lädt dich zu seinen Wetten/.test(await askE.innerText().catch(() => '')), `Erik: "Sascha lädt dich zu seinen Wetten … ein" (${(await askE.innerText().catch(() => '–')).replace(/\s+/g, ' ').slice(0, 80)})`);
-await askE.getByRole('button', { name: 'Beitreten' }).click().catch(() => {});
+// his app, open: the invitation in his inbox – no sheet on the screen (Sascha 13.11.2026: "nur ausschließlich in der Box");
+// a tap on it opens the pool
+await E.locator('.bell-count').first().waitFor({ timeout: 15000 }).catch(() => {});
+ok((await E.getByRole('dialog').filter({ hasText: /lädt dich/ }).count()) === 0, 'Erik: no invitation sheet on the screen');
+await E.locator('.bell-btn').first().click();
+const askE = E.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: /Sascha lädt dich zu Wetten ein/ }).first();
+await askE.waitFor({ timeout: 10000 }).catch(() => {});
+ok((await askE.count()) === 1, `Erik's inbox: "Sascha lädt dich zu Wetten ein" (${(await askE.innerText().catch(() => '–')).replace(/\s+/g, ' ').slice(0, 80)})`);
+await askE.click().catch(() => {});
+await E.waitForTimeout(1500);
+// a sheet to join, if the tap asks
+await E.getByRole('button', { name: 'Beitreten' }).first().click({ timeout: 3000 }).catch(() => {});
 await E.waitForTimeout(3000);
 if (process.env.SHOTS) await E.screenshot({ path: process.env.SHOTS + '/pool-erik.png', fullPage: true });
 ok((await E.getByText('Wer bist du?').count()) === 0 && (await cardOf(E, 'Erik').getByRole('img', { name: /angenommen – auf seinem Handy/ }).count()) === 1, "Erik's phone: Erik, \"du\" – no \"who are you?\"");
