@@ -32,3 +32,20 @@ describe('each round settled on its own', () => {
     expect(roundsSettled([e], '2026-11-10', ['ABC123|2026-11-08'])).toEqual([]);
   });
 });
+
+// audit 13.11.2026: a round whose details are missing ("5?" – putts not in) is not settled as missed, a "höchstens" bet
+// not as made – as the standing (tally) decides it
+describe('details missing: not decided in the round\'s settlement', () => {
+  const most: Wager = { id: 'm', player: 'c', kind: 'putts', target: 30, stake: 20, payout: 'opponent', opponent: 'e', attempts: 'any' } as unknown as Wager;
+  const greens: Wager = { id: 'g', player: 'c', kind: 'greens', target: 8, stake: 20, payout: 'opponent', opponent: 'e', attempts: 'any' } as unknown as Wager;
+  const at = '2026-11-12';
+  const p = (value: number) => ({ best: value, done: false, rounds: 1, at, perRound: [{ day: at, course: 'K', value, counted: true, unknown: true }] });
+  it('greens "5?" (target 8): nothing settled; a "höchstens" bet with 28 putts so far: not made', () => {
+    expect(roundLedger({ ...pool({ g: p(5) }), wagers: [greens] }, at)).toBeNull();
+    expect(roundLedger({ ...pool({ m: p(28) }), wagers: [most] }, at)).toBeNull();
+  });
+  it('the details in: settled', () => {
+    const known = { ...p(9), perRound: [{ day: at, course: 'K', value: 9, counted: true }] };
+    expect(roundLedger({ ...pool({ g: known }), wagers: [greens] }, at)).toEqual({ c: 20, e: -20, s: 0 });
+  });
+});

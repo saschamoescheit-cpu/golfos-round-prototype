@@ -1321,8 +1321,11 @@ export function roundLedger(pool: WagerPool, day: string): Record<string, number
     if (!perRoundBet(w) || !p?.perRound || p.manual || !(w.stake > 0)) continue;
     for (const r of p.perRound) {
       if (r.day !== day || r.value == null || r.open) continue;
+      // details still missing ("5?", putts not in): decided as the standing decides it (tally) – a "höchstens" bet not
+      // made, nothing missed (audit 13.11.2026)
+      const made = reached(w, r.value) && !(r.unknown && lower(w));
+      if (!made && r.unknown) continue;
       any = true;
-      const made = reached(w, r.value);
       if (!made && w.payout === 'success') continue;
       const sign = made ? 1 : -1;
       const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((x) => x.id).filter((id) => id !== w.player);
