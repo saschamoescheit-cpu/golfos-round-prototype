@@ -6,6 +6,7 @@ import { isLeftHanded } from '../lib/profile';
 import { Chips } from './ui';
 import { clubCode, tr } from '../lib/i18n';
 import { FloatActions } from './FloatActions';
+import { ConfirmSheet } from './ConfirmSheet';
 
 // Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), shot type (suggested
 // from lie and distance), club (suggested from the distance), penalty. One tap on a club saves a new
@@ -52,6 +53,8 @@ export function ShotSheet(props: {
   onCancel: () => void;
 }) {
   const [lie, setLie] = useState<Lie>(props.lie);
+  // deleting asks first (Sascha 13.11.2026: the button lay under the floating tick – a tap beside it deleted the shot)
+  const [delAsk, setDelAsk] = useState(false);
   // none / water / out of bounds – an older penalty without a kind shows as water
   const [pk, setPk] = useState<PenaltyKind | 'none'>(props.penalty ? (props.penaltyKind ?? 'water') : 'none');
   const penalty = pk !== 'none';
@@ -229,9 +232,20 @@ export function ShotSheet(props: {
             </div>
           </div>
         )}
+        {delAsk && props.onDelete && (
+          <ConfirmSheet
+            title={tr('Delete this shot?', 'Diesen Schlag löschen?')}
+            confirmLabel={tr('Delete shot', 'Schlag löschen')}
+            onConfirm={() => {
+              setDelAsk(false);
+              props.onDelete?.();
+            }}
+            onClose={() => setDelAsk(false)}
+          />
+        )}
         <div className="sheet-actions">
           {props.onDelete && (
-            <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => setDelAsk(true)}>
               {tr('Delete shot', 'Schlag löschen')}
             </button>
           )}

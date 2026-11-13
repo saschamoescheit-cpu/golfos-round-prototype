@@ -162,6 +162,8 @@ await p.mouse.click(mb.x + mb.width * 0.3, mb.y + mb.height * 0.55);
 await p.waitForTimeout(600);
 ok((await shotsNow()) === n0 + 1, `a tap on the map adds the shot (${n0} → ${await shotsNow()})`);
 ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
+// no "Schlag löschen" in the sheet (Sascha 13.11.2026: it lay under the floating tick) – the bin in the row deletes
+ok((await p.locator('.sheet').getByRole('button', { name: 'Schlag löschen' }).count()) === 0 && (await p.locator('.review-list .row-delete').count()) > 0, 'the shot sheet: no "Schlag löschen" – the bin in its row');
 {
   // the lies: semi rough next to rough (Sascha 18.10.2026), all on the screen
   const lies = await p.locator('.sheet .chips-field').first().locator('button').allInnerTexts();

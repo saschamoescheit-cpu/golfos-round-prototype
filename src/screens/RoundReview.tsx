@@ -1628,10 +1628,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             if (v.penalty && !shots[edit!].missPos) setPlacingMiss(edit);
             setEdit(null);
           }}
-          onDelete={() => {
-            saveDetail(k, { ...d, shots: d.shots.filter((_, n) => n !== edit) });
-            setEdit(null);
-          }}
+          // no "Schlag löschen" in the shot's sheet (Sascha 13.11.2026: it lay under the floating tick – a tap beside the
+          // tick deleted the shot): the shot is deleted by the bin in its row
         />
       )}
     </main>
