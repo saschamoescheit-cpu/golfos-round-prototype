@@ -75,7 +75,7 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
   const latest = useRef({ key, entry: valid ? entryOf(m, fairway) : null });
   latest.current = { key, entry: valid ? entryOf(m, fairway) : null };
   const chain = useRef<Promise<void>>(Promise.resolve());
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const saveNow = async () => {
     const cur = latest.current;
     if (!editing || !cur.entry || saved.current === cur.key) return;
@@ -155,7 +155,7 @@ function SpecialSheet(props: { ev: RoundEvent; code: string; flight: string; pla
         )}
         {editing ? (
           <span className="muted small autosave-note" role="status">
-            {!valid ? tr('Enter a figure – then it is saved.', 'Wert eintragen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+            {!valid ? tr('Enter a figure – then it is saved.', 'Wert eintragen – dann wird gespeichert.') : null}
           </span>
         ) : (
           // a first entry: the round green tick bottom right, above the sheet (Sascha 11.11.2026)

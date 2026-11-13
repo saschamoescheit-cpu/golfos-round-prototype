@@ -358,7 +358,7 @@ const sheet = H.getByRole('dialog', { name: /^Flight \d$/ });
 await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 ok(/12:16/.test(await sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).innerText()) && /Tee 1/.test(await sheet.locator('.settings-row').filter({ hasText: 'Start' }).last().innerText()), 'flight 2 opened: its tee time and its tee');
 // a flight there already: no "Speichern" – changes taken by themselves (Sascha 11.11.2026)
-ok((await sheet.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.getByRole('button', { name: 'Flight anlegen' }).count()) === 0 && /von selbst gespeichert/.test(await sheet.locator('.autosave-note').innerText().catch(() => '')), 'a flight changed: no "Speichern", the quiet line');
+ok((await sheet.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.getByRole('button', { name: 'Flight anlegen' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await sheet.innerText().catch(() => '')), 'a flight changed: no "Speichern", no "gespeichert" line');
 await H.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 // Score-Erfassung (Sascha 03./04.11.2026): "Mit Zähler" the default; "Einer für alle" – who keeps the score chosen there,
 // not in the flights
@@ -564,7 +564,7 @@ await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
 await H.waitForTimeout(800);
 await H.fill('#tour-name', 'USA Tag 1 · Bethpage');
 // changed afterwards: saved by itself a moment later, no save button (Sascha 11.11.2026) – then back to its page
-ok((await H.getByRole('button', { name: 'Speichern' }).count()) === 0 && (await H.locator('.autosave-note').count()) === 1, 'changed: no "Speichern" – "Änderungen werden von selbst gespeichert"');
+ok((await H.getByRole('button', { name: 'Speichern' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await H.locator('main').first().innerText().catch(() => '')), 'changed: no "Speichern", no "gespeichert" line');
 await H.waitForTimeout(2500);
 ok(shared.get(code).game.name === 'USA Tag 1 · Bethpage', 'changed: on the server with the page still open');
 await H.getByRole('button', { name: 'Zurück' }).first().click();

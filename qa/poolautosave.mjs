@@ -53,12 +53,12 @@ const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
 await edit.waitFor();
 ok((await edit.getByRole('button', { name: 'Speichern', exact: true }).count()) === 0, 'no "Speichern" any more');
 ok((await edit.locator('.sheet-head').getByRole('button', { name: 'Schließen' }).count()) === 0 && (await H.locator('.fab-stack.over-sheet').getByRole('button', { name: 'Fertig', exact: true }).count()) === 1, 'saves by itself: no ✕ in its head – the round tick "Fertig" floats bottom right (Sascha 13.11.2026)');
-ok(/von selbst gespeichert/.test(await edit.locator('.autosave-note').innerText()), 'a quiet line: changes are saved by themselves');
+ok(!/gespeichert|Speichert|übernommen/i.test(await edit.innerText().catch(() => '')), 'no "gespeichert" line (13.11.2026)');
 await edit.locator('#pool-edit-name').fill('USA-Wetten Florida');
 await H.waitForTimeout(2500);
 const row = sim.shared.get(code);
 ok(row?.game?.name === 'USA-Wetten Florida', `saved by itself, the sheet still open (${row?.game?.name})`);
-ok(await edit.isVisible() && /Gespeichert/.test(await edit.locator('.autosave-note').innerText()), 'the sheet stays open: "Gespeichert – für alle im Pool"');
+ok(await edit.isVisible() && !/gespeichert|Speichert|übernommen/i.test(await edit.innerText().catch(() => '')), 'the sheet stays open, no "Gespeichert" line');
 // a name emptied: nothing saved, the line says why
 await edit.locator('#pool-edit-name').fill('');
 await H.waitForTimeout(2000);

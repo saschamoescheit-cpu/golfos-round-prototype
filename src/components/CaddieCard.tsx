@@ -266,7 +266,7 @@ export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: Ho
   // Facelift 11.11.2026, r5: a hole without a note gets one with the floating tick; a note there already saves by itself
   // (~900 ms after the last change and when the sheet closes), with the quiet line – the app's rule (docs/DESIGN.md)
   const [existing] = useState(() => hasNote(props.note));
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const saved = useRef(JSON.stringify(props.note));
   const latest = useRef(n);
   latest.current = n;
@@ -307,7 +307,7 @@ export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: Ho
       </p>
       {existing ? (
         <span className="muted small autosave-note" role="status">
-          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for this course', 'Gespeichert – für diesen Platz') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          {null}
         </span>
       ) : (
         <FloatActions

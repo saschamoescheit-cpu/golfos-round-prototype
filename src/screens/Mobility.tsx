@@ -2133,7 +2133,7 @@ function GoalCard() {
   const [focus, setFocus] = useState<Focus[]>(goal?.focus ?? []);
   // the save rule (docs/DESIGN.md, Facelift 11.11.2026, a4): the first goal with the floating tick; a goal there already
   // changed saves by itself a moment after the last change (and when the page closes), with the quiet line
-  const [saving, setSaving] = useState<'' | 'busy' | 'done'>('');
+  const [, setSaving] = useState<'' | 'busy' | 'done'>('');
   const pending = useRef<MobilityGoal | null>(null);
   const timer = useRef(0);
   useEffect(
@@ -2198,7 +2198,7 @@ function GoalCard() {
       </div>
       {goal ? (
         <span className="muted small autosave-note" role="status">
-          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          {null}
         </span>
       ) : (
         hcp != null && <FloatActions save={{ label: tr('Save the goal', 'Ziel speichern'), onClick: create }} />

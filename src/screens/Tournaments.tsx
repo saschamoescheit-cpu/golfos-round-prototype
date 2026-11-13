@@ -449,7 +449,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
   const latest = useRef({ typed, out, fill: filledOut, key });
   latest.current = { typed, out, fill: filledOut, key };
   const chain = useRef<Promise<void>>(Promise.resolve());
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const saveNow = async () => {
     const cur = latest.current;
     if (saved.current === cur.key) return;
@@ -561,7 +561,7 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
           </span>
         )}
         <span className="muted small autosave-note" role="status">
-          {saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          {null}
         </span>
         <DoneFab onClick={close} />
       </section>
@@ -789,7 +789,7 @@ export function keptRounds(code: string, today: string = dayOf(new Date())): Rou
 function RenameSeriesSheet(props: { code: string; name: string; onMsg: (m: string | null) => void; onClose: () => void }) {
   const [name, setName] = useState(props.name);
   const saved = useRef(props.name.trim());
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const flush = async () => {
     const n = name.trim();
     if (!n || saved.current === n) return;
@@ -819,7 +819,7 @@ function RenameSeriesSheet(props: { code: string; name: string; onMsg: (m: strin
           <input id="series-rename" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <span className="muted small autosave-note" role="status">
-          {!name.trim() ? tr('The series needs a name – then it is saved.', 'Die Serie braucht einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone', 'Gespeichert – für alle') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          {!name.trim() ? tr('The series needs a name – then it is saved.', 'Die Serie braucht einen Namen – dann wird gespeichert.') : null}
         </span>
         <DoneFab onClick={close} />
       </section>

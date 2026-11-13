@@ -31,8 +31,7 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
   - *Something new* (Pool anlegen, Turnier anlegen, Wette anlegen, Flight anlegen, Plan speichern): the round green tick
     bottom right – `<FloatActions save={{ label, onClick, disabled }} />`; opened from a sheet with `overSheet`.
   - *Something there already, changed*: no save button – saved by itself a moment (~900 ms) after the last change and
-    when the sheet or page closes, with a quiet line `.autosave-note` ("Änderungen werden von selbst gespeichert" /
-    "Speichert …" / "Gespeichert"). Pattern: `PoolEditSheet` / `WagerSheet` (screens/Wagers.tsx). A page edited in place
+    when the sheet or page closes, without any "gespeichert" line (Sascha 13.11.2026: "Die Hinweistexte für gespeichert können auch weg"); `.autosave-note` only says what is missing ("Es fehlt noch etwas – dann wird gespeichert."). Pattern: `PoolEditSheet` / `WagerSheet` (screens/Wagers.tsx). A page edited in place
     whose changes are kept at once (the bag) ends its editing with the floating tick "Fertig".
 - **The other actions of a screen – one action bar** (Sascha 03.11.2026: "three buttons side by side with icons in one
   menu, three text-only buttons one under the other elsewhere – that cannot be"): `.sc-actions` with `.sc-action`

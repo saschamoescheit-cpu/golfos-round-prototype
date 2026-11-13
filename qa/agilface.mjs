@@ -185,14 +185,14 @@ await fab.click();
 await p.waitForTimeout(300);
 const stored1 = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.goal.v1') ?? '[]')[0]);
 ok(stored1?.hcp === 10, `saved with the tick (${JSON.stringify(stored1)})`);
-ok((await p.locator('.fab-save').count()) === 0 && (await p.locator('.mob-goal .autosave-note').count()) === 1, 'saved: no tick any more, the quiet autosave line');
+ok((await p.locator('.fab-save').count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await p.locator('.mob-goal').innerText().catch(() => '')), 'saved: no tick any more, no "gespeichert" line (13.11.2026)');
 await p.locator('.mob-goal .settings-row').filter({ hasText: 'Ziel-Handicap' }).click();
 await p.getByRole('dialog').locator('.pick-option').filter({ hasText: /^15/ }).click();
 await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
 await p.waitForTimeout(1500);
 const stored2 = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.goal.v1') ?? '[]')[0]);
 ok(stored2?.hcp === 15 && stored2.focus.includes('length') && (await p.locator('.fab-save').count()) === 0, `changed: saved by itself, no button (${JSON.stringify(stored2)})`);
-ok(/Gespeichert/.test(await p.locator('.mob-goal .autosave-note').innerText()), 'the line says "Gespeichert"');
+ok(!/gespeichert|Speichert|übernommen/i.test(await p.locator('.mob-goal').innerText().catch(() => '')), 'no "Gespeichert" line');
 await shot('goal-autosave');
 // the next view with ›
 await p.locator('main .step-pick').getByRole('button', { name: 'Nächste' }).click();

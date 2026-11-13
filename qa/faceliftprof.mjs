@@ -52,12 +52,12 @@ const diff0 = (await hcp.locator('.played-hcp .num').innerText()).trim();
 await shot('r12-row');
 await line.click();
 await p.waitForTimeout(300);
-ok((await hcp.locator('#setup-cr').count()) === 1 && /von selbst gespeichert/.test(await hcp.locator('.autosave-note').innerText()), 'a tap opens course rating and slope – "Änderungen werden von selbst gespeichert"');
+ok((await hcp.locator('#setup-cr').count()) === 1 && !/gespeichert|Speichert|übernommen/i.test(await hcp.innerText().catch(() => '')), 'a tap opens course rating and slope – no "gespeichert" line (13.11.2026)');
 await hcp.locator('#setup-slope').fill('113');
 await p.waitForTimeout(1500);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => r.id === 'r1')?.rating);
 ok(stored?.slope === 113 && stored?.cr === 72.2, `saved by itself a moment after the last digit (${JSON.stringify(stored)})`);
-ok(/Gespeichert/.test(await hcp.locator('.autosave-note').innerText()), 'the quiet line: "Gespeichert"');
+ok(!/gespeichert|Speichert|übernommen/i.test(await hcp.innerText().catch(() => '')), 'saved without a "Gespeichert" line');
 await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // saves by itself: "Fertig" floats bottom right (13.11.2026)
 await p.waitForTimeout(300);
 const diff1 = (await hcp.locator('.played-hcp .num').innerText()).trim();

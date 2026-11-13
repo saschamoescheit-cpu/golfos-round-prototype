@@ -59,7 +59,7 @@ await fill(5); // Cedric +5
 ok(/Sascha · 9\/9/.test(await sheet.innerText()) && /Cedric · 9\/9/.test(await sheet.innerText()), 'each player\'s holes counted on his chip');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tourscores-sheet.png' });
 // saved by themselves (Sascha 11.11.2026): no "Scores speichern" – on the server a moment later with the sheet open
-ok((await sheet.getByRole('button', { name: 'Scores speichern' }).count()) === 0 && /von selbst gespeichert|Gespeichert|Speichert/.test(await sheet.locator('.autosave-note').innerText()), 'no "Scores speichern" – a quiet line instead');
+ok((await sheet.getByRole('button', { name: 'Scores speichern' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await sheet.innerText().catch(() => '')), 'no "Scores speichern", no "gespeichert" line (13.11.2026)');
 await H.waitForTimeout(2500);
 {
   const r0 = [...sim.shared.values()].find((r) => r.event_code === code && r.game.flight.players.some((p) => p.name === 'Cedric'));

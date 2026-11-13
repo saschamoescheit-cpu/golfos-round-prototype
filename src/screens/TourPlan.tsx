@@ -608,7 +608,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const chain = useRef<Promise<void>>(Promise.resolve()); // one save at a time, in order
   const left = useRef(false);
   const picking = useRef(false);
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const saveNow = async () => {
     const { d: cur, ready: ok } = latest.current;
     const k = draftKey(cur);
@@ -680,15 +680,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <RoundFlights d={d} k={k} label={label} onChange={(r) => setRound(k, r)} problems={problems(d.rounds[k])} />
         {/* no "Fertig" (Facelift 11.11.2026, t4): every change is kept at once – a tournament there already saves it by
             itself, a new one keeps it for "Turnier anlegen"; back with ‹ */}
-        <span className="muted small autosave-note" role="status">
-          {!changing
-            ? tr('Changes are kept', 'Änderungen werden übernommen')
-            : saving === 'busy'
-              ? tr('Saving …', 'Speichert …')
-              : saving === 'done'
-                ? tr('Saved – for everyone', 'Gespeichert – für alle')
-                : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
-        </span>
       </main>
     );
   }
@@ -906,11 +897,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <span className="muted small autosave-note" role="status">
           {!ready
             ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.')
-            : saving === 'busy'
-              ? tr('Saving …', 'Speichert …')
-              : saving === 'done'
-                ? tr('Saved – for everyone', 'Gespeichert – für alle')
-                : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+            : null}
         </span>
       ) : (
         <FloatActions save={{ label: tr('Set up the tournament', 'Turnier anlegen'), onClick: () => void save(), disabled: !ready || busy }} />
@@ -1537,7 +1524,7 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
   const there = !!props.onRemove;
   const key = JSON.stringify([time, start, ids]);
   const saved = useRef(key);
-  const [done, setDone] = useState(false);
+  const [, setDone] = useState(false);
   const flush = () => {
     if (!there || !ids.length || saved.current === key) return;
     saved.current = key;
@@ -1600,7 +1587,7 @@ function FlightSheet(props: { n: number; slot: Slot; chosen: string[]; offered: 
         {there ? (
           <span className="muted small autosave-note" role="status">
             <DoneFab onClick={close} />
-            {!ids.length ? tr('A flight needs a player – then it is saved.', 'Ein Flight braucht einen Spieler – dann wird gespeichert.') : done ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+            {!ids.length ? tr('A flight needs a player – then it is saved.', 'Ein Flight braucht einen Spieler – dann wird gespeichert.') : null}
           </span>
         ) : (
           <FloatActions overSheet save={{ label: tr('Create flight', 'Flight anlegen'), disabled: !ids.length, onClick: () => props.onSave(time, start, ids) }} />

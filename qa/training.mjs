@@ -344,7 +344,7 @@ await p.waitForTimeout(200);
 // changed afterwards: saved by itself, no "Plan speichern" (Sascha 11.11.2026)
 await p.locator('.fab-pen').click();
 await p.waitForTimeout(200);
-ok((await p.getByRole('button', { name: 'Plan speichern' }).count()) === 0 && /von selbst gespeichert/.test(await p.locator('.autosave-note').innerText()), 'own plan changed: no "Plan speichern" – "Änderungen werden von selbst gespeichert"');
+ok((await p.getByRole('button', { name: 'Plan speichern' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await p.locator('.autosave-note').innerText().catch(() => '')), 'own plan changed: no "Plan speichern", no "gespeichert" line');
 await p.fill('#tr-plan-name', 'Mein Plan B');
 await back();
 await p.waitForTimeout(200);

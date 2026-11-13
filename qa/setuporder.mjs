@@ -256,7 +256,7 @@ ok((await P.getByRole('group', { name: 'Die Runden' }).locator('.settings-row').
 // t4: a round's page – no "Fertig", the quiet line, back with ‹
 await P.getByRole('group', { name: 'Die Runden' }).locator('.settings-row').nth(1).click();
 await P.waitForTimeout(300);
-ok((await P.locator('.topbar h1').innerText()).includes('Runde 2') && (await P.getByRole('button', { name: 'Fertig' }).count()) === 0 && /Änderungen werden übernommen/.test(await P.locator('.autosave-note').innerText()), 't4: "Runde 2" – no "Fertig", "Änderungen werden übernommen"');
+ok((await P.locator('.topbar h1').innerText()).includes('Runde 2') && (await P.getByRole('button', { name: 'Fertig' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await P.locator('main').first().innerText().catch(() => '')), 't4: "Runde 2" – no "Fertig", no "übernommen" line (13.11.2026)');
 await shot('round2');
 await P.locator('.topbar .icon-btn').first().click();
 ok((await P.locator('#tour-name').inputValue()) === 'Facelift-Cup', 't4: back with ‹ – the tournament');

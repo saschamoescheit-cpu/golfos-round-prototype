@@ -2179,7 +2179,7 @@ export function WagerSheet(props: {
   // having to press Speichern") – a moment after the last change and when the sheet closes; a new bet: "Wette anlegen"
   const key = JSON.stringify(w);
   const saved = useRef(key);
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const flush = async () => {
     if (!props.wager || !ok || saved.current === key) return;
     saved.current = key;
@@ -2276,7 +2276,7 @@ export function WagerSheet(props: {
         {props.wager ? (
           <span className="muted small autosave-note" role="status">
             {!asking && <DoneFab onClick={close} />}
-            {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+            {!ok ? tr('Something is missing – then it is saved.', 'Es fehlt noch etwas – dann wird gespeichert.') : null}
           </span>
         ) : (
           // a new bet: the round green tick bottom right, above the sheet (Sascha 11.11.2026)
@@ -2657,7 +2657,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
   const patch: PoolPatch = { name: name.trim(), from, to, prize, rounds, skip, counted, oneScorer: poolEntry === 'one', settle, removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) };
   const key = JSON.stringify(patch);
   const saved = useRef(key); // as it opened: nothing to save
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
   const flush = async () => {
     if (!ok || saved.current === key) return;
     saved.current = key;
@@ -2735,7 +2735,7 @@ function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: Poo
             )}
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
             <span className="muted small autosave-note" role="status">
-              {!ok ? tr('Name and every player need a name – then it is saved.', 'Name und jeder Spieler brauchen einen Namen – dann wird gespeichert.') : saving === 'busy' ? tr('Saving …', 'Speichert …') : saving === 'done' ? tr('Saved – for everyone in the pool', 'Gespeichert – für alle im Pool') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+              {!ok ? tr('Name and every player need a name – then it is saved.', 'Name und jeder Spieler brauchen einen Namen – dann wird gespeichert.') : null}
             </span>
           </>
         {/* the one confirmation of the app (Sascha 11.11.2026, Facelift-Abnahme W9): head with ✕, red-outlined, "Zurück" */}

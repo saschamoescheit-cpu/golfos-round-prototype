@@ -2078,7 +2078,7 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
           (Sascha 11.11.2026: "wenn nachträglich was bearbeitet wird, … brauchen keine Speicherbuttons mehr") */}
       {existing ? (
         <span className="muted small autosave-note" role="status">
-          {!ok ? tr('A name and a drill – then it is saved.', 'Ein Name und eine Übung – dann wird gespeichert.') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+          {!ok ? tr('A name and a drill – then it is saved.', 'Ein Name und eine Übung – dann wird gespeichert.') : null}
         </span>
       ) : (
         <FloatActions

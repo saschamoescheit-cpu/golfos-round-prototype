@@ -804,7 +804,7 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
   // automatische Speicherung") – a moment after the last digit, and when the form closes
   const key = `${crNum}/${slopeNum}`;
   const saved = useRef('');
-  const [done, setDone] = useState(false);
+  const [, setDone] = useState(false);
   const flush = () => {
     if (!edit || !valid || saved.current === key) return;
     saved.current = key;
@@ -867,7 +867,7 @@ export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onS
         <input id="setup-slope" className="input" inputMode="numeric" placeholder="130" value={slopeIn} onChange={(e) => setSlopeIn(e.target.value)} />
       </div>
       <span className="muted small autosave-note" role="status">
-        {!valid ? tr('Course rating 50–85 and slope 55–155 – then it is saved.', 'Course Rating 50–85 und Slope 55–155 – dann wird gespeichert.') : done ? tr('Saved', 'Gespeichert') : tr('Changes are saved by themselves', 'Änderungen werden von selbst gespeichert')}
+        {!valid ? tr('Course rating 50–85 and slope 55–155 – then it is saved.', 'Course Rating 50–85 und Slope 55–155 – dann wird gespeichert.') : null}
       </span>
     </div>
   );

@@ -76,14 +76,14 @@ await p.waitForTimeout(400);
 // a note there already: no save button – it saves by itself (Facelift 11.11.2026, r5); the choices as tick rows
 const notesSheet = p.getByRole('dialog', { name: /was der Caddie wissen soll/ });
 ok((await notesSheet.locator('.tick-row').count()) === 3 && (await notesSheet.getByRole('checkbox', { name: /Aus links/ }).getAttribute('aria-checked')) === 'true', 'the hole note: three tick rows, "Aus links" ticked');
-ok((await p.getByRole('button', { name: 'Für diesen Platz speichern' }).count()) === 0 && /von selbst gespeichert/.test(await notesSheet.locator('.autosave-note').innerText()), 'a note there already: no save button, "Änderungen werden von selbst gespeichert"');
+ok((await p.getByRole('button', { name: 'Für diesen Platz speichern' }).count()) === 0 && !/gespeichert|Speichert|übernommen/i.test(await notesSheet.innerText().catch(() => '')), 'a note there already: no save button, no "gespeichert" line');
 await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
 // saved about a second after the last change – waited for, the phone under test may be slow
-await p.waitForFunction(() => /Gespeichert/.test(document.querySelector('.autosave-note')?.textContent ?? ''), null, { timeout: 8000 }).catch(() => {});
+await p.waitForFunction(() => Object.entries(localStorage).some(([k, v]) => /note/i.test(k) && /Blinder Abschlag/.test(v)), null, { timeout: 8000 }).catch(() => {});
 {
-  const status = await notesSheet.locator('.autosave-note').innerText().catch(() => '–');
+  const status = await notesSheet.innerText().catch(() => '–');
   const kept = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
-  ok(/Gespeichert/.test(status) && /Blinder Abschlag/.test(kept), `saved a moment after typing, the sheet still open ("${status.trim()}")`);
+  ok(!/gespeichert/i.test(status) && /Blinder Abschlag/.test(kept) && (await notesSheet.isVisible()), 'saved a moment after typing, the sheet still open, no "Gespeichert" line');
 }
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/caddie-notes-sheet.png` });
 await p.getByRole('button', { name: 'Fertig', exact: true }).click(); // a note there: saves by itself, "Fertig" (13.11.2026)
