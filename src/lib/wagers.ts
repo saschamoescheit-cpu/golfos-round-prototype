@@ -979,7 +979,10 @@ export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | '
   // (Sascha 10.11.2026)
   const keeper = w.scorer === 'by' ? w.player : null;
   const rank = (c: DuelCard) => (keeper && c.rec === keeper ? 0 : !c.by && !c.rec ? 1 : 2);
-  const ordered = (cs: DuelCard[]) => [...cs].sort((a, b) => rank(a) - rank(b));
+  // a full card before one kept for only some holes (audit 13.11.2026: Chris kept Moritz's 8 holes, Moritz's own card had
+  // all 18 – the duel was not judged); among cards alike the keeper's first
+  const full = (c: DuelCard) => (c.strokes.filter((x) => x != null).length >= 18 ? 0 : 1);
+  const ordered = (cs: DuelCard[]) => [...cs].sort((a, b) => full(a) - full(b) || rank(a) - rank(b));
   // the round it is played in: the tournament's (by its code – a card from before without one by its course)
   const inRound = (c: DuelCard) => !w.on || c.tour === w.on.code || (!c.tour && c.course === w.on.course);
   const mine = ordered(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day) && inRound(c) && !c.rec);

@@ -17,6 +17,15 @@ describe('5+5+10: who keeps the score', () => {
     expect(judgeDuelCards(duel({ scorer: 'by' }), pool(cards)).amount).toBe(20); // Chris wins all three
     expect(judgeDuelCards(duel({ scorer: 'own' }), pool(cards)).amount).toBe(0); // each his own: level
   });
+  it('the keeper kept only 8 holes, the opponent\'s own card has all 18: his own card counts (audit 13.11.2026, Chris vs Moritz)', () => {
+    const eight = card(5, { rec: 'c', strokes: [...Array(8).fill(5), ...Array(10).fill(null)] });
+    const cards = { c: [card(4)], e: [eight, card(5)] };
+    const p = judgeDuelCards(duel({ scorer: 'by' }), pool(cards));
+    expect(p.amount).toBe(20); // Chris 72 against 90: all three parts
+    // both still running (the round on): the keeper's figures first, as before
+    const run = { c: [card(4, { strokes: [...Array(8).fill(4), ...Array(10).fill(null)] })], e: [card(4, { strokes: [...Array(8).fill(4), ...Array(10).fill(null)] }), eight] };
+    expect(judgeDuelCards(duel({ scorer: 'by' }), pool(run)).duels?.[0]?.thru ?? 8).toBe(8);
+  });
   it('the opponent not in the challenger\'s round: his own card', () => {
     expect(judgeDuelCards(duel({ scorer: 'by' }), pool({ c: [card(4)], e: [card(5)] })).amount).toBe(20);
   });
