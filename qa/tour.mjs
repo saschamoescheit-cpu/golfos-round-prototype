@@ -70,7 +70,7 @@ await shot('rounds-review');
 await p.getByRole('button', { name: /Putts auf dem Grün/ }).first().click().catch(() => {});
 await shot('rounds-review-putts', false);
 await p.keyboard.press('Escape');
-await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click().catch(() => {});
+await p.locator('.putt-editor').getByRole('button', { name: 'Schließen' }).click().catch(() => {});
 await p.locator('.review-list li button').first().click().catch(() => {});
 await shot('rounds-review-shot-sheet', false);
 await toModule('rounds');

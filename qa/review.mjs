@@ -122,7 +122,7 @@ ok(/1: [0-9,]+ m · 2: [0-9,]+ (m|cm)/.test(labels), 'hole 1: the putt lengths i
 await p.getByRole('button', { name: 'Putts auf dem Grün bearbeiten' }).click();
 await p.waitForTimeout(500);
 ok((await p.locator('.putt-editor .putt-ball').count()) === 2, 'the putt editor opens with the two placed balls');
-await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click();
+await p.locator('.putt-editor').getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(300);
 // a shot dragged out of bounds (Sascha 16.10.2026, 6C): penalty stroke and a new shot from the same spot
 const before1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots.length);
