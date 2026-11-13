@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { courseHandicap, handicapIndex, parseIndex, playedHandicap, scoreDifferential } from './handicap';
+import { courseHandicap, handicapIndex, parseIndex, playedHandicap, playingHandicapFor, ratingFor, scoreDifferential } from './handicap';
 import { emptyEntry } from './scoring';
 import type { Round, RoundHole } from '../types';
 
@@ -72,5 +72,33 @@ describe('course handicap (playing handicap from the index)', () => {
     expect(parseIndex('+1,2')).toBe(-1.2);
     expect(parseIndex('')).toBeNull();
     expect(parseIndex('abc')).toBeNull();
+  });
+});
+
+// Sascha 13.11.2026: "every course must always have slope and course rating" – the women's values bundled too
+describe('course rating of a tee: men and women apart (13.11.2026)', () => {
+  const loops = (...l: string[]) => l.flatMap((x) => Array.from({ length: 9 }, () => ({ loop: x })));
+  it('a man: the bundled men\'s values as before – per 18-hole combination, 9 holes of a loop the first with it', () => {
+    expect(ratingFor('osm:relation/1326323', 'Yellow', loops('A', 'B'))).toEqual({ cr: 71.6, slope: 130, par: 71 });
+    expect(ratingFor('osm:relation/1326323', 'Yellow', loops('C'))).toEqual({ cr: 72.6, slope: 132, par: 72 }); // A+C
+    expect(ratingFor('osm:way/28625559', 'Red', loops('Main', 'Main'))).toEqual({ cr: 67.7, slope: 123 });
+  });
+  it('a woman: her own bundled values, the same way – Hetzenhof with the ladies\' par', () => {
+    expect(ratingFor('osm:relation/1326323', 'Red', loops('A', 'B'), true)).toEqual({ cr: 71.3, slope: 126, par: 71 });
+    expect(ratingFor('osm:relation/1326323', 'Red', loops('B'), true)).toEqual({ cr: 71.3, slope: 126, par: 71 }); // A+B
+    expect(ratingFor('osm:relation/1326323', 'Yellow', loops('A', 'C'), true)).toEqual({ cr: 79.1, slope: 139, par: 76 });
+    expect(ratingFor('osm:way/28625559', 'Red', loops('Main', 'Main'), true)).toEqual({ cr: 72.6, slope: 131 });
+    expect(ratingFor('osm:relation/4039062', 'Green', loops('Main', 'Main'), true)).toEqual({ cr: 68.6, slope: 117 });
+    // also under the course's OpenGolfAPI id
+    expect(ratingFor('oga:06d2d455-f1f5-49a8-842f-ab79e127942d', 'White', loops('Main', 'Main'), true)).toEqual({ cr: 74.5, slope: 129 });
+  });
+  it('a woman on a tee not rated for women: never the men\'s value', () => {
+    expect(ratingFor('osm:way/28625559', 'White', loops('Main', 'Main'), true)).toBeNull(); // Son Antem West: women from blue
+    expect(ratingFor('osm:relation/1326323', 'White', loops('A', 'B'), true)).toBeNull();
+  });
+  it('her playing handicap from her values: index 20 on Son Antem West red = 20 × 131 / 113 + (72.6 − 72) = 24', () => {
+    const holes = Array.from({ length: 18 }, () => ({ loop: 'Main', par: 4 }));
+    expect(playingHandicapFor('osm:way/28625559', holes, 'Red', '20', true)).toBe(24);
+    expect(playingHandicapFor('osm:way/28625559', holes, 'Red', '20', false)).toBe(17); // 20 × 123 / 113 − 4.3
   });
 });

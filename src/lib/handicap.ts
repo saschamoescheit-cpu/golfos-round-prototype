@@ -1,5 +1,5 @@
 import type { Round } from '../types';
-import { RATINGS, type TeeRating } from '../data/ratings';
+import { LADY_RATINGS, RATINGS, type TeeRating } from '../data/ratings';
 import { grossForHole, handicapStrokes, netDoubleBogey } from './scoring';
 import { isTeamRound } from './games';
 import { isLady } from './profile';
@@ -33,17 +33,21 @@ export function ratingFor(courseId: string, tee: string, holes: { loop: string }
   // a value entered before a tee could be chosen ("–") counts until there is one for this tee (22.10.2026)
   const own = ownRatings()[`${courseId}|${tee}|${key}`] ?? ownRatings()[`${courseId}|–|${key}`];
   if (own) return own;
-  // the bundled values are the men's: a lady's course rating from the same tee is higher (Hetzenhof red ~66 men, ~71
-  // ladies) – no wrong playing handicap, she enters hers from the scorecard (Sascha 22.10.2026); or another lady did
-  if (lady) return sharedRating(courseId, tee, key, true);
-  const all = RATINGS[courseId] ?? {};
+  // a lady's course rating from the same tee is higher than a man's (Hetzenhof red 66.2 men, 71.3 ladies): her own
+  // bundled values (13.11.2026), never the men's. Nothing bundled: what other players of the same sex entered for this
+  // course, loops and tee (night run 22./23.10.2026), else none – she enters hers from the scorecard (Sascha 22.10.2026)
+  return bundled((lady ? LADY_RATINGS : RATINGS)[courseId], tee, key) ?? sharedRating(courseId, tee, key, lady);
+}
+
+/** A bundled rating: for the 18-hole combination of loops, 9 holes of a loop the first combination with it, else the tee's. */
+function bundled(all: Record<string, TeeRating> | undefined, tee: string, key: string): TeeRating | null {
+  if (!all) return null;
   if (all[`${tee}@${key}`]) return all[`${tee}@${key}`];
   if (key.length === 1) {
     const combo = Object.keys(all).filter((k) => k.startsWith(`${tee}@`) && k.slice(tee.length + 1).includes(key)).sort()[0];
     if (combo) return all[combo];
   }
-  // nothing bundled: what other players entered for this course, loops and tee (night run 22./23.10.2026)
-  return all[tee] ?? sharedRating(courseId, tee, key, false);
+  return all[tee] ?? null;
 }
 
 /** The player's own course rating and slope for this tee and these holes – kept for the next round. */

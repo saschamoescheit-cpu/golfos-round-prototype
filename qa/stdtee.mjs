@@ -101,7 +101,9 @@ await p.goto(url);
 await p.waitForTimeout(1200);
 await setup('Hetzenhof');
 ok(/Rot/.test(await myTee()), `a lady starts from red (${await myTee()})`);
-ok(/eintragen/.test(await ratingLine()), `no men's course rating for a lady – her own to enter (${await ratingLine()})`);
+// her own, the women's value from red (Hetzenhof A+B: 71,3 / 126 – 13.11.2026, "Slope und Course Rating für alle"),
+// never the men's (66-ish)
+ok(/71,3/.test(await ratingLine()) && /126/.test(await ratingLine()), `a lady: the women's course rating from red, not the men's (${await ratingLine()})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
