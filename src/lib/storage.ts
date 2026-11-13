@@ -154,14 +154,34 @@ export function removeHoleLine(courseId: string, loop: string, number: number): 
   delete all[`${loop}#${number}`];
   if (write(LINES + courseId, all)) linesKept.delete(courseId);
   else linesKept.set(courseId, all);
+  refuseFlightLines(courseId, [`${loop}#${number}`]);
+}
+
+// The lines the event's other phones set up (lib/courselines keeps them) – over the course map (Sascha 11.11.2026: a hole
+// marked anew "goes to everyone on the course"); "Platzkarte verwenden" refuses the very line taken, a newer one comes
+// through again (gate 13.11.2026, sharelines)
+const FLIGHT_LINES = 'golfos.flightlines.v1.';
+const REFUSED = 'golfos.flightrefused.v1.';
+/** The flight's lines of a course not refused by the player: "loop#number" → tee … green. */
+export function flightLines(courseId: string): Record<string, LngLat[]> {
+  const lines = read<Record<string, LngLat[]>>(FLIGHT_LINES + courseId, {});
+  const refused = read<Record<string, string>>(REFUSED + courseId, {});
+  return Object.fromEntries(Object.entries(lines).filter(([k, l]) => refused[k] !== JSON.stringify(l)));
+}
+function refuseFlightLines(courseId: string, keys: string[] | null): void {
+  const lines = read<Record<string, LngLat[]>>(FLIGHT_LINES + courseId, {});
+  const refused = { ...read<Record<string, string>>(REFUSED + courseId, {}) };
+  for (const k of keys ?? Object.keys(lines)) if (lines[k]) refused[k] = JSON.stringify(lines[k]);
+  write(REFUSED + courseId, refused);
 }
 /** All the player's own markings of a course taken away, asked for by him: the course map (or the others' lines) again. */
 export function removeAllHoleLines(courseId: string): void {
   if (write(LINES + courseId, {})) linesKept.delete(courseId);
   else linesKept.set(courseId, {});
+  refuseFlightLines(courseId, null);
 }
-/** Has the player marked this hole himself? */
-export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean => !!loadHoleLines(courseId)[`${loop}#${number}`];
+/** Is a marking over the course map – the player's own, or one of his flight's he has not refused ("Platzkarte")? */
+export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean => !!loadHoleLines(courseId)[`${loop}#${number}`] || !!flightLines(courseId)[`${loop}#${number}`];
 
 function holeLabel(loop: string, number: number): string {
   if (loop === 'Main') return String(number);
@@ -202,7 +222,7 @@ export function loadGeometry(courseId: string): CourseGeometry {
   }
   // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
   // …and the lines the event's other phones set up (kept apart from the own since 11.11.2026), the server's latest over them
-  const community = { ...read<Record<string, LngLat[]>>('golfos.flightlines.v1.' + courseId, {}), ...read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {}) };
+  const community = read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {});
   if (Object.keys(community).length) {
     const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
     const add = Object.entries(community)
@@ -212,6 +232,17 @@ export function loadGeometry(courseId: string): CourseGeometry {
       })
       .filter((h) => !have.has(h.ref));
     if (add.length) base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
+  }
+  // the flight's lines over the map (a hole marked anew comes through), the player's own over them
+  const flight = flightLines(courseId);
+  if (Object.keys(flight).length) {
+    const add = Object.entries(flight).map(([key, line]) => {
+      const [loop, num] = key.split('#');
+      const ref = holeLabel(loop, Number(num));
+      // the map's par and stroke index kept – only the line is the flight's
+      return { ...(base.holes.find((h) => h.ref === ref) ?? {}), ref, line };
+    });
+    base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
   }
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
