@@ -108,3 +108,14 @@ describe('a score over N rounds with a hole picked up', () => {
     expect(sumSoFar(w, p)?.played).toBe(2);
   });
 });
+
+// audit 13.11.2026: Chris' greens on 07.11. – no putts at all, nothing counted: "?" (details missing), not "–"
+describe('a value not counted for missing details', () => {
+  it('"?" for a count with no value and the details missing; "–"/"0" otherwise', async () => {
+    const { valueOf } = await import('../screens/Wagers');
+    const greens = { id: 'g', player: 'c', kind: 'greens', target: 8, stake: 20, payout: 'success', attempts: 'any' } as unknown as Parameters<typeof valueOf>[0];
+    expect(valueOf(greens, null, true)).toBe('?');
+    expect(valueOf(greens, null)).toBe('0');
+    expect(valueOf(greens, 5, true)).toBe('5?');
+  });
+});

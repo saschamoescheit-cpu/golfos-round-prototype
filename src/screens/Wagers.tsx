@@ -1268,7 +1268,8 @@ export const targetOf = (w: Wager): string => figuresOf(w, null).split('/')[0];
  *  not played yet stays a dash (its 0 would read as par). */
 export function valueOf(w: Wager, n: number | null, unknown = false): string {
   const shape = shapeOf(w.kind);
-  if (n == null) return unknown || shape === 'score' || shape === 'sum' ? '–' : '0';
+  // nothing counted yet, the details missing (no putts at all – audit 13.11.2026, Chris' greens 07.11.): "?", not a dash
+  if (n == null) return unknown ? '?' : shape === 'score' || shape === 'sum' ? '–' : '0';
   // counted so far, holes still without putts: "5?" – not decided (Sascha 12.11.2026)
   if (unknown) return `${n}?`;
   return shape === 'score' || shape === 'sum' ? figuresOf(w, n).split('/')[1] : String(n);
