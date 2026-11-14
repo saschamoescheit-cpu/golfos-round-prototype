@@ -15,27 +15,27 @@ export interface HelpVideo {
 }
 
 export const HELP_VIDEOS: HelpVideo[] = [
-  { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, your tee, playing handicap, birdie book', 'Platz, Schleifen, dein Tee, Vorgabe, Birdiebook'), length: '0:53' },
-  { id: 'flight', title: () => tr('Flight & format', 'Flight & Spielform'), about: () => tr('Players, their tees, kind of round, mode, scoring', 'Spieler, ihre Tees, Rundenart, Modus, Scoring'), length: '1:19' },
-  { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:51' },
-  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:38' },
-  { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:33' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:04' },
-  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:50' },
-  { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:46' },
+  { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, your tee, playing handicap, birdie book', 'Platz, Schleifen, dein Tee, Vorgabe, Birdiebook'), length: '0:59' },
+  { id: 'flight', title: () => tr('Flight & format', 'Flight & Spielform'), about: () => tr('Players, their tees, kind of round, mode, scoring', 'Spieler, ihre Tees, Rundenart, Modus, Scoring'), length: '1:26' },
+  { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:56' },
+  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:45' },
+  { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:36' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:08' },
+  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:54' },
+  { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:49' },
   // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
-  { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:06' },
+  { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:10' },
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
-  { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:23' },
+  { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:27' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '2:04' },
-  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '2:01' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '2:12' },
+  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '2:08' },
   // the balance and a tournament over several rounds (Sascha 04.11.2026)
   { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '0:34' },
   { id: 'tourrounds', title: () => tr('A tournament over several rounds', 'Turnier über mehrere Runden'), about: () => tr('Rounds, cut, the final dealt by result, the scorecards in the leaderboard', 'Runden, Cut, Finalrunde nach Ergebnis, Scorekarten im Leaderboard'), length: '0:58' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:55' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '7:34' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
@@ -387,10 +387,30 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
         a: () =>
           tr(
-            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee. Your partners keep theirs. In a tournament the tee stays as planned.',
-            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag. Deine Mitspieler behalten ihren. Im Turnier bleibt der Abschlag wie geplant.',
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier bleibt der Abschlag wie geplant.',
           ),
         video: 'map',
+      },
+      {
+        // Sascha 14.11.2026: a chip-in – 0 putts is holed, no button of its own
+        q: () => tr('How do I enter a chip-in?', 'Wie trage ich ein Chip-in ein?'),
+        a: () =>
+          tr(
+            'Enter 0 putts – that is holed out from off the green. In "Check shots" the putt row then says "Holed – chip-in" and the last shot stands green as "holed". On the course: tap the shot → "Holed it! (chip-in)".',
+            'Trag 0 Putts ein – das heißt: von außerhalb des Grüns eingelocht. In „Schläge prüfen“ steht dann „Eingelocht – Chip-in“, der letzte Schlag steht grün als „eingelocht“. Auf dem Platz: den Schlag antippen → „Eingelocht! (Chip-in)“.',
+          ),
+        video: 'review',
+      },
+      {
+        // Sascha 14.11.2026 (design E + A): handing in the card per player, a tab per player
+        q: () => tr('How do we hand in the scorecards in a tournament?', 'Wie geben wir die Scorekarten im Turnier ab?'),
+        a: () =>
+          tr(
+            'After the last hole open the scorecard. "Overview" shows who has signed – one row per player with a tick or "signs on his phone". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: "Correct a card ›", pick the card – the host confirms.',
+            'Nach dem letzten Loch die Scorekarte öffnen. „Übersicht“ zeigt, wer schon unterschrieben hat – je Spieler eine Zeile mit Haken oder „unterschreibt auf seinem Handy“. Jeder unterschreibt seine Karte auf seinem Handy, Zähler oder Schreiber bestätigen; haben alle unterschrieben, sind die Karten abgegeben und gesperrt. Ein Reiter je Spieler zeigt nur seine Karte. Ein Fehler: „Karte korrigieren ›“, die Karte wählen – der Host bestätigt.',
+          ),
+        video: 'tours',
       },
       {
         // Sascha 13.11.2026: a shot or the putts edited and closed – kept

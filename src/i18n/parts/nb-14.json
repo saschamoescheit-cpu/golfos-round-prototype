@@ -16,5 +16,10 @@
  "Which card to correct?": "Hvilket kort skal rettes?",
  "My card": "Mitt kort",
  "Scorecard of": "Scorekort for",
- "Tee {0} – change": "Tee {0} – endre"
+ "Tee {0} – change": "Tee {0} – endre",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Ja: åpne hulloversikten (linjen nederst) → «Tee». Lengdene, caddien, course rating og slope og spillehandicapet ditt følger det nye utslaget; hullene du allerede har spilt beholder sitt. Medspillerne dine beholder sitt. Etter runden: scorekort → trykk på utslaget ved siden av datoen. I en turnering blir utslaget som planlagt.",
+ "How do I enter a chip-in?": "Hvordan registrerer jeg en chip-in?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Registrer 0 putter – det betyr i hull fra utenfor greenen. I «Sjekk slag» står det da «I hull – chip-in», og siste slag står grønt som «i hull». På banen: trykk på slaget → «I hull! (chip-in)».",
+ "How do we hand in the scorecards in a tournament?": "Hvordan leverer vi scorekortene i en turnering?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Åpne scorekortet etter siste hull. «Oversikt» viser hvem som har signert – én linje per spiller med en hake eller «signerer på egen telefon». Alle signerer sitt kort på egen telefon, markøren bekrefter; når alle har signert er kortene levert og låst. En fane per spiller viser bare hans kort. En feil: «Rett et kort ›», velg kortet – verten bekrefter."
 }

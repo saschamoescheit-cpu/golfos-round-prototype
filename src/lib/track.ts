@@ -55,6 +55,26 @@ export const CART = { on: false, fastMs: 4.5, maxMs: 12, rideM: 60, rides: 2, fr
  */
 export const CART_PLACES = { offFreeM: 15, offPer10M: 0.4 };
 
+/**
+ * More rules for a round from a cart (Sascha 14.11.2026: "much more exact, also when we ride the cart – so the review
+ * after the round goes faster"), measured with scripts/replay.ts on his two checked cart rounds (Reserve 13.11.,
+ * Oaks 12.11.) – his walking rounds at Hetzenhof stay as they were:
+ * - park: the cart waits by the green while the players putt – with the phone in the cart a stop of two minutes or more
+ *   within 30 m of the green's edge (Reserve: 14 of 18 holes, 20–38 m from the pin). That is where the cart stood, not a
+ *   ball; the chip from beside the green is suggested at its edge when the score needs one.
+ * - short: the cart stops at the partners' balls too – a partner's short drive or lay-up beat the own long one, as
+ *   strokes gained alone call both normal. A full shot (100 m meant or more: the driver from the tee of a par 4/5, else
+ *   the green or the longest club but the driver) that goes less than 80 % of it is a mishit – a third of a stroke
+ *   less likely per 10 % shorter. The lengths from the player's bag (his own measured ones in the app).
+ */
+export const CART_RULES = { parkM: 30, parkS: 120, shortShare: 0.8, shortPer10: 1 / 3 };
+
+/** How much less likely (log-likelihood) a shot of `lengthM` is when the player meant `meantM` (CART_RULES.short). */
+export function shortOfFull(lengthM: number, meantM: number): number {
+  if (meantM < 100) return 0;
+  return Math.max(0, CART_RULES.shortShare - lengthM / meantM) * 10 * CART_RULES.shortPer10;
+}
+
 /** Rides faster than anyone walks (4.5–12 m/s, measured over 10 s or more – a fix a second wanders a few metres even
  *  standing), each at least 60 m in one go – twice on the stretch (a jog is slower): a cart. A single GPS jump (Sascha's walk at
  *  Hetzenhof 16.10.2026: 11, 23, 41 m now and then) is no ride. */
@@ -208,10 +228,13 @@ function places(track: TrackPoint[], hole: HoleMapData, inCart = false): Place[]
   }
   out.sort((a, b) => a.from - b.from);
   // One ball, several signs (opened the app, stood there, put it away): one place, the signs add up.
+  // Not on the green (Sascha's Oaks 12.11.2026, holes 1, 9, 17): the chip from the fringe – a stop at the green's edge,
+  // the GPS a few metres inside – and the putts after it were one place there, the chip lost; on the green each stop
+  // stays a place of its own (the first one is the ball on the green, the chain looks no further).
   const merged: Place[] = [];
   for (const x of out) {
     const last = merged[merged.length - 1];
-    if (last && distanceM(last.p, x.p) <= DETECT.mergeM && x.from - last.to <= 120000) {
+    if (last && distanceM(last.p, x.p) <= DETECT.mergeM && x.from - last.to <= 120000 && !onGreenAt(last.p, hole) && !onGreenAt(x.p, hole)) {
       last.to = Math.max(last.to, x.to);
       last.p = [(last.p[0] * last.w + x.p[0] * x.w) / (last.w + x.w), (last.p[1] * last.w + x.p[1] * x.w) / (last.w + x.w)];
       last.w += x.w;
@@ -251,9 +274,18 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   // The tee: the last place near the tee (waiting for the group in front does not matter there). The player tees
   // off from the tee even when the phone was in the pocket there.
   // In a cart (Sascha's Reserve 13.11.2026, hole 1): the cart stops again at a forward tee for a partner – 37 m ahead
-  // of the blue tee he hit from; there the stop on the tee itself (≤ 25 m) is his, when the cart stood there.
+  // of the blue tee he hit from; there the stop on the tee itself (≤ 25 m) is his, when the cart stood there – and of
+  // several stops there the one nearest to the tee of the round (Reserve 13.11.2026, hole 13: the cart waited by his
+  // tee, then stopped twice by the forward tees for the partners; the last one was taken, 24 m off).
   const nearTee = (r: number) => list.map((x, k) => (distanceM(x.p, hole.tee) <= r ? k : -1)).filter((k) => k >= 0).pop();
-  const teeIdx = (opts.cart ? nearTee(25) : undefined) ?? nearTee(40);
+  const nearestTee = (r: number) => {
+    let bk: number | undefined;
+    list.forEach((x, k) => {
+      if (distanceM(x.p, hole.tee) <= r && (bk == null || distanceM(x.p, hole.tee) < distanceM(list[bk].p, hole.tee))) bk = k;
+    });
+    return bk;
+  };
+  const teeIdx = (opts.cart ? nearestTee(25) : undefined) ?? nearTee(40);
   const tee: Place = teeIdx != null ? list[teeIdx] : { p: hole.tee, from: track[0]?.t ?? 0, to: track[0]?.t ?? 0, q: 0, w: 1 };
   if (teeIdx != null) list = list.slice(teeIdx + 1);
   list = list.filter((x) => distanceM(x.p, hole.tee) > 40);
@@ -271,6 +303,8 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   if (g >= 0) list = list.slice(0, g);
   // places off the green on the way (not on the green itself) – and the fringe chip
   list = list.filter((x) => !onGreenAt(x.p, hole) || x === chipSpot);
+  // in a cart: where the cart waited by the green while they putted is no ball (CART_RULES)
+  if (opts.cart) list = list.filter((x) => !(toGreen(x.p) <= greenRadius(hole) + CART_RULES.parkM && (x.to - x.from) / 1000 >= CART_RULES.parkS));
 
   // Blind stretches (Sascha's round 16.10.2026: the phone locked for ten minutes between the tee and the third ball –
   // not one fix near the second): where the track has no fix for a minute or more between two places, the ball may
@@ -318,6 +352,10 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     return ll;
   };
   const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0, guess: false }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q, guess: !!x.guess }))];
+  // in a cart: a full shot well short of what the player meant is a mishit – more likely a partner's ball (CART_RULES)
+  const drive = bag.find((b) => b.club === 'Dr')?.m ?? Math.max(...bag.map((b) => b.m));
+  const reach = Math.max(0, ...bag.filter((b) => b.club !== 'Dr' && b.club !== 'Pt').map((b) => b.m));
+  const shortPen = (i: number, j: number): number => (opts.cart ? shortOfFull(distanceM(nodes[i].p, nodes[j].p), i === 0 && par >= 4 ? drive : Math.min(toGreen(nodes[i].p), reach)) : 0);
   // best[j][c]: the most plausible chain that ends at place j with c shots (tee = 1). The count matters: the player
   // entered his score and putts on the course – score − putts − penalties = shots to the green, a strong hint.
   const MAXC = Math.min(nodes.length, 9);
@@ -326,7 +364,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   best[0][1] = 0;
   for (let j = 1; j < nodes.length; j++) {
     for (let i = 0; i < j; i++) {
-      const step = shotLL(nodes[i].e, nodes[j].e, toGreen(nodes[i].p) - toGreen(nodes[j].p)) + nodes[j].q - PLAUSIBLE.shotCost;
+      const step = shotLL(nodes[i].e, nodes[j].e, toGreen(nodes[i].p) - toGreen(nodes[j].p)) + nodes[j].q - PLAUSIBLE.shotCost - shortPen(i, j);
       for (let c = 1; c < MAXC; c++) {
         if (best[i][c] === -Infinity) continue;
         const v = best[i][c] + step;

@@ -16,5 +16,10 @@
  "Which card to correct?": "¿Qué tarjeta corregir?",
  "My card": "Mi tarjeta",
  "Scorecard of": "Tarjeta de",
- "Tee {0} – change": "Salida {0} – cambiar"
+ "Tee {0} – change": "Salida {0} – cambiar",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Sí: abre el resumen de hoyos (la barra de abajo) → «Tee». Las distancias, el caddie, el course rating y el slope y tu hándicap de juego siguen a la nueva salida; los hoyos ya jugados conservan la suya. Tus compañeros conservan la suya. Después de la ronda: tarjeta → toca la salida junto a la fecha. En un torneo la salida queda como se planificó.",
+ "How do I enter a chip-in?": "¿Cómo anoto un chip-in?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Anota 0 putts: significa embocada desde fuera del green. En «Revisar golpes» la fila de putts dice entonces «Embocada – chip-in» y el último golpe aparece en verde como «embocado». En el campo: toca el golpe → «¡Embocada! (chip-in)».",
+ "How do we hand in the scorecards in a tournament?": "¿Cómo entregamos las tarjetas en un torneo?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Tras el último hoyo abre la tarjeta. «Resumen» muestra quién ha firmado: una fila por jugador con una marca o «firma en su teléfono». Cada uno firma su tarjeta en su teléfono y el marcador la confirma; cuando todos han firmado, las tarjetas quedan entregadas y bloqueadas. Una pestaña por jugador muestra solo su tarjeta. Un error: «Corregir una tarjeta ›», elige la tarjeta y el anfitrión lo confirma."
 }

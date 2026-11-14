@@ -16,5 +16,10 @@
  "Which card to correct?": "Hvilket kort skal rettes?",
  "My card": "Mit kort",
  "Scorecard of": "Scorekort for",
- "Tee {0} – change": "Tee {0} – skift"
+ "Tee {0} – change": "Tee {0} – skift",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Ja: åbn hulloversigten (bjælken nederst) → “Tee”. Længderne, caddien, course rating og slope og dit spillehandicap følger det nye teested; de allerede spillede huller beholder deres. Dine medspillere beholder deres. Efter runden: scorekort → tryk på teestedet ved siden af datoen. I en turnering forbliver teestedet som planlagt.",
+ "How do I enter a chip-in?": "Hvordan indtaster jeg et chip-in?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Indtast 0 putts – det betyder holet fra uden for greenen. I “Tjek slag” står der så “Holet – chip-in”, og det sidste slag står grønt som “holet”. På banen: tryk på slaget → “Holet! (chip-in)”.",
+ "How do we hand in the scorecards in a tournament?": "Hvordan afleverer vi scorekortene i en turnering?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Åbn scorekortet efter sidste hul. “Oversigt” viser, hvem der har skrevet under – én linje pr. spiller med et flueben eller “skriver under på egen telefon”. Alle skriver under på deres eget kort på egen telefon, markøren bekræfter; når alle har skrevet under, er kortene afleveret og låst. En fane pr. spiller viser kun hans kort. En fejl: “Ret et kort ›”, vælg kortet – værten bekræfter."
 }

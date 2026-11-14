@@ -16,5 +16,10 @@
  "Which card to correct?": "Welke kaart corrigeren?",
  "My card": "Mijn kaart",
  "Scorecard of": "Scorekaart van",
- "Tee {0} – change": "Afslag {0} – wijzigen"
+ "Tee {0} – change": "Afslag {0} – wijzigen",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Ja: open het holeoverzicht (de balk onderaan) → „Tee”. De afstanden, de caddie, course rating en slope en je playing handicap volgen de nieuwe afslag; de al gespeelde holes houden de hunne. Je medespelers houden de hunne. Na de ronde: scorekaart → tik op de afslag naast de datum. In een toernooi blijft de afslag zoals gepland.",
+ "How do I enter a chip-in?": "Hoe voer ik een chip-in in?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Voer 0 putts in – dat betekent uitgeholed van buiten de green. In „Slagen controleren” staat dan bij de putts „Uitgeholed – chip-in” en de laatste slag staat groen als „uitgeholed”. Op de baan: tik op de slag → „Uitgeholed! (chip-in)”.",
+ "How do we hand in the scorecards in a tournament?": "Hoe leveren we de scorekaarten in bij een toernooi?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Open na de laatste hole de scorekaart. „Overzicht” toont wie al getekend heeft – per speler een regel met een vinkje of „tekent op eigen telefoon”. Iedereen tekent zijn kaart op zijn eigen telefoon, de marker bevestigt; als iedereen getekend heeft zijn de kaarten ingeleverd en vergrendeld. Een tabblad per speler toont alleen zijn kaart. Een fout: „Een kaart corrigeren ›”, kies de kaart – de host bevestigt."
 }
