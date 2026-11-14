@@ -474,6 +474,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 /* Scorecard like the paper one: per nine a block with the holes across */
 .sc-sub { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .tee-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); }
+.sc-sub .sc-tee { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
 .sc-hero { display: flex; flex-direction: column; gap: 10px; }
 .sc-hero-main { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; text-align: center; }
 .sc-hero-main > div:first-child { text-align: left; }

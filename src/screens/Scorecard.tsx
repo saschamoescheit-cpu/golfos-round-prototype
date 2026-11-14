@@ -21,6 +21,7 @@ import { loadTrack } from '../lib/track';
 import { loadCaddieLog } from '../lib/caddielog';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
+import { TeeSwitchSheet, roundTees, withTee } from '../components/TeeSwitch';
 import { comparisonGroup, roundsSg } from '../lib/sg';
 import { loopsText } from '../lib/loops';
 import { kindName } from '../lib/roundkind';
@@ -53,6 +54,7 @@ export function Scorecard(props: {
   const [editHole, setEditHole] = useState<number | null>(null);
   // "Übersicht" or one player's tab (Sascha 14.11.2026, Entwurf E)
   const [view, setView] = useState<string>('all');
+  const [teeOpen, setTeeOpen] = useState(false);
   // swiped sideways in the hole's panel: the next or the previous hole (Sascha 12.11.2026: "wenn ich eine Scorekarte
   // nachträglich bearbeite, wäre es praktisch, wenn man die Löcher durchkippen könnte, anstatt andauernd zurückzugehen")
   const swipeFrom = useRef<{ x: number; y: number } | null>(null);
@@ -73,6 +75,9 @@ export function Scorecard(props: {
   const me = round.players.find((p) => p.isMe)!;
   const mine = view === 'all' || view === me.id; // the own cards: the overview and the own tab
   const finished = round.finishedAt != null;
+  // the tee of a finished own round changed afterwards – as in the round, not in a tournament (its plan sets the tees)
+  const [manyTees] = useState(() => roundTees(round).length > 1);
+  const teeEditable = finished && !round.preview && !round.shared?.tournament && !!round.tee && manyTees;
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
@@ -220,11 +225,22 @@ export function Scorecard(props: {
         )}
         <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
-          {round.tee && (
+          {round.tee && !teeEditable && (
             <>
               {' · '}
               <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee] ?? '#888' }} />
               {teeName(round.tee)}
+            </>
+          )}
+          {/* the tee changed afterwards (Sascha 14.11.2026: the Reserve round stored as White, played from Blue) – the
+              same sheet as in the round; lengths, course rating and the own playing handicap follow */}
+          {teeEditable && (
+            <>
+              {' · '}
+              <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(round.tee!)} – change`, `Abschlag ${teeName(round.tee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
+                <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee!] ?? '#888' }} />
+                {teeName(round.tee!)} <span aria-hidden="true">›</span>
+              </button>
             </>
           )}
         </span>
@@ -516,6 +532,16 @@ export function Scorecard(props: {
         </div>
       )}
       {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
+      {teeOpen && (
+        <TeeSwitchSheet
+          round={round}
+          onClose={() => setTeeOpen(false)}
+          onPick={(t) => {
+            setTeeOpen(false);
+            if (t !== round.tee) props.onChange(withTee(round, t));
+          }}
+        />
+      )}
     </main>
   );
 }
