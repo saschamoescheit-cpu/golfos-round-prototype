@@ -16,5 +16,10 @@
  "Which card to correct?": "Quelle carte corriger ?",
  "My card": "Ma carte",
  "Scorecard of": "Carte de score de",
- "Tee {0} – change": "Départ {0} – modifier"
+ "Tee {0} – change": "Départ {0} – modifier",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Oui : ouvre l’aperçu des trous (la barre en bas) → « Tee ». Les longueurs, le caddie, le course rating et le slope ainsi que ton handicap de jeu suivent le nouveau départ ; les trous déjà joués gardent le leur. Tes partenaires gardent le leur. Après la partie : carte de score → touche le départ à côté de la date. En tournoi, le départ reste celui prévu.",
+ "How do I enter a chip-in?": "Comment saisir un chip-in ?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Saisis 0 putt – cela signifie rentré depuis l’extérieur du green. Dans « Vérifier les coups », la ligne des putts indique alors « Rentré – chip-in » et le dernier coup apparaît en vert comme « rentré ». Sur le parcours : touche le coup → « Rentré ! (chip-in) ».",
+ "How do we hand in the scorecards in a tournament?": "Comment rendre les cartes de score en tournoi ?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Après le dernier trou, ouvre la carte de score. « Aperçu » montre qui a signé – une ligne par joueur avec une coche ou « signe sur son téléphone ». Chacun signe sa carte sur son téléphone, le marqueur confirme ; quand tous ont signé, les cartes sont rendues et verrouillées. Un onglet par joueur ne montre que sa carte. Une erreur : « Corriger une carte › », choisis la carte – l’hôte confirme."
 }

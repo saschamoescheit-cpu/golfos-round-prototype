@@ -16,5 +16,10 @@
  "Which card to correct?": "Mikä kortti korjataan?",
  "My card": "Oma korttini",
  "Scorecard of": "Tuloskortti:",
- "Tee {0} – change": "Tii {0} – vaihda"
+ "Tee {0} – change": "Tii {0} – vaihda",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Kyllä: avaa reikäkatsaus (palkki alhaalla) → ”Tee”. Pituudet, caddie, course rating ja slope sekä pelitasoituksesi seuraavat uutta tiitä; jo pelatut reiät pitävät omansa. Kanssapelaajasi pitävät omansa. Kierroksen jälkeen: tuloskortti → napauta tiitä päivämäärän vieressä. Kilpailussa tii pysyy suunnitellun mukaisena.",
+ "How do I enter a chip-in?": "Miten kirjaan chip-inin?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Kirjaa 0 puttia – se tarkoittaa reikään viheriön ulkopuolelta. Kohdassa ”Tarkista lyönnit” puttirivillä lukee silloin ”Reiässä – chip-in” ja viimeinen lyönti näkyy vihreänä ”reiässä”. Kentällä: napauta lyöntiä → ”Reiässä! (chip-in)”.",
+ "How do we hand in the scorecards in a tournament?": "Miten palautamme tuloskortit kilpailussa?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Avaa tuloskortti viimeisen reiän jälkeen. ”Yleiskatsaus” näyttää, kuka on allekirjoittanut – rivi pelaajaa kohti, jossa on rasti tai ”allekirjoittaa omalla puhelimella”. Jokainen allekirjoittaa korttinsa omalla puhelimellaan, merkitsijä vahvistaa; kun kaikki ovat allekirjoittaneet, kortit on palautettu ja lukittu. Välilehti pelaajaa kohti näyttää vain hänen korttinsa. Virhe: ”Korjaa kortti ›”, valitse kortti – isäntä vahvistaa."
 }

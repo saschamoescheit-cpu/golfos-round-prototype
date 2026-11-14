@@ -16,5 +16,10 @@
  "Which card to correct?": "Którą kartę poprawić?",
  "My card": "Moja karta",
  "Scorecard of": "Karta wyników:",
- "Tee {0} – change": "Tee {0} – zmień"
+ "Tee {0} – change": "Tee {0} – zmień",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "Tak: otwórz przegląd dołków (pasek na dole) → „Tee”. Odległości, caddie, course rating i slope oraz twój handicap gry dostosowują się do nowego tee; rozegrane już dołki zachowują swoje. Partnerzy zachowują swoje. Po rundzie: karta wyników → dotknij tee obok daty. W turnieju tee pozostaje zgodnie z planem.",
+ "How do I enter a chip-in?": "Jak wpisać chip-in?",
+ "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "Wpisz 0 puttów – to znaczy trafienie do dołka spoza greenu. W „Sprawdź uderzenia” wiersz puttów pokazuje wtedy „W dołku – chip-in”, a ostatnie uderzenie jest zielone jako „w dołku”. Na polu: dotknij uderzenia → „W dołku! (chip-in)”.",
+ "How do we hand in the scorecards in a tournament?": "Jak oddajemy karty wyników w turnieju?",
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Po ostatnim dołku otwórz kartę wyników. „Przegląd” pokazuje, kto już podpisał – wiersz na gracza z ptaszkiem lub „podpisuje na swoim telefonie”. Każdy podpisuje swoją kartę na swoim telefonie, marker potwierdza; gdy wszyscy podpiszą, karty są oddane i zablokowane. Zakładka dla każdego gracza pokazuje tylko jego kartę. Błąd: „Popraw kartę ›”, wybierz kartę – gospodarz potwierdza."
 }

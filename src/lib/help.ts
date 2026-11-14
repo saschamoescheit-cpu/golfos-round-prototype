@@ -387,10 +387,30 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
         a: () =>
           tr(
-            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee. Your partners keep theirs. In a tournament the tee stays as planned.',
-            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag. Deine Mitspieler behalten ihren. Im Turnier bleibt der Abschlag wie geplant.',
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier bleibt der Abschlag wie geplant.',
           ),
         video: 'map',
+      },
+      {
+        // Sascha 14.11.2026: a chip-in – 0 putts is holed, no button of its own
+        q: () => tr('How do I enter a chip-in?', 'Wie trage ich ein Chip-in ein?'),
+        a: () =>
+          tr(
+            'Enter 0 putts – that is holed out from off the green. In "Check shots" the putt row then says "Holed – chip-in" and the last shot stands green as "holed". On the course: tap the shot → "Holed it! (chip-in)".',
+            'Trag 0 Putts ein – das heißt: von außerhalb des Grüns eingelocht. In „Schläge prüfen“ steht dann „Eingelocht – Chip-in“, der letzte Schlag steht grün als „eingelocht“. Auf dem Platz: den Schlag antippen → „Eingelocht! (Chip-in)“.',
+          ),
+        video: 'review',
+      },
+      {
+        // Sascha 14.11.2026 (design E + A): handing in the card per player, a tab per player
+        q: () => tr('How do we hand in the scorecards in a tournament?', 'Wie geben wir die Scorekarten im Turnier ab?'),
+        a: () =>
+          tr(
+            'After the last hole open the scorecard. "Overview" shows who has signed – one row per player with a tick or "signs on his phone". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: "Correct a card ›", pick the card – the host confirms.',
+            'Nach dem letzten Loch die Scorekarte öffnen. „Übersicht“ zeigt, wer schon unterschrieben hat – je Spieler eine Zeile mit Haken oder „unterschreibt auf seinem Handy“. Jeder unterschreibt seine Karte auf seinem Handy, Zähler oder Schreiber bestätigen; haben alle unterschrieben, sind die Karten abgegeben und gesperrt. Ein Reiter je Spieler zeigt nur seine Karte. Ein Fehler: „Karte korrigieren ›“, die Karte wählen – der Host bestätigt.',
+          ),
+        video: 'tours',
       },
       {
         // Sascha 13.11.2026: a shot or the putts edited and closed – kept
