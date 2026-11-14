@@ -1370,7 +1370,13 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     }
   }, []);
   // the rounds that count – and those taken out, kept in the switch, marked (Sascha 11.11.2026: "Runde werten · An/Aus")
-  const roundsShown = [...standingRounds(pool).map((r) => ({ ...r, out: false })), ...(pool.skip ?? []).filter((s) => !s.hidden).map((s) => ({ key: `${s.day}|${s.course}`, day: s.day, course: s.course, out: true }))].sort((a, b) => (a.key < b.key ? -1 : 1));
+  const counted: { key: string; day: string; course: string; out: boolean; planned?: boolean }[] = [...standingRounds(pool).map((r) => ({ ...r, out: false })), ...(pool.skip ?? []).filter((s) => !s.hidden).map((s) => ({ key: `${s.day}|${s.course}`, day: s.day, course: s.course, out: true }))];
+  // the tournaments planned in the pool's days – there before their first score (Sascha 14.11.2026: "Hawks Landing für
+  // morgen hinzugefügt, aber bei den Wetten ist die Runde nicht sichtbar"); once a score counts, the round itself
+  const planned = loadTours()
+    .filter((t) => !t.ev.deletedAt && t.ev.date >= props.today && !counted.some((r) => r.day === t.ev.date) && inPool({ day: t.ev.date, course: t.ev.course.name, courseId: t.ev.course.id }, pool))
+    .map((t) => ({ key: `${t.ev.date}|${t.ev.course.name}`, day: t.ev.date, course: t.ev.course.name, out: false, planned: true }));
+  const roundsShown = [...counted, ...planned.filter((p, k) => planned.findIndex((x) => x.key === p.key) === k)].sort((a, b) => (a.key < b.key ? -1 : 1));
   // the round coming into the standing once its first scores count – followed until a round is picked by hand
   const now = picked ? null : roundNow();
   useEffect(() => {
@@ -1573,7 +1579,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           options={[
             { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden'), uncounted: true },
             // no tick – only rounds played or in play are there (Sascha 11.11.2026); "läuft" for one in play
-            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : played.has(r.key) ? undefined : tr('in play', 'läuft') })),
+            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : r.planned ? tr('planned – no scores yet', 'geplant – noch keine Scores') : played.has(r.key) ? undefined : tr('in play', 'läuft') })),
           ]}
         />
       )}

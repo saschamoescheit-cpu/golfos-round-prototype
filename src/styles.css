@@ -1240,6 +1240,8 @@ button.tile:disabled { opacity: 1; }
 .tour-prize-pays li.paid .tour-prize-amt { color: var(--muted); }
 .tour-pot { display: flex; justify-content: space-between; align-items: baseline; background: var(--surface); border-radius: 12px; padding: 10px 14px; font-variant-numeric: tabular-nums; }
 .tour-pot strong { font-size: 1.15rem; }
+/* a round added to a series: which running bets count it (Sascha 14.11.2026) */
+.series-bets-pool { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 /* the settlement of a pool: the title, the payments, the bets decided – one below the other */
 /* the rounds of the trip in a pool (Sascha 01.11.2026) */
 /* the live standing of a pool: the blocks down, the players across (Sascha 01.11.2026) */

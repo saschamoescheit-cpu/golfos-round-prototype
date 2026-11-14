@@ -18,11 +18,11 @@ const pool: WagerPool = {
   players,
   wagers: [bet('ws', 'sascha'), bet('wc', 'cedric'), bet('we', 'erik'), bet('wm', 'moritz'), bet('wx', 'chris')],
   progress: {
-    ws: { perRound: [rr('2026-11-14', 6), rr('2026-11-15', 11)], at: '' },
-    wc: { perRound: [rr('2026-11-14', 5), rr('2026-11-15', 4)], at: '' },
-    we: { perRound: [rr('2026-11-14', 7), rr('2026-11-15', 8)], at: '' },
-    wm: { perRound: [rr('2026-11-14', 3)], at: '' },
-    wx: { perRound: [rr('2026-11-14', 9)], at: '' },
+    ws: { perRound: [rr('2026-11-14', 6), rr('2026-11-15', 11)], at: '', best: null, done: false, rounds: 0 },
+    wc: { perRound: [rr('2026-11-14', 5), rr('2026-11-15', 4)], at: '', best: null, done: false, rounds: 0 },
+    we: { perRound: [rr('2026-11-14', 7), rr('2026-11-15', 8)], at: '', best: null, done: false, rounds: 0 },
+    wm: { perRound: [rr('2026-11-14', 3)], at: '', best: null, done: false, rounds: 0 },
+    wx: { perRound: [rr('2026-11-14', 9)], at: '', best: null, done: false, rounds: 0 },
   },
 };
 

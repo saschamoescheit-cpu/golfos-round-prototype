@@ -76,5 +76,13 @@
  "A tie shares the prize.": "Tasatilanteessa palkinto jaetaan.",
  "Winner {0}": "Voittaja {0}",
  "{0}. place {1}": "{0}. sija {1}",
- "class {0}": "luokka {0}"
+ "class {0}": "luokka {0}",
+ "Not saved – no connection. Try again.": "Ei tallennettu – ei yhteyttä. Yritä uudelleen.",
+ "New round in the series": "Uusi kierros sarjassa",
+ "Apply": "Käytä",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – mihin käynnissä oleviin vetoihin se lasketaan?",
+ "on the trip": "matkalla",
+ "in {0} rounds": "{0} kierroksella",
+ "chosen rounds": "valitut kierrokset",
+ "planned – no scores yet": "suunniteltu – ei vielä tuloksia"
 }

@@ -76,5 +76,13 @@
  "A tie shares the prize.": "同点の場合は賞を分け合います。",
  "Winner {0}": "{0}優勝",
  "{0}. place {1}": "{0}位 {1}",
- "class {0}": "クラス{0}"
+ "class {0}": "クラス{0}",
+ "Not saved – no connection. Try again.": "保存されませんでした – 接続なし。もう一度お試しください。",
+ "New round in the series": "シリーズの新しいラウンド",
+ "Apply": "適用",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – どの進行中の賭けに含めますか？",
+ "on the trip": "旅行中",
+ "in {0} rounds": "{0}ラウンドで",
+ "chosen rounds": "選んだラウンド",
+ "planned – no scores yet": "予定 – まだスコアなし"
 }

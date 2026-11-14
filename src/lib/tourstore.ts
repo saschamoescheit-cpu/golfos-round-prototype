@@ -294,9 +294,13 @@ export async function createSeries(name: string, codes: string[], multi?: TourSe
 export async function addToSeries(seriesCode: string, tourCode: string): Promise<boolean> {
   const ev = await freshTour(tourCode);
   if (!ev) return false;
+  const wasIn = loadSeries().find((x) => x.code === seriesCode)?.series.rounds.some((r) => r.code === tourCode);
   const s = await changeRow(seriesCode, isSeries, (x) => ({ ...x, rounds: [...x.rounds.filter((r) => r.code !== tourCode), roundOf(tourCode, ev)].sort((a, b) => a.date.localeCompare(b.date)) }));
   if (!s) return false;
   keepSeries(seriesCode, s.game, s.owner);
+  // a round new to the series: the host of a pool over it is asked whether the running bets count it (Sascha 14.11.2026)
+  if (!wasIn && !ev.deletedAt)
+    window.dispatchEvent(new CustomEvent('golfos:series-round-added', { detail: { round: { day: ev.date, course: ev.course.name, courseId: ev.course.id, tour: tourCode }, others: s.game.rounds.filter((r) => r.code !== tourCode).map((r) => ({ day: r.date })) } }));
   if (ev.series?.code !== seriesCode || ev.series.name !== s.game.name) await changeTour(tourCode, { ...ev, series: { code: seriesCode, name: s.game.name } });
   return true;
 }

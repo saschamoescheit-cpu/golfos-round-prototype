@@ -76,5 +76,13 @@
  "A tie shares the prize.": "平局时奖金平分。",
  "Winner {0}": "{0}冠军",
  "{0}. place {1}": "第{0}名 {1}",
- "class {0}": "{0} 组"
+ "class {0}": "{0} 组",
+ "Not saved – no connection. Try again.": "未保存 – 无网络连接。请重试。",
+ "New round in the series": "系列中的新一轮",
+ "Apply": "应用",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – 计入哪些进行中的赌注？",
+ "on the trip": "在旅途中",
+ "in {0} rounds": "在 {0} 轮中",
+ "chosen rounds": "所选轮次",
+ "planned – no scores yet": "已计划 – 尚无成绩"
 }

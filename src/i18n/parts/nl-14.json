@@ -76,5 +76,13 @@
  "A tie shares the prize.": "Bij gelijke stand wordt de prijs gedeeld.",
  "Winner {0}": "Winnaar {0}",
  "{0}. place {1}": "{0}e plaats {1}",
- "class {0}": "klasse {0}"
+ "class {0}": "klasse {0}",
+ "Not saved – no connection. Try again.": "Niet opgeslagen – geen verbinding. Probeer opnieuw.",
+ "New round in the series": "Nieuwe ronde in de serie",
+ "Apply": "Toepassen",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – voor welke lopende weddenschappen telt ze?",
+ "on the trip": "op de reis",
+ "in {0} rounds": "in {0} rondes",
+ "chosen rounds": "gekozen rondes",
+ "planned – no scores yet": "gepland – nog geen scores"
 }

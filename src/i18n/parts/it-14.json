@@ -76,5 +76,13 @@
  "A tie shares the prize.": "In caso di parità il premio si divide.",
  "Winner {0}": "Vincitore {0}",
  "{0}. place {1}": "{0}° posto {1}",
- "class {0}": "categoria {0}"
+ "class {0}": "categoria {0}",
+ "Not saved – no connection. Try again.": "Non salvato – nessuna connessione. Riprova.",
+ "New round in the series": "Nuovo giro nella serie",
+ "Apply": "Applica",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – per quali scommesse in corso conta?",
+ "on the trip": "nel viaggio",
+ "in {0} rounds": "in {0} giri",
+ "chosen rounds": "giri scelti",
+ "planned – no scores yet": "previsto – ancora nessuno score"
 }

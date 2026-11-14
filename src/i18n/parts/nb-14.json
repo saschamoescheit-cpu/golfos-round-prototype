@@ -76,5 +76,13 @@
  "A tie shares the prize.": "Ved likt deles premien.",
  "Winner {0}": "Vinner {0}",
  "{0}. place {1}": "{0}. plass {1}",
- "class {0}": "klasse {0}"
+ "class {0}": "klasse {0}",
+ "Not saved – no connection. Try again.": "Ikke lagret – ingen forbindelse. Prøv igjen.",
+ "New round in the series": "Ny runde i serien",
+ "Apply": "Bruk",
+ "{0} · {1} – which running bets count it?": "{0} · {1} – hvilke pågående veddemål teller den for?",
+ "on the trip": "på turen",
+ "in {0} rounds": "på {0} runder",
+ "chosen rounds": "valgte runder",
+ "planned – no scores yet": "planlagt – ingen scores ennå"
 }

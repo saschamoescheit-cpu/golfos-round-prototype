@@ -7,6 +7,7 @@ import { StorageFullToast, UndoToast } from './components/UndoToast';
 import { JoinRequests } from './components/JoinRequests';
 import { FriendAskHost } from './components/Friends';
 import { RoundInviteHost } from './components/RoundInviteHost';
+import { SeriesBetsAsk } from './components/SeriesBetsAsk';
 // Fonts ship with the app (static weights, latin incl. umlauts): same look on every phone, offline on the course,
 // and no request to Google Fonts (privacy).
 import '@fontsource/lexend/latin-500.css';
@@ -81,6 +82,7 @@ void Promise.all([bigStore, langReady]).then(() =>
       <UndoToast />
       <FriendAskHost />
       <RoundInviteHost />
+      <SeriesBetsAsk />
       <StorageFullToast />
       <JoinRequests />
       <ModuleSheetHost />
