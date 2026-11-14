@@ -165,9 +165,13 @@ const openProfile = async (p) => {
   ok(!!reg, 'the app\'s service worker registered');
   if (reg) {
     const note = { title: 'Runde noch nicht geprüft', body: 'Deine Runde in Golfclub Hetzenhof wartet aufs Prüfen und Signieren.', tag: 'golfos-rounds', url: './#review=qa-done' };
-    await cdp.send('ServiceWorker.deliverPushMessage', { origin, registrationId: reg.registrationId, data: JSON.stringify(note) });
-    // Edge 157 (12.11.2026) shows it a few seconds later than before: waited for, up to 8 s
-    for (let k = 0; k < 16 && !(await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)); k++) await p.waitForTimeout(500);
+    // Edge 157 (12.11.2026): the simulated push sometimes never reaches a sleeping worker – delivered again, up to three
+    // times, each waited for up to 6 s (a real push service retries as well)
+    const count = () => p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length);
+    for (let tries = 0; tries < 3 && !(await count()); tries++) {
+      await cdp.send('ServiceWorker.deliverPushMessage', { origin, registrationId: reg.registrationId, data: JSON.stringify(note) });
+      for (let k = 0; k < 12 && !(await count()); k++) await p.waitForTimeout(500);
+    }
     const shown = await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag, url: n.data?.url })));
     ok(shown.length === 1 && shown[0].title === note.title && shown[0].body === note.body && shown[0].url === note.url, `the push shown: „${shown[0]?.title}“ – ${shown[0]?.body}`);
   }
