@@ -12,6 +12,22 @@ import { ConfirmSheet } from './ConfirmSheet';
 // from lie and distance), club (suggested from the distance), penalty. One tap on a club saves a new
 // shot – the fastest path on the course.
 
+/** what a shot's sheet saves */
+export type ShotValue = {
+  lie: Lie;
+  club: Club | null;
+  penalty: boolean;
+  penaltyKind?: PenaltyKind;
+  replay?: boolean;
+  provisional?: boolean;
+  strike?: Strike;
+  flight?: Flight;
+  intent?: Intent;
+  slope?: SlopeLie[];
+  kind: ShotKind;
+  review: false;
+};
+
 export function ShotSheet(props: {
   title: string; // e.g. "Shot 2 · 148 m to pin"
   lie: Lie;
@@ -36,22 +52,11 @@ export function ShotSheet(props: {
   slope?: SlopeLie[] | SlopeLie;
   /** the stance read off the terrain model when the player has not set one (Sascha 22.10.2026) */
   slopeSuggested?: SlopeLie[] | null;
-  onSave: (v: {
-    lie: Lie;
-    club: Club | null;
-    penalty: boolean;
-    penaltyKind?: PenaltyKind;
-    replay?: boolean;
-    provisional?: boolean;
-    strike?: Strike;
-    flight?: Flight;
-    intent?: Intent;
-    slope?: SlopeLie[];
-    kind: ShotKind;
-    review: false;
-  }) => void;
+  onSave: (v: ShotValue) => void;
   onDelete?: () => void;
-  onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
+  /** "holed from here" (chip-in): a new shot on the course; the last shot in the check (14.11.2026) – with what the
+   *  sheet shows, so a club picked just before is kept */
+  onHoledOut?: (v?: ShotValue) => void;
   onCancel: () => void;
 }) {
   const [lie, setLie] = useState<Lie>(props.lie);
@@ -264,7 +269,7 @@ export function ShotSheet(props: {
             </button>
           )}
           {props.onHoledOut && (
-            <button type="button" className="btn-secondary" onClick={props.onHoledOut}>
+            <button type="button" className="btn-secondary holed-out" onClick={() => props.onHoledOut!(props.editing ? valueOf(club) : undefined)}>
               {tr('Holed it! (chip-in)', 'Eingelocht! (Chip-in)')}
             </button>
           )}

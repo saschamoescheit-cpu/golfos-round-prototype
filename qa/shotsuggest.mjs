@@ -121,6 +121,29 @@ await p.waitForTimeout(600);
   const s = (await entry()).detail.shots[nShots - 1];
   ok(s.club === 'Pt' && s.kind === 'chip', `saved: putter and chip (${s.club} · ${s.kind})`);
 }
+// Sascha 14.11.2026: "Wie trage ich Chip-In oder Hole-out ein? … bei 0 Putts muss 'eingelocht' kommen" – one way: 0
+// putts in the score; the putts' row says "Eingelocht – Chip-in", the last shot "eingelocht"; no extra button
+{
+  await shotRows.nth(nShots - 1).click();
+  await p.waitForTimeout(500);
+  ok((await p.locator('.sheet').first().getByRole('button', { name: /Eingelocht/ }).count()) === 0, "the last shot's sheet: no extra Eingelocht button");
+  await p.locator('.sheet').first().getByRole('button', { name: 'Schließen' }).first().click();
+  await p.waitForTimeout(300);
+  await p.getByRole('button', { name: /^Score an Loch .* bearbeiten$/ }).click();
+  await p.waitForTimeout(300);
+  const panel = p.locator('.score-panel');
+  // down to 0 – one more would be "not entered"
+  const putts0 = (await entry()).putts ?? 0;
+  for (let n = 0; n < putts0; n++) await panel.getByRole('button', { name: /^Putts minus eins/ }).first().click();
+  await panel.getByRole('button', { name: 'Zurück zu Schläge prüfen' }).click();
+  await p.waitForTimeout(600);
+  const e = await entry();
+  ok(e.putts === 0 && e.detail.holedOut === true, `0 putts: holed out (${e.putts} · ${e.detail.holedOut})`);
+  const lastRow = (await shotRows.nth(nShots - 1).innerText()).replace(/\s+/g, ' ');
+  ok(/eingelocht/.test(lastRow), `the last shot: "${lastRow.trim()}"`);
+  const row = (await p.locator('.review-list li.putt-row').innerText()).replace(/\s+/g, ' ');
+  ok(/Eingelocht – Chip-in/.test(row) && /keine Putts/.test(row), `the putts' row: "${row.trim()}"`);
+}
 
 // shot 1 dragged 40 m away from the drawn tee (a back tee): still "Tee"
 {

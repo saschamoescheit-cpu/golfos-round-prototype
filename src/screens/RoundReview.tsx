@@ -1333,6 +1333,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                       : ''}
                     {proximity(d, n) != null && proximity(d, n)! > 0 ? tr(` · ${fmt(proximity(d, n)!)} from the pin`, ` · auf ${fmt(proximity(d, n)!)} an der Fahne`) : ''}
                     {s.penalty ? ` · ${penaltyName(s.penaltyKind) ?? tr('penalty', 'Strafschlag')} (+1)` : ''}
+                    {/* 0 putts: this one went in (Sascha 14.11.2026) */}
+                    {e?.putts === 0 && n === d.shots.length - 1 && !s.penalty ? <strong className="good-text">{tr(' · holed', ' · eingelocht')}</strong> : null}
                   </span>
                   {(s.strike && s.strike !== 'slice' && s.strike !== 'hook') || flightOf(s) || s.intent || (s.review && !odd) ? (
                     <span className="muted small" style={{ display: 'block' }}>
@@ -1421,12 +1423,15 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <span className="shot-row putt-body">
                 <span className="shot-row-top">
                   <span>
-                    <strong>{e.putts == null ? tr('Putts', 'Putts') : `${e.putts} Putt${e.putts === 1 ? '' : 's'}`}</strong>
+                    {/* holed from off the green, said as such (Sascha 14.11.2026) – not "0 Putts" */}
+                    <strong className={e.putts === 0 && d.shots.length ? 'good-text' : undefined}>{e.putts === 0 && d.shots.length ? tr('Holed out – chip-in', 'Eingelocht – Chip-in') : e.putts == null ? tr('Putts', 'Putts') : `${e.putts} Putt${e.putts === 1 ? '' : 's'}`}</strong>
                   </span>
                   {sgs?.[d.shots.length] && <span className={`shot-sg ${sgs[d.shots.length].sg >= 0 ? 'good-text' : 'bad-text'}`}>{sgFmt(sgs[d.shots.length].sg)}</span>}
                 </span>
                 <span className="muted small" style={{ display: 'block' }}>
-                  {e.putts == null
+                  {e.putts === 0 && d.shots.length
+                    ? tr('from off the green, no putts', 'von außerhalb des Grüns, keine Putts')
+                    : e.putts == null
                     ? tr('Not entered – set flag and putts with the pencil', 'Nicht eingetragen – Fahne und Putts mit dem Stift setzen')
                     : shownPutts?.length && pin
                     ? shownPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
