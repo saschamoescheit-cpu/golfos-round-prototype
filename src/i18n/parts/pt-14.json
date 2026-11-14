@@ -39,5 +39,7 @@
  "The rounds this bet counts": "As voltas que esta aposta conta",
  "not counted for this bet": "não conta para esta aposta",
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Sim: abre a vista dos buracos (a barra em baixo) → «Tee». As distâncias, o caddie, o course rating e o slope e o teu handicap de jogo seguem a nova saída; os buracos já jogados mantêm a sua. Os teus parceiros mantêm a deles. Depois da volta: cartão → toca na saída ao lado da data. Num torneio só o organizador pode alterar o tee depois – no seu cartão.",
- "The tournament did not take the tee – no connection. Try again later.": "O torneio não guardou o tee – sem ligação. Tenta mais tarde."
+ "The tournament did not take the tee – no connection. Try again later.": "O torneio não guardou o tee – sem ligação. Tenta mais tarde.",
+ "Accept: {0}": "Aceitar: {0}",
+ "Decline: {0}": "Recusar: {0}"
 }

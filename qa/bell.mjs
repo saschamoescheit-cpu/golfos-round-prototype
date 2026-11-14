@@ -81,6 +81,37 @@ await p.waitForTimeout(1200);
 await p.locator('.bell-btn').first().click().catch(() => {});
 await p.waitForTimeout(400);
 ok((await p.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Wette gegen dich' }).count()) === 0, 'the bet seen: not in the inbox again');
+// Sascha 14.11.2026: "Inbox Nachrichten auch löschbar sein, vllt auch mit links wischen" – swiped all the way left the
+// row goes and stays gone after a reload; the others stay
+{
+  // back on the start page (the bet's tap opened the pool)
+  await p.evaluate(() => sessionStorage.removeItem('golfos.module'));
+  await p.goto('about:blank');
+  await p.goto(url);
+  await p.waitForTimeout(1500);
+  await p.locator('.bell-btn').first().click();
+  await p.waitForTimeout(500);
+  const before = (await p.locator('.bell-count').first().innerText().catch(() => '0')).trim();
+  const row = p.getByRole('dialog', { name: 'Inbox' }).locator('.swipe').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' });
+  const box = await row.boundingBox();
+  if (box) {
+    const y = box.y + box.height / 2;
+    await p.mouse.move(box.x + box.width - 20, y);
+    await p.mouse.down();
+    for (let i = 1; i <= 10; i++) await p.mouse.move(box.x + box.width - 20 - (box.width * 0.9 * i) / 10, y);
+    await p.mouse.up();
+  }
+  await p.waitForTimeout(900);
+  const sh = p.getByRole('dialog', { name: 'Inbox' });
+  ok((await sh.locator('.bell-row').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' }).count()) === 0 && (await sh.getByRole('group', { name: /Cedric hat dir 40/ }).count()) === 1, 'swiped left: "Bitte deine Scorekarte unterschreiben" gone, the payment stays');
+  const after = (await p.locator('.bell-count').first().innerText().catch(() => '0')).trim();
+  ok(Number(after) === Number(before) - 1, `the number one less (${before} → ${after})`);
+  await p.reload();
+  await p.waitForTimeout(1500);
+  await p.locator('.bell-btn').first().click();
+  await p.waitForTimeout(400);
+  ok((await p.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' }).count()) === 0, 'after a reload: still gone');
+}
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

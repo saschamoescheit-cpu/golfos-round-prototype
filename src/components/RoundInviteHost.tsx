@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import { canLink } from '../lib/friendlinks';
 import { roundInvites } from '../lib/sharedround';
-import { loadRounds } from '../lib/storage';
-import { loadGames } from '../lib/gamestore';
-import { setInboxInvites } from '../lib/inboxstore';
+import { joinedCodes, setInboxInvites } from '../lib/inboxstore';
 
 /**
  * The invitations to a round, a game or bets – into the inbox (Sascha 13.11.2026: "solche Meldungen nur ausschließlich
@@ -15,8 +13,7 @@ export function RoundInviteHost() {
     let gone = false;
     const look = async () => {
       if (gone || document.visibilityState !== 'visible' || !canLink()) return;
-      const joined = [...loadRounds().map((r) => r.shared?.code), ...loadGames().map((g) => g.shared?.code)].filter((c): c is string => !!c);
-      const found = await roundInvites(joined, true);
+      const found = await roundInvites(joinedCodes(), true);
       if (!gone) setInboxInvites(found);
     };
     // a moment after the app opened – not in the middle of its loading

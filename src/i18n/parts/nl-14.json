@@ -39,5 +39,7 @@
  "The rounds this bet counts": "Rondes die deze weddenschap telt",
  "not counted for this bet": "telt niet voor deze weddenschap",
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Ja: open het holeoverzicht (de balk onderaan) → „Tee”. De afstanden, de caddie, course rating en slope en je playing handicap volgen de nieuwe afslag; de al gespeelde holes houden de hunne. Je medespelers houden de hunne. Na de ronde: scorekaart → tik op de afslag naast de datum. In een toernooi kan alleen de organisator de tee achteraf wijzigen – in zijn scorekaart.",
- "The tournament did not take the tee – no connection. Try again later.": "Het toernooi heeft de tee niet opgeslagen – geen verbinding. Probeer het later opnieuw."
+ "The tournament did not take the tee – no connection. Try again later.": "Het toernooi heeft de tee niet opgeslagen – geen verbinding. Probeer het later opnieuw.",
+ "Accept: {0}": "Accepteren: {0}",
+ "Decline: {0}": "Weigeren: {0}"
 }

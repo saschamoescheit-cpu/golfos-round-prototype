@@ -78,7 +78,7 @@ async function run(o) {
   const ask = C.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Sascha lädt dich zu einer Runde ein' });
   await ask.waitFor({ timeout: 8000 }).catch(() => {});
   ok(/Hetzenhof/.test(await ask.innerText().catch(() => '')), `Cedric's inbox: "Sascha lädt dich zu einer Runde ein" (${(await ask.innerText().catch(() => '–')).replace(/\s+/g, ' ').slice(0, 90)})`);
-  await ask.click();
+  await ask.getByRole('button', { name: /^Annehmen/ }).click(); // answered in the inbox (14.11.2026)
   // let in already: straight into the round, no "Anfrage an den Gastgeber"
   await C.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
   const cr = await round(C).catch(() => null);

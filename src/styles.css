@@ -2758,6 +2758,11 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 /* the inbox in two groups – asked of you, to do (Sascha 13.11.2026) */
 .bell-group { display: flex; flex-direction: column; gap: 6px; }
 .bell-group > .eyebrow { padding-inline: 2px; }
+/* swiped left a message goes (Sascha 14.11.2026) – the rows still one list with lines between them */
+.settings-list > .swipe:has(> .bell-swipe) { border-radius: 0; border-bottom: 1px solid var(--line); }
+.settings-list > .swipe:has(> .bell-swipe):last-child { border-bottom: 0; }
+.bell-swipe { background: var(--surface); }
+.bell-swipe > .settings-row { width: 100%; border-bottom: 0; }
 
 /* not up to date: the server does not answer (14.11.2026) – a real warning, red as --warn */
 .server-stale { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--warn); font-size: 14px; line-height: 1.35; }

@@ -39,5 +39,7 @@
  "The rounds this bet counts": "この賭けで数えるラウンド",
  "not counted for this bet": "この賭けでは数えない",
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "はい：ホール一覧（下のバー）を開いて →「Tee」。距離、キャディー、コースレーティングとスロープ、あなたのプレーイングハンディキャップが新しいティーに合わせて変わります。すでにプレーしたホールは元のティーのままです。同伴者のティーは変わりません。ラウンド後：スコアカード → 日付の横のティーをタップ。トーナメントでは、主催者だけが後からティーを変更できます（自分のスコアカードで）。",
- "The tournament did not take the tee – no connection. Try again later.": "トーナメントにティーが保存されませんでした（接続なし）。後でもう一度お試しください。"
+ "The tournament did not take the tee – no connection. Try again later.": "トーナメントにティーが保存されませんでした（接続なし）。後でもう一度お試しください。",
+ "Accept: {0}": "承諾：{0}",
+ "Decline: {0}": "辞退：{0}"
 }

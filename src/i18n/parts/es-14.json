@@ -39,5 +39,7 @@
  "The rounds this bet counts": "Rondas que cuenta esta apuesta",
  "not counted for this bet": "no cuenta para esta apuesta",
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Sí: abre el resumen de hoyos (la barra de abajo) → «Tee». Las distancias, el caddie, el course rating y el slope y tu hándicap de juego siguen a la nueva salida; los hoyos ya jugados conservan la suya. Tus compañeros conservan la suya. Después de la ronda: tarjeta → toca la salida junto a la fecha. En un torneo solo el organizador puede cambiar la salida después, en su tarjeta.",
- "The tournament did not take the tee – no connection. Try again later.": "El torneo no guardó la salida: sin conexión. Inténtalo más tarde."
+ "The tournament did not take the tee – no connection. Try again later.": "El torneo no guardó la salida: sin conexión. Inténtalo más tarde.",
+ "Accept: {0}": "Aceptar: {0}",
+ "Decline: {0}": "Rechazar: {0}"
 }

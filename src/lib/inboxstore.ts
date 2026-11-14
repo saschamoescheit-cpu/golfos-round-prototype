@@ -1,4 +1,45 @@
-import { answerJoin, type JoinRequest, type RoundInvite } from './sharedround';
+import { answerJoin, inviteSeen, type JoinRequest, type RoundInvite } from './sharedround';
+import { loadRounds } from './storage';
+import { loadGames } from './gamestore';
+import { loadPools, myAccount } from './wagerstore';
+import { loadSeries, loadTours } from './tourstore';
+
+/** Every round, game, pool of bets, tournament and series this phone has joined – an invitation to one of them is
+ *  answered (Sascha 14.11.2026: Chris "hat die Nachrichten mehrmals angeklickt, aber diese gehen nicht weg" – the
+ *  inbox knew only rounds and games, not the bets and the series he was in). */
+export function joinedCodes(): string[] {
+  const codes = [
+    ...loadRounds().map((r) => r.shared?.code),
+    ...loadGames().map((g) => g.shared?.code),
+    // a pool of bets: in once a player of it is this account – invited, its pool is on the phone before (the server lets
+    // every member read it)
+    ...loadPools().filter((e) => { const me = myAccount(); return !!me && e.pool.players.some((p) => p.joined?.uid === me); }).map((e) => e.code),
+    ...loadTours().map((e) => e.code),
+    ...loadSeries().map((e) => e.code),
+  ];
+  return [...new Set(codes.filter((c): c is string => !!c))];
+}
+
+// what was swiped away or declined in the inbox (Sascha 14.11.2026: "Inbox Nachrichten auch löschbar, vllt mit links
+// wischen") – on this phone; a new one with another key comes again
+const DISMISSED = 'golfos.inbox.dismissed.v1';
+export function inboxDismissed(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(DISMISSED) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+export function dismissInbox(key: string): void {
+  try {
+    const all = [...inboxDismissed()].filter((k) => k !== key);
+    localStorage.setItem(DISMISSED, JSON.stringify([...all, key].slice(-300)));
+  } catch {
+    /* storage full */
+  }
+  if (key.startsWith('inv:')) inviteSeen(key.slice(4));
+  changed();
+}
 
 // What the inbox shows from the server, kept in one place (Sascha 13.11.2026: "alles in die Inbox"): the invitations
 // to a round, a game or bets – looked up in the background (InboxWatch), no popup of their own any more – and the

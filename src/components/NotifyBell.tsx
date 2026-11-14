@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { canLink, pendingAsk } from '../lib/friendlinks';
 import { amHost, cachedEvent, confirmReopen, eventOwner, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
-import { answerJoins, inboxInvites, inboxJoins, setInboxInvites } from '../lib/inboxstore';
+import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, joinedCodes, setInboxInvites } from '../lib/inboxstore';
+import { SwipeRow } from './SwipeRow';
 import { isTourHost, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import { loadGames } from '../lib/gamestore';
@@ -27,11 +28,13 @@ interface InboxItem {
   /** a tap on the row: where it is answered */
   go?: () => void;
   /** answered right in the inbox (the correction asked of the host, a request to join) */
-  action?: { label: string; aria?: string; run: () => Promise<boolean> };
+  action?: { label: string; aria?: string; run: () => Promise<boolean>; /** the inbox closes (it goes to a screen) */ closes?: boolean };
   /** the "no" beside it (a request to join: "Ablehnen") */
   decline?: { label: string; aria?: string; run: () => Promise<boolean> };
   /** asked of you by someone – else something to do (Sascha 13.11.2026: "in zwei Gruppen für die Übersichtlichkeit") */
   ask?: boolean;
+  /** swiped away: what it does instead of hiding the row (a request to join: declined) */
+  remove?: () => Promise<boolean>;
 }
 
 interface ReopenAsk {
@@ -53,12 +56,17 @@ function inviteItem(inv: RoundInvite): InboxItem {
       : inv.kind === 'game'
         ? tr(`${inv.who} invites you to a game`, `${inv.who} lädt dich zu einem Spiel ein`)
         : tr(`${inv.who} invites you to a round`, `${inv.who} lädt dich zu einer Runde ein`);
+  const join = () => window.dispatchEvent(new CustomEvent(inv.kind === 'round' ? 'golfos:join-round' : 'golfos:join-game', { detail: inv.code }));
+  // answered right here (Sascha 14.11.2026: "Einladungen zu Turnieren und Wetten auch vom Gegenüber angenommen") –
+  // "Annehmen" goes on to joining, "Ablehnen" takes it out of the inbox
   return {
     key: `inv:${inv.code}`,
     title,
-    line: inv.course || tr('Tap to join', 'Antippen zum Beitreten'),
-    go: () => window.dispatchEvent(new CustomEvent(inv.kind === 'round' ? 'golfos:join-round' : 'golfos:join-game', { detail: inv.code })),
+    line: inv.course,
+    go: join,
     ask: true,
+    action: { label: tr('Accept', 'Annehmen'), aria: tr(`Accept: ${title}`, `Annehmen: ${title}`), closes: true, run: async () => (join(), true) },
+    decline: { label: tr('Decline', 'Ablehnen'), aria: tr(`Decline: ${title}`, `Ablehnen: ${title}`), run: async () => (dismissInbox(`inv:${inv.code}`), true) },
   };
 }
 
@@ -165,15 +173,16 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
   const sign = roundsToSign(loadRounds());
   if (sign.length)
     out.push({
-      key: 'sign',
+      key: `sign:${sign.map((r) => r.id).join(',')}`,
       title: sign.length === 1 ? tr('1 round to check & sign', '1 Runde prüfen & signieren') : tr(`${sign.length} rounds to check & sign`, `${sign.length} Runden prüfen & signieren`),
       line: [...new Set(sign.map((r) => r.courseName))].slice(0, 2).join(', '),
       go: () => pick('rounds'),
     });
-  const confirm = loadGames().filter((g) => g.finishedAt && !g.signedAt).length;
+  const toConfirm = loadGames().filter((g) => g.finishedAt && !g.signedAt);
+  const confirm = toConfirm.length;
   if (confirm)
     out.push({
-      key: 'confirm',
+      key: `confirm:${toConfirm.map((g) => g.id).join(',')}`,
       title: confirm === 1 ? tr('1 result to confirm', '1 Ergebnis bestätigen') : tr(`${confirm} results to confirm`, `${confirm} Ergebnisse bestätigen`),
       line: 'Games',
       go: () => pick('games'),
@@ -252,13 +261,27 @@ export function NotifyBell() {
     ask: true,
     action: { label: tr('Let in', 'Zulassen'), aria: tr(`Let ${a.name} in`, `${a.name} zulassen`), run: () => answerJoins([a], true) },
     decline: { label: tr('Decline', 'Ablehnen'), aria: tr(`Decline ${a.name}`, `${a.name} ablehnen`), run: () => answerJoins([a], false) },
+    remove: () => answerJoins([a], false),
   }));
   const markReceived = async (code: string, id: string): Promise<boolean> => {
     const r = await changePool(code, (p) => ({ ...p, payments: (p.payments ?? []).map((x) => (x.id === id ? { ...x, receivedAt: new Date().toISOString() } : x)) }));
     setTick((n) => n + 1);
     return !!r;
   };
-  const items = [...joinItems, ...askItems, ...localItems(markReceived), ...invites.map(inviteItem)];
+  // an invitation already joined goes at once (not only with the next look); what was swiped away stays away
+  const joined = new Set(joinedCodes());
+  const gone = inboxDismissed();
+  const items = [...joinItems, ...askItems, ...localItems(markReceived), ...invites.filter((x) => !joined.has(x.code)).map(inviteItem)].filter((x) => !gone.has(x.key));
+  const swipe = async (it: InboxItem): Promise<boolean> => {
+    if (it.remove) {
+      const done = await it.remove();
+      if (!done) setMsg(tr('That did not work – check the connection and try again.', 'Das hat nicht geklappt – Verbindung prüfen und nochmal.'));
+      return done;
+    }
+    dismissInbox(it.key);
+    setTick((x) => x + 1);
+    return true;
+  };
   const n = items.length;
   return (
     <>
@@ -294,9 +317,10 @@ export function NotifyBell() {
                 <div key={g.name} className="bell-group">
                 <span className="eyebrow">{g.name}</span>
                 <div className="settings-list">
-                  {g.list.map((it) =>
-                    it.action ? (
-                      <div key={it.key} className="settings-row bell-row bell-ask" role="group" aria-label={it.title}>
+                  {g.list.map((it) => (
+                    <SwipeRow key={it.key} label={it.title} className="bell-swipe" onDelete={() => swipe(it)}>
+                    {it.action ? (
+                      <div className="settings-row bell-row bell-ask" role="group" aria-label={it.title}>
                         <span className="grow">
                           <strong>{it.title}</strong>
                           {it.line && <span className="muted small">{it.line}</span>}
@@ -326,6 +350,7 @@ export function NotifyBell() {
                             setBusy(it.key);
                             const done = await it.action!.run();
                             setBusy(null);
+                            if (done && it.action!.closes) setOpen(false);
                             setMsg(done ? null : tr('That did not work – check the connection and try again.', 'Das hat nicht geklappt – Verbindung prüfen und nochmal.'));
                           }}
                         >
@@ -334,7 +359,6 @@ export function NotifyBell() {
                       </div>
                     ) : (
                       <button
-                        key={it.key}
                         type="button"
                         className="settings-row bell-row"
                         onClick={() => {
@@ -348,8 +372,9 @@ export function NotifyBell() {
                         </span>
                         <span aria-hidden="true">›</span>
                       </button>
-                    ),
-                  )}
+                    )}
+                    </SwipeRow>
+                  ))}
                 </div>
                 </div>
                   ))
