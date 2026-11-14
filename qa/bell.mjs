@@ -81,36 +81,62 @@ await p.waitForTimeout(1200);
 await p.locator('.bell-btn').first().click().catch(() => {});
 await p.waitForTimeout(400);
 ok((await p.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Wette gegen dich' }).count()) === 0, 'the bet seen: not in the inbox again');
-// Sascha 14.11.2026: "Inbox Nachrichten auch löschbar sein, vllt auch mit links wischen" – swiped all the way left the
-// row goes and stays gone after a reload; the others stay
+// Sascha 14.11.2026: "Inbox Nachrichten auch löschbar sein, vllt auch mit links wischen" – and read/unread (mock-up A +
+// E): unread a green dot, the number counts only the unread; closed, what it showed is read; a swipe right turns a row
+// back to unread; a swipe left all the way deletes it – gone after a reload too
 {
-  // back on the start page (the bet's tap opened the pool)
-  await p.evaluate(() => sessionStorage.removeItem('golfos.module'));
-  await p.goto('about:blank');
-  await p.goto(url);
-  await p.waitForTimeout(1500);
+  const swipeRow = async (text, dir) => {
+    const row = p.getByRole('dialog', { name: 'Inbox' }).locator('.swipe').filter({ hasText: text });
+    const box = await row.boundingBox();
+    if (!box) return;
+    const y = box.y + box.height / 2;
+    const x0 = dir < 0 ? box.x + box.width - 20 : box.x + 40;
+    await p.mouse.move(x0, y);
+    await p.mouse.down();
+    const dist = dir < 0 ? box.width * 0.9 : 130;
+    for (let i = 1; i <= 10; i++) await p.mouse.move(x0 + (dir * dist * i) / 10, y);
+    await p.mouse.up();
+    await p.waitForTimeout(700);
+  };
+  const reopen = async () => {
+    await p.evaluate(() => sessionStorage.removeItem('golfos.module'));
+    await p.goto('about:blank');
+    await p.goto(url);
+    await p.waitForTimeout(1500);
+  };
+  const number = async () => Number((await p.locator('.bell-count').first().innerText().catch(() => '0')).trim() || 0);
+  await reopen();
+  // fresh unread: the scorecard to sign and the payment (the bet was seen above)
+  await p.evaluate(() => localStorage.removeItem('golfos.inbox.read.v1'));
+  await reopen();
+  const unreadAll = await number();
   await p.locator('.bell-btn').first().click();
   await p.waitForTimeout(500);
-  const before = (await p.locator('.bell-count').first().innerText().catch(() => '0')).trim();
-  const row = p.getByRole('dialog', { name: 'Inbox' }).locator('.swipe').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' });
-  const box = await row.boundingBox();
-  if (box) {
-    const y = box.y + box.height / 2;
-    await p.mouse.move(box.x + box.width - 20, y);
-    await p.mouse.down();
-    for (let i = 1; i <= 10; i++) await p.mouse.move(box.x + box.width - 20 - (box.width * 0.9 * i) / 10, y);
-    await p.mouse.up();
-  }
-  await p.waitForTimeout(900);
   const sh = p.getByRole('dialog', { name: 'Inbox' });
+  const unreadRows = await sh.locator('.bell-row.unread').count();
+  ok(unreadAll >= 2 && unreadRows === unreadAll, `unread: ${unreadRows} rows with the green dot, the number ${unreadAll}`);
+  await sh.getByRole('button', { name: 'Schließen' }).click();
+  await p.waitForTimeout(500);
+  ok((await number()) === 0 && (await p.locator('.bell-count').count()) === 0, 'the inbox closed: all it showed read – no number');
+  await p.locator('.bell-btn').first().click();
+  await p.waitForTimeout(500);
+  ok((await sh.locator('.bell-row.unread').count()) === 0 && (await sh.locator('.bell-row.read').count()) === unreadRows, 'opened again: the rows still there, read (no dot)');
+  // swiped right: unread again – and stays so when the inbox closes
+  await swipeRow('Cedric hat dir 40', 1);
+  ok((await sh.locator('.bell-row.unread').filter({ hasText: 'Cedric hat dir 40' }).count()) === 1, 'swiped right: "Cedric hat dir 40 $ bezahlt" unread again');
+  await sh.getByRole('button', { name: 'Schließen' }).click();
+  await p.waitForTimeout(500);
+  ok((await number()) === 1, `closed: it stays unread – the number 1 (${await number()})`);
+  // swiped left all the way: gone, after a reload too
+  await p.locator('.bell-btn').first().click();
+  await p.waitForTimeout(500);
+  await swipeRow('Bitte deine Scorekarte unterschreiben', -1);
   ok((await sh.locator('.bell-row').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' }).count()) === 0 && (await sh.getByRole('group', { name: /Cedric hat dir 40/ }).count()) === 1, 'swiped left: "Bitte deine Scorekarte unterschreiben" gone, the payment stays');
-  const after = (await p.locator('.bell-count').first().innerText().catch(() => '0')).trim();
-  ok(Number(after) === Number(before) - 1, `the number one less (${before} → ${after})`);
-  await p.reload();
-  await p.waitForTimeout(1500);
+  await reopen();
   await p.locator('.bell-btn').first().click();
   await p.waitForTimeout(400);
-  ok((await p.getByRole('dialog', { name: 'Inbox' }).locator('.bell-row').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' }).count()) === 0, 'after a reload: still gone');
+  ok((await sh.locator('.bell-row').filter({ hasText: 'Bitte deine Scorekarte unterschreiben' }).count()) === 0, 'after a reload: still gone');
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/bell-read.png` });
 }
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);

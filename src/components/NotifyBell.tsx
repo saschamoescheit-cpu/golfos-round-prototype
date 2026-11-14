@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { canLink, pendingAsk } from '../lib/friendlinks';
 import { amHost, cachedEvent, confirmReopen, eventOwner, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
-import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, joinedCodes, setInboxInvites } from '../lib/inboxstore';
+import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
 import { SwipeRow } from './SwipeRow';
 import { isTourHost, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
@@ -282,7 +282,35 @@ export function NotifyBell() {
     setTick((x) => x + 1);
     return true;
   };
-  const n = items.length;
+  // read and unread (Sascha 14.11.2026, mock-up A + E): the number counts the unread; what the open inbox showed is read
+  // once it closes – except what was turned by a swipe right while it was open
+  const read = inboxRead();
+  const n = items.filter((x) => !read.has(x.key)).length;
+  const shown = useRef<string[]>([]);
+  const turned = useRef(new Set<string>());
+  if (open) shown.current = items.map((x) => x.key);
+  useEffect(() => {
+    if (open || !shown.current.length) return;
+    markInboxRead(shown.current.filter((k) => !turned.current.has(k)));
+    shown.current = [];
+    turned.current = new Set();
+    setTick((x) => x + 1);
+  }, [open]);
+  const turn = (key: string) => {
+    turned.current.add(key);
+    markInboxRead([key], !read.has(key));
+    setTick((x) => x + 1);
+  };
+  const READ_ICON = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 12l5 5L20 6" />
+    </svg>
+  );
+  const UNREAD_ICON = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5" fill="currentColor" />
+    </svg>
+  );
   return (
     <>
       <button type="button" className="lang-btn bell-btn" aria-label={n ? tr(`Inbox – ${n} waiting`, `Inbox – ${n} offen`) : 'Inbox'} onClick={() => setOpen(true)}>
@@ -307,7 +335,7 @@ export function NotifyBell() {
                   ✕
                 </button>
               </div>
-              {n ? (
+              {items.length ? (
                 [
                   { name: tr('Asked of you', 'Anfragen an dich'), list: items.filter((x) => x.ask) },
                   { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask) },
@@ -318,9 +346,15 @@ export function NotifyBell() {
                 <span className="eyebrow">{g.name}</span>
                 <div className="settings-list">
                   {g.list.map((it) => (
-                    <SwipeRow key={it.key} label={it.title} className="bell-swipe" onDelete={() => swipe(it)}>
+                    <SwipeRow
+                      key={it.key}
+                      label={it.title}
+                      className="bell-swipe"
+                      onDelete={() => swipe(it)}
+                      right={read.has(it.key) ? { word: tr('Unread', 'Ungelesen'), icon: UNREAD_ICON, run: () => turn(it.key) } : { word: tr('Read', 'Gelesen'), icon: READ_ICON, run: () => turn(it.key) }}
+                    >
                     {it.action ? (
-                      <div className="settings-row bell-row bell-ask" role="group" aria-label={it.title}>
+                      <div className={`settings-row bell-row bell-ask ${read.has(it.key) ? 'read' : 'unread'}`} role="group" aria-label={it.title}>
                         <span className="grow">
                           <strong>{it.title}</strong>
                           {it.line && <span className="muted small">{it.line}</span>}
@@ -360,7 +394,7 @@ export function NotifyBell() {
                     ) : (
                       <button
                         type="button"
-                        className="settings-row bell-row"
+                        className={`settings-row bell-row ${read.has(it.key) ? 'read' : 'unread'}`}
                         onClick={() => {
                           setOpen(false);
                           it.go?.();

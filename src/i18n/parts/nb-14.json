@@ -41,5 +41,7 @@
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Ja: åpne hulloversikten (linjen nederst) → «Tee». Lengdene, caddien, course rating og slope og spillehandicapet ditt følger det nye utslaget; hullene du allerede har spilt beholder sitt. Medspillerne dine beholder sitt. Etter runden: scorekort → trykk på utslaget ved siden av datoen. I en turnering kan bare arrangøren endre utslagssted i etterkant – på sitt scorekort.",
  "The tournament did not take the tee – no connection. Try again later.": "Turneringen lagret ikke utslagsstedet – ingen forbindelse. Prøv igjen senere.",
  "Accept: {0}": "Godta: {0}",
- "Decline: {0}": "Avslå: {0}"
+ "Decline: {0}": "Avslå: {0}",
+ "Read": "Lest",
+ "Unread": "Ulest"
 }

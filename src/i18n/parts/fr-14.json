@@ -41,5 +41,7 @@
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Oui : ouvre l’aperçu des trous (la barre en bas) → « Tee ». Les longueurs, le caddie, le course rating et le slope ainsi que ton handicap de jeu suivent le nouveau départ ; les trous déjà joués gardent le leur. Tes partenaires gardent le leur. Après la partie : carte de score → touche le départ à côté de la date. En tournoi, seul l'organisateur peut modifier le départ après coup – dans sa carte de score.",
  "The tournament did not take the tee – no connection. Try again later.": "Le tournoi n'a pas enregistré le départ – pas de connexion. Réessaie plus tard.",
  "Accept: {0}": "Accepter : {0}",
- "Decline: {0}": "Refuser : {0}"
+ "Decline: {0}": "Refuser : {0}",
+ "Read": "Lu",
+ "Unread": "Non lu"
 }

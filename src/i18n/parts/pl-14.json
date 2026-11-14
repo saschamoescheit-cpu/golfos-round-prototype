@@ -41,5 +41,7 @@
  "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "Tak: otwórz przegląd dołków (pasek na dole) → „Tee”. Odległości, caddie, course rating i slope oraz twój handicap gry dostosowują się do nowego tee; rozegrane już dołki zachowują swoje. Partnerzy zachowują swoje. Po rundzie: karta wyników → dotknij tee obok daty. W turnieju tylko organizator może później zmienić tee – na swojej karcie wyników.",
  "The tournament did not take the tee – no connection. Try again later.": "Turniej nie zapisał tee – brak połączenia. Spróbuj później.",
  "Accept: {0}": "Akceptuj: {0}",
- "Decline: {0}": "Odrzuć: {0}"
+ "Decline: {0}": "Odrzuć: {0}",
+ "Read": "Przeczytane",
+ "Unread": "Nieprzeczytane"
 }

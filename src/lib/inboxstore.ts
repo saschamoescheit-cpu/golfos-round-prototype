@@ -73,3 +73,24 @@ export async function answerJoins(some: JoinAsk[], yes: boolean): Promise<boolea
   setInboxJoins(joins.filter((y) => !ok.some((a) => a.code === y.code && a.id === y.id)));
   return ok.length === some.length;
 }
+
+// read and unread (Sascha 14.11.2026, mock-up A + E): what was in the open inbox counts as read once it is closed, a
+// swipe right turns it back to unread (or read); the inbox's number counts only the unread – on this phone
+const READ = 'golfos.inbox.read.v1';
+export function inboxRead(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(READ) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+export function markInboxRead(keys: string[], read = true): void {
+  if (!keys.length) return;
+  try {
+    const all = [...inboxRead()].filter((k) => !keys.includes(k));
+    localStorage.setItem(READ, JSON.stringify(read ? [...all, ...keys].slice(-300) : all));
+  } catch {
+    /* storage full */
+  }
+  changed();
+}

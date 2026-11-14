@@ -2115,6 +2115,7 @@ button.tile:disabled { opacity: 1; }
 }
 .swipe-bin > span { width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .swipe-bin-text { font-size: 12px; font-weight: 600; }
+.swipe-bin.swipe-right { justify-content: flex-start; background: var(--brand); } /* swiped right: green on the left (the inbox's "Gelesen", 14.11.2026) */
 /* the flights' players dragged by their grip (Sascha 02.11.2026) – the page scrolls everywhere else */
 .tour-grip { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: -8px -10px -8px 0; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .tour-flight.drop-full { opacity: 0.55; }
@@ -2763,6 +2764,11 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .settings-list > .swipe:has(> .bell-swipe):last-child { border-bottom: 0; }
 .bell-swipe { background: var(--surface); }
 .bell-swipe > .settings-row { width: 100%; border-bottom: 0; }
+/* read and unread (Sascha 14.11.2026, mock-up A): unread a green dot and bold, read lighter – the number counts unread */
+.bell-row .grow strong { display: flex; align-items: baseline; gap: 7px; }
+.bell-row.unread .grow strong::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); transform: translateY(-1px); }
+.bell-row.unread .grow strong { font-weight: 700; }
+.bell-row.read .grow strong { font-weight: 500; color: var(--muted); }
 
 /* not up to date: the server does not answer (14.11.2026) – a real warning, red as --warn */
 .server-stale { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--warn); font-size: 14px; line-height: 1.35; }

@@ -27,6 +27,9 @@ export function SwipeRow(props: {
    *  11.11.2026, Facelift-Abnahme G4: "Nach links wischen ok, aber Mülleimer ist löschen statt zurücknehmen"): its word,
    *  its icon (ACTION_ICONS of ActionBar), 'neutral' grey instead of red; the button then reads "<word>: <label>" */
   action?: { word: string; icon: ReactNode; tone?: 'danger' | 'neutral' };
+  /** swiped right (only where given – the inbox, Sascha 14.11.2026 "rechts gelesen"): green behind the row on the left,
+   *  pulled far enough it runs and the row slides back */
+  right?: { word: string; icon: ReactNode; run: () => void };
 }) {
   const [id] = useState(() => ++seq);
   const [off, setOffState] = useState(0);
@@ -108,6 +111,11 @@ export function SwipeRow(props: {
     if (!d?.axis) return; // a tap: it opens the row
     swallow.current = true; // a drag either way is no tap
     if (d.axis === 'y') return;
+    if (at.current > 0) {
+      if (at.current > SHOWN * 0.6) props.right?.run();
+      setOff(0);
+      return;
+    }
     if (-at.current > width() * 0.55) void remove();
     else if (-at.current > SHOWN / 3) {
       setOff(-SHOWN);
@@ -137,6 +145,14 @@ export function SwipeRow(props: {
           </span>
         </button>
       )}
+      {off > 0 && props.right && (
+        <button type="button" className="swipe-bin swipe-right" tabIndex={-1} aria-label={`${props.right.word}: ${props.label}`} onClick={() => (props.right!.run(), setOff(0))}>
+          <span>
+            {props.right.icon}
+            <span className="swipe-bin-text">{props.right.word}</span>
+          </span>
+        </button>
+      )}
       <div
         ref={front}
         className={`swipe-front${dragging ? ' dragging' : ''}${props.className ? ` ${props.className}` : ''}`}
@@ -162,7 +178,7 @@ export function SwipeRow(props: {
               }
             } else if (Math.abs(dy) > START) d.axis = 'y';
           }
-          if (d.axis === 'x') setOff(Math.max(-width(), Math.min(0, d.from + dx)));
+          if (d.axis === 'x') setOff(Math.max(-width(), Math.min(props.right ? SHOWN * 1.2 : 0, d.from + dx)));
         }}
         onPointerUp={end}
         onPointerCancel={end}
