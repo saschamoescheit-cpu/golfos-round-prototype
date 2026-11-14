@@ -58,22 +58,24 @@ ok((await hcp(phone)) === '7,0', `the iPhone has the PC's profile (${await hcp(p
 const t0 = Date.now();
 await pc.p.getByLabel('Handicap-Index').fill('6,4');
 await pc.p.getByLabel('Handicap-Index').blur();
+// a phone nudges the others at most every 30 s (14.11.2026: the realtime quota used up, "App sparsamer") – a change within
+// the 30 s comes at their end: seen within 31 s, not at once
 let seen = null;
-for (let i = 0; i < 30 && seen == null; i++) {
+for (let i = 0; i < 140 && seen == null; i++) {
   await phone.p.waitForTimeout(250);
   if ((await hcp(phone)) === '6,4') seen = Date.now() - t0;
 }
-ok(seen != null && seen < 6000, `the open iPhone shows the PC's change without reloading ${seen != null ? `after ${(seen / 1000).toFixed(1)} s` : '(not within 7.5 s)'}`);
+ok(seen != null && seen < 31000, `the open iPhone shows the PC's change without reloading ${seen != null ? `after ${(seen / 1000).toFixed(1)} s` : '(not within 35 s)'}`);
 // and back: the iPhone's change on the open PC
 const t1 = Date.now();
 await phone.p.getByLabel('Handicap-Index').fill('6,1');
 await phone.p.getByLabel('Handicap-Index').blur();
 let back = null;
-for (let i = 0; i < 30 && back == null; i++) {
+for (let i = 0; i < 140 && back == null; i++) {
   await pc.p.waitForTimeout(250);
   if ((await hcp(pc)) === '6,1') back = Date.now() - t1;
 }
-ok(back != null && back < 6000, `and the other way round ${back != null ? `after ${(back / 1000).toFixed(1)} s` : '(not within 7.5 s)'}`);
+ok(back != null && back < 31000, `and the other way round ${back != null ? `after ${(back / 1000).toFixed(1)} s` : '(not within 35 s)'}`);
 ok(pc.errs.length + phone.errs.length === 0, `no page errors ${[...pc.errs, ...phone.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
