@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { holeMapData, distanceM, type HoleMapData } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
-import { BLIND, detectWithScore, splitRound, type TrackPoint } from '../src/lib/track';
+import { BLIND, detectWithScore, rodeCart, splitRound, type TrackPoint } from '../src/lib/track';
 import type { Round, LngLat } from '../src/types';
 
 const file = process.argv[2];
@@ -24,6 +24,7 @@ if (!geo) throw new Error('no seed geometry for ' + r.courseId);
 const track = data.track.map((x) => (x.t > 1e14 ? { ...x, t: x.t / 1000 } : x));
 const maps: (HoleMapData | null)[] = r.holes.map((h) => holeForTee(holeMapData(geo, h.loop, h.number), r.courseId, h.label, r.tee, geo.tee));
 const parts = splitRound(track, maps);
+const cart = rodeCart(track); // as the app does it (RoundReview)
 const me = r.players.find((p) => p.isMe)!.id;
 let good = 0;
 let sumErr = 0;
@@ -35,7 +36,7 @@ r.holes.forEach((h, i) => {
   const byHand = (r.manualShots ?? []).filter((x) => x.hole === i).sort((a, b) => a.t - b.t).map((x) => x.pos);
   const truth = byHand.length ? byHand : (e.detail?.shots ?? []).map((s) => s.pos).filter((p): p is LngLat => p != null);
   const m = maps[i];
-  const found = m && parts[i]?.length ? detectWithScore(parts[i], m, h.par, undefined, e) : null;
+  const found = m && parts[i]?.length ? detectWithScore(parts[i], m, h.par, undefined, e, { cart }) : null;
   const got = (found?.shots ?? []).map((s) => s.pos).filter((p): p is LngLat => p != null);
   // each true shot: the nearest detected one (by order first, then the nearest)
   const errs = truth.map((t, k) => {

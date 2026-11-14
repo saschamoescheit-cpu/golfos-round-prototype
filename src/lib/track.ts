@@ -42,6 +42,19 @@ export const DETECT = {
 // the big misses are the partners' balls the cart stopped at; off until that is solved
 export const CART = { on: false, fastMs: 4.5, maxMs: 12, rideM: 60, rides: 2, freeM: 8, pull: 0.5, maxPullM: 20 };
 
+/**
+ * Which places count in a round played from a cart (Sascha 14.11.2026: "the shot detection must get much better, also
+ * when we ride the cart"). Measured on his two checked cart rounds (Orange Lake Reserve 13.11., Stonegate Oaks 12.11.):
+ * - the app opened (and the phone put away) is no sign of the own ball in a cart – the phone is picked up in the cart,
+ *   at the green for the score, on the way: of 77 app-opens off the tee and the green only 14 % lay within 15 m of one
+ *   of his balls (stops: 35 %). They are no places of their own there and give a stop no bonus.
+ * - the cart stops at every ball of the flight – the partners' balls lie off the hole line more often than his own:
+ *   stops within 20 m of the line were his ball in 54 % of cases, stops 30 m and more off in 19 %. A stop loses
+ *   0.4 per 10 m it lies more than 15 m off the line.
+ * Together: 24 → 33 of 57 shots within 15 m, mean miss 55 → 38 m (Reserve) and 31 → 21 m (Oaks).
+ */
+export const CART_PLACES = { offFreeM: 15, offPer10M: 0.4 };
+
 /** Rides faster than anyone walks (4.5–12 m/s, measured over 10 s or more – a fix a second wanders a few metres even
  *  standing), each at least 60 m in one go – twice on the stretch (a jog is slower): a cart. A single GPS jump (Sascha's walk at
  *  Hetzenhof 16.10.2026: 11, 23, 41 m now and then) is no ride. */
@@ -171,8 +184,9 @@ interface Place {
   guess?: boolean; // a spot on a stretch the phone saw nothing of – no fix there
 }
 
-/** All places on this hole: stops, the first fix after opening the app, the last fix before the phone went away. */
-function places(track: TrackPoint[], hole: HoleMapData): Place[] {
+/** All places on this hole: stops, the first fix after opening the app, the last fix before the phone went away.
+ *  `inCart`: the round was played from a cart (see CART_PLACES) – only the stops, those off the hole line weaker. */
+function places(track: TrackPoint[], hole: HoleMapData, inCart = false): Place[] {
   const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
   // in a cart the stops are where the cart parked – pulled towards the hole line, not at the tee or by the green
   const cart = CART.on && rodeCart(pts);
@@ -180,9 +194,11 @@ function places(track: TrackPoint[], hole: HoleMapData): Place[] {
     cart && distanceM(p, hole.tee) > 40 && distanceM(p, hole.greenCenter) > greenRadius(hole) + 20 ? cartSpot(p, hole.line) : p;
   const out: Place[] = findStops(pts).map((s) => {
     const dur = (s.to - s.from) / 1000;
-    return { p: cartMove(s.p), from: s.from, to: s.to, q: dur > DETECT.maxStopS ? 0.3 : dur >= 20 ? 0.55 : 0.4, w: 3 };
+    let q = dur > DETECT.maxStopS ? 0.3 : dur >= 20 ? 0.55 : 0.4;
+    if (inCart) q -= (CART_PLACES.offPer10M * Math.max(0, distToLine(s.p, hole.line) - CART_PLACES.offFreeM)) / 10;
+    return { p: cartMove(s.p), from: s.from, to: s.to, q, w: 3 };
   });
-  for (let k = 0; k < pts.length; k++) {
+  for (let k = 0; k < pts.length && !inCart; k++) {
     // the app opened again – a golfer looks at the distance by his ball (alone a weak sign: a glance on the way
     // looks the same; together with standing there it is a strong one)
     if (pts[k].open) out.push({ p: pts[k].p, from: pts[k].t, to: pts[k].t, q: 0.2, w: 1 });
@@ -216,7 +232,7 @@ function places(track: TrackPoint[], hole: HoleMapData): Place[] {
  * a shot that loses a stroke; leaving out the own ball would need a shot no amateur hits. The most plausible chain
  * of places wins (dynamic programming over the places in time order).
  */
-export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: { shots?: number | null } = {}): DetailEntry | null {
+export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: { shots?: number | null; cart?: boolean } = {}): DetailEntry | null {
   const plain = detectCore(track, hole, par, bag, opts, false);
   // A chip from the fringe: the GPS puts the short stop at the green's edge inside the green outline, and it is taken
   // for the first putt. When the score says a shot is missing and another stop on the green follows, that first stop
@@ -228,9 +244,9 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
   return plain?.detail ?? null;
 }
 
-function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: typeof BAG, opts: { shots?: number | null }, fringe: boolean): { detail: DetailEntry; suggested: boolean; total: number } | null {
+function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: typeof BAG, opts: { shots?: number | null; cart?: boolean }, fringe: boolean): { detail: DetailEntry; suggested: boolean; total: number } | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
-  let list = places(track, hole);
+  let list = places(track, hole, !!opts.cart);
   if (list.length === 0 && track.length === 0) return null;
   // The tee: the last place near the tee (waiting for the group in front does not matter there). The player tees
   // off from the tee even when the phone was in the pocket there.
@@ -647,6 +663,8 @@ export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties:
  * The shots of a hole with what the player entered on the course: score − putts − penalties is the number of swings
  * to the green; penalties go to the shot over water; what water does not explain was out of bounds – the replay comes
  * from the same spot (one place, two swings), so the detection looks for one swing fewer per such penalty.
+ * `opts.cart`: the round was played from a cart – rodeCart() of the whole round's track (one hole alone often has no
+ * long ride), see CART_PLACES.
  */
 export function detectWithScore(
   part: TrackPoint[],
@@ -654,9 +672,10 @@ export function detectWithScore(
   par: number,
   bag: typeof BAG | undefined,
   e: { strokes: number | null; putts: number | null; penalties?: number; pickedUp?: boolean },
+  opts: { cart?: boolean } = {},
 ): DetailEntry | null {
   const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
-  const detect = (n: number | null) => detectHoleShots(part, hole, par, bag, { shots: n != null && n >= 1 ? n : null });
+  const detect = (n: number | null) => detectHoleShots(part, hole, par, bag, { shots: n != null && n >= 1 ? n : null, cart: opts.cart });
   const raw = detect(count);
   if (!raw) return null;
   const pen = e.penalties ?? 0;

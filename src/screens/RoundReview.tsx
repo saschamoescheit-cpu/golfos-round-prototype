@@ -4,7 +4,7 @@ import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, offGreen, shotLengths, shotOdd, suggestKind } from '../lib/shots';
-import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
+import { clubForLength, detectWithScore, findStops, loadTrack, rodeCart, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { hasOwnHoleLine, loadCachedCourse, loadCarryBag, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadUnit, removeAllHoleLines, removeHoleLine, saveHoleLine } from '../lib/storage';
 import { HoleSetup } from '../components/HoleSetup';
 import { shareLine } from '../lib/sharedround';
@@ -582,6 +582,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     let byHand = 0;
     const list = entries.slice();
     const parts = splitRound(track, maps);
+    // played from a cart (the whole round's track – one hole alone often has no long ride): only the stops count, those
+    // off the hole line less (Sascha 14.11.2026, see CART_PLACES in track.ts)
+    const cart = rodeCart(track);
     round.holes.forEach((h, i) => {
       const m = maps[i];
       // holes the player touched (a shot moved, set, edited – or the hole confirmed) stay as they are; the rest is
@@ -594,7 +597,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // the places the player noted by hand on the course are the truth (Sascha 18.10.2026: "take them over by
       // themselves") – the GPS detection only where there are none; still to check like every first suggestion
       const hand = handDetail(i, m, { ...emptyDetail(), pin: pinFor(i) }, part);
-      const gps = hand ? null : detectWithScore(part, m, h.par, bag, e);
+      const gps = hand ? null : detectWithScore(part, m, h.par, bag, e, { cart });
       // a GPS shot near a place noted by hand goes to that place – the tap is the truth, the GPS is ±15 m (Sascha
       // 20.10.2026: "the club should show where the shot was noted"); each place takes the nearest shot within 40 m
       if (gps) gps.shots = snapToHand(gps.shots, i, m, false);
