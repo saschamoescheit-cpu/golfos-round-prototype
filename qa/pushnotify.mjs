@@ -161,12 +161,13 @@ const openProfile = async (p) => {
   cdp.on('ServiceWorker.workerRegistrationUpdated', (e) => regs.push(...e.registrations));
   await cdp.send('ServiceWorker.enable');
   await p.waitForTimeout(800);
-  const reg = regs.find((r) => !r.isDeleted && r.scopeURL.startsWith(origin));
+  const reg = regs.filter((r) => !r.isDeleted && r.scopeURL.startsWith(origin)).pop();
   ok(!!reg, 'the app\'s service worker registered');
   if (reg) {
     const note = { title: 'Runde noch nicht geprüft', body: 'Deine Runde in Golfclub Hetzenhof wartet aufs Prüfen und Signieren.', tag: 'golfos-rounds', url: './#review=qa-done' };
     await cdp.send('ServiceWorker.deliverPushMessage', { origin, registrationId: reg.registrationId, data: JSON.stringify(note) });
-    await p.waitForTimeout(1500);
+    // Edge 157 (12.11.2026) shows it a few seconds later than before: waited for, up to 8 s
+    for (let k = 0; k < 16 && !(await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)); k++) await p.waitForTimeout(500);
     const shown = await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag, url: n.data?.url })));
     ok(shown.length === 1 && shown[0].title === note.title && shown[0].body === note.body && shown[0].url === note.url, `the push shown: „${shown[0]?.title}“ – ${shown[0]?.body}`);
   }
@@ -178,7 +179,9 @@ const openProfile = async (p) => {
   // the app is open: the tap changes the place in its address
   await p.goto(`${url}#review=qa-done`);
   await p.waitForTimeout(3000);
-  ok(await p.getByText('Schläge prüfen').first().isVisible(), '#review=…: the round\'s check opens');
+  // since 13.11.2026 a round to sign opens its scorecard first (Sascha: "springt direkt in die Nachbereitung statt zur
+  // Scorekarte") – "Schläge prüfen" one tap away there
+  ok((await p.getByRole('heading', { name: 'Scorekarte' }).count()) >= 1 && (await p.getByRole('button', { name: 'Schläge prüfen' }).first().isVisible()), '#review=…: the round opens – its scorecard, "Schläge prüfen" there');
   ok((await p.evaluate(() => location.hash)) === '', 'the place read once (address clean again)');
   await p.goto(`${url}#sign`);
   await p.waitForTimeout(2000);
