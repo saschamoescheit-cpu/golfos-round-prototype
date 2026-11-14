@@ -100,6 +100,21 @@ await sheet.getByRole('button', { name: /Texas Wedge/ }).click();
 await p.waitForTimeout(200);
 const kindGroup = sheet.getByRole('group', { name: 'Schlagart' });
 ok((await kindGroup.getByRole('button', { name: 'Chip', exact: true }).getAttribute('aria-pressed')) === 'true', 'the putter (Texas wedge) picked: "Chip" chosen');
+// Sascha 14.11.2026: "Wenn der Ball im Bunker ist, sollte Bunker und Bunker die Standardauswahl sein"
+{
+  const lieGroup = sheet.getByRole('group', { name: 'Lage' });
+  const pressed = async (g, n) => (await g.getByRole('button', { name: n, exact: true }).getAttribute('aria-pressed')) === 'true';
+  await sheet.getByRole('button', { name: /Wedge|^SW|^PW/ }).first().click().catch(() => {});
+  await kindGroup.getByRole('button', { name: 'Voll', exact: true }).click();
+  await lieGroup.getByRole('button', { name: 'Bunker', exact: true }).click();
+  await p.waitForTimeout(150);
+  ok(await pressed(kindGroup, 'Bunker'), 'the lie "Bunker" chosen: the shot type "Bunker" too – even after "Voll"');
+  await lieGroup.getByRole('button', { name: 'Fairway', exact: true }).click();
+  await p.waitForTimeout(150);
+  ok(!(await pressed(kindGroup, 'Bunker')), 'out of the bunker again: the type follows the suggestion, no longer "Bunker"');
+  await sheet.getByRole('button', { name: /Texas Wedge/ }).click();
+  await p.waitForTimeout(150);
+}
 await p.getByRole('button', { name: /Fertig|Speichern|Übernehmen/ }).last().click();
 await p.waitForTimeout(600);
 {

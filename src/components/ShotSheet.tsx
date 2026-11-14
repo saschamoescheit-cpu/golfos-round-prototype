@@ -130,7 +130,12 @@ export function ShotSheet(props: {
         <div className="field">
           <label>{tr('Lie', 'Lage')}</label>
           {/* the app's green chips, wrapping – as Strafschlag, Treffer and Absicht in this sheet (Facelift 11.11.2026) */}
-          <Chips<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES.map((o) => (o.value === 'tee' ? { ...o, label: 'Tee' } : o))} /* "Abschlag" is cut off on small phones */ />
+          <Chips<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => {
+              if (!v) return;
+              setLie(v);
+              if (v === 'bunker') setKind('bunker');
+              else if (shownKind === 'bunker') setKind(null);
+            }} options={LIES.map((o) => (o.value === 'tee' ? { ...o, label: 'Tee' } : o))} /* "Abschlag" is cut off on small phones */ />
         </div>
         <div className="field">
           <label>{tr('Shot', 'Schlag')}</label>
