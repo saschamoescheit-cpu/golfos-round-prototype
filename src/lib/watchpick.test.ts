@@ -38,4 +38,13 @@ describe('the watch\'s swings – candidates, not shots', () => {
     expect(picked.some((x) => !x.watch)).toBe(true);
     expect(picked).toHaveLength(2);
   });
+  // review 14.11.2026: a watch swing the player dragged into place counts as his – never bunched away, never the one to go
+  it('a watch point moved by hand stays like a tap', () => {
+    t = 0;
+    const moved = { ...swing(150, 0), placed: true };
+    const list = [swing(0, 0, true), moved, swing(152, 2, true), swing(240, 0, true)];
+    const picked = pickWatchShots(list, 2);
+    expect(picked).toContain(moved);
+    expect(picked).toHaveLength(2);
+  });
 });

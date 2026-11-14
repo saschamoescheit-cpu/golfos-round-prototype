@@ -2757,6 +2757,7 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 /* the scorecard's tabs and handing in per player (Sascha 14.11.2026, Entwurf E + A) */
 .sc-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .sc-tabs::-webkit-scrollbar { display: none; }
+.sc-tabs .chip { white-space: nowrap; flex: none; }
 .sign-progress { display: flex; flex-direction: column; gap: 10px; }
 .sign-progress-head strong { font: 600 17px var(--display, inherit); }
 .sign-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
