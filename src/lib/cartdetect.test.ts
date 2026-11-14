@@ -27,7 +27,8 @@ const trackOf = (h: FxHole, start = T0): TrackPoint[] =>
   h.track.map(([s, lng, lat, acc, open]) => ({ t: start + Math.round(s * 1000), p: [lng, lat] as LngLat, acc, ...(open ? { open: true } : {}) }));
 const mapOf = (h: FxHole): HoleMapData => {
   const geo = SEED_GEOMETRY[h.courseId];
-  return holeForTee(holeMapData(geo, h.loop, h.number), h.courseId, h.label, h.tee, geo.tee)!;
+  // the Reserve was played from Blue (Sascha 14.11.2026), the round stored as White
+  return holeForTee(holeMapData(geo, h.loop, h.number), h.courseId, h.label, h.round === 'Reserve' ? 'Blue' : h.tee, geo.tee)!;
 };
 /** The player's shots (after the tee shot) with a detected shot within 15 m – each detected shot used once. */
 function within15(got: LngLat[], want: LngLat[]): number {

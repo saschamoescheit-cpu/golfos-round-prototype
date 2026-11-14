@@ -250,7 +250,10 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   if (list.length === 0 && track.length === 0) return null;
   // The tee: the last place near the tee (waiting for the group in front does not matter there). The player tees
   // off from the tee even when the phone was in the pocket there.
-  const teeIdx = list.map((x, k) => (distanceM(x.p, hole.tee) <= 40 ? k : -1)).filter((k) => k >= 0).pop();
+  // In a cart (Sascha's Reserve 13.11.2026, hole 1): the cart stops again at a forward tee for a partner – 37 m ahead
+  // of the blue tee he hit from; there the stop on the tee itself (≤ 25 m) is his, when the cart stood there.
+  const nearTee = (r: number) => list.map((x, k) => (distanceM(x.p, hole.tee) <= r ? k : -1)).filter((k) => k >= 0).pop();
+  const teeIdx = (opts.cart ? nearTee(25) : undefined) ?? nearTee(40);
   const tee: Place = teeIdx != null ? list[teeIdx] : { p: hole.tee, from: track[0]?.t ?? 0, to: track[0]?.t ?? 0, q: 0, w: 1 };
   if (teeIdx != null) list = list.slice(teeIdx + 1);
   list = list.filter((x) => distanceM(x.p, hole.tee) > 40);
