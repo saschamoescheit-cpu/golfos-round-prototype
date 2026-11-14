@@ -34,6 +34,8 @@ await p.evaluate((r) => {
 // the round's check opened afresh, as a tapped notification opens the app
 await p.goto('about:blank');
 await p.goto(`${url}#review=qa-open`);
+// a tapped notification opens the round's scorecard first (Sascha 13.11.2026) – "Schläge prüfen" from there
+await p.getByRole('button', { name: /Schläge prüfen/ }).first().click({ timeout: 60000 });
 // under load the course map takes a moment: wait for the check itself, not a fixed time
 await p.locator('.review-nav strong').first().waitFor({ timeout: 90000 });
 const holeNow = async () => (await p.locator('.review-nav strong').first().innerText()).replace('Loch ', '').trim();

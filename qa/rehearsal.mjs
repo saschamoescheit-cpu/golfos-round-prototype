@@ -143,6 +143,8 @@ const rid = await p.evaluate(() => {
 });
 await p.goto('about:blank');
 await p.goto(`${url}#review=${rid}`);
+// the scorecard first (Sascha 13.11.2026), the check from there
+await p.getByRole('button', { name: /Schläge prüfen/ }).first().click({ timeout: 60000 }).catch(() => {});
 await p.locator('.review-nav strong').first().waitFor({ timeout: 90000 }).catch(() => out.wrongHole.push('no shot check'));
 await p.waitForTimeout(5000);
 const det = await p.evaluate(() => {
