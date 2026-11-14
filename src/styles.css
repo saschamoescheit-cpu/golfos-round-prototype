@@ -2749,3 +2749,6 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .server-stale svg { flex: none; margin-top: 1px; }
 .server-stale span { color: var(--text); }
 .server-stale strong { color: var(--warn); }
+
+/* how far the rest to the flag played with the wind, on its own line below (14.11.2026) */
+.shot-where .shot-plays { display: block; margin-top: 2px; }

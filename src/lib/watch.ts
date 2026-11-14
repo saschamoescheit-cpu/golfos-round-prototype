@@ -183,6 +183,58 @@ export function addWatchShot(round: Round, s: WatchShot, hole: number, fallback:
   return { ...round, manualShots: [...list, entry] };
 }
 
+/** Swings closer together than this are one place – the watch's GPS wanders a few metres, a practice swing, the waggle,
+ *  the arm while waiting are made where the ball lies. */
+const SAME_PLACE_M = 25;
+/**
+ * The shots of a hole from the places noted (Sascha 14.11.2026, Erik on the Reserve: 47 watch swings on hole 6 for a 5):
+ * a place tapped by hand always counts; the watch's swings one after another at one place (25 m) are one shot – the last
+ * that felt or heard the ball, else the last. And never more than the score leaves for the shots off the green (strokes
+ * − putts − penalties, `allowed`): too many – the ones nearest to the shot before go first, a swing that felt no ball
+ * before one that did; the tee shot stays.
+ */
+export function pickWatchShots<T extends ManualShot>(hs: T[], allowed: number | null): T[] {
+  const sorted = [...hs].sort((a, b) => a.t - b.t);
+  const out: T[] = [];
+  let group: T[] = [];
+  const flush = () => {
+    if (!group.length) return;
+    const felt = group.filter((x) => x.hit);
+    out.push((felt.length ? felt : group)[(felt.length ? felt : group).length - 1]);
+    group = [];
+  };
+  for (const x of sorted) {
+    if (!x.watch) {
+      flush();
+      out.push(x);
+      continue;
+    }
+    if (group.length && distanceM(group[0].pos, x.pos) > SAME_PLACE_M) flush();
+    group.push(x);
+  }
+  flush();
+  if (allowed == null) return out;
+  const keep = [...out];
+  while (keep.length > Math.max(0, allowed)) {
+    // the one to go: a watch swing (never a tap) – one without a ball felt first, then the nearest to the one before (the
+    // first has none before it: it goes last)
+    let worst = -1;
+    let worstScore = Infinity;
+    keep.forEach((x, n) => {
+      if (!x.watch) return;
+      const gap = n === 0 ? 1e5 : distanceM(keep[n - 1].pos, x.pos);
+      const score = (x.hit ? 1e6 : 0) + gap;
+      if (score < worstScore) {
+        worstScore = score;
+        worst = n;
+      }
+    });
+    if (worst < 0) break; // only taps left – they are the player's own
+    keep.splice(worst, 1);
+  }
+  return keep;
+}
+
 /**
  * A swing of warming up – on the range, before the round began (Sascha 09.11.2026 at Kissimmee Bay: "the shots on the
  * range were registered" – 11:27 and 11:47, the flight's tee time 12:08; they went to hole 1). Only while nothing of the

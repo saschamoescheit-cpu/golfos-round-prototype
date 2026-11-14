@@ -19,6 +19,8 @@ import { proximity } from '../lib/approachstats';
 import { loadRegionalImagery, pickImagery } from '../lib/imagery';
 import { analyse, playerBag } from '../lib/stats';
 import { learned, learnedClub, setLearnedShots } from '../lib/shotlearn';
+import { pickWatchShots } from '../lib/watch';
+import { playsLike } from '../lib/caddie';
 import { rollFactor } from '../lib/clubs';
 import { playedLengths } from '../lib/clubstats';
 import { formatDistance } from '../lib/geo';
@@ -53,6 +55,15 @@ const puttVerdicts = () => [
 
 /** `onDone(sign)`: sign = the last step after every hole was checked ('check'), or "Runde bestätigen" ('confirm');
  *  leaving with "Fertig" never signs. */
+/** How far the rest to the flag played with the hole's wind and temperature (Sascha 14.11.2026: "wie viel es sich aufgrund
+ *  des Windes gespielt hat") – null without the hole's weather or when it makes less than 2 m. */
+function playedToPin(from: LngLat, pin: LngLat, w: HoleEntry['weather'] | undefined): { m: number; head: number } | null {
+  if (!w) return null;
+  const d = distanceM(from, pin);
+  const p = playsLike(d, bearingDeg(from, pin), { windKmh: w.windKmh, gustKmh: w.gustKmh ?? w.windKmh, windFromDeg: w.windFromDeg, tempC: w.tempC }, null);
+  return Math.abs(p.playsLike - d) < 2 ? null : { m: Math.round(p.playsLike), head: p.headKmh };
+}
+
 export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: (sign: false | 'check' | 'confirm') => void }) {
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
@@ -449,10 +460,17 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   /** The shots of hole i from the places noted by hand ("shot here") – in the order they were noted, the tee shot
    *  added when the first one was not on the tee; a place on the green is where the putts began. */
   const handDetail = (i: number, m: HoleMapData, base: DetailEntry, partI: TrackPoint[]): DetailEntry | null => {
-    const hs = (round.manualShots ?? []).filter((x) => x.hole === i).sort((a, b) => a.t - b.t);
+    // the watch's swings bunched by place and never more than the score leaves off the green (Sascha 14.11.2026: Erik's
+    // 47 shots on hole 6 for a 5)
+    const e = entries[i];
+    const allowed = e?.strokes != null ? e.strokes - (e.putts ?? 0) - (e.penalties ?? 0) : null;
+    const hs = pickWatchShots((round.manualShots ?? []).filter((x) => x.hole === i), null);
     if (!hs.length) return null;
     const onGreen = hs.map((x) => x.pos).filter((p) => onGreenSpot(p, m));
-    const off = hs.map((x) => x.pos).filter((p) => !onGreenSpot(p, m));
+    // swings on the green are putts – the cap counts the shots to the green, the tee shot added below among them
+    let offHs = hs.filter((x) => !onGreenSpot(x.pos, m));
+    if (allowed != null) offHs = pickWatchShots(offHs, allowed - (!offHs.length || !nearTee(offHs[0].pos, m) ? 1 : 0));
+    const off = offHs.map((x) => x.pos);
     const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false, byHand: true }));
     if (!shots.length || !nearTee(shots[0].pos!, m)) shots.unshift({ pos: teeSpot(partI, m) ?? m.tee, lie: 'tee', club: null, penalty: false });
     return withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false, fromHand: true }, round.holes[i].par, entries[i]?.weather);
@@ -1620,7 +1638,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           kind={editing.kind}
           toPinM={editing.pos && pin ? distanceM(editing.pos, pin) : null}
           offGreenM={offGreen(editing.pos, data)}
-          where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null }}
+          where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null, plays: ((p) => (p ? `${tr(`played like ${fmt(p.m)}`, `spielte sich wie ${fmt(p.m)}`)}${Math.abs(p.head) >= 1 ? ` · ${p.head >= 0 ? tr('Into the wind', 'Gegenwind') : tr('Downwind', 'Rückenwind')} ${Math.abs(p.head)} km/h` : ''}` : null))(editing.pos && pin ? playedToPin(editing.pos, pin, entries[k]?.weather) : null) }}
           onPlace={data ? () => {
             const n = edit!;
             setEdit(null);

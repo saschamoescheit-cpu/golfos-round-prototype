@@ -81,6 +81,16 @@ for (let h = 0; h < 3; h++) {
 ok(likeRows >= 1, `shots that played longer or shorter: "spielte sich wie …" (${likeRows})`);
 ok(windOnShot === 0, `no wind repeated on the shots (${windOnShot})`);
 ok(crowded === 0, `nothing wider than the 320-px screen (${crowded} not)`);
+// Sascha 14.11.2026: in a shot's sheet, below "Noch … m zur Fahne", how far that played with the hole's wind
+{
+  const shot = p.locator('.review-list > li .shot-row, .review-list > li button').first();
+  await shot.click();
+  await p.waitForTimeout(600);
+  const where = (await p.locator('.sheet .shot-where').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  const own = await p.locator('.sheet .shot-where .shot-plays').evaluate((el) => getComputedStyle(el).display).catch(() => '');
+  ok(/zur Fahne/.test(where) && /spielte sich wie \d+ m · (Gegenwind|Rückenwind) \d+ km\/h/.test(where) && own === 'block', `the shot's sheet: "${where}" – the wind's length on a line of its own`);
+  await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
+}
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 await b.close();
 console.log(fails ? `${fails} failed` : 'all passed');
