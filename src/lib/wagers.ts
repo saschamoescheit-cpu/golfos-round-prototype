@@ -1189,6 +1189,41 @@ export function tally(w: Wager, p: Progress | undefined, signedOnly = false): { 
   return { made, missed, played: made + missed };
 }
 
+/** Who played on which day (the key "": everyone with any round) – from every bet's rounds and the 5+5+10s (Sascha 14.11.2026: "Wenn also Cedric, Sascha und
+ *  Erik nur spielen, dann müssen Moritz und Chris auch nichts zahlen"). By the day, not the course's name: two phones may
+ *  name one course a little differently. */
+export function dayPlayers(pool: Pick<WagerPool, 'wagers' | 'progress'>): Map<string, Set<string>> {
+  const m = new Map<string, Set<string>>();
+  const put = (day: string, id: string | undefined) => {
+    if (!id) return;
+    let s = m.get(day);
+    if (!s) m.set(day, (s = new Set()));
+    s.add(id);
+    // every player with a round in the pool at all, under "" – one without any is not known to have stayed away
+    let k = m.get('');
+    if (!k) m.set('', (k = new Set()));
+    k.add(id);
+  };
+  for (const w of pool.wagers) {
+    const p = pool.progress?.[w.id];
+    for (const r of p?.perRound ?? []) if (r.value != null || r.open || r.unknown) put(r.day, w.player);
+    for (const d of p?.duels ?? []) {
+      put(d.day, w.player);
+      put(d.day, w.opponent);
+    }
+  }
+  return m;
+}
+/** Who pays (or gets) a bet decided in one round: its opponent, or everyone else in the pool – only those who played
+ *  that day (Sascha 14.11.2026). Nobody known on that day: everyone, as before. */
+export function roundPayers(pool: Pick<WagerPool, 'players' | 'wagers' | 'progress'>, w: Pick<Wager, 'payout' | 'opponent' | 'player'>, day: string, field = dayPlayers(pool)): string[] {
+  const all = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  const there = field.get(day);
+  const known = field.get('') ?? new Set<string>();
+  // not there that day: only one known to play other rounds of the pool – a player without any round of it pays as before
+  return there?.size ? all.filter((id) => there.has(id) || !known.has(id)) : all;
+}
+
 /** One bet's money for one player: what it brought him (+) or cost him (−) – the settlement's lines. */
 export interface LedgerLine {
   w: Wager;
@@ -1233,6 +1268,7 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
     if (!v) return;
     out.push(v > 0 ? { w, from: o, to: player, amount: v, provisional: prov } : { w, from: player, to: o, amount: -v, provisional: prov });
   };
+  const field = dayPlayers(pool);
   for (const w of pool.wagers) {
     if (shapeOf(w.kind) === 'duel') {
       // "5+5+10": what the rounds played so far settled, between the two
@@ -1241,13 +1277,19 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
       continue;
     }
     // each round on its own (Sascha 09.11.2026): made – the stake from each (or from the opponent) per round; missed –
-    // paid per round only when the bet is "both ways" or against one
-    const t = tally(w, progressOf(pool, w), !withProvisional);
+    // paid per round only when the bet is "both ways" or against one; only the players of that round (14.11.2026)
+    const p = progressOf(pool, w);
+    const t = tally(w, p, !withProvisional);
     if (t) {
-      const times = t.made - (w.payout === 'success' ? 0 : t.missed);
-      if (!times || !(w.stake > 0)) continue;
-      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
-      for (const o of against) add(w.player, o, w, times * w.stake, false);
+      if (!(w.stake > 0)) continue;
+      for (const r of p?.perRound ?? []) {
+        // as tally decides it
+        if (r.value == null || (!withProvisional && !r.counted)) continue;
+        const made = reached(w, r.value) && (!r.open || !lower(w)) && !(r.unknown && lower(w));
+        const missed = !made && !r.open && !r.unknown;
+        if (!made && !(missed && w.payout !== 'success')) continue;
+        for (const o of roundPayers(pool, w, r.day, field)) add(w.player, o, w, made ? w.stake : -w.stake, false);
+      }
       continue;
     }
     const prov = withProvisional && provisional(w, pool.progress[w.id]);
@@ -1346,7 +1388,8 @@ export function roundLedger(pool: WagerPool, day: string): Record<string, number
       any = true;
       if (!made && w.payout === 'success') continue;
       const sign = made ? 1 : -1;
-      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((x) => x.id).filter((id) => id !== w.player);
+      // only the players of that round (Sascha 14.11.2026)
+      const against = roundPayers(pool, w, day);
       for (const o of against) {
         add(w.player, sign * w.stake);
         add(o, -sign * w.stake);

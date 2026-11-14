@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, dayPlayers, roundPayers, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -1518,7 +1518,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       for (const o of owings(pool, props.today, true)) add(o.from, o.to, o.amount);
       return { got, net };
     }
-    const ids = pool.players.map((x) => x.id);
+    const field = dayPlayers(pool);
     for (const w of pool.wagers) {
       if (shapeOf(w.kind) === 'duel') {
         const d = pool.progress[w.id]?.duels?.find((x) => `${x.day}|${x.course}` === one.key);
@@ -1532,7 +1532,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       if (!perRoundBet(w) || decidedOf(pool.progress[w.id]) || !(w.stake > 0) || isVoided(w, one)) continue;
       const verdict = roundVerdict(w, pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one.key), roundInPlay);
       if (!verdict || (verdict === 'missed' && w.payout === 'success')) continue;
-      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : ids.filter((id) => id !== w.player);
+      // only the players of that round (Sascha 14.11.2026: "Moritz und Chris müssen auch nichts zahlen")
+      const against = roundPayers(pool, w, one.day, field);
       for (const o of against) verdict === 'made' ? add(o, w.player, w.stake) : add(w.player, o, w.stake);
     }
     return { got, net };

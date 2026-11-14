@@ -80,7 +80,9 @@ await check('Rounds · Profil');
   const hit = await p.evaluate(() => { const el = document.elementFromPoint(20, 30); return el?.closest('.sheet-backdrop, .sheet') ? 'sheet' : el?.closest('.module-top') ? 'header' : el?.className ?? '?'; });
   ok(hit === 'sheet', `a sheet opened: it lies over the header (${hit})`);
   await p.keyboard.press('Escape');
-  await p.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 300 } }).catch(() => {});
+  // closed by its ✕ (a tap beside it may land on the sheet itself)
+  await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click({ timeout: 3000 }).catch(() => {});
+  await p.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 }, timeout: 3000 }).catch(() => {});
   await p.waitForTimeout(400);
 }
 // the scorecard of a round – a back arrow, no module header
