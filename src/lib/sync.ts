@@ -3,6 +3,7 @@ import { tr } from './i18n';
 import { AUTH_BACK, isNative, openSignIn } from './native';
 import { takeRefused } from './storageguard';
 import { decodeTrack, encodeTrack, unionTrack } from './trackcodec';
+import { listRows, type IndexRow } from './syncindex';
 
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
@@ -686,6 +687,17 @@ export function packets<T>(items: T[], size: (x: T) => number, max = PACKET_BYTE
   return out;
 }
 
+let noIncrementalUntil = 0;
+/** The player's id from his token (its "sub") – whose list a device keeps. */
+function userOf(bearer: string): string | null {
+  try {
+    const p = JSON.parse(atob(bearer.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof p.sub === 'string' ? p.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 function supabaseRemote(bearer: string): Remote {
   const base = `${SUPABASE_URL}/rest/v1/golfos_items`;
   const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' };
@@ -693,15 +705,36 @@ function supabaseRemote(bearer: string): Remote {
     if (!r.ok) throw new Error(`sync ${r.status}`);
     return r;
   };
+  // the server hands out at most 1000 rows per request: page through all of them
+  const pages = async (query: string): Promise<IndexRow[]> => {
+    const all: IndexRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const page: IndexRow[] = await (await ok(await fetch(`${base}?${query}&limit=1000&offset=${from}`, { headers }))).json();
+      all.push(...page);
+      if (page.length < 1000) return all;
+    }
+  };
+  const plainList = () => pages('select=kind,id,updated_at,deleted&order=kind,id');
   return {
+    // incrementally where the server has the column server_at (supabase/golfos-sync-incremental.sql, after 01.12.2026) –
+    // see syncindex.ts; without it the whole list as before
     list: async () => {
-      // the server hands out at most 1000 rows per request: page through all of them
-      const all: Row[] = [];
-      for (let from = 0; ; from += 1000) {
-        const page: Row[] = await (await ok(await fetch(`${base}?select=kind,id,updated_at,deleted&order=kind,id&limit=1000&offset=${from}`, { headers }))).json();
-        all.push(...page);
-        if (page.length < 1000) return all;
-      }
+      const user = userOf(bearer);
+      if (!user || Date.now() < noIncrementalUntil) return plainList();
+      return listRows(browserStore, user, {
+        full: async () => {
+          const r = await fetch(`${base}?select=kind,id,updated_at,deleted,server_at&order=kind,id&limit=1000&offset=0`, { headers });
+          // no such column yet (400): the old list – asked again in an hour
+          if (r.status === 400) {
+            noIncrementalUntil = Date.now() + 60 * 60 * 1000;
+            return plainList();
+          }
+          const first: IndexRow[] = await (await ok(r)).json();
+          if (first.length < 1000) return first;
+          return [...first, ...(await pages('select=kind,id,updated_at,deleted,server_at&order=kind,id')).slice(1000)];
+        },
+        since: (t) => pages(`select=kind,id,updated_at,deleted,server_at&server_at=gt.${encodeURIComponent(t)}&order=server_at,kind,id`),
+      });
     },
     fetch: async (keys) => {
       const out: Row[] = [];
