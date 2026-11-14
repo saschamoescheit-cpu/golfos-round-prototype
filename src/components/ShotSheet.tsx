@@ -269,7 +269,7 @@ export function ShotSheet(props: {
             </button>
           )}
           {props.onHoledOut && (
-            <button type="button" className="btn-secondary holed-out" onClick={() => props.onHoledOut!(props.editing ? valueOf(club) : undefined)}>
+            <button type="button" className="btn-secondary holed-out" onClick={() => props.onHoledOut!(valueOf(club))}>
               {tr('Holed it! (chip-in)', 'Eingelocht! (Chip-in)')}
             </button>
           )}

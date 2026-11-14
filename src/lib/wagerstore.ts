@@ -460,7 +460,10 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
     const same = (a: { day: string; course: string }, b: { day: string; course: string }) => a.day === b.day && a.course === b.course;
     const was = old.perRound ?? [];
     const is = now.perRound ?? [];
-    if (was.length && was.every((r) => is.some((x) => same(x, r))) && is.some((x) => !x.open && was.some((r) => same(r, x) && !r.open && (r.value !== x.value || !!r.unknown !== !!x.unknown)))) return true;
+    // – never a less complete figure (review 14.11.2026: the host's copy without the player's putts, "5?", would overwrite
+    // the player's full one, and his phone write it back – back and forth, a push each time)
+    const lessKnown = is.some((x) => x.unknown && was.some((r) => same(r, x) && !r.unknown));
+    if (!lessKnown && was.length && was.every((r) => is.some((x) => same(x, r))) && is.some((x) => !x.open && was.some((r) => same(r, x) && !r.open && (r.value !== x.value || (!!r.unknown && !x.unknown))))) return true;
   }
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;

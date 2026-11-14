@@ -464,11 +464,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     // 47 shots on hole 6 for a 5)
     const e = entries[i];
     const allowed = e?.strokes != null ? e.strokes - (e.putts ?? 0) - (e.penalties ?? 0) : null;
-    const hs = pickWatchShots((round.manualShots ?? []).filter((x) => x.hole === i), null);
-    if (!hs.length) return null;
-    const onGreen = hs.map((x) => x.pos).filter((p) => onGreenSpot(p, m));
+    // green and off the green apart before bunching (review 14.11.2026: a chip 15 m short and the putt after it were one
+    // place – the chip lost, the putts begun at the last putt); where the putts began: the first on the green
+    const raw = (round.manualShots ?? []).filter((x) => x.hole === i);
+    if (!raw.length) return null;
+    const onGreen = [...raw].sort((a, b) => a.t - b.t).map((x) => x.pos).filter((p) => onGreenSpot(p, m));
     // swings on the green are putts – the cap counts the shots to the green, the tee shot added below among them
-    let offHs = hs.filter((x) => !onGreenSpot(x.pos, m));
+    let offHs = pickWatchShots(raw.filter((x) => !onGreenSpot(x.pos, m)), null);
     if (allowed != null) offHs = pickWatchShots(offHs, allowed - (!offHs.length || !nearTee(offHs[0].pos, m) ? 1 : 0));
     const off = offHs.map((x) => x.pos);
     const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false, byHand: true }));
@@ -602,7 +604,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const parts = splitRound(track, maps);
     // played from a cart (the whole round's track – one hole alone often has no long ride): only the stops count, those
     // off the hole line less (Sascha 14.11.2026, see CART_PLACES in track.ts)
-    const cart = rodeCart(track);
+    // – only the rides on the holes (review 14.11.2026: a drive in the car park or to the clubhouse is no cart round)
+    const cart = rodeCart(parts.flat());
     round.holes.forEach((h, i) => {
       const m = maps[i];
       // holes the player touched (a shot moved, set, edited – or the hole confirmed) stay as they are; the rest is

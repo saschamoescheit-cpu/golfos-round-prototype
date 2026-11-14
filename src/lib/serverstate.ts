@@ -44,7 +44,9 @@ export function watchServer(): void {
       return r;
     } catch (e) {
       // offline on the course is not the server's fault – only said when the phone has a connection
-      if (navigator.onLine !== false) noteServer(null);
+      // – nor a request the app called off itself or gave up on (review 14.11.2026: an AbortError, the 20 s timeout)
+      const name = (e as { name?: string } | null)?.name;
+      if (navigator.onLine !== false && name !== 'AbortError' && name !== 'TimeoutError') noteServer(null);
       throw e;
     }
   };

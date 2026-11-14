@@ -204,7 +204,8 @@ export function pickWatchShots<T extends ManualShot>(hs: T[], allowed: number | 
     group = [];
   };
   for (const x of sorted) {
-    if (!x.watch) {
+    // a tap – or a watch swing the player dragged into place (review 14.11.2026): kept as it is
+    if (!x.watch || x.placed) {
       flush();
       out.push(x);
       continue;
@@ -221,7 +222,7 @@ export function pickWatchShots<T extends ManualShot>(hs: T[], allowed: number | 
     let worst = -1;
     let worstScore = Infinity;
     keep.forEach((x, n) => {
-      if (!x.watch) return;
+      if (!x.watch || x.placed) return;
       const gap = n === 0 ? 1e5 : distanceM(keep[n - 1].pos, x.pos);
       const score = (x.hit ? 1e6 : 0) + gap;
       if (score < worstScore) {

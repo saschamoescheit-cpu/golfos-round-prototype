@@ -16,13 +16,22 @@ export function roundTees(round: Round): string[] {
 
 /** The round from another tee: the player's own tee, the round's (lengths, caddie, rating) and his playing handicap from
  *  his index for it – a course rating typed for the old tee no longer counts. */
-export function withTee(round: Round, tee: string): Round {
+export function withTee(round: Round, tee: string, fromNow = false): Round {
   const index = loadProfile().hcpIndex;
   const playing = playingHandicapFor(round.courseId, round.holes, tee, index, isLady());
+  // in the middle of the round (review 14.11.2026): the holes played keep the tee they were played from – the round
+  // check reads a hole's own tee before the round's
+  const me = round.players.find((p) => p.isMe)?.id;
+  const old = round.tee;
+  const entries =
+    fromNow && me && old && round.entries[me]
+      ? { ...round.entries, [me]: round.entries[me].map((e) => (e && (e.strokes != null || e.pickedUp) && !e.tee ? { ...e, tee: old } : e)) }
+      : round.entries;
   return {
     ...round,
     tee,
     rating: undefined,
+    entries,
     players: round.players.map((p) => (p.isMe ? { ...p, tee, ...(playing != null ? { playingHandicap: playing } : {}) } : p)),
   };
 }

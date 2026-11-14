@@ -968,9 +968,18 @@ export function liveClose(): void {
 }
 
 let nudged = 0;
+let nudgeLater: ReturnType<typeof setTimeout> | null = null;
 function nudgeOthers(): void {
-  // at most every 30 s – two devices must never wake each other in a loop (14.11.2026: the realtime quota used up)
-  if (Date.now() - nudged < 30 * 1000) return;
+  // at most every 30 s – two devices must never wake each other in a loop (14.11.2026: the realtime quota used up); one
+  // within the 30 s comes at their end, not never (review 14.11.2026: a signature right after a score)
+  const wait = nudged + 30 * 1000 - Date.now();
+  if (wait > 0) {
+    if (!nudgeLater) nudgeLater = setTimeout(() => {
+      nudgeLater = null;
+      nudgeOthers();
+    }, wait);
+    return;
+  }
   nudged = Date.now();
   if (!live || live.readyState !== WebSocket.OPEN) return liveConnect();
   live.send(JSON.stringify({ topic: liveTopic, event: 'broadcast', payload: { type: 'broadcast', event: 'changed', payload: {} }, ref: String(liveRef++) }));

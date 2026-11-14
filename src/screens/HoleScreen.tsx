@@ -1491,9 +1491,11 @@ export function HoleScreen(props: {
         onHoledOut={
           editing
             ? undefined
-            : () => {
+            : (v) => {
                 confirmSaved(tr('Holed out – saved', 'Eingelocht – gespeichert'));
-                saveDetail({ ...detail, shots: [...detail.shots, ...teeShot(), { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, isTeeShot) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null, pin: pinPos }, 0);
+                // what the sheet shows – the club and lie picked (review 14.11.2026: the club was lost)
+                const shot = v ? { ...v, pos: sheet.pos, penalty: false, penaltyKind: undefined, replay: undefined, provisional: undefined } : { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, isTeeShot) : 'fairway', club: null, penalty: false };
+                saveDetail({ ...detail, shots: [...detail.shots, ...teeShot(), shot], holedOut: true, onGreen: null, pin: pinPos }, 0);
                 setSheet(null);
               }
         }
@@ -2091,7 +2093,7 @@ export function HoleScreen(props: {
             onClose={() => setTeeOpen(false)}
             onPick={(t) => {
               setTeeOpen(false);
-              if (t !== round.tee) props.onChange(withTee(round, t));
+              if (t !== round.tee) props.onChange(withTee(round, t, true));
             }}
           />
         )}
