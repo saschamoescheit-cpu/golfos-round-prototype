@@ -22,7 +22,7 @@ const store = new Map<string, string>(Object.entries(backup.data as Record<strin
 const { loadRounds, loadGeometry } = await import('../src/lib/storage');
 const { holeMapData, distanceM } = await import('../src/lib/geo');
 const { holeForTee } = await import('../src/lib/teeline');
-const { loadTrack, splitRound, detectWithScore, findStops } = await import('../src/lib/track');
+const { loadTrack, splitRound, detectWithScore, findStops, rodeCart } = await import('../src/lib/track');
 const { loadCaddieLog } = await import('../src/lib/caddielog');
 const { playerBag } = await import('../src/lib/stats');
 
@@ -55,7 +55,7 @@ round.holes.forEach((h, i) => {
   if (!m) return console.log('   no map');
   const toG = (p: [number, number]) => Math.round(distanceM(p, m.greenCenter));
   // as the app does it: score, putts and penalties from the course
-  const det = detectWithScore(part, m, h.par, bag, e);
+  const det = detectWithScore(part, m, h.par, bag, e, { cart: rodeCart(track) });
   const got = (det?.shots ?? []).map((s) => s.pos!).filter(Boolean);
   console.log(`   stops: ${findStops(part).map((s) => `${toG(s.p)} m/${Math.round((s.to - s.from) / 1000)}s`).join(' · ') || '-'}`);
   console.log(`   app opened at: ${part.filter((x) => x.open).map((x) => `${toG(x.p)} m (±${x.acc})`).join(' · ') || '-'}`);
