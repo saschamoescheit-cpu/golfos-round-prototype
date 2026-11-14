@@ -1262,6 +1262,9 @@ button.tile:disabled { opacity: 1; }
    inside the cell, wrapped when narrow, not over its edge */
 .bet-cell.given { background: color-mix(in srgb, var(--text) 16%, var(--surface-2)); }
 .bet-cell.given svg { vertical-align: -1px; margin-right: 2px; color: var(--brand-text); }
+.bet-cell.voided { background: color-mix(in srgb, var(--text) 10%, var(--surface-2)); }
+.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); font-size: 10.5px; }
+.bet-matrix td .bet-cell.voided { white-space: normal; }
 .bet-matrix td .bet-cell.given { white-space: normal; }
 .bet-matrix td .bet-cell.given small.bet-made, .bet-cell.given small.bet-made { color: var(--brand-text); font-size: 10.5px; overflow-wrap: anywhere; hyphens: auto; }
 .concede-cost { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }

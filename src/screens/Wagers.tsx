@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, decidedOf, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -1453,6 +1453,13 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // the round still played on a phone of the pool: nothing red in it yet (roundVerdict)
   const roundInPlay = !!one && Object.values(pool.progress ?? {}).some((p) => p?.perRound?.some((x) => `${x.day}|${x.course}` === one.key && x.open));
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
+    if (one && isVoided(w, one))
+      return (
+        <span key={w.id} className="bet-cell voided" title={wagerLabel(w)}>
+          <strong>{targetOf(w)}</strong>
+          <small className="bet-made">{tr('not counted', 'nicht gewertet')}</small>
+        </span>
+      );
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
     const verdict = roundVerdict(w, r, roundInPlay);
     const share = shareOf(w);
@@ -1522,7 +1529,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         else add(w.player, w.opponent, -v);
         continue;
       }
-      if (!perRoundBet(w) || decidedOf(pool.progress[w.id]) || !(w.stake > 0)) continue;
+      if (!perRoundBet(w) || decidedOf(pool.progress[w.id]) || !(w.stake > 0) || isVoided(w, one)) continue;
       const verdict = roundVerdict(w, pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one.key), roundInPlay);
       if (!verdict || (verdict === 'missed' && w.payout === 'success')) continue;
       const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : ids.filter((id) => id !== w.player);
@@ -2418,6 +2425,32 @@ export function WagerSheet(props: {
         )}
         <CountFields w={w} set={set} />
         <PayFields pool={pool} w={w} set={set} />
+        {/* the rounds this bet counts (Sascha 14.11.2026: Cedric's pars in a row "für nur eine Runde als ungültig") – a tick
+            taken off: that round does not count for this bet, for everyone; the scorecard and the other bets stay */}
+        {props.wager && !props.own && shapeOf(w.kind) !== 'duel' && (() => {
+          const seen = [...(pool.progress[props.wager.id]?.perRound ?? []).map((r) => ({ day: r.day, course: r.course })), ...(w.voided ?? [])];
+          const list = seen.filter((r, k) => seen.findIndex((x) => x.day === r.day && x.course === r.course) === k).sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.course < b.course ? -1 : 1));
+          if (!list.length) return null;
+          const by = pool.players.find((p) => p.id === props.me)?.name ?? '?';
+          return (
+            <Field label={tr('The rounds this bet counts', 'Diese Runden zählen')}>
+              <ToggleList>
+                {list.map((r) => {
+                  const out = isVoided(w, r);
+                  return (
+                    <TickRow
+                      key={r.day + r.course}
+                      label={`${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`}
+                      text={out ? tr('not counted for this bet', 'für diese Wette nicht gewertet') : undefined}
+                      on={!out}
+                      onChange={(on) => set({ voided: on ? (w.voided ?? []).filter((v) => !(v.day === r.day && v.course === r.course)) : [...(w.voided ?? []), { day: r.day, course: r.course, by, at: new Date().toISOString() }] })}
+                    />
+                  );
+                })}
+              </ToggleList>
+            </Field>
+          );
+        })()}
         {/* deciding by hand above, "Speichern" right above "Wette löschen" (Sascha 02.11.2026) */}
         {props.wager && (
           <>

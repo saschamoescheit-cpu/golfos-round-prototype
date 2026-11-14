@@ -142,6 +142,27 @@ ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1
   ok((await sum.count()) === 0 || ((await sum.locator('.bet-cell.done').count()) === 0 && /\+18/.test(txt)), `the score over 7 rounds in one round: only when the round counts for it (${txt || 'not there'})`);
 }
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betrounds.png` });
+// one round taken out of one bet by the host (Sascha 14.11.2026: Cedric's pars in a row "für nur eine Runde als ungültig"):
+// Chris's "Birdies in Folge" – the tick of yesterday's round off in the bet's sheet; that round "nicht gewertet" there,
+// the sum without it (Chris now pays Sascha), the scorecard and the other bets as they were
+{
+  await H.locator('.pool-wager').filter({ hasText: /Birdies in Folge/ }).filter({ hasNotText: /Erik/ }).first().click().catch(() => {});
+  const sheet = H.getByRole('dialog', { name: 'Wette', exact: true });
+  await sheet.waitFor({ timeout: 5000 }).catch(() => {});
+  const tick = sheet.getByRole('checkbox', { name: new RegExp(label.replace('.', '\\.')) });
+  ok((await tick.count()) === 1 && (await tick.getAttribute('aria-checked')) === 'true', `the bet's sheet: "Diese Runden zählen" – yesterday's round ticked (${await tick.count()})`);
+  await tick.click();
+  await H.waitForTimeout(1500); // saved by itself
+  await H.getByRole('button', { name: 'Fertig', exact: true }).last().click().catch(() => {});
+  await H.waitForTimeout(1500);
+  const w1 = sim.shared.get(pool).game.wagers.find((w) => w.id === 'w1');
+  ok(w1?.voided?.length === 1 && w1.voided[0].day === yesterday, `the pool: the round taken out of this bet only (${JSON.stringify(w1?.voided ?? [])})`);
+  const cellNow = await cellText('Birdies in Folge', 'Chris');
+  ok(/nicht gewertet/.test(cellNow) && (await stand.locator('.bet-cell.voided').count()) === 1, `yesterday's round: Chris "${cellNow}"`);
+  const s = await sumRow();
+  ok(/^– netto −20 \$$/.test(s.Chris) && /^\+40 \$ netto \+40 \$$/.test(s.Sascha) && /^– netto −20 \$$/.test(s.Erik), `the sum without it – Sascha "${s.Sascha}", Chris "${s.Chris}", Erik "${s.Erik}"`);
+  if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/voided.png` });
+}
 await sw.getByRole('button', { name: 'Vorherige' }).click();
 ok(/^Gesamt/.test(await now()), 'the arrow back: "Gesamt"');
 

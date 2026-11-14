@@ -106,6 +106,9 @@ export interface Wager {
   /** the rounds chosen for it (Sascha 10.11.2026: "not limited – rounds chosen or made"): a day, and its course when
    *  one round of that day only – without a course every round of the day */
   picks?: BetRound[];
+  /** rounds this bet does not count, set by the host (Sascha 14.11.2026: Cedric's pars in a row on one round "nicht
+   *  regelkonform" – that round only, not the scorecard, not his other rounds) */
+  voided?: { day: string; course: string; by: string; at: string }[];
   /** scoreSum: over how many rounds (the first ones played) */
   rounds?: number;
   /** pars: par or better (a birdie keeps the run going) – else exactly par; birdies: an eagle counts too – else exactly
@@ -729,9 +732,11 @@ export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'c
   x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || x.allDay || !r.holeKey || x.holes === r.holeKey);
 /** Does a played round count for a bet of the pool: in the period; with rounds of the trip set, one of them; a bet of
  *  one round only on that one; one of one day only on that day. */
-export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[]; skip?: PoolSkip[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round' | 'from' | 'until' | 'picks'>): boolean {
+export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[]; skip?: PoolSkip[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round' | 'from' | 'until' | 'picks' | 'voided'>): boolean {
   if (r.day < pool.from || r.day > pool.to) return false;
   if (skipped(pool.skip, r)) return false;
+  // a round the host took out of this bet only (Sascha 14.11.2026)
+  if (w && isVoided(w, r)) return false;
   // a bet over some days only: from, up to, or the days chosen
   if (w?.attempts === 'any' || !w?.attempts) {
     if (w?.from && r.day < w.from) return false;
@@ -746,6 +751,9 @@ export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { h
   if (w?.attempts === 'day') return r.day === w.day;
   return !rounds.length || rounds.some((x) => onRound(x, r));
 }
+
+/** Did the host take this round out of the bet (`voided`)? */
+export const isVoided = (w: Pick<Wager, 'voided'>, r: { day: string; course: string }): boolean => !!w.voided?.some((v) => v.day === r.day && v.course === r.course);
 
 const whereOf = (r: PlayedRound) => `${r.course} · ${r.day.slice(8, 10)}.${r.day.slice(5, 7)}.`;
 /** Is the lower figure the better one: "at most" bets, the score – an own bet "at most" or on the score to par. */
