@@ -56,7 +56,8 @@ const [sa, ce] = f.players;
 ok(!!f.signed?.[sa.id]?.player && !!f.signed?.[ce.id]?.marker && !f.signed?.[ce.id]?.player, `server: Sascha's own card signed, Cedric's confirmed by the scorer – not signed for him (${JSON.stringify(f.signed ?? {}).slice(0, 140)})`);
 ok(sim.pushes.slice(pushes0).some((x) => x.action === 'signed' && x.player === ce.id && x.as === 'marker'), 'Cedric gets a push to sign his card');
 const h2 = (await hs.innerText()).replace(/\s+/g, ' ');
-ok(/Cedric: unterschreibt auf seinem Handy/.test(h2) && (await hs.getByRole('button').filter({ hasText: /nterschreiben/ }).count()) === 0 && !/abgegeben, gesperrt/.test(h2), `Sascha: "Cedric: unterschreibt auf seinem Handy", no button for him, not handed in yet (${h2.slice(0, 140)})`);
+// the overview as status per player (Sascha 14.11.2026, Entwurf A): "1 von 2 unterschrieben", a row for Cedric
+ok(/1 von 2 unterschrieben/.test(h2) && /Cedric unterschreibt auf seinem Handy/.test(h2) && (await hs.getByRole('button').filter({ hasText: /nterschreiben/ }).count()) === 0 && !/abgegeben, gesperrt/.test(h2), `Sascha: "1 von 2 unterschrieben", Cedric "unterschreibt auf seinem Handy", no button for him, not handed in yet (${h2.slice(0, 140)})`);
 await G.waitForTimeout(12000);
 const g2 = (await gs.innerText()).replace(/\s+/g, ' ');
 ok(/Dein Schreiber hat unterschrieben – jetzt du/.test(g2), `Cedric: "Dein Schreiber hat unterschrieben – jetzt du" (${g2.slice(0, 120)})`);
@@ -67,6 +68,25 @@ ok(!!f.signed?.[ce.id]?.player && !!f.signed?.[ce.id]?.marker, 'server: Cedric s
 ok(/abgegeben, gesperrt/.test(await gs.innerText()), 'Cedric: handed in, locked');
 await H.waitForTimeout(12000);
 ok(/Alle unterschrieben – abgegeben, gesperrt/.test(await H.locator('.sign-card').innerText().catch(() => '')), 'Sascha: "Alle unterschrieben – abgegeben, gesperrt"');
+// the scorecard's tabs (Sascha 14.11.2026, Entwurf E): "Übersicht" and one per player – Cedric's tab: his figures, his
+// card only, his handing-in; no own cards of Sascha's there
+{
+  const tabs = await H.getByRole('tablist', { name: 'Scorekarte von' }).getByRole('tab').allInnerTexts();
+  ok(tabs.join('|') === 'Übersicht|Sascha|Cedric', `the tabs: ${tabs.join(' | ')}`);
+  if (process.env.SHOTS) await H.locator('.sign-card').screenshot({ path: process.env.SHOTS + '/sign-overview.png' });
+  await H.getByRole('tab', { name: 'Cedric' }).click();
+  await H.waitForTimeout(800);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/sign-tab.png', fullPage: true });
+  const hero = (await H.locator('.sc-hero-player').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  const rows = await H.locator('.score-table tbody tr, table tbody tr').allInnerTexts();
+  const sign = (await H.locator('.sign-card').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok(/^Cedric/.test(hero) && /Schläge/.test(hero), `Cedric's tab: his figures (${hero.slice(0, 60)})`);
+  ok(!rows.some((r) => /Sascha/.test(r)), "Cedric's tab: his card only – no row of Sascha");
+  ok(/Cedric: unterschrieben – abgegeben, gesperrt/.test(sign) && (await H.locator('.sign-progress').count()) === 0, `Cedric's tab: his handing-in only (${sign.slice(0, 80)})`);
+  await H.getByRole('tab', { name: 'Übersicht' }).click();
+  await H.waitForTimeout(400);
+  ok((await H.locator('.sign-progress').count()) === 1, 'back on the overview: the status of every player');
+}
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

@@ -852,7 +852,7 @@ export function useDiffers(round: Round): Record<string, number[]> {
   return Object.fromEntries(round.players.map((p) => [p.id, differences(f, p.id)]).filter(([, d]) => (d as number[]).length));
 }
 
-export function SignCard(props: { round: Round; onHole?: (index: number) => void; onChange?: (r: Round) => void }) {
+export function SignCard(props: { round: Round; onHole?: (index: number) => void; onChange?: (r: Round) => void; /** one player's tab of the scorecard: his card only (14.11.2026) */ only?: string }) {
   const s = props.round.shared;
   const [ev, setEv] = useState(() => (s ? cachedEvent(s.code) : null));
   const [busy, setBusy] = useState(false);
@@ -919,10 +919,66 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
     const mineDone = !!f.signed?.[f.scorer]?.player && others.every((p) => !!f.signed?.[p.id]?.marker);
     const locked = f.players.every((p) => isSigned(f, p.id));
     const names = others.map((p) => p.name).join(', ');
+    const gross = (pid: string) => (props.round.entries[pid] ?? []).reduce((sum, e) => sum + (e?.strokes ?? 0), 0) || null;
+    const signedN = f.players.filter((p) => isSigned(f, p.id)).length;
+    const statusOf = (pid: string): string =>
+      isSigned(f, pid)
+        ? tr('signed – handed in', 'unterschrieben – abgegeben')
+        : pid === f.scorer
+          ? mineDone
+            ? tr('scorer · signed', 'Schreiber · unterschrieben')
+            : tr('scorer · signs for the flight', 'Schreiber · unterschreibt für den Flight')
+          : f.signed?.[pid]?.marker
+            ? tr('signs on his phone', 'unterschreibt auf seinem Handy')
+            : tr('waits for your signature', 'wartet auf deine Unterschrift');
+    const done = (pid: string) => isSigned(f, pid) || (pid === f.scorer && mineDone);
+    // a partner's tab: his state and his correction only (Entwurf E)
+    if (props.only && props.only !== f.scorer) {
+      const p = f.players.find((x) => x.id === props.only);
+      if (!p) return null;
+      return (
+        <>
+        <span className="eyebrow">{tr('Hand the card in', 'Scorekarte abgeben')}</span>
+        <section className="card sign-card sign-player" aria-label={tr(`${p.name}'s card`, `Karte von ${p.name}`)}>
+          <div className="sign-person">
+            {done(p.id) ? <span className="sign-dot ok" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span> : <span className="sign-dot" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></svg></span>}
+            <span className="grow">
+              <strong>{isSigned(f, p.id) ? tr(`${p.name}: signed – handed in, locked`, `${p.name}: unterschrieben – abgegeben, gesperrt`) : f.signed?.[p.id]?.marker ? tr(`${p.name} signs on his phone`, `${p.name} unterschreibt auf seinem Handy`) : tr(`${p.name}: not signed yet`, `${p.name}: noch nicht unterschrieben`)}</strong>
+              <span className="muted small">{mineDone ? tr('You signed as scorer', 'Du hast als Schreiber unterschrieben') : tr('You sign as scorer first – in the overview', 'Zuerst unterschreibst du als Schreiber – in der Übersicht')}</span>
+            </span>
+          </div>
+          <ReopenRows round={props.round} f={f} pids={[p.id]} onEv={setEv} />
+          {msg && <span className="small good-text" role="status">{msg}</span>}
+        </section>
+        </>
+      );
+    }
     return (
       <>
       <span className="eyebrow">{tr('Hand the cards in', 'Scorekarten abgeben')}</span>
       <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
+        {/* the overview: how far, and a row each (Sascha 14.11.2026, Entwurf A) */}
+        {!props.only && (
+          <div className="sign-progress">
+            <div className="sign-progress-head">
+              <strong>{locked ? tr('All signed – handed in, locked', 'Alle unterschrieben – abgegeben, gesperrt') : tr(`${signedN} of ${f.players.length} signed`, `${signedN} von ${f.players.length} unterschrieben`)}</strong>
+            </div>
+            <div className="sign-bar" aria-hidden="true"><i style={{ width: `${Math.round((signedN / Math.max(1, f.players.length)) * 100)}%` }} /></div>
+            <ul className="sign-people">
+              {f.players.map((p) => (
+                <li key={p.id} className="sign-person">
+                  {done(p.id) ? <span className="sign-dot ok" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span> : <span className="sign-dot" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></svg></span>}
+                  <span className="grow">
+                    <strong>{p.name}</strong>
+                    <span className="muted small">{statusOf(p.id)}</span>
+                  </span>
+                  {gross(p.id) != null && <span className="sign-score">{gross(p.id)}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {(props.only || !mineDone) && (
         <div className="sign-row">
           <span className="grow">
             <strong>{tr('Sign as scorer', 'Als Schreiber unterschreiben')}</strong>
@@ -952,9 +1008,10 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
             </button>
           )}
         </div>
+        )}
         {/* a card handed in with a mistake (Sascha 12.11.2026, Moritz on the Cypress): its correction asked for here – the
             host confirms it (push), then the card is open again, corrected and signed anew */}
-        <ReopenRows round={props.round} f={f} pids={f.players.map((p) => p.id)} onEv={setEv} />
+        <ReopenRows round={props.round} f={f} pids={props.only ? [props.only] : f.players.map((p) => p.id)} onEv={setEv} />
         {msg && (
         <span className="small good-text" role="status">
           {msg}
@@ -968,7 +1025,15 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
     <>
     <span className="eyebrow">{tr('Hand the card in', 'Scorekarte abgeben')}</span>
     <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
-      {cards.map((c) => {
+      {/* a player's tab: only the card of that player (14.11.2026) – one this phone neither keeps nor marks: its state */}
+      {props.only && !cards.some((c) => c.pid === props.only) && (
+        <span className="muted small">
+          {isSigned(f, props.only)
+            ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
+            : tr('Signed on the phones of the player and his marker', 'Wird auf den Handys des Spielers und seines Zählers unterschrieben')}
+        </span>
+      )}
+      {cards.filter((c) => !props.only || c.pid === props.only).map((c) => {
         const done = f.signed?.[c.pid]?.[c.as];
         const locked = isSigned(f, c.pid);
         const can = signable(f, c.pid, ev!.holes.length);
@@ -1027,7 +1092,7 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
       })}
         {/* a card handed in with a mistake (Sascha 12.11.2026, Moritz on the Cypress): its correction asked for here – the
             host confirms it (push), then the card is open again, corrected and signed anew */}
-        <ReopenRows round={props.round} f={f} pids={cards.map((c) => c.pid)} onEv={setEv} />
+        <ReopenRows round={props.round} f={f} pids={cards.map((c) => c.pid).filter((pid) => !props.only || pid === props.only)} onEv={setEv} />
       {msg && (
         <span className="small good-text" role="status">
           {msg}
@@ -1047,6 +1112,7 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
   const f = props.f;
   const [owner, setOwner] = useState<string | null>(() => keptOwner(s.code));
   const [ask, setAsk] = useState<string | null>(null);
+  const [pick, setPick] = useState(false); // several cards: one row, the card picked in a sheet (Entwurf A, 14.11.2026)
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -1075,7 +1141,12 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
       ))}
       {openable.length > 0 && (
         <SettingsList label={tr('Correction', 'Korrektur')}>
-          {openable.map((pid) => (
+          {openable.length > 1 ? (
+            <button type="button" className="settings-row reopen-ask reopen-pick" onClick={() => setPick(true)}>
+              <span>{tr('Correct a card', 'Karte korrigieren')}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ) : openable.map((pid) => (
             <button key={pid} type="button" className="settings-row reopen-ask" onClick={() => setAsk(pid)}>
               <span>{pid === props.round.players.find((p) => p.isMe)?.id ? tr('Correct my card', 'Meine Karte korrigieren') : tr(`Correct ${nameOf(pid)}'s card`, `Karte von ${nameOf(pid)} korrigieren`)}</span>
               <span aria-hidden="true">›</span>
@@ -1106,6 +1177,28 @@ function ReopenRows(props: { round: Round; f: Flight; pids: string[]; onEv: (ev:
         </div>
       ))}
       {msg && <span className="small good-text">{msg}</span>}
+      {pick && (
+        <div className="sheet-backdrop" onClick={() => setPick(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Which card to correct?', 'Welche Karte korrigieren?')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Which card to correct?', 'Welche Karte korrigieren?')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPick(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {openable.map((pid) => (
+                <button key={pid} type="button" className="pick-option" onClick={() => { setPick(false); setAsk(pid); }}>
+                  <span className="grow">
+                    <strong>{pid === props.round.players.find((p) => p.isMe)?.id ? tr('My card', 'Meine Karte') : nameOf(pid)}</strong>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
       {ask && (
         <ConfirmSheet
           title={tr(`Open ${nameOf(ask)}'s card for a correction?`, `Karte von ${nameOf(ask)} zur Korrektur öffnen?`)}

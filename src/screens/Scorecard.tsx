@@ -51,6 +51,8 @@ export function Scorecard(props: {
   // on several phones: the players this phone counts as their marker (its entries of them are its counts)
   const marked = round.players.filter((p) => round.shared?.roles?.[p.id] === 'mark').map((p) => p.name);
   const [editHole, setEditHole] = useState<number | null>(null);
+  // "Übersicht" or one player's tab (Sascha 14.11.2026, Entwurf E)
+  const [view, setView] = useState<string>('all');
   // swiped sideways in the hole's panel: the next or the previous hole (Sascha 12.11.2026: "wenn ich eine Scorekarte
   // nachträglich bearbeite, wäre es praktisch, wenn man die Löcher durchkippen könnte, anstatt andauernd zurückzugehen")
   const swipeFrom = useRef<{ x: number; y: number } | null>(null);
@@ -69,6 +71,7 @@ export function Scorecard(props: {
   const views = useShareViews(round);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
+  const mine = view === 'all' || view === me.id; // the own cards: the overview and the own tab
   const finished = round.finishedAt != null;
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
@@ -234,6 +237,52 @@ export function Scorecard(props: {
 
       {statusRow}
 
+      {/* the tabs: "Übersicht" and each player – his card, his handing-in (Sascha 14.11.2026, Entwurf E + A) */}
+      {round.players.length > 1 && (
+        <div className="chip-set sc-tabs" role="tablist" aria-label={tr('Scorecard of', 'Scorekarte von')}>
+          {[{ id: 'all', name: tr('Overview', 'Übersicht') }, ...round.players.map((p) => ({ id: p.id, name: p.name }))].map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={view === t.id} className={`chip${view === t.id ? ' on' : ''}`} onClick={() => setView(t.id)}>
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {view !== 'all' && (() => {
+        const p = round.players.find((x) => x.id === view);
+        if (!p) return null;
+        const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
+        const putts = round.entries[p.id].some((e) => e?.putts != null) ? round.entries[p.id].reduce((s, e) => s + (e?.putts ?? 0), 0) : null;
+        return (
+          <>
+            <section className="card sc-hero sc-hero-player" aria-label={p.name}>
+              <div className="sc-hero-name">
+                <strong>{p.name}</strong>
+                {p.playingHandicap != null && <span className="muted small"> · {tr('hcp', 'SV')} {fmtHcp(p.playingHandicap)}</span>}
+              </div>
+              <div className="sc-hero-main">
+                <div>
+                  <div className="sc-big">{t.holesPlayed ? t.gross : '–'}</div>
+                  <div className="muted small">{tr('strokes', 'Schläge')}</div>
+                </div>
+                <div>
+                  <div className="sc-mid">{t.holesPlayed ? formatToPar(t.toPar) : '–'}</div>
+                  <div className="muted small">{tr('to par', 'zu Par')}</div>
+                </div>
+                {putts != null && (
+                  <div>
+                    <div className="sc-mid">{putts}</div>
+                    <div className="muted small">Putts</div>
+                  </div>
+                )}
+              </div>
+            </section>
+            <ScoreTable round={{ ...round, players: [p] }} onHole={setEditHole} differ={differ} />
+            {round.shared && <SignCard round={round} onHole={setEditHole} onChange={props.onChange} only={p.id} />}
+          </>
+        );
+      })()}
+
+      {view === 'all' && <>
       <section className="card sc-hero">
         {/* whose the big figures are, on top – the partners below (Sascha 12.11.2026: "Sascha should stand on top with his score, below the other players") */}
         {round.players.length > 1 && (
@@ -300,6 +349,7 @@ export function Scorecard(props: {
       )}
 
       <ScoreTable round={round} onHole={setEditHole} differ={differ} />
+      </>}
 
       {/* a hole tapped on the card (or its pencil, an empty hole): the same score panel as on the course – strokes, putts,
           sand shots, penalties, tee shot (Sascha 20.10.2026: "the same menu as on a round") */}
@@ -360,10 +410,11 @@ export function Scorecard(props: {
         </div>
       )}
 
-      <PlayedHcpCard round={round} onChange={props.onChange} />
+      {/* the own cards – not in a partner's tab */}
+      {mine && <PlayedHcpCard round={round} onChange={props.onChange} />}
 
-      {finished && round.signedAt && <RoundReportCard round={round} history={loadRounds()} highlight={props.justSigned} onOpenTraining={props.onOpenTraining} />}
-      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
+      {mine && finished && round.signedAt && <RoundReportCard round={round} history={loadRounds()} highlight={props.justSigned} onOpenTraining={props.onOpenTraining} />}
+      {mine && finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span className="eyebrow">{tr('Your stats', 'Deine Statistik')}</span>
@@ -376,7 +427,7 @@ export function Scorecard(props: {
         </div>
       </section>
 
-      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={round.holes.length <= 9 ? 9 : 18} defaultGroup={comparisonGroup(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
+      {mine && sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={round.holes.length <= 9 ? 9 : 18} defaultGroup={comparisonGroup(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
 
       {/* only when the round ends – a look at the score during the round needs no save / delete (Sascha 15.10.2026);
           at the end of the page, below the statistics (Sascha 20.10.2026) */}
