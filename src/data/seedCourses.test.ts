@@ -4,6 +4,7 @@ import { SEED_GEOMETRY } from './seedGeometry';
 import { holesFromTags, searchBundled } from '../lib/courses';
 import { lineLength } from '../lib/geo';
 import { TEES } from './tees';
+import { holeForTee } from '../lib/teeline';
 
 // The built-in courses (night 27./28.10.2026): Kissimmee Bay had stroke index 3 twice (holes 1 and 10, OSM) and no 18 –
 // the strokes of a net game land on the stroke index, so each must be there once.
@@ -42,17 +43,23 @@ describe('Orange Lake – The Reserve', () => {
   });
   // second pass (13.11.2026 morning): each line starts at the back of its tee complex (raised pads in the 3DEP lidar) –
   // within 10 m of the card's Teal where a tee lies there, else of its White; 13 is the one hole shorter than its card
-  it('lines from the back tees fit the card (Teal, else White; 13 excepted)', () => {
+  // Sascha 14.11.2026 ("Wir haben heute vom blauen Abschlag gespielt"): the current card – Green/Blue/White/Yellow – and
+  // the blue tees where the flight teed off: the line starts there on every hole, ends on the same green, and is as
+  // long as the card's blue length within what the card measures differently (≤ 35 m; 13 of 18 within 15 m)
+  it('blue from the tees measured on 13.11.2026, the blue lengths of the card', () => {
     const g = SEED_GEOMETRY[id];
     const card = TEES[id];
-    const teal = ['1', '2', '3', '5', '6', '8', '12', '14'];
+    expect(card.tees).toEqual(['Green', 'Blue', 'White', 'Yellow']);
+    let close = 0;
     for (const h of g.holes) {
-      if (h.ref === '13') continue;
-      const L = lineLength(h.line);
-      const [t, w] = card.holes[h.ref];
-      if (teal.includes(h.ref)) expect(Math.abs(L - (t as number)), `hole ${h.ref}: ${L.toFixed(0)} m, Teal ${t}`).toBeLessThanOrEqual(10);
-      else expect(Math.abs(L - (w as number)), `hole ${h.ref}: ${L.toFixed(0)} m, White ${w}`).toBeLessThanOrEqual(12);
+      const at = card.at![h.ref][1]!;
+      const d = holeForTee({ line: h.line, tee: h.line[0] } as never, id, h.ref, 'Blue');
+      expect(d!.line[0], `hole ${h.ref}`).toEqual(at);
+      expect(d!.line[d!.line.length - 1]).toEqual(h.line[h.line.length - 1]);
+      const off = Math.abs(lineLength(d!.line) - (card.holes[h.ref][1] as number));
+      expect(off, `hole ${h.ref}: ${lineLength(d!.line).toFixed(0)} m, Blue ${card.holes[h.ref][1]}`).toBeLessThanOrEqual(35);
+      if (off <= 15) close++;
     }
-    expect(lineLength(g.holes[12].line)).toBeGreaterThan(275); // 13: the rear of the only tee box, 285 m
+    expect(close).toBeGreaterThanOrEqual(12);
   });
 });

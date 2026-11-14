@@ -54,8 +54,8 @@ describe('course ratings for every tee (13.11.2026)', () => {
           if (!RATINGS[id]?.[k] && !LADY_RATINGS[id]?.[k]) unrated.push(`${id} ${k}`);
         }
     }
-    // forward tees without a rating (RFEG: none for orange; Orange Lake Reserve: the card gives no sex for yellow)
-    expect(unrated.sort()).toEqual(['osm:relation/1130271 Orange', 'osm:relation/1654444 Orange', 'osm:relation/4039888 Yellow']);
+    // forward tees without a rating (RFEG: none for orange)
+    expect(unrated.sort()).toEqual(['osm:relation/1130271 Orange', 'osm:relation/1654444 Orange']);
     expect(men).toBeGreaterThanOrEqual(102); // of 106 tees and loop combinations (13.11.2026)
     expect(women).toBeGreaterThanOrEqual(72);
   });

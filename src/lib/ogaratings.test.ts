@@ -85,7 +85,7 @@ describe('the tees of a course from OpenGolfAPI', () => {
     expect(ogaRating('osm:way/7', 'Championship')).toMatchObject({ cr: 70.2, slope: 126 });
     expect(ogaRating('osm:way/7', 'Silver')).toMatchObject({ cr: 65.3 });
     expect(ogaRating('osm:way/7', 'Forward', true)).toMatchObject({ cr: 69.0 });
-    expect(courseTees('osm:relation/4039888', [], ['Championship']).tees).toEqual(['Teal', 'White', 'Yellow']); // bundled first
+    expect(courseTees('osm:relation/4039888', [], ['Championship']).tees).toEqual(['Green', 'Blue', 'White', 'Yellow']); // bundled first
   });
 });
 

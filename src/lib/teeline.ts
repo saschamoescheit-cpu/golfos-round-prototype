@@ -2,6 +2,20 @@ import type { LngLat, Ring } from '../types';
 import { alongLine, bearingDeg, centroid, distanceM, lineLength, pointInRing, shiftTee, teeDelta, type HoleMapData } from './geo';
 import { TEES } from '../data/tees';
 
+/** The hole line from a measured tee point: on from the point of the line beside it (10 m on, so no corner right behind
+ *  the tee); `along0` the tee's place on the mapped line (behind its start: negative). */
+export function teeAt(d: HoleMapData, at: LngLat): HoleMapData {
+  const a = alongLine(d.line, at);
+  const behind = a < 1 ? distanceM(at, d.line[0]) : 0;
+  const rest: LngLat[] = [];
+  let s = 0;
+  for (let k = 1; k < d.line.length; k++) {
+    s += distanceM(d.line[k - 1], d.line[k]);
+    if (s > a + 10 || k === d.line.length - 1) rest.push(d.line[k]);
+  }
+  return { ...d, line: [at, ...rest], tee: at, along0: (d.along0 ?? 0) + a - behind };
+}
+
 /**
  * The hole line from the tee the player chose (feature 019): shifted forward or back by the scorecard lengths.
  * Going back (feature 025): the line starts at the mapped tee box behind it whose length fits the scorecard –
@@ -10,6 +24,9 @@ import { TEES } from '../data/tees';
 export function holeForTee(d: HoleMapData | null, courseId: string, label: string, tee: string | null | undefined, teeBoxes: Ring[] = []): HoleMapData | null {
   const t = TEES[courseId];
   if (!d || !t || !tee) return d;
+  // the tee's markers measured on a round played: the line starts there (Sascha 13.11.2026, Reserve)
+  const at = t.at?.[label]?.[t.tees.indexOf(tee)];
+  if (at) return teeAt(d, at);
   const L = lineLength(d.line);
   const delta = teeDelta(t.holes[label], t.tees.indexOf(tee), L);
   if (delta > 2) {

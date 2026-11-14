@@ -31,8 +31,8 @@ import { withAliases } from './seedAliases';
 // - Kissimmee Bay: FSGA's current set (gold 72.0/135 …); the club's website still shows the older one (72.4/132 …).
 // - Falcon's Fire, Orange Lake Legends: FSGA = GolfCourseAPI = GolfPass (men); the club's PDF of Falcon's Fire is older.
 // - Hawk's Landing, Orlando: FSGA; silver men 62.0 (GolfPass' unlabelled 68.5 is no men's value). Women from blue down.
-// - Orange Lake – The Reserve: the current card (golfingrecord.com, Chronogolf, GolfAdvisor agree) gives no sex; teal and
-//   white are men's by their values, yellow (68.3 for 5119 yd) is left out. FSGA still has the old layout (green 6241 yd …).
+// - Orange Lake – The Reserve: the current card – the resort's own site (orangelakegolf.com) = GolfPass = FSGA: green 6241,
+//   blue 5941, white 5764, yellow 4698 yd, men and women (14.11.2026; teal 6505 yd of golfingrecord.com is the old card).
 // - Legends Golf & Country Club, Clermont: the club's card of August 2025 = FSGA = GolfPass, tee data from the same card.
 
 export interface TeeRating {
@@ -73,7 +73,7 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:way/311994625': { Gold: { cr: 74.1, slope: 138 }, Blue: { cr: 71.0, slope: 128 }, White: { cr: 68.9, slope: 121 }, Red: { cr: 66.3, slope: 114 } }, // Falcon's Fire: GolfCourseAPI (night 22./23.10.2026) = FSGA, men's values
   'osm:relation/4039579': { Gold: { cr: 72.0, slope: 135 }, Blue: { cr: 69.3, slope: 130 }, White: { cr: 67.7, slope: 129 }, Red: { cr: 62.9, slope: 116 } }, // Kissimmee Bay: FSGA
   'osm:relation/4053362': { Black: { cr: 70.2, slope: 133 }, Green: { cr: 67.8, slope: 126 }, Blue: { cr: 66.3, slope: 116 }, Gold: { cr: 64.9, slope: 112 }, Silver: { cr: 62.0, slope: 106 } }, // Hawk's Landing, Orlando: GolfPass (27.10.2026) = FSGA, men's
-  'osm:relation/4039888': { Teal: { cr: 71.8, slope: 137 }, White: { cr: 69.4, slope: 128 } }, // Orange Lake – The Reserve (13.11.2026): current card (golfingrecord.com, Chronogolf, GolfAdvisor agree), men's; Yellow left out (68.3 for 5119 yd is a ladies' value)
+  'osm:relation/4039888': { Green: { cr: 70.1, slope: 126 }, Blue: { cr: 68.7, slope: 124 }, White: { cr: 67.7, slope: 121 }, Yellow: { cr: 62.7, slope: 106 } }, // Orange Lake – The Reserve: the current card (orangelakegolf.com = GolfPass, 14.11.2026), men's
   'osm:relation/4039887': { Green: { cr: 73.7, slope: 135 }, Black: { cr: 71.9, slope: 131 }, Blue: { cr: 70.1, slope: 126 }, White: { cr: 67.5, slope: 121 }, Yellow: { cr: 65.0, slope: 112 } }, // Orange Lake – Legends: GolfCourseAPI (night 22./23.10.2026) = FSGA, men's values
   'osm:relation/4040123': { Gold: { cr: 72.9, slope: 132 }, Blue: { cr: 71.3, slope: 129 }, White: { cr: 69.3, slope: 126 }, Green: { cr: 65.6, slope: 122 }, Purple: { cr: 62.8, slope: 111 }, Silver: { cr: 59.7, slope: 98 } }, // Legends G&CC, Clermont: club card 08/2025 = FSGA
   'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, White: { cr: 70.4, slope: 133 }, Gold: { cr: 67.2, slope: 121 } },
@@ -113,6 +113,7 @@ export const LADY_RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:way/311994625': { White: { cr: 74.6, slope: 128 }, Red: { cr: 71.4, slope: 120 } }, // Falcon's Fire
   'osm:relation/4053362': { Blue: { cr: 71.7, slope: 133 }, Gold: { cr: 69.9, slope: 129 }, Silver: { cr: 65.6, slope: 119 } }, // Hawk's Landing
   'osm:relation/4039887': { Blue: { cr: 75.8, slope: 137 }, White: { cr: 73.1, slope: 131 }, Yellow: { cr: 69.8, slope: 124 } }, // Orange Lake – Legends
+  'osm:relation/4039888': { Green: { cr: 75.9, slope: 139 }, Blue: { cr: 74.3, slope: 135 }, White: { cr: 73.4, slope: 133 }, Yellow: { cr: 66.9, slope: 112 } }, // Orange Lake – The Reserve: current card, women's (14.11.2026)
   'osm:relation/4040123': { White: { cr: 74.9, slope: 136 }, Green: { cr: 70.6, slope: 133 }, Purple: { cr: 67.2, slope: 122 }, Silver: { cr: 62.7, slope: 100 } }, // Legends G&CC, Clermont
 };
 withAliases(LADY_RATINGS);
