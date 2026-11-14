@@ -2776,3 +2776,10 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .sign-dot { width: 30px; height: 30px; border-radius: 15px; flex: none; display: grid; place-items: center; border: 2px dashed var(--line-strong); box-sizing: border-box; color: var(--text-2); }
 .sign-dot.ok { border: 0; background: var(--brand); color: #fff; }
 .sign-score { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* the module's header kept on top (Sascha 14.11.2026, Variante B): over the page's own top padding to the edge, the page
+   colour behind it; once the page scrolls a little tighter with a line below – the buttons the same size, the inbox's
+   number never cut off (room above it), no page title in it */
+.topbar.module-top { position: sticky; top: 0; z-index: 8; /* below the sheets (10) and toasts, above the page */  background: var(--bg); margin: calc(-1 * (env(safe-area-inset-top) + 16px)) -16px 0; padding: calc(env(safe-area-inset-top) + 16px) 16px 6px; transition: padding 0.2s ease, box-shadow 0.2s ease; }
+.topbar.module-top.stuck { padding-top: calc(env(safe-area-inset-top) + 8px); box-shadow: 0 1px 0 var(--line); }
+@media (prefers-reduced-motion: reduce) { .topbar.module-top { transition: none; } }

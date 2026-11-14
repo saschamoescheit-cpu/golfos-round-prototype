@@ -5,7 +5,7 @@ import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
-import { TopTools } from '../components/TopTools';
+import { ModuleTop, TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
 import { canRejoin, flightOfName, isSigned, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
@@ -331,9 +331,9 @@ export function PlayTab(props: {
  *  and Training (Sascha 15.10.2026: "the same in every module"). */
 export function RoundsTopBar(props: { onModules: () => void }) {
   return (
-    <div className="topbar">
+    <ModuleTop>
       <ModulePill name={'Rounds'} onClick={props.onModules} />
       <TopTools />
-    </div>
+    </ModuleTop>
   );
 }

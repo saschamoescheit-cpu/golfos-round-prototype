@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { getLang, langLocale, tr } from '../lib/i18n';
 import { isSun, setSun } from '../lib/theme';
 import { NotifyBell } from './NotifyBell';
@@ -36,4 +36,21 @@ export function TopTools() {
       <NotifyBell />
     </>
   );
+}
+
+/**
+ * The module's header kept on top (Sascha 14.11.2026, Variante B: "Kopfzeile mit Modulblatt, Inbox usw. immer oben"):
+ * on the start pages of the modules it stays when the page scrolls, a little tighter and with a line below once scrolled –
+ * nothing in it cut off (the inbox's number included), no page title in it (the tab bar below says where one is). Not on
+ * the hole's map nor on the pages with a back arrow (TopBar).
+ */
+export function ModuleTop(props: { children: ReactNode; className?: string }) {
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const on = () => setStuck(window.scrollY > 6);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
+  return <div className={`topbar module-top${stuck ? ' stuck' : ''}${props.className ? ' ' + props.className : ''}`}>{props.children}</div>;
 }

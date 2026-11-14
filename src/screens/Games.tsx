@@ -29,7 +29,7 @@ import { exchange, keptBy, sharingAvailable, stamp } from '../lib/sharedgame';
 import { pushGame } from '../lib/push';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
-import { TopTools } from '../components/TopTools';
+import { ModuleTop, TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
 import { ChoiceRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleList, ToggleRow, AddRow } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
@@ -568,10 +568,10 @@ function GamesTabs(props: {
     <main className="screen with-tabs">
       {/* the module header on every tab, the profile too (uniform with Rounds and Training) */}
       {(
-        <div className="topbar">
+        <ModuleTop>
           <ModulePill name={props.kind === 'tours' ? 'Tournaments' : 'Games & Bets'} onClick={props.onModules} />
           <TopTools />
-        </div>
+        </ModuleTop>
       )}
       {/* Tournaments (03.11.2026): plan one or join – the list of them in the menu "Tournaments", played in Rounds */}
       {props.kind === 'tours' && props.tab === 'play' && (

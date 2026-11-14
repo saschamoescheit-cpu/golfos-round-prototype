@@ -6,7 +6,7 @@ import type { Round } from '../types';
 import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
-import { TopTools } from '../components/TopTools';
+import { ModuleTop, TopTools } from '../components/TopTools';
 import { Stepper, TopBar } from '../components/ui';
 import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
@@ -396,10 +396,10 @@ function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: Rea
   return (
     <main className="screen with-tabs training">
       {/* the module header on every tab, the profile too (like Rounds and Games since 16.10.2026) */}
-      <div className="topbar">
+      <ModuleTop>
         <ModulePill name={'Training'} onClick={props.onModules} />
         <TopTools />
-      </div>
+      </ModuleTop>
       {props.tab === 'learn' && <LearnTab nav={props.nav} rounds={props.rounds} />}
       {props.tab === 'train' && <TrainTab nav={props.nav} rounds={props.rounds} />}
       {props.tab === 'log' && <LogTab nav={props.nav} />}

@@ -3,7 +3,7 @@ import { tr } from '../lib/i18n';
 import { loadFriends, type Friend } from '../lib/friends';
 import { Friends } from '../components/Friends';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
-import { TopTools } from '../components/TopTools';
+import { ModuleTop, TopTools } from '../components/TopTools';
 import { PausedIcon } from '../components/PausedIcon';
 import { AddRow } from '../components/Settings';
 
@@ -144,7 +144,7 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
     <>
       {/* GOLFOS only top left, the claim small below it (Sascha 02.11.2026: "saves a lot of room") – the claim the
           same in both languages (15.10.2026) */}
-      <div className="topbar">
+      <ModuleTop>
         <span className="brand-stack">
           <span className="brand">
             GOLF<span>OS</span>
@@ -152,7 +152,7 @@ function ModuleCards(props: ModuleCardInfo & { onPick: (m: ModulePick) => void; 
           <span className="muted brand-claim">unlock every part of your golf game</span>
         </span>
         <TopTools />
-      </div>
+      </ModuleTop>
       <div className="home-hero">
         {/* "Runde abgerechnet" no longer on the start page (Sascha 13.11.2026: "Entferne Runde abgerechnet doch von der
             Startseite") – the settlement stays in the pool */}

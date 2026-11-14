@@ -3,7 +3,7 @@ import { ModulePill } from '../components/ModuleSheet';
 import { tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
-import { TopTools } from '../components/TopTools';
+import { ModuleTop, TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
 import { SwipeRow } from '../components/SwipeRow';
 import { PausedIcon } from '../components/PausedIcon';
@@ -244,10 +244,10 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
   if (view.name === 'tab')
     return (
       <main className="screen with-tabs training mobility">
-        <div className="topbar">
+        <ModuleTop>
           <ModulePill name={'Agility'} onClick={props.onModules} />
           <TopTools />
-        </div>
+        </ModuleTop>
         {view.tab !== 'profile' && <h1 className="tab-title">{TAB_TITLES[view.tab]()}</h1>}
         {view.tab === 'test' && <TestTab nav={nav} />}
         {view.tab === 'result' && <ResultTab nav={nav} />}
