@@ -95,7 +95,7 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
   await d.getByRole('button', { name: n, exact: true }).click();
   await p.locator('.topbar h1', { hasText: 'USA 2026' }).waitFor({ timeout: 15000 }).catch(() => {});
   const head = await p.locator('.topbar h1').innerText().catch(() => '');
-  const guest = (await p.getByText('Nur wer den Pool angelegt hat, ändert die Wetten').isVisible().catch(() => false)) && (await p.getByRole('button', { name: 'Pool bearbeiten' }).count()) === 0 && (await p.locator('button.pool-wager').count()) === 0;
+  const guest = (await p.getByText('Nur wer den Pool angelegt hat, ändert die Wetten').isVisible().catch(() => false)) && (await p.getByRole('button', { name: 'Pool bearbeiten' }).count()) === 0 && (await p.locator('section.pool-player').filter({ hasNot: p.locator('.pool-player-name', { hasText: new RegExp(`^${n}$`) }) }).locator('button.pool-wager').count()) === 0; // only his own open bets can be tapped – to give one up (14.11.2026)
   ok(/USA 2026/.test(head) && guest, `${n}: joined by the link, in the pool – sees the bets, changes none (only the host)`);
   // back to Rounds for the day
   await p.evaluate(() => sessionStorage.setItem('golfos.module', 'rounds'));
