@@ -215,7 +215,7 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
 {
   const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
   // Facelift 11.11.2026 (t5): Was → Wo/Wann → Wer (Spieler, Flights, Wer erfasst) → Einstellungen → Sonderwertungen
-  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `the order: ${heads.join(' · ')}`);
+  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `the order: ${heads.join(' · ')}`);
 }
 for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
   await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();

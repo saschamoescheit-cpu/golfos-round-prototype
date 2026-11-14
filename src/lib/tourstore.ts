@@ -5,6 +5,7 @@ import { myAccount } from './wagerstore';
 import { dayOf } from './wagers';
 import type { Special } from './specials';
 import type { TourDraw } from './tourdraw';
+import type { TourPrizes } from './tourprizes';
 import { tellTourResult, tourChanges } from './tourpush';
 import { pushTourChanged } from './push';
 
@@ -24,6 +25,8 @@ export type PlannedEvent = RoundEvent & {
   series?: { code: string; name: string } | null;
   /** how its flights are drawn (Sascha 04.11.2026) – "by result" waits for the rounds before */
   draw?: TourDraw;
+  /** what is played for – the entry fee, the prizes per place, the payments (Sascha 14.11.2026, lib/tourprizes) */
+  prizes?: TourPrizes;
 };
 
 /** A tournament series (Sascha 01.11.2026: "our golf trip is a tournament series of six tournament rounds"): its own

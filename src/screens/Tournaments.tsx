@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { DoneFab, FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
+import { TourPrizeBoard, tourPrizeResult } from '../components/TourPrizeBoard';
+import { keyName, wonBy } from '../lib/tourprizes';
+import { prizeAmount } from '../lib/prize';
 import { ChoiceRow, OnOffRow, SettingsList, SettingsRow, TickRow, ToggleList, ToggleRow } from '../components/Settings';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
@@ -1186,6 +1189,19 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
     props.onEdit(flights ? { ...d, focus: 'flights', ...(multi && k >= 0 ? { open: k } : {}) } : d);
   };
   const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
+  // the prizes (Sascha 14.11.2026): from the live scores, the plan's prizes and payments – the host's marks come with the
+  // plan, not with the flights
+  const prized = { ...(live ?? ev), prizes: ev.prizes };
+  const prizeResult = played ? tourPrizeResult(prized) : null;
+  const won = prizeResult ? wonBy(prizeResult.awards) : null;
+  const markPaid = async (key: string, on: boolean) => {
+    const tp = ev.prizes;
+    if (!tp) return;
+    const paid = { ...(tp.paid ?? {}) };
+    if (on) paid[key] = new Date().toISOString();
+    else delete paid[key];
+    setMsg((await changeTour(props.code, { ...ev, prizes: { ...tp, paid } }, { quiet: true })) ? null : NO_NET());
+  };
   return (
     <main className="screen tour-screen">
       <TopBar
@@ -1259,6 +1275,8 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
             value: played && r.thru ? r.value : '–',
             thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+            // the prize won – white on green beside the name (Sascha 14.11.2026, mock-up 4)
+            ...(won?.get(keyName(r.name)) && prizeResult ? { extra: <span className="prize-chip lb-prize">{prizeAmount(won.get(keyName(r.name))!.amount, prizeResult.tp.prize)}</span> } : {}),
             // tapped: his scorecard opens below (Sascha 04.11.2026)
             ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}
@@ -1271,6 +1289,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           }
         />
       )}
+      <TourPrizeBoard ev={prized} done={done} played={played} host={host} onPaid={(k, on) => void markPaid(k, on)} />
       {(ev.specials ?? []).length > 0 &&
         specialBoard(live ?? ev).map(({ special, rows }) => (
           <section key={special.id} className="card tour-special-board" aria-label={specialName(special.kind)}>

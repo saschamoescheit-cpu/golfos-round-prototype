@@ -7,7 +7,7 @@ import { CurrencySheet } from './CurrencyRow';
 /** "Worum wird gespielt ›" (Sascha 03.11.2026): no value until chosen – in green, a required field. The first step:
  *  Geld, Getränke, Essen, Schläger putzen, Eigener Einsatz …, Ohne Einsatz; the second: the currency for money, who buys
  *  for whom for a thing. The same row in Games and in the bets. */
-export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => void; disabled?: boolean }) {
+export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => void; disabled?: boolean; /** a tournament: the places decide who gets what – no "who buys for whom" (14.11.2026) */ noWho?: boolean }) {
   const [step, setStep] = useState<null | 'kind' | 'currency' | 'label' | 'who'>(null);
   const [kind, setKind] = useState<PrizeKind | null>(null);
   const [text, setText] = useState(props.value?.kind === 'custom' ? props.value.label : '');
@@ -22,6 +22,10 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
       props.onChange({ kind: 'none' });
       return close();
     }
+    if (props.noWho && k !== 'money' && k !== 'custom') {
+      if (k === 'drinks' || k === 'meal' || k === 'clubs') props.onChange({ kind: k });
+      return close();
+    }
     setStep(k === 'money' ? 'currency' : k === 'custom' ? 'label' : 'who');
   };
   const pickWho = (who: PrizeWho) => {
@@ -31,7 +35,7 @@ export function PrizeRow(props: { value: Prize | null; onChange: (p: Prize) => v
     close();
   };
   // the own stake typed: on to "who buys for whom" – Enter or the save button in the sheet's head (Facelift 11.11.2026, o3)
-  const next = () => (text.trim() ? setStep('who') : setError(tr('Type what is played for, e.g. a round of beer', 'Gib ein, worum gespielt wird, z. B. Bier-Runde')));
+  const next = () => (text.trim() ? (props.noWho ? (props.onChange({ kind: 'custom', label: text.trim().slice(0, 30) }), close()) : setStep('who')) : setError(tr('Type what is played for, e.g. a round of beer', 'Gib ein, worum gespielt wird, z. B. Bier-Runde')));
   const label = tr('Played for', 'Worum wird gespielt');
   const current = props.value;
   return (

@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { canLink, pendingAsk } from '../lib/friendlinks';
-import { amHost, cachedEvent, confirmReopen, eventOwner, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
+import { amHost, cachedEvent, confirmReopen, eventOwner, liveFlights, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
+import { tourPrizeResult } from './TourPrizeBoard';
+import { keyName, wonBy } from '../lib/tourprizes';
+import { prizeAmount } from '../lib/prize';
 import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
 import { SwipeRow } from './SwipeRow';
 import { isTourHost, loadTours } from '../lib/tourstore';
@@ -12,7 +15,7 @@ import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
 import { wagerLabel } from '../lib/wagers';
 import { money } from '../lib/gameforms';
 import { prizeOf, prizeSym } from '../lib/prize';
-import { goPool, goRound } from '../lib/nav';
+import { goPool, goRound, goTour } from '../lib/nav';
 import { roundsToSign } from '../screens/Rounds';
 
 // The inbox (Sascha 13.11.2026: "neben der Sprache und dem Tag-/Nachtmodus noch eine Glocke für Notifications, wie
@@ -169,6 +172,27 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       go: () => goRound(r.id),
       ask: true,
     });
+  }
+  // a tournament's prizes, once every card is in (Sascha 14.11.2026, mock-up 7): "Du hast 50 $ gewonnen" – and what this
+  // phone's player still pays
+  for (const t of loadTours()) {
+    if (!t.ev.prizes || t.ev.deletedAt) continue;
+    const live = cachedEvent(t.code);
+    if (!live || !liveFlights(live).length) continue;
+    const res = tourPrizeResult({ ...live, prizes: t.ev.prizes });
+    if (!res?.done) continue;
+    const mine = loadRounds().find((r) => r.shared?.code === t.code)?.players.find((p) => p.isMe)?.name;
+    if (!res || !mine) continue;
+    const amt = (v: number) => prizeAmount(v, res.tp.prize);
+    const w = wonBy(res.awards).get(keyName(mine));
+    if (w && w.amount > 0) {
+      const labels = res.awards.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
+      out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), ask: true });
+    }
+    for (const x of res.settle.transfers) {
+      if (keyName(x.from) !== keyName(mine) || res.tp.paid?.[x.key]) continue;
+      out.push({ key: `prizepay:${t.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${t.ev.name} · prizes and entry fee`, `${t.ev.name} · Preise und Startgeld`), go: () => goTour(t.code) });
+    }
   }
   const sign = roundsToSign(loadRounds());
   if (sign.length)

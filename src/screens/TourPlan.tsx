@@ -18,6 +18,8 @@ import type { RoundHole } from '../types';
 import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, tellTourChanged, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, specialName, type Special, type SpecialKind } from '../lib/specials';
+import type { TourPrizes } from '../lib/tourprizes';
+import { TourPrizesRows } from '../components/TourPrizesRows';
 import { deal, defaultDraw, drawOrder, FLIGHT_SIZES, GAPS, madeCut, teeSlots, type DrawMode, type Results, type TourDraw } from '../lib/tourdraw';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
@@ -98,6 +100,8 @@ export interface TourDraft {
   rounds: RoundDraft[];
   /** the special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional") – on each round's hole */
   specials: Special[];
+  /** what is played for (Sascha 14.11.2026, "Turnier-Preise") – a tournament of one round */
+  prizes?: TourPrizes | null;
   /** "Score-Erfassung": one player per flight keeps the score of all */
   oneScorer?: boolean;
   /** "Jeder seinen eigenen": nobody marks; else every player marks a partner ("Mit Zähler", the default) */
@@ -274,6 +278,7 @@ export function draftOf(e: TourEntry): TourDraft {
     players,
     rounds: [r],
     specials: ev.specials ?? [],
+    ...(ev.prizes ? { prizes: ev.prizes } : {}),
   };
 }
 
@@ -441,6 +446,9 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
   const specials = d.specials.filter((s) => s.hole < holes.length);
   if (specials.length) ev.specials = specials;
   else delete ev.specials;
+  // the prizes – the payments marked meanwhile on the tournament's page kept
+  if (d.prizes && d.rounds.length === 1) ev.prizes = { ...d.prizes, ...(base?.prizes?.paid ? { paid: base.prizes.paid } : {}) };
+  else delete ev.prizes;
   return ev;
 }
 
@@ -826,6 +834,18 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </SettingsList>
         {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
       </section>
+      {/* Worum (Sascha 14.11.2026, "Turnier-Preise"): after Wer, before the settings – a tournament of one round */}
+      {!multi && (
+        <TourPrizesRows
+          value={d.prizes ?? null}
+          onChange={(prizes) => set({ prizes })}
+          players={d.players.map((p) => p.name)}
+          net={d.scoring !== 'stroke' && (d.allowance ?? 100) > 0}
+          classes={d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && d.classes.length ? CLASS_NAMES.slice(0, d.classes.length + 1) : []}
+          specials={d.specials}
+          holeName={(i) => h0.holes[i]?.label ?? String(i + 1)}
+        />
+      )}
       {/* Einstellungen: the handicap allowance, Texas, the classes, the cut, the aids (Facelift 11.11.2026, t5) */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>

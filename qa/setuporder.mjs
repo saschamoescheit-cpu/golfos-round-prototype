@@ -220,7 +220,7 @@ await P.locator('button.list-item').first().click();
 await P.locator('#tour-name').waitFor({ timeout: 30000 });
 {
   const h = await heads('main.screen > .setup-part > .eyebrow');
-  ok(h.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `t5: Was → Wo/Wann → Wer → Einstellungen → Sonderwertungen (${h.join(' · ')})`);
+  ok(h.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `t5: Was → Wo/Wann → Wer → Worum (Preise, 14.11.2026) → Einstellungen → Sonderwertungen (${h.join(' · ')})`);
   const fmt = (await rowsOf('Format')).map((t) => t.split(' ')[0]);
   const set = (await rowsOf('Einstellungen')).map((t) => t.split(' ')[0]);
   ok(fmt.join('|') === 'Rundenart|Modus|Scoring|Runden' && set[0] === 'HCP-Vorgabe', `t5: Format ${fmt.join(' | ')} – Einstellungen ${set.join(' | ')}`);
