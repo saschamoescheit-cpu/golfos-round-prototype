@@ -537,6 +537,16 @@ export const FAQ: FaqTopic[] = [
         video: 'wagers',
       },
       {
+        // Sascha 14.11.2026: Cedric paid "brutto in 6 Runden" early – giving a bet up; the sum under the standing
+        q: () => tr('Can I give up a bet before its rounds are played?', 'Kann ich eine Wette vorzeitig aufgeben?'),
+        a: () =>
+          tr(
+            'Yes: tap your own open bet in the pool (the host: any bet) → "Give up" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet "only when made" costs nothing. Paid already in cash or by PayPal? Turn "Paid already" on – the settlement shows it as paid and the other gets "… paid you" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, "given up". The host takes it back with "Decided by hand" → "The app judges". Under the bets, "Sum" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in "Total" and in each round.',
+            'Ja: im Pool die eigene offene Wette antippen (der Host: jede Wette) → „Aufgeben“ (die Fahne). Das Blatt sagt, was es kostet – eine Wette gegen jemanden: du zahlst ihm jetzt den Einsatz; eine Wette „nur bei Erfolg“ kostet nichts. Schon bar oder per PayPal bezahlt? „Schon bezahlt“ an – die Abrechnung zeigt es als bezahlt, und der andere bekommt „… hat dir … bezahlt“ zum Bestätigen in die Inbox. Ab dann zählt die Wette als verloren; im Stand steht sie mit Fahne, „aufgegeben“. Der Host nimmt es mit „Von Hand entscheiden“ → „App wertet aus“ zurück. Unter den Wetten zeigt „Summe“, was jedem die geschafften Wetten bringen, und darunter netto – nach dem, was er den anderen zahlt; in „Gesamt“ und je Runde.',
+          ),
+        video: 'wagers',
+      },
+      {
         // Sascha 08.11.2026, USA: a bet holds for one round – the standing in total and per round; the tournaments count
         q: () => tr('Where do I see what each of us did in one round – and do the tournaments count?', 'Wo sehe ich, was jeder in einer Runde geschafft hat – und zählen die Turniere?'),
         a: () =>

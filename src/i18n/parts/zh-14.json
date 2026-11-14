@@ -34,5 +34,7 @@
  "Cash or PayPal – done in the settlement": "现金或PayPal – 在结算中已完成",
  "It shows in the settlement as still to pay": "在结算中显示为仍待支付",
  "Give up the bet": "放弃赌注",
- "given up by {0} on {1} – „The app judges“ takes it back": "{0}于{1}放弃 –“由应用判定”可撤回"
+ "given up by {0} on {1} – „The app judges“ takes it back": "{0}于{1}放弃 –“由应用判定”可撤回",
+ "Can I give up a bet before its rounds are played?": "我可以在轮次打完前放弃一个赌注吗？",
+ "Yes: tap your own open bet in the pool (the host: any bet) → \"Give up\" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet \"only when made\" costs nothing. Paid already in cash or by PayPal? Turn \"Paid already\" on – the settlement shows it as paid and the other gets \"… paid you\" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, \"given up\". The host takes it back with \"Decided by hand\" → \"The app judges\". Under the bets, \"Sum\" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in \"Total\" and in each round.": "可以：在赌池中点自己的未决赌注（主办人：任何赌注）→“放弃”（旗子）。窗口会显示代价 – 对某人的赌注：你现在付给他赌注；“仅成功时”的赌注不花任何费用。已经用现金或PayPal付过？打开“已付款” – 结算显示为已付款，对方的收件箱会收到“…已付给你”以确认。从此该赌注算作输；排名中显示旗子和“已放弃”。主办人可通过“手动决定”→“由应用判定”撤回。赌注下方的“合计”显示每人从完成的赌注中得到的金额，下面是净额 – 扣除他付给别人的；在“总计”和每一轮中。"
 }

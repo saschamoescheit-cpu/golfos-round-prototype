@@ -34,5 +34,7 @@
  "Cash or PayPal – done in the settlement": "現金またはPayPal – 精算で完了",
  "It shows in the settlement as still to pay": "精算で未払いとして表示されます",
  "Give up the bet": "賭けを棄権",
- "given up by {0} on {1} – „The app judges“ takes it back": "{0}が{1}に棄権 –「アプリが判定」で取り消し"
+ "given up by {0} on {1} – „The app judges“ takes it back": "{0}が{1}に棄権 –「アプリが判定」で取り消し",
+ "Can I give up a bet before its rounds are played?": "ラウンドが終わる前に賭けを棄権できますか？",
+ "Yes: tap your own open bet in the pool (the host: any bet) → \"Give up\" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet \"only when made\" costs nothing. Paid already in cash or by PayPal? Turn \"Paid already\" on – the settlement shows it as paid and the other gets \"… paid you\" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, \"given up\". The host takes it back with \"Decided by hand\" → \"The app judges\". Under the bets, \"Sum\" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in \"Total\" and in each round.": "はい：プールで自分の未決の賭けをタップ（ホストはどの賭けでも）→「棄権」（旗）。画面に費用が表示されます – 誰かとの賭け：今その人に賭け金を払います。「成功時のみ」の賭けは費用なし。現金やPayPalで支払い済み？「支払い済み」をオンにすると精算で支払い済みになり、相手の受信箱に「…があなたに支払いました」が届き確認できます。以後その賭けは負け扱い。順位表では旗と「棄権」で表示されます。ホストは「手動で決める」→「アプリが判定」で取り消せます。賭けの下の「合計」には、達成した賭けで各自が受け取る額と、その下に他の人への支払い後の差引が表示されます。「合計」と各ラウンドで。"
 }
