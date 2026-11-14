@@ -18,14 +18,14 @@ export function windSide(windFromDeg: number, bearing: number, kmh: number): str
  * from and how strong): an arrow against the direction of play – up is towards the target, so an arrow pointing down
  * blows into the player's face – then "Gegenwind 18 km/h", and the gusts when they were clearly stronger.
  */
-export function WindTag(props: { w: { windKmh: number; windFromDeg: number; gustKmh?: number }; bearing: number; gusts?: boolean }) {
+export function WindTag(props: { w: { windKmh: number; windFromDeg: number; gustKmh?: number }; bearing: number; gusts?: boolean; /** the arrow in the text's colour, not green (the shot's sheet, Sascha 14.11.2026) */ plain?: boolean }) {
   const { w, bearing } = props;
   // the arrow shows where the wind blows to, turned against the line of play
   const turn = (w.windFromDeg + 180 - bearing + 360) % 360;
   const gust = props.gusts && w.gustKmh != null && w.gustKmh >= w.windKmh + 5 ? Math.round(w.gustKmh) : null;
   const calm = Math.round(w.windKmh) < 5;
   return (
-    <span className="wind-tag">
+    <span className={`wind-tag${props.plain ? ' plain' : ''}`}>
       {!calm && (
         <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style={{ transform: `rotate(${Math.round(turn)}deg)` }}>
           <path d="M12 3v18M12 3l-6 6M12 3l6 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />

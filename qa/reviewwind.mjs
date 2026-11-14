@@ -88,7 +88,16 @@ ok(crowded === 0, `nothing wider than the 320-px screen (${crowded} not)`);
   await p.waitForTimeout(600);
   const where = (await p.locator('.sheet .shot-where').innerText().catch(() => '')).replace(/\s+/g, ' ');
   const own = await p.locator('.sheet .shot-where .shot-plays').evaluate((el) => getComputedStyle(el).display).catch(() => '');
-  ok(/zur Fahne/.test(where) && /spielte sich wie \d+ m · (Gegenwind|Rückenwind) \d+ km\/h/.test(where) && own === 'block', `the shot's sheet: "${where}" – the wind's length on a line of its own`);
+  // (Sascha 14.11.2026, later: "spielte sich wie XX m" one line, below it the wind – shown as under the map, the arrow not
+  // green)
+  const plays = (await p.locator('.sheet .shot-where .shot-plays').innerText().catch(() => '')).trim();
+  const wind = p.locator('.sheet .shot-where .shot-wind');
+  const windText = (await wind.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+  const windOwn = await wind.evaluate((el) => getComputedStyle(el).display).catch(() => '');
+  const arrow = await wind.locator('svg').evaluate((el) => getComputedStyle(el).color).catch(() => '');
+  const green = (c) => { const n = (c.match(/[\d.]+/g) ?? []).map(Number); return n.length >= 3 && n[1] > n[0] + 30 && n[1] > n[2] + 30; };
+  ok(/zur Fahne/.test(where) && /^spielte sich wie \d+ m$/.test(plays) && own === 'block', `the shot's sheet: "${plays}" – a line of its own`);
+  ok(/^(Gegenwind|Rückenwind|Wind)( von (links|rechts))? \d+ km\/h/.test(windText) && windOwn === 'block' && (await wind.locator('svg').count()) === 1 && !green(arrow), `below it the wind as under the map: "${windText}" – its arrow, not green (${arrow})`);
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
 }
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);

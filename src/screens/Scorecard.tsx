@@ -218,7 +218,7 @@ export function Scorecard(props: {
       <div style={{ flex: 1, minWidth: 0 }}>
         {finished && props.onOpenCourse ? (
           <button type="button" className="link-text" style={{ font: '600 19px var(--display)', textDecoration: 'none' }} aria-label={tr(`${round.courseName} – statistics`, `${round.courseName} – Statistik`)} onClick={() => props.onOpenCourse!(round.courseName)}>
-            {round.courseName} <span className="muted" aria-hidden="true">›</span>
+            {round.courseName} <span className="good-text" aria-hidden="true">›</span>
           </button>
         ) : (
           <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
@@ -239,7 +239,7 @@ export function Scorecard(props: {
               {' · '}
               <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(round.tee!)} – change`, `Abschlag ${teeName(round.tee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
                 <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee!] ?? '#888' }} />
-                {teeName(round.tee!)} <span aria-hidden="true">›</span>
+                {teeName(round.tee!)} <span className="good-text" aria-hidden="true">›</span>
               </button>
             </>
           )}

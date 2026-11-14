@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, STRIKES, toggleStance } from '../lib/shotfacts';
@@ -40,7 +40,7 @@ export function ShotSheet(props: {
   offGreenM?: number | null;
   /** checking the shots afterwards (Sascha 12.11.2026: "set a point, then see how far it still was to the flag"): where
    *  it was played from – "noch 145 m zur Fahne · Schlag 160 m", or the place missing – and setting it on the map */
-  where?: { toPin: string | null; length: string | null; /** "spielte sich wie 121 m · Gegenwind 14 km/h" – with the hole's wind (14.11.2026) */ plays?: string | null };
+  where?: { toPin: string | null; length: string | null; /** "spielte sich wie 121 m · Gegenwind 14 km/h" – with the hole's wind (14.11.2026) */ plays?: string | null; /** the wind below it, as under the map (Sascha 14.11.2026: "spielte sich wie" one line, the wind the next, with its arrow) */ wind?: ReactNode };
   onPlace?: () => void;
   editing: boolean;
   bag?: { club: Club; m: number; carry?: number }[]; // the player's distances – m the total; carry as set in "My bag"
@@ -120,6 +120,7 @@ export function ShotSheet(props: {
                   <strong>{tr(`${props.where.toPin} to the flag`, `Noch ${props.where.toPin} zur Fahne`)}</strong>
                   {props.where.length ? <span className="muted"> · {tr(`shot ${props.where.length}`, `Schlag ${props.where.length}`)}</span> : null}
                   {props.where.plays ? <span className="muted small shot-plays">{props.where.plays}</span> : null}
+                  {props.where.wind ? <span className="small shot-wind">{props.where.wind}</span> : null}
                 </>
               ) : (
                 <span className="muted">{tr('Where it was played from is missing', 'Ort fehlt – von wo gespielt')}</span>

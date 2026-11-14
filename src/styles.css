@@ -2790,3 +2790,9 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .topbar.module-top { position: sticky; top: 0; z-index: 8; /* below the sheets (10) and toasts, above the page */  background: var(--bg); margin: calc(-1 * (env(safe-area-inset-top) + 16px)) -16px 0; padding: calc(env(safe-area-inset-top) + 16px) 16px 6px; transition: padding 0.2s ease, box-shadow 0.2s ease; }
 .topbar.module-top.stuck { padding-top: calc(env(safe-area-inset-top) + 8px); box-shadow: 0 1px 0 var(--line); }
 @media (prefers-reduced-motion: reduce) { .topbar.module-top { transition: none; } }
+
+/* the shot's sheet (Sascha 14.11.2026): "spielte sich wie …" one line, the wind on the next with its arrow – as under the
+   map, the arrow in the text's colour, not green */
+.shot-plays, .shot-wind { display: block; }
+.shot-wind { margin-top: 2px; }
+.wind-tag.plain svg { color: inherit; }

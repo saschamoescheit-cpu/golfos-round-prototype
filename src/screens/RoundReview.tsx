@@ -1649,7 +1649,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           kind={editing.kind}
           toPinM={editing.pos && pin ? distanceM(editing.pos, pin) : null}
           offGreenM={offGreen(editing.pos, data)}
-          where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null, plays: ((p) => (p ? `${tr(`played like ${fmt(p.m)}`, `spielte sich wie ${fmt(p.m)}`)}${Math.abs(p.head) >= 1 ? ` · ${p.head >= 0 ? tr('Into the wind', 'Gegenwind') : tr('Downwind', 'Rückenwind')} ${Math.abs(p.head)} km/h` : ''}` : null))(editing.pos && pin ? playedToPin(editing.pos, pin, entries[k]?.weather) : null) }}
+          where={{ toPin: editing.pos && pin ? fmt(distanceM(editing.pos, pin)) : null, length: lengths[edit!] != null ? fmt(lengths[edit!]!) : null, plays: ((p) => (p ? tr(`played like ${fmt(p.m)}`, `spielte sich wie ${fmt(p.m)}`) : null))(editing.pos && pin ? playedToPin(editing.pos, pin, entries[k]?.weather) : null), wind: editing.pos && pin && entries[k]?.weather?.windKmh != null ? <WindTag w={entries[k]!.weather!} bearing={bearingDeg(editing.pos, pin)} gusts plain /> : null }}
           onPlace={data ? () => {
             const n = edit!;
             setEdit(null);
