@@ -1358,6 +1358,12 @@ export function writeScores(code: string, fid: string, typed: Record<string, (nu
   return changeFlight(code, fid, true, (f) => (f ? { ...withScores(f, typed), ...(retired ? { retired, retiredFill: retiredFill ?? {} } : {}) } : null));
 }
 
+/** A player's tee in a tournament changed by its host afterwards (Sascha 14.11.2026: the Reserve planned White, played
+ *  from Blue – "Auch im Turnier (Host)"): the tee and, when known, the playing handicap for it – the leaderboard follows. */
+export function setFlightTee(code: string, fid: string, pid: string, tee: string, playing: number | null): Promise<RoundEvent | null> {
+  return changeFlight(code, fid, true, (f) => (f ? { ...f, players: f.players.map((p) => (p.id === pid ? { ...p, tee, ...(playing != null ? { playingHandicap: playing } : {}) } : p)) } : null));
+}
+
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */
 export const liveFlights = (ev: RoundEvent): Flight[] => Object.values(ev.flights).filter((f) => f.players.length > 0);
 

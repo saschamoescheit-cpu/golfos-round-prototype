@@ -11,6 +11,7 @@ import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
 import { EventBoardCard, SignCard, useDiffers, useShareViews } from '../components/ShareRound';
+import { amHost, eventOwner, keptOwner, setFlightTee } from '../lib/sharedround';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
@@ -75,9 +76,16 @@ export function Scorecard(props: {
   const me = round.players.find((p) => p.isMe)!;
   const mine = view === 'all' || view === me.id; // the own cards: the overview and the own tab
   const finished = round.finishedAt != null;
-  // the tee of a finished own round changed afterwards – as in the round, not in a tournament (its plan sets the tees)
+  // the tee of a finished own round changed afterwards – in a tournament by its host only, the tournament's tee and playing
+  // handicap with it (Sascha 14.11.2026: "Auch im Turnier (Host)" – "wir brauchen beides")
   const [manyTees] = useState(() => roundTees(round).length > 1);
-  const teeEditable = finished && !round.preview && !round.shared?.tournament && !!round.tee && manyTees;
+  const tourCode = round.shared?.tournament ? round.shared.code : null;
+  const [tourHost, setTourHost] = useState(() => !!tourCode && amHost(keptOwner(tourCode)));
+  useEffect(() => {
+    if (tourCode) void eventOwner(tourCode).then((o) => setTourHost(amHost(o)));
+  }, [tourCode]);
+  const myTee = round.tee ?? round.players.find((p) => p.isMe)?.tee;
+  const teeEditable = finished && !round.preview && (!tourCode || tourHost) && !!myTee && manyTees;
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
@@ -225,11 +233,11 @@ export function Scorecard(props: {
         )}
         <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
-          {round.tee && !teeEditable && (
+          {myTee && !teeEditable && (
             <>
               {' · '}
-              <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee] ?? '#888' }} />
-              {teeName(round.tee)}
+              <span className="tee-dot" style={{ background: TEE_COLOURS[myTee] ?? '#888' }} />
+              {teeName(myTee)}
             </>
           )}
           {/* the tee changed afterwards (Sascha 14.11.2026: the Reserve round stored as White, played from Blue) – the
@@ -237,9 +245,9 @@ export function Scorecard(props: {
           {teeEditable && (
             <>
               {' · '}
-              <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(round.tee!)} – change`, `Abschlag ${teeName(round.tee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
-                <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee!] ?? '#888' }} />
-                {teeName(round.tee!)} <span className="good-text" aria-hidden="true">›</span>
+              <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(myTee!)} – change`, `Abschlag ${teeName(myTee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
+                <span className="tee-dot" style={{ background: TEE_COLOURS[myTee!] ?? '#888' }} />
+                {teeName(myTee!)} <span className="good-text" aria-hidden="true">›</span>
               </button>
             </>
           )}
@@ -538,7 +546,17 @@ export function Scorecard(props: {
           onClose={() => setTeeOpen(false)}
           onPick={(t) => {
             setTeeOpen(false);
-            if (t !== round.tee) props.onChange(withTee(round, t));
+            if (t === myTee) return;
+            const next = withTee(round, t);
+            props.onChange(next);
+            // a tournament: the host's change goes to the tournament too – the player's tee and playing handicap
+            if (tourCode && round.shared) {
+              const mine = next.players.find((p) => p.isMe);
+              if (mine)
+                void setFlightTee(tourCode, round.shared.flight, mine.id, t, mine.playingHandicap ?? null).then((ev) => {
+                  if (!ev) setShareMsg(tr('The tournament did not take the tee – no connection. Try again later.', 'Im Turnier nicht gespeichert – keine Verbindung. Später noch einmal.'));
+                });
+            }
           }}
         />
       )}

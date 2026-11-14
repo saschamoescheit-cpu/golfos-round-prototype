@@ -387,8 +387,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
         a: () =>
           tr(
-            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.',
-            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier bleibt der Abschlag wie geplant.',
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier kann nur der Veranstalter den Abschlag nachträglich ändern – in seiner Scorekarte.',
           ),
         video: 'map',
       },

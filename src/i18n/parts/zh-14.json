@@ -17,7 +17,6 @@
  "My card": "我的记分卡",
  "Scorecard of": "记分卡：",
  "Tee {0} – change": "发球台 {0} – 更改",
- "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "可以：打开球洞总览（底部的栏）→“Tee”。距离、球童、球场难度与坡度以及你的打球差点都会按新的发球台变化；已经打过的球洞保留原来的发球台。同伴保留他们的。打完后：记分卡 → 点日期旁边的发球台。比赛中发球台按计划不变。",
  "How do I enter a chip-in?": "如何记录切入（chip-in）？",
  "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "记录 0 推 —— 表示在果岭外打进洞。在“检查击球”中推杆行会显示“进洞 – 切入”，最后一杆以绿色显示为“进洞”。在球场上：点击该击球 →“进洞！（切入）”。",
  "How do we hand in the scorecards in a tournament?": "比赛中我们如何交记分卡？",
@@ -38,5 +37,7 @@
  "Can I give up a bet before its rounds are played?": "我可以在轮次打完前放弃一个赌注吗？",
  "Yes: tap your own open bet in the pool (the host: any bet) → \"Give up\" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet \"only when made\" costs nothing. Paid already in cash or by PayPal? Turn \"Paid already\" on – the settlement shows it as paid and the other gets \"… paid you\" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, \"given up\". The host takes it back with \"Decided by hand\" → \"The app judges\". Under the bets, \"Sum\" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in \"Total\" and in each round.": "可以：在赌池中点自己的未决赌注（主办人：任何赌注）→“放弃”（旗子）。窗口会显示代价 – 对某人的赌注：你现在付给他赌注；“仅成功时”的赌注不花任何费用。已经用现金或PayPal付过？打开“已付款” – 结算显示为已付款，对方的收件箱会收到“…已付给你”以确认。从此该赌注算作输；排名中显示旗子和“已放弃”。主办人可通过“手动决定”→“由应用判定”撤回。赌注下方的“合计”显示每人从完成的赌注中得到的金额，下面是净额 – 扣除他付给别人的；在“总计”和每一轮中。",
  "The rounds this bet counts": "此赌注计入的轮次",
- "not counted for this bet": "此赌注不计入"
+ "not counted for this bet": "此赌注不计入",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "可以：打开球洞总览（底部的栏）→“Tee”。距离、球童、球场难度与坡度以及你的打球差点都会按新的发球台变化；已经打过的球洞保留原来的发球台。同伴保留他们的。打完后：记分卡 → 点日期旁边的发球台。在比赛中，只有组织者可以事后更改发球台——在其记分卡中。",
+ "The tournament did not take the tee – no connection. Try again later.": "比赛未保存发球台——无网络连接。请稍后再试。"
 }

@@ -17,7 +17,6 @@
  "My card": "自分のカード",
  "Scorecard of": "スコアカード：",
  "Tee {0} – change": "ティー {0} – 変更",
- "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament the tee stays as planned.": "はい：ホール一覧（下のバー）を開いて →「Tee」。距離、キャディー、コースレーティングとスロープ、あなたのプレーイングハンディキャップが新しいティーに合わせて変わります。すでにプレーしたホールは元のティーのままです。同伴者のティーは変わりません。ラウンド後：スコアカード → 日付の横のティーをタップ。大会ではティーは予定どおりです。",
  "How do I enter a chip-in?": "チップインはどう入力しますか？",
  "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "パットを0と入力してください。グリーン外からカップインしたという意味です。「ショット確認」ではパットの行に「カップイン – チップイン」と表示され、最後のショットが緑で「カップイン」になります。コース上では：ショットをタップ →「カップイン！（チップイン）」。",
  "How do we hand in the scorecards in a tournament?": "大会でスコアカードはどう提出しますか？",
@@ -38,5 +37,7 @@
  "Can I give up a bet before its rounds are played?": "ラウンドが終わる前に賭けを棄権できますか？",
  "Yes: tap your own open bet in the pool (the host: any bet) → \"Give up\" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet \"only when made\" costs nothing. Paid already in cash or by PayPal? Turn \"Paid already\" on – the settlement shows it as paid and the other gets \"… paid you\" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, \"given up\". The host takes it back with \"Decided by hand\" → \"The app judges\". Under the bets, \"Sum\" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in \"Total\" and in each round.": "はい：プールで自分の未決の賭けをタップ（ホストはどの賭けでも）→「棄権」（旗）。画面に費用が表示されます – 誰かとの賭け：今その人に賭け金を払います。「成功時のみ」の賭けは費用なし。現金やPayPalで支払い済み？「支払い済み」をオンにすると精算で支払い済みになり、相手の受信箱に「…があなたに支払いました」が届き確認できます。以後その賭けは負け扱い。順位表では旗と「棄権」で表示されます。ホストは「手動で決める」→「アプリが判定」で取り消せます。賭けの下の「合計」には、達成した賭けで各自が受け取る額と、その下に他の人への支払い後の差引が表示されます。「合計」と各ラウンドで。",
  "The rounds this bet counts": "この賭けで数えるラウンド",
- "not counted for this bet": "この賭けでは数えない"
+ "not counted for this bet": "この賭けでは数えない",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.": "はい：ホール一覧（下のバー）を開いて →「Tee」。距離、キャディー、コースレーティングとスロープ、あなたのプレーイングハンディキャップが新しいティーに合わせて変わります。すでにプレーしたホールは元のティーのままです。同伴者のティーは変わりません。ラウンド後：スコアカード → 日付の横のティーをタップ。トーナメントでは、主催者だけが後からティーを変更できます（自分のスコアカードで）。",
+ "The tournament did not take the tee – no connection. Try again later.": "トーナメントにティーが保存されませんでした（接続なし）。後でもう一度お試しください。"
 }
