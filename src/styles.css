@@ -1258,8 +1258,12 @@ button.tile:disabled { opacity: 1; }
 .bet-matrix tr.bet-sum-row th { color: var(--text); }
 .bet-cell.sum { background: transparent; }
 .bet-cell.sum.up strong { color: var(--brand-text); }
-.bet-cell.given { background: transparent; border: 1.5px dashed var(--line); }
-.bet-cell.given svg { vertical-align: -1px; margin-right: 2px; }
+/* given up (Sascha 14.11.2026: "auch farblich darstellen" – grey filled, the flag and the word green; never red) – the word
+   inside the cell, wrapped when narrow, not over its edge */
+.bet-cell.given { background: color-mix(in srgb, var(--text) 16%, var(--surface-2)); }
+.bet-cell.given svg { vertical-align: -1px; margin-right: 2px; color: var(--brand-text); }
+.bet-matrix td .bet-cell.given { white-space: normal; }
+.bet-matrix td .bet-cell.given small.bet-made, .bet-cell.given small.bet-made { color: var(--brand-text); font-size: 10.5px; overflow-wrap: anywhere; hyphens: auto; }
 .concede-cost { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
 .bet-free { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .bet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

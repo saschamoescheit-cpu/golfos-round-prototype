@@ -1537,7 +1537,10 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     return (
       <span className={`bet-cell sum${got > 0 ? ' up' : ''}`} aria-label={tr(`gets ${money(got, sym)}, net ${net < 0 ? '−' : '+'}${money(net, sym)}`, `bekommt ${money(got, sym)}, netto ${net < 0 ? '−' : '+'}${money(net, sym)}`)}>
         <strong>{got > 0 ? `+${money(got, sym)}` : '–'}</strong>
-        <small>{tr('net', 'netto')} {net > 0 ? '+' : net < 0 ? '−' : '±'}{money(net, sym)}</small>
+        {/* the net amount coloured as in the settlement (Sascha 14.11.2026): plus green, minus red – the word stays quiet */}
+        <small>
+          {tr('net', 'netto')} <span className={net > 0 ? 'good-text' : net < 0 ? 'bad-text' : undefined}>{net > 0 ? '+' : net < 0 ? '−' : '±'}{money(net, sym)}</span>
+        </small>
       </span>
     );
   };

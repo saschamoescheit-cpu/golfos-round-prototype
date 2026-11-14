@@ -107,6 +107,18 @@ await openPool(C);
 const stand = C.locator('.pool-standings');
 const given = stand.locator('.bet-cell.given');
 ok((await given.count()) === 1 && /aufgegeben/.test(await given.innerText()) && (await given.locator('svg').count()) === 1, `the standing: "${(await given.innerText().catch(() => '')).replace(/\s+/g, ' ')}" with the flag`);
+{
+  // its colour (Sascha 14.11.2026: "auch farblich darstellen" – grey filled, flag and word green, never red) – the word
+  // inside the cell, not over its edge
+  const look = await given.evaluate((c) => { const s = getComputedStyle(c); const w = c.querySelector('small.bet-made'); const ws = getComputedStyle(w); const cr = c.getBoundingClientRect(); const wr = w.getBoundingClientRect(); return { bg: s.backgroundColor, word: ws.color, flag: getComputedStyle(c.querySelector('svg')).color, inside: wr.left >= cr.left - 0.5 && wr.right <= cr.right + 0.5 }; });
+  // "rgb(155, 197, 61)" or, from color-mix, "color(srgb 0.26 0.30 0.32)" – both as 0–255
+  const rgb = (c) => { const n = (c.match(/[\d.]+/g) ?? []).map(Number); return /^color\(srgb/.test(c) ? n.map((x) => x * 255) : n; };
+  const [r, g, bl] = rgb(look.bg);
+  const green = (c) => { const [x, y, z] = rgb(c); return y > x + 30 && y > z + 30; };
+  ok(!/rgba\(0, 0, 0, 0\)|transparent/.test(look.bg) &&Math.abs(r - g) < 20 && Math.abs(g - bl) < 20 && r > 40, `given up: grey filled (${look.bg}) – not red`);
+  ok(green(look.word) && green(look.flag), `the flag and "aufgegeben" green (${look.flag}, ${look.word})`);
+  ok(look.inside, '"aufgegeben" inside the cell, not over its edge');
+}
 ok(/aufgegeben von Cedric/.test(await C.locator('.pool-wager').filter({ hasText: /in 6 Runden/ }).first().innerText()), 'his bet in the list: "aufgegeben von Cedric"');
 if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/concede-standing.png` });
 
