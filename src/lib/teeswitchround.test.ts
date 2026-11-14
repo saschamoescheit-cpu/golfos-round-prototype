@@ -23,4 +23,17 @@ describe('a round switched to another tee', () => {
     expect(r.players[1]).toMatchObject({ tee: 'Yellow', playingHandicap: 20 });
     expect(roundTees(round).length).toBeGreaterThan(1);
   });
+  // review 14.11.2026: switched in the middle of the round, the holes played keep the tee they were played from
+  it('in the middle of the round: the holes played keep their tee, the rest follows the round', async () => {
+    const { withTee } = await import('../components/TeeSwitch');
+    const holes = Array.from({ length: 4 }, (_, i) => ({ index: i, label: String(i + 1), loop: 'Main', number: i + 1, par: 4, strokeIndex: i + 1 }));
+    const e = (strokes: number | null, tee?: string) => ({ strokes, putts: null, ...(tee ? { tee } : {}) });
+    const round = { id: 'r', courseId: 'x', tee: 'Yellow', holes, entries: { me: [e(5), e(4, 'Blue'), e(null), e(null)] }, players: [{ id: 'me', name: 'Sascha', isMe: true, tee: 'Yellow', playingHandicap: 16 }] } as never;
+    const mid = withTee(round, 'Red', true) as unknown as { tee: string; entries: { me: { tee?: string }[] } };
+    expect(mid.tee).toBe('Red');
+    expect(mid.entries.me.map((x) => x.tee ?? null)).toEqual(['Yellow', 'Blue', null, null]);
+    // after the round (the scorecard): every hole follows
+    const after = withTee(round, 'Red') as unknown as { entries: { me: { tee?: string }[] } };
+    expect(after.entries.me.map((x) => x.tee ?? null)).toEqual([null, 'Blue', null, null]);
+  });
 });
