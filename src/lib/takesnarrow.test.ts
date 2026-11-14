@@ -63,4 +63,14 @@ describe('a finished round corrected', () => {
   it('the same figures: nothing new', () => {
     expect(takes(birdies, 's', right, { ...right, at: 'z' }, span)).toBe(false);
   });
+  // review 14.11.2026: the host's copy without the player's putts ("?") must not overwrite his full figure – else the
+  // two phones would write it back and forth, a push each time
+  it('a less complete figure (unknown) is never taken', () => {
+    const unknownCopy = { ...right, at: 'z', perRound: [right.perRound![0], { ...right.perRound![1], value: 0, unknown: true }] } as Progress;
+    expect(takes(birdies, 's', right, unknownCopy, span)).toBe(false);
+  });
+  it('a more complete one is', () => {
+    const before = { ...right, perRound: [right.perRound![0], { ...right.perRound![1], value: 0, unknown: true }] } as Progress;
+    expect(takes(birdies, 's', before, { ...right, at: 'z' }, span)).toBe(true);
+  });
 });
