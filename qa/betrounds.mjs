@@ -92,6 +92,17 @@ const sascha = await cellText('Pars in Folge', 'Sascha');
 ok(/^3 1\/1$/.test(sascha) && !/vorläufig/.test(sascha), `Gesamt: Sascha's pars in a row counted (${sascha})`);
 const erik = await cellText('Birdies in Folge', 'Erik');
 ok(/^2 0(\/0)?$/.test(erik), `Erik: nothing entered for him – a dash (${erik})`);
+// the sum under the bets (Sascha 14.11.2026: "eine Summe ziehen … wie viel ein Spieler anhand der grünen Wetten verdient
+// hat"): Chris and Sascha each made one at 20 $ from each of the two others – +40 $, net +20 $; Erik pays both: net −40 $
+const sumRow = async () => {
+  const names = (await stand.locator('thead th').allInnerTexts()).slice(1);
+  const cells = await stand.locator('tr.bet-sum-row td').allInnerTexts();
+  return Object.fromEntries(names.map((n, k) => [n, (cells[k] ?? '').replace(/\s+/g, ' ').trim()]));
+};
+{
+  const s = await sumRow();
+  ok(/^\+40 \$ netto \+20 \$$/.test(s.Chris) && /^\+40 \$ netto \+20 \$$/.test(s.Sascha) && /^– netto −40 \$$/.test(s.Erik), `Gesamt: the sum row – Sascha "${s.Sascha}", Chris "${s.Chris}", Erik "${s.Erik}"`);
+}
 
 // the rounds: "Gesamt" and yesterday's round
 // one switch instead of a row of tabs (Sascha 10.11.2026): "Gesamt" in the middle, the arrow to the next round, a tap on
@@ -108,6 +119,10 @@ await H.waitForTimeout(300);
 ok((await now()).includes(label) && (await sw.getByRole('button', { name: 'Nächste' }).isDisabled()), `yesterday's round chosen: ${await now()}`);
 const inRound = await cellText('Birdies in Folge', 'Chris');
 ok(/^2 3$/.test(inRound) && (await stand.locator('.bet-cell.done').count()) >= 1, `yesterday's round: Chris 2/3, made (${inRound})`);
+{
+  const s = await sumRow();
+  ok(/^\+40 \$ netto \+20 \$$/.test(s.Chris) && /^\+40 \$ netto \+20 \$$/.test(s.Sascha) && /^– netto −40 \$$/.test(s.Erik), `yesterday's round: its own sum row – Sascha "${s.Sascha}", Chris "${s.Chris}", Erik "${s.Erik}"`);
+}
 {
   // the round over, the bets not made (Sascha 13.11.2026: "nicht erfüllte Wetten nicht rot, nur erfüllte grün – überall"):
   // no cell red or struck through, no red "Verloren" – only the made ones coloured

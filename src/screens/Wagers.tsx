@@ -1452,6 +1452,55 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     .filter((r) => Object.values(r.cells).some((cs) => cs.length));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
+  // the sum under the bets (Sascha 14.11.2026: "Bei Stand gesamt … eine Summe ziehen … auch bei den einzelnen Runden, sodass
+  // man direkt sieht, wie viel ein Spieler anhand der grünen Wetten verdient hat"): what each one gets from the bets made –
+  // and below it what is left once he paid the others' ("netto"); the total as the settlement counts it, a round as its
+  // cells show it (made green, missed against one)
+  const prize = prizeOf(pool);
+  const sumShown = !props.noMoney && !isNone(prize);
+  const sums = (() => {
+    const got: Record<string, number> = {};
+    const net: Record<string, number> = {};
+    const add = (from: string, to: string, v: number) => {
+      if (!(v > 0)) return;
+      got[to] = (got[to] ?? 0) + v;
+      net[to] = (net[to] ?? 0) + v;
+      net[from] = (net[from] ?? 0) - v;
+    };
+    if (!one) {
+      for (const o of owings(pool, props.today, true)) add(o.from, o.to, o.amount);
+      return { got, net };
+    }
+    const ids = pool.players.map((x) => x.id);
+    for (const w of pool.wagers) {
+      if (shapeOf(w.kind) === 'duel') {
+        const d = pool.progress[w.id]?.duels?.find((x) => `${x.day}|${x.course}` === one.key);
+        if (!d || d.total == null || !w.opponent || w.opponent === w.player) continue;
+        const parts = w.parts ?? { front: 0, back: 0, total: 0 };
+        const v = (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + d.total * parts.total;
+        if (v > 0) add(w.opponent, w.player, v);
+        else add(w.player, w.opponent, -v);
+        continue;
+      }
+      if (!perRoundBet(w) || pool.progress[w.id]?.manual || !(w.stake > 0)) continue;
+      const verdict = roundVerdict(w, pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one.key), roundInPlay);
+      if (!verdict || (verdict === 'missed' && w.payout === 'success')) continue;
+      const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : ids.filter((id) => id !== w.player);
+      for (const o of against) verdict === 'made' ? add(o, w.player, w.stake) : add(w.player, o, w.stake);
+    }
+    return { got, net };
+  })();
+  const sumCell = (id: string) => {
+    const got = Math.round((sums.got[id] ?? 0) * 100) / 100;
+    const net = Math.round((sums.net[id] ?? 0) * 100) / 100;
+    const sym = prizeSym(prize);
+    return (
+      <span className={`bet-cell sum${got > 0 ? ' up' : ''}`} aria-label={tr(`gets ${money(got, sym)}, net ${net < 0 ? '−' : '+'}${money(net, sym)}`, `bekommt ${money(got, sym)}, netto ${net < 0 ? '−' : '+'}${money(net, sym)}`)}>
+        <strong>{got > 0 ? `+${money(got, sym)}` : '–'}</strong>
+        <small>{tr('net', 'netto')} {net > 0 ? '+' : net < 0 ? '−' : '±'}{money(net, sym)}</small>
+      </span>
+    );
+  };
   return (
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
     <section className="setup-part pool-part" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
@@ -1540,6 +1589,14 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
                   ))}
                 </tr>
               ))}
+              {sumShown && (
+                <tr className="bet-sum-row">
+                  <th scope="row">{tr('Sum', 'Summe')}</th>
+                  {players.map((p) => (
+                    <td key={p.id}>{sumCell(p.id)}</td>
+                  ))}
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

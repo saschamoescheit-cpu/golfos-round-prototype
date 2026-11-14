@@ -21,5 +21,7 @@
  "How do I enter a chip-in?": "チップインはどう入力しますか？",
  "Enter 0 putts – that is holed out from off the green. In \"Check shots\" the putt row then says \"Holed – chip-in\" and the last shot stands green as \"holed\". On the course: tap the shot → \"Holed it! (chip-in)\".": "パットを0と入力してください。グリーン外からカップインしたという意味です。「ショット確認」ではパットの行に「カップイン – チップイン」と表示され、最後のショットが緑で「カップイン」になります。コース上では：ショットをタップ →「カップイン！（チップイン）」。",
  "How do we hand in the scorecards in a tournament?": "大会でスコアカードはどう提出しますか？",
- "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "最終ホールの後にスコアカードを開きます。「概要」に誰が署名したかが表示されます – プレーヤーごとに1行、チェックまたは「本人のスマホで署名」。各自が自分のスマホで自分のカードに署名し、マーカーが確認します。全員が署名するとカードは提出済みでロックされます。プレーヤーごとのタブにはそのカードだけが表示されます。間違い：「カードを修正 ›」でカードを選ぶと、ホストが確認します。"
+ "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "最終ホールの後にスコアカードを開きます。「概要」に誰が署名したかが表示されます – プレーヤーごとに1行、チェックまたは「本人のスマホで署名」。各自が自分のスマホで自分のカードに署名し、マーカーが確認します。全員が署名するとカードは提出済みでロックされます。プレーヤーごとのタブにはそのカードだけが表示されます。間違い：「カードを修正 ›」でカードを選ぶと、ホストが確認します。",
+ "gets {0}, net {1}{2}": "受取 {0}、差引 {1}{2}",
+ "Sum": "合計"
 }

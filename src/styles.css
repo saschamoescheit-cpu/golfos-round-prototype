@@ -1254,6 +1254,10 @@ button.tile:disabled { opacity: 1; }
 .bet-cell.duel.up { color: var(--brand-text); }
 /* behind in a duel: plain in the standing – only green is coloured (Sascha 13.11.2026) */
 .bet-cell.duel.down { color: inherit; }
+.bet-matrix tr.bet-sum-row th, .bet-matrix tr.bet-sum-row td { border-top: 2px solid var(--line); border-bottom: 0; }
+.bet-matrix tr.bet-sum-row th { color: var(--text); }
+.bet-cell.sum { background: transparent; }
+.bet-cell.sum.up strong { color: var(--brand-text); }
 .bet-free { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .bet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .bet-lines li { display: flex; align-items: center; gap: 10px; }
