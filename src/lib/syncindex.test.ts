@@ -93,6 +93,18 @@ describe('listRows', () => {
     expect(s.calls).toEqual(['full', 'full']);
   });
 
+  // the real server (14.11.2026): "2026-11-14T13:09:41.488622+00:00" – microseconds, cut for older Safari
+  it('the server’s times with microseconds: the latest kept, asked with the overlap', async () => {
+    const st = mem();
+    const s = server([
+      { kind: 'round', id: 'a', updated_at: 'u1', server_at: '2026-12-02T10:00:00.488622+00:00' },
+      { kind: 'round', id: 'b', updated_at: 'u1', server_at: '2026-12-02T10:00:01.123456+00:00' },
+    ]);
+    await listRows(st, 'p1', s.pager, T0);
+    await listRows(st, 'p1', s.pager, T0 + 1000);
+    expect(s.calls[1]).toBe('since ' + new Date(Date.parse('2026-12-02T10:00:01.123Z') - OVERLAP_MS).toISOString());
+  });
+
   it('a server error is thrown – the sync says so, as before', async () => {
     const st = mem();
     const s = server([{ kind: 'round', id: 'a', updated_at: 'u1', server_at: iso(T0) }]);

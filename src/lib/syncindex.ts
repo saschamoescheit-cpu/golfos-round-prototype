@@ -30,7 +30,9 @@ interface Cache {
 }
 
 const keyOf = (r: { kind: string; id: string }) => `${r.kind}\u0000${r.id}`;
-const later = (a: string, b: string) => (Date.parse(b) > Date.parse(a) ? b : a);
+// the server's time has microseconds ("…41.488622+00:00") – older Safari reads only milliseconds: cut to three digits
+const ms = (t: string): number => Date.parse(t.replace(/(\.\d{3})\d+/, '$1'));
+const later = (a: string, b: string) => (ms(b) > ms(a) ? b : a);
 
 function read(store: LocalStore, user: string): Cache | null {
   try {
@@ -75,7 +77,7 @@ export async function listRows(store: LocalStore, user: string, pager: Pager, no
     } else write(store, null);
     return all.map(({ server_at: _s, ...r }) => r);
   }
-  const changed = await pager.since(new Date(Date.parse(c.since) - OVERLAP_MS).toISOString());
+  const changed = await pager.since(new Date(ms(c.since) - OVERLAP_MS).toISOString());
   // a row with no server_at here: the column is gone or the answer odd – the whole list next time
   if (changed.some((r) => typeof r.server_at !== 'string')) {
     write(store, null);
