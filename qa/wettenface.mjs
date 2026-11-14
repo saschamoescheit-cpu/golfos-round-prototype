@@ -136,7 +136,8 @@ await stand.waitFor({ timeout: 15000 });
   await H.context().route(/golfos_shared_games/, cut);
   await go.click();
   await H.waitForTimeout(1500);
-  const note = H.locator('main [role="alert"]').filter({ hasText: 'Keine Verbindung' });
+  // the pool's own notice – not "Nicht aktuell · keine Verbindung zum Server …" above (ServerStale, 14.11.2026)
+  const note = H.locator('main [role="alert"]').filter({ hasText: /^\s*Keine Verbindung/ });
   const look = await note.evaluate((e) => [e.className, getComputedStyle(e).color]).catch(() => ['', '']);
   ok((await note.count()) === 1 && /notice/.test(look[0]) && !/bad-text/.test(look[0]) && !/255, 107, 94/.test(look[1]), `no connection: the green notice, not red (${look.join(' · ')})`);
   ok(!server()?.finishedAt, 'not finished without the connection');
