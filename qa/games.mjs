@@ -114,7 +114,9 @@ const pause = async () => {
   await p.waitForTimeout(400);
 };
 let firstCase = true;
-for (const [form, n] of CASES) {
+// GAMES_ONLY=Skins,Wolf: only these forms (a quick run of the rest of the test)
+const RUN = CASES.filter(([f]) => !process.env.GAMES_ONLY || process.env.GAMES_ONLY.split(",").includes(f));
+for (const [form, n] of RUN) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
   await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form.replace(/[()+]/g, '\\$&')}$`) }) }).click();
@@ -165,11 +167,12 @@ for (const [form, n] of CASES) {
   const pays = await p.locator('.game-pays li').count();
   ok(winner.length > 0 && !winner.includes('?'), `${form} with ${n}: winner ${winner}, ${pays} payment(s)`);
   await p.getByRole('button', { name: 'Spiele' }).click();
-  if (form !== CASES[CASES.length - 1][0] || n !== CASES[CASES.length - 1][1]) await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
+  if (form !== RUN[RUN.length - 1][0] || n !== RUN[RUN.length - 1][1]) await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 }
-ok((await p.locator('.list-item').count()) === CASES.length, `${CASES.length} games in the list`);
+ok((await p.locator('.list-item').count()) === RUN.length, `${RUN.length} games in the list`);
 // the result: share it, read the standing aloud (Sascha 15.10.2026)
 await p.locator('.list-item').first().click();
+await p.waitForTimeout(1500);
 ok(await p.getByRole('button', { name: 'Ergebnis teilen' }).isVisible() && (await p.getByRole('button', { name: 'Zwischenstand vorlesen' }).count()) === 1, 'result: share and read aloud');
 const said = await p.evaluate(async () => {
   const G = await import('/src/screens/Games.tsx');
@@ -186,7 +189,7 @@ ok(await p.getByText('Spiel gelöscht').isVisible(), 'game deleted – "Undo" of
 await p.getByRole('button', { name: 'Rückgängig' }).click();
 await p.waitForTimeout(300);
 await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
-ok((await p.locator('.list-item').count()) === CASES.length, 'Undo brings the game back');
+ok((await p.locator('.list-item').count()) === RUN.length, 'Undo brings the game back');
 await p.locator('.list-item').first().click();
 await p.getByRole('button', { name: 'Spiel löschen' }).click();
 await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
@@ -195,7 +198,7 @@ await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');
+ok((await p.locator('.list-item').count()) === RUN.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');
 // only confirmed games count in the balance (Sascha 16.10.2026, as signed rounds)
 await p.locator('.tabbar').getByRole('button', { name: 'Bilanz', exact: true }).click();
 await p.waitForTimeout(300);
@@ -284,7 +287,8 @@ ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('bu
   await sheet.getByRole('checkbox', { name: 'Eagle −10' }).click();
   ok((await on()) === 2, 'a tap switches a house rule off');
   await sheet.getByRole('checkbox', { name: 'Eagle −10' }).click();
-  await sheet.getByRole('button', { name: 'Speichern', exact: true }).click();
+  // closed by the green tick "Fertig" (the save rule of 11.11.2026: editing saves at once)
+  await p.getByRole('button', { name: 'Fertig', exact: true }).last().click();
 }
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
@@ -329,7 +333,7 @@ await presses.locator('.pick-option').filter({ has: p.locator('strong', { hasTex
 ok(/0,40 €/.test(await capRow.innerText()), '2× pressing = highest stake 0,40 €');
 await capRow.click();
 await cap.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
-await pressSheet.getByRole('button', { name: 'Speichern', exact: true }).click();
+await p.getByRole('button', { name: 'Fertig', exact: true }).last().click(); // the green tick (save rule 11.11.2026)
 ok(/An · bis 1,60 €/.test(await pressMain.innerText()), 'the press row after its sheet: "An · bis 1,60 €"');
 await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
