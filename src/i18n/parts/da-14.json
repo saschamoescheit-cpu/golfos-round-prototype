@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "Hvordan afleverer vi scorekortene i en turnering?",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Åbn scorekortet efter sidste hul. “Oversigt” viser, hvem der har skrevet under – én linje pr. spiller med et flueben eller “skriver under på egen telefon”. Alle skriver under på deres eget kort på egen telefon, markøren bekræfter; når alle har skrevet under, er kortene afleveret og låst. En fane pr. spiller viser kun hans kort. En fejl: “Ret et kort ›”, vælg kortet – værten bekræfter.",
  "gets {0}, net {1}{2}": "får {0}, netto {1}{2}",
- "Sum": "Sum"
+ "Sum": "Sum",
+ "given up by {0}": "opgivet af {0}",
+ "given up": "opgivet",
+ "Give up the bet?": "Opgive væddemålet?",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "Det tæller som tabt fra nu – de runder der mangler tæller ikke længere.",
+ "It counts as not made from now on – that costs nothing.": "Det tæller som ikke klaret fra nu – det koster intet.",
+ "You pay {0}": "Du betaler {0}",
+ "Paid already": "Allerede betalt",
+ "Cash or PayPal – done in the settlement": "Kontant eller PayPal – afklaret i opgørelsen",
+ "It shows in the settlement as still to pay": "Står i opgørelsen som stadig ubetalt",
+ "Give up the bet": "Opgiv væddemålet",
+ "given up by {0} on {1} – „The app judges“ takes it back": "opgivet af {0} den {1} – „Appen vurderer“ tager det tilbage"
 }

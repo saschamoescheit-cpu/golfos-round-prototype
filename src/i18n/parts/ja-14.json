@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "大会でスコアカードはどう提出しますか？",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "最終ホールの後にスコアカードを開きます。「概要」に誰が署名したかが表示されます – プレーヤーごとに1行、チェックまたは「本人のスマホで署名」。各自が自分のスマホで自分のカードに署名し、マーカーが確認します。全員が署名するとカードは提出済みでロックされます。プレーヤーごとのタブにはそのカードだけが表示されます。間違い：「カードを修正 ›」でカードを選ぶと、ホストが確認します。",
  "gets {0}, net {1}{2}": "受取 {0}、差引 {1}{2}",
- "Sum": "合計"
+ "Sum": "合計",
+ "given up by {0}": "{0}が棄権",
+ "given up": "棄権",
+ "Give up the bet?": "この賭けを棄権しますか？",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "今から負けとして扱われます – 残りのラウンドはもう数えません。",
+ "It counts as not made from now on – that costs nothing.": "今から未達成として扱われます – 費用はかかりません。",
+ "You pay {0}": "{0}に支払う",
+ "Paid already": "支払い済み",
+ "Cash or PayPal – done in the settlement": "現金またはPayPal – 精算で完了",
+ "It shows in the settlement as still to pay": "精算で未払いとして表示されます",
+ "Give up the bet": "賭けを棄権",
+ "given up by {0} on {1} – „The app judges“ takes it back": "{0}が{1}に棄権 –「アプリが判定」で取り消し"
 }

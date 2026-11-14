@@ -34,6 +34,8 @@ export const ACTION_ICONS = {
       <path d="M4 21h8" />
     </>,
   ),
+  // giving a bet up: the white flag on its pole (Sascha 14.11.2026, "Wette aufgeben")
+  concede: svg(<path d="M5 21V4M5 4h11l-2 4 2 4H5" />),
   // open again: the arrow back round
   reopen: svg(
     <>

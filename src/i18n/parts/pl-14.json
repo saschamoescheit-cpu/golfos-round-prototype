@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "Jak oddajemy karty wyników w turnieju?",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Po ostatnim dołku otwórz kartę wyników. „Przegląd” pokazuje, kto już podpisał – wiersz na gracza z ptaszkiem lub „podpisuje na swoim telefonie”. Każdy podpisuje swoją kartę na swoim telefonie, marker potwierdza; gdy wszyscy podpiszą, karty są oddane i zablokowane. Zakładka dla każdego gracza pokazuje tylko jego kartę. Błąd: „Popraw kartę ›”, wybierz kartę – gospodarz potwierdza.",
  "gets {0}, net {1}{2}": "otrzymuje {0}, netto {1}{2}",
- "Sum": "Suma"
+ "Sum": "Suma",
+ "given up by {0}": "poddany przez {0}",
+ "given up": "poddany",
+ "Give up the bet?": "Poddać zakład?",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "Od teraz liczy się jako przegrany – pozostałe rundy już się nie liczą.",
+ "It counts as not made from now on – that costs nothing.": "Od teraz liczy się jako nieosiągnięty – nic nie kosztuje.",
+ "You pay {0}": "Płacisz {0}",
+ "Paid already": "Już zapłacone",
+ "Cash or PayPal – done in the settlement": "Gotówką lub PayPal – rozliczone",
+ "It shows in the settlement as still to pay": "W rozliczeniu widnieje jako do zapłaty",
+ "Give up the bet": "Poddaj zakład",
+ "given up by {0} on {1} – „The app judges“ takes it back": "poddany przez {0} dnia {1} – „Ocena aplikacji” cofa to"
 }

@@ -6,7 +6,7 @@ import { newCode } from './sharedgame';
 import { tr } from './i18n';
 import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -560,8 +560,9 @@ export function reportWagers(): Promise<void> {
           for (const w of p.wagers.filter(judged)) {
             const now = judge(w, p, roundsOf.get(w.player)!); // the bet as it is on the server (changed meanwhile, maybe)
             if (sameProgress(progress[w.id], now) || !takes(w, e.me, progress[w.id], now, p)) continue;
-            if (now.done && !progress[w.id]?.done && !progress[w.id]?.manual) made.push(w.id);
-            progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
+            if (now.done && !progress[w.id]?.done && !decidedOf(progress[w.id])) made.push(w.id);
+            // the decisions stay: the host's by hand, the player's giving up (Sascha 14.11.2026)
+            progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}), ...(progress[w.id]?.conceded ? { conceded: progress[w.id].conceded } : {}) };
             changed = true;
           }
           const cards = cardsNow(p);

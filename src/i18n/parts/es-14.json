@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "¿Cómo entregamos las tarjetas en un torneo?",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Tras el último hoyo abre la tarjeta. «Resumen» muestra quién ha firmado: una fila por jugador con una marca o «firma en su teléfono». Cada uno firma su tarjeta en su teléfono y el marcador la confirma; cuando todos han firmado, las tarjetas quedan entregadas y bloqueadas. Una pestaña por jugador muestra solo su tarjeta. Un error: «Corregir una tarjeta ›», elige la tarjeta y el anfitrión lo confirma.",
  "gets {0}, net {1}{2}": "recibe {0}, neto {1}{2}",
- "Sum": "Suma"
+ "Sum": "Suma",
+ "given up by {0}": "abandonada por {0}",
+ "given up": "abandonada",
+ "Give up the bet?": "¿Abandonar la apuesta?",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "Cuenta como perdida desde ahora – las rondas que faltan ya no cuentan.",
+ "It counts as not made from now on – that costs nothing.": "Cuenta como no lograda desde ahora – no cuesta nada.",
+ "You pay {0}": "Pagas a {0}",
+ "Paid already": "Ya pagado",
+ "Cash or PayPal – done in the settlement": "En efectivo o PayPal – saldado en la liquidación",
+ "It shows in the settlement as still to pay": "Aparece en la liquidación como pendiente",
+ "Give up the bet": "Abandonar la apuesta",
+ "given up by {0} on {1} – „The app judges“ takes it back": "abandonada por {0} el {1} – «La app evalúa» lo deshace"
 }

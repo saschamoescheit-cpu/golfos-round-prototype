@@ -347,7 +347,8 @@ ok(
     (await G.getByRole('button', { name: /^Wetten für .* hinzufügen$/ }).count()) === 0 &&
     (await G.getByRole('button', { name: 'Pool beenden' }).count()) === 0 &&
     (await G.getByRole('button', { name: /Mitspieler einladen/ }).count()) === 0 &&
-    (await G.locator('button.pool-wager').count()) === 0 &&
+    // only his own open bets can be tapped – to give one up (Sascha 14.11.2026), never another's
+    (await G.locator('section.pool-player').filter({ hasNot: G.locator('.pool-player-name', { hasText: /^Chris$/ }) }).locator('button.pool-wager').count()) === 0 &&
     (await G.locator('div.pool-wager').count()) > 0 &&
     (await G.getByText('Nur wer den Pool angelegt hat, ändert die Wetten').isVisible()),
   'Chris (invited): sees the bets, cannot change, add, decide, end or invite – only the host',

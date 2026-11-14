@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, decidedOf, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -828,7 +828,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   useTop(props.code);
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
-  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | { whois: string } | 'invite' | 'finish' | 'pool'>(null);
+  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { own: Wager } | { library: string } | { whois: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
   const [lookup, setLookup] = useState<'busy' | 'none' | 'signin' | null>(null);
@@ -920,6 +920,22 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   // the payments (Sascha 03.11.2026): the payer says he paid, the receiver that he got it
   const pay = (fn: (ps: Payment[]) => Payment[]) => void change((p) => ({ ...p, payments: fn(p.payments ?? []) }));
   const now = () => new Date().toISOString();
+  // a bet given up (Sascha 14.11.2026: Cedric paid "brutto in 6 Runden" early) – missed from now on; "Schon bezahlt": its
+  // payments marked paid by the one who gives up (received too where the receiver has no phone in the pool, as a mark)
+  const concede = async (id: string, paid: boolean) => {
+    const w = pool.wagers.find((x) => x.id === id);
+    if (!w) return;
+    const at = now();
+    const cost = concedeCost(w, pool);
+    if (
+      await change((p) => {
+        const prev = p.progress[id] ?? { best: null, done: false, rounds: 0, at };
+        const payments = paid ? [...(p.payments ?? []), ...cost.map((c) => ({ id: newId(), from: w.player, to: c.to, amount: c.amount, paidAt: at, ...(host && !p.players.find((x) => x.id === c.to)?.joined ? { receivedAt: at } : {}) }))] : p.payments;
+        return { ...p, progress: { ...p.progress, [id]: { ...prev, conceded: { at, by: name(entry.me) } } }, ...(payments ? { payments } : {}) };
+      })
+    )
+      setSheet(null);
+  };
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
   const pending = pool.wagers.filter((w) => stateOf(w, pool, today) === 'open' && provisional(w, pool.progress[w.id])).length;
   return (
@@ -1026,7 +1042,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
                   <span className="grow">
                     <span className="title">{wagerLabel(shown)}</span>
                     <span className="muted small">{wagerRules(shown, pool, roundChoices(pool, [...tourChoices(), ...(shown.picks ?? [])]).length)}</span>
-                    {w.kind !== 'free' && <span className="small">{progressText(shown, prog, prizeOf(pool))}</span>}
+                    {w.kind !== 'free' && <span className="small">{progressText(shown, prog, prizeOf(pool))}{prog?.conceded && !prog.manual ? ` · ${tr(`given up by ${prog.conceded.by}`, `aufgegeben von ${prog.conceded.by}`)}` : ''}</span>}
                   </span>
                   {duelWaits(w) ? <DuelMark state="open" /> : shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={prizeSym(prizeOf(pool))} /> : <StateBadge state={stateOf(w, pool, today)} provisional={!tally(w, prog) && provisional(shown, prog)} times={tally(w, prog)?.made} />}
                 </>
@@ -1035,6 +1051,11 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               // it up and challenged me – he must be able to change it afterwards"); the others only see it
               return host || ownDuel(w) ? (
                 <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ edit: w })}>
+                  {row}
+                </button>
+              ) : w.player === entry.me && concedable(w, pool, today) ? (
+                // his own bet, still open: tapped – what it is, and "Aufgeben" (Sascha 14.11.2026)
+                <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ own: w })}>
                   {row}
                 </button>
               ) : (
@@ -1137,13 +1158,15 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           onDelete={async (id) => {
             if (await change((p) => ({ ...p, wagers: p.wagers.filter((x) => x.id !== id) }))) setSheet(null);
           }}
+          today={today}
+          onConcede={(id, paid) => void concede(id, paid)}
           onJudge={async (id, done) => {
             const by = name(entry.me);
             const was = stateOf(pool.wagers.find((x) => x.id === id)!, pool, today) === 'done';
             if (
               await change((p) => {
                 const prev = p.progress[id] ?? { best: null, done: false, rounds: 0, at: new Date().toISOString() };
-                const { manual: _m, ...rest } = prev;
+                const { manual: _m, conceded: _c, ...rest } = prev;
                 return { ...p, progress: { ...p.progress, [id]: done == null ? rest : { ...prev, manual: { done, by } } } };
               })
             ) {
@@ -1152,6 +1175,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
             }
           }}
         />
+      )}
+      {sheet && typeof sheet === 'object' && 'own' in sheet && (
+        <OwnBetSheet pool={pool} w={sheet.own} me={entry.me} text={progressText(sheet.own, progressOf(pool, sheet.own), prizeOf(pool))} onConcede={(paid) => void concede(sheet.own.id, paid)} onClose={() => setSheet(null)} />
       )}
       {sheet && typeof sheet === 'object' && 'library' in sheet && (
         <LibrarySheet
@@ -1381,6 +1407,20 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // all rounds"; 10.11.2026: "the target on top in bold, without the word 'Ziel', below how far it is made: 0/1"):
   // green once made, no "provisional"
   const cell = ({ w }: { w: Wager; against: boolean }) => {
+    // given up (Sascha 14.11.2026): the flag, dashed – neither green nor red
+    if (pool.progress[w.id]?.conceded && !pool.progress[w.id]?.manual)
+      return (
+        <span key={w.id} className="bet-cell given" title={wagerLabel(w)}>
+          <strong>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+            </svg>
+            {targetOf(w)}
+          </strong>
+          <small className="bet-made">{tr('given up', 'aufgegeben')}</small>
+          {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
+        </span>
+      );
     // no round reported yet: "–" with its target, as the bets per round show it
     // only the rounds the bet counts (Sascha 11.11.2026: a round left out of it is not in its total)
     const t = tally(w, progressOf(pool, w)) ?? (perRoundBet(w) && !pool.progress[w.id] ? { made: 0, missed: 0, played: 0 } : null);
@@ -1482,7 +1522,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         else add(w.player, w.opponent, -v);
         continue;
       }
-      if (!perRoundBet(w) || pool.progress[w.id]?.manual || !(w.stake > 0)) continue;
+      if (!perRoundBet(w) || decidedOf(pool.progress[w.id]) || !(w.stake > 0)) continue;
       const verdict = roundVerdict(w, pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one.key), roundInPlay);
       if (!verdict || (verdict === 'missed' && w.payout === 'success')) continue;
       const against = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : ids.filter((id) => id !== w.player);
@@ -1687,6 +1727,8 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
                         {/* a duel of his: against whom (Sascha 11.11.2026: "the 5+5+10 lacks against whom") */}
                         {l.w.player === p.id && shapeOf(l.w.kind) === 'duel' && l.w.opponent && tr(` against ${props.name(l.w.opponent)}`, ` gegen ${props.name(l.w.opponent)}`)}
                         {l.provisional && <span className="muted"> · {tr('provisional', 'vorläufig')}</span>}
+                        {/* given up (Sascha 14.11.2026): said so in the overview too */}
+                        {props.pool.progress[l.w.id]?.conceded && !props.pool.progress[l.w.id]?.manual && <span className="muted"> · {tr('given up', 'aufgegeben')} {concededDay(props.pool.progress[l.w.id]!.conceded!.at)}</span>}
                         {l.w.player === p.id && shapeOf(l.w.kind) !== 'duel' && <WhoPays owed={props.owed} w={l.w} me={p.id} name={props.name} sym={sym} />}
                       </span>
                       <span className={l.amount > 0 ? 'good-text' : l.amount < 0 ? 'bad-text' : 'muted'}>{signed(l.amount)}</span>
@@ -1751,7 +1793,9 @@ function settleWhy(pool: WagerPool, owed: Owed[], open: { from: string; to: stri
   const single = pool.settle === 'single';
   const sym = prizeSym(prizeOf(pool));
   // a bet in words: whose it is, unless it is a duel – then its name
-  const label = (o: Owed) => (shapeOf(o.w.kind) === 'duel' ? wagerLabel(o.w) : `${name(o.w.player)}: ${wagerLabel(o.w)}`);
+  // given up (Sascha 14.11.2026): said so beside the bet
+  const given = (o: Owed) => (pool.progress[o.w.id]?.conceded && !pool.progress[o.w.id]?.manual ? ` · ${tr('given up', 'aufgegeben')} ${concededDay(pool.progress[o.w.id]!.conceded!.at)}` : '');
+  const label = (o: Owed) => (shapeOf(o.w.kind) === 'duel' ? wagerLabel(o.w) : `${name(o.w.player)}: ${wagerLabel(o.w)}`) + given(o);
   const sum = (list: Owed[]) => list.reduce((x, o) => x + o.amount, 0);
   const why = (t: { from: string; to: string; amount: number }): WhyLine[] => {
     const outs = owed.filter((o) => o.from === t.from && o.to === t.to);
@@ -2206,6 +2250,83 @@ function newWager(pool: WagerPool, me: string, kind: WagerKind = 'birdieRun'): W
   return { id: newId(), player: pool.players.some((p) => p.id === me) ? me : pool.players[0].id, kind, target: startOf(kind), stake: isMoney(prizeOf(pool)) ? 20 : 1, payout: 'success', attempts: 'any', counted: poolCounted(pool) };
 }
 
+/** The day a bet was given up, as the phone shows days ("14.11."). */
+const concededDay = (at: string): string => new Date(at).toLocaleDateString(tr('en-GB', 'de-DE'), { day: '2-digit', month: '2-digit' });
+
+/** Can this bet still be given up (Sascha 14.11.2026: Cedric's "brutto in 6 Runden" paid early): judged from the rounds,
+ *  not a 5+5+10, not decided yet. */
+export function concedable(w: Wager, pool: WagerPool, today: string): boolean {
+  return w.kind !== 'free' && shapeOf(w.kind) !== 'duel' && !decidedOf(pool.progress[w.id]) && stateOf(w, pool, today) === 'open';
+}
+/** What giving up costs: the stake to each one the bet pays when missed (as the settlement counts a missed bet) – nothing
+ *  for a bet paid "only when made". */
+export function concedeCost(w: Wager, pool: Pick<WagerPool, 'players'>): { to: string; amount: number }[] {
+  if (w.payout === 'success' || !(w.stake > 0)) return [];
+  const to = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  return to.map((id) => ({ to: id, amount: w.stake }));
+}
+
+/** "Wette aufgeben?" – what it means and costs; "Schon bezahlt" when it was paid already (cash, PayPal). */
+function ConcedeSheet(props: { pool: WagerPool; w: Wager; me: string; onConcede: (paid: boolean) => void; onClose: () => void }) {
+  const { pool, w } = props;
+  const [paid, setPaid] = useState(false);
+  const cost = concedeCost(w, pool);
+  const name = (id: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
+  const sym = prizeSym(prizeOf(pool));
+  const mine = w.player === props.me;
+  return (
+    <ConfirmSheet
+      title={tr('Give up the bet?', 'Wette aufgeben?')}
+      danger={false}
+      confirmLabel={tr('Give up', 'Aufgeben')}
+      onConfirm={() => props.onConcede(paid && cost.length > 0)}
+      onClose={props.onClose}
+      text={
+        cost.length
+          ? tr('It counts as missed from now on – the rounds still to come no longer count for it.', 'Sie zählt ab jetzt als verloren – die Runden, die noch fehlen, zählen für sie nicht mehr.')
+          : tr('It counts as not made from now on – that costs nothing.', 'Sie gilt ab jetzt als nicht geschafft – das kostet nichts.')
+      }
+    >
+      {cost.length > 0 && (
+        <div className="concede-cost">
+          {cost.map((c) => (
+            <div key={c.to} className="row">
+              <span className="grow">{mine ? tr(`You pay ${name(c.to)}`, `Du zahlst ${name(c.to)}`) : tr(`${name(w.player)} pays ${name(c.to)}`, `${name(w.player)} zahlt ${name(c.to)}`)}</span>
+              <strong>{money(c.amount, sym)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      {cost.length > 0 && (
+        <div className="settings-list">
+          <OnOffRow label={tr('Paid already', 'Schon bezahlt')} on={paid} onChange={setPaid} onText={tr('Cash or PayPal – done in the settlement', 'Bar oder per PayPal – in der Abrechnung erledigt')} offText={tr('It shows in the settlement as still to pay', 'Sie steht in der Abrechnung als noch offen')} />
+        </div>
+      )}
+    </ConfirmSheet>
+  );
+}
+
+/** A player's own bet, not the host (Sascha 14.11.2026): what it is, how it stands – and giving it up. */
+function OwnBetSheet(props: { pool: WagerPool; w: Wager; me: string; text: string; onConcede: (paid: boolean) => void; onClose: () => void }) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={wagerLabel(props.w)} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{wagerLabel(props.w)}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <span className="muted small">{wagerRules(props.w, props.pool)}</span>
+        {props.text && <span>{props.text}</span>}
+        <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Give up', 'Aufgeben'), aria: tr('Give up the bet', 'Wette aufgeben'), icon: 'concede', onClick: () => setAsking(true) }]} />
+        {asking && <ConcedeSheet pool={props.pool} w={props.w} me={props.me} onConcede={props.onConcede} onClose={() => setAsking(false)} />}
+      </section>
+    </div>
+  );
+}
+
 export function WagerSheet(props: {
   pool: WagerPool;
   me: string;
@@ -2216,14 +2337,19 @@ export function WagerSheet(props: {
   onSave: (w: Wager, auto?: boolean) => Promise<unknown> | void;
   onDelete: (id: string) => void;
   onJudge: (id: string, done: boolean | null) => void;
+  /** given up (Sascha 14.11.2026) – `paid`: the payments marked paid at once */
+  onConcede?: (id: string, paid: boolean) => void;
+  today?: string;
   onClose: () => void;
 }) {
   const { pool } = props;
   const [w, setW] = useState<Wager>(() => props.wager ?? newWager(pool, props.me));
   const [asking, setAsking] = useState(false);
+  const [conceding, setConceding] = useState(false);
   const set = (patch: Partial<Wager>) => setW({ ...w, ...patch });
   const k = KINDS.find((x) => x.kind === w.kind)!;
-  const manual = props.wager ? pool.progress[props.wager.id]?.manual : undefined;
+  const manual = props.wager ? decidedOf(pool.progress[props.wager.id]) : undefined;
+  const conceded = props.wager ? pool.progress[props.wager.id]?.conceded : undefined;
   const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.kind !== 'custom' || w.where !== 'holes' || !!w.holesOf?.length) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player)) && (shapeOf(w.kind) !== 'duel' || (!!w.opponent && w.opponent !== w.player));
   // an own bet: its words for the push (the server says them as it is), and kept in "Eigene Wetten"
   const save = () => {
@@ -2306,7 +2432,8 @@ export function WagerSheet(props: {
                   ]}
                 />
               </SettingsList>
-              {manual && <span className="muted small">{tr(`set by ${manual.by}`, `gesetzt von ${manual.by}`)}</span>}
+              {manual && !manual.conceded && <span className="muted small">{tr(`set by ${manual.by}`, `gesetzt von ${manual.by}`)}</span>}
+              {conceded && !pool.progress[props.wager.id]?.manual && <span className="muted small">{tr(`given up by ${conceded.by} on ${concededDay(conceded.at)} – „The app judges“ takes it back`, `aufgegeben von ${conceded.by} am ${concededDay(conceded.at)} – „App wertet aus“ nimmt es zurück`)}</span>}
             </>
             )}
           </>
@@ -2314,7 +2441,14 @@ export function WagerSheet(props: {
         {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
         {props.wager && !props.own && (
           <>
-            <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) }]} />
+            <ActionBar
+              label={tr('This bet', 'Diese Wette')}
+              actions={[
+                ...(props.onConcede && concedable(props.wager, pool, props.today ?? dayOf(new Date())) ? [{ label: tr('Give up', 'Aufgeben'), aria: tr('Give up the bet', 'Wette aufgeben'), icon: 'concede' as const, onClick: () => setConceding(true) }] : []),
+                { label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) },
+              ]}
+            />
+            {conceding && props.onConcede && <ConcedeSheet pool={pool} w={props.wager} me={props.me} onConcede={(paid) => props.onConcede!(props.wager!.id, paid)} onClose={() => setConceding(false)} />}
             {/* the app's one question before deleting for everyone – as the pool's (Sascha 13.11.2026: "das Löschen hier anders
                 als bei Rounds oder Games – vereinheitlichen"); no inline Behalten/Löschen any more */}
             {asking && (

@@ -295,6 +295,9 @@ export interface Progress {
   rounds: number;
   /** judged by hand (a free bet, or an argument) – wins over the app's judgement */
   manual?: { done: boolean; by: string };
+  /** given up by the player before its rounds are played (Sascha 14.11.2026: Cedric's "brutto in 6 Runden" paid early) –
+   *  missed from then on; the player's own phone may set it (the server takes it as a report), the host's word wins */
+  conceded?: { at: string; by: string };
   /** "5+5+10": what the player won (+) or lost (−) against his opponent so far, and per round who won front, back, total
    *  (1 he, −1 the opponent, 0 tied, null not complete) */
   amount?: number;
@@ -1108,10 +1111,16 @@ export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players
 /** Made in a round not signed yet (or played without a marker) – the result shown as provisional (Sascha 02.11.2026:
  *  "even with marker a result must come out, also when the marker has not signed"). */
 export const provisional = (w: Wager, p: Progress | undefined): boolean =>
-  w.kind !== 'free' && shapeOf(w.kind) !== 'duel' && !p?.done && !p?.manual && p?.pending != null && reached(w, p.pending);
+  w.kind !== 'free' && shapeOf(w.kind) !== 'duel' && !p?.done && !decidedOf(p) && p?.pending != null && reached(w, p.pending);
+
+/** The decision that holds over the rounds: the host's by hand – else the player's own giving up (missed). */
+export function decidedOf(p: Progress | undefined): { done: boolean; by: string; conceded?: boolean } | undefined {
+  if (p?.manual) return p.manual;
+  return p?.conceded ? { done: false, by: p.conceded.by, conceded: true } : undefined;
+}
 
 /** Did the judgement change (not only its time)? */
-export const sameProgress = (a: Progress | undefined, b: Progress): boolean => !!a && JSON.stringify({ ...a, at: '', manual: undefined }) === JSON.stringify({ ...b, at: '', manual: undefined });
+export const sameProgress = (a: Progress | undefined, b: Progress): boolean => !!a && JSON.stringify({ ...a, at: '', manual: undefined, conceded: undefined }) === JSON.stringify({ ...b, at: '', manual: undefined, conceded: undefined });
 
 export type WagerState = 'done' | 'missed' | 'open';
 /** Made, missed or still open: by hand if judged so; missed once its day or the period is over, or the pool finished. */
@@ -1136,7 +1145,8 @@ export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): W
     const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && ((!!w.day && today > w.day) || (p?.duels?.some((d) => d.total != null) ?? false)));
     return over ? 'done' : 'open';
   }
-  if (p?.manual) return p.manual.done ? 'done' : 'missed';
+  const decided = decidedOf(p);
+  if (decided) return decided.done ? 'done' : 'missed';
   // a total over N rounds with its rounds reported: decided by them, not by a stored total of an older app
   const total = p?.perRound ? sumSoFar(w, p) : null;
   if (total?.verdict) return total.verdict === 'made' ? 'done' : 'missed';
@@ -1157,7 +1167,7 @@ export const perRoundBet = (w: Wager): boolean => w.kind !== 'free' && shapeOf(w
 /** In how many rounds a bet was made, missed (rounds over), played – null: not per round, or judged by hand, or a
  *  report from before (no rounds in it). */
 export function tally(w: Wager, p: Progress | undefined, signedOnly = false): { made: number; missed: number; played: number } | null {
-  if (!perRoundBet(w) || !p || p.manual) return null;
+  if (!perRoundBet(w) || !p || decidedOf(p)) return null;
   // reported without its rounds: none played yet – nothing made, nothing missed ("–" as everywhere); else a report from
   // an older app (the trip as one)
   if (!p.perRound) return p.rounds === 0 && p.best == null && p.pending == null ? { made: 0, missed: 0, played: 0 } : null;
@@ -1318,7 +1328,7 @@ export function roundLedger(pool: WagerPool, day: string): Record<string, number
       add(w.opponent, -v);
       continue;
     }
-    if (!perRoundBet(w) || !p?.perRound || p.manual || !(w.stake > 0)) continue;
+    if (!perRoundBet(w) || !p?.perRound || decidedOf(p) || !(w.stake > 0)) continue;
     for (const r of p.perRound) {
       if (r.day !== day || r.value == null || r.open) continue;
       // details still missing ("5?", putts not in): decided as the standing decides it (tally) – a "höchstens" bet not

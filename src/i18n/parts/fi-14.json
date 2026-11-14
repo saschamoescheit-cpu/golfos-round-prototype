@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "Miten palautamme tuloskortit kilpailussa?",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Avaa tuloskortti viimeisen reiän jälkeen. ”Yleiskatsaus” näyttää, kuka on allekirjoittanut – rivi pelaajaa kohti, jossa on rasti tai ”allekirjoittaa omalla puhelimella”. Jokainen allekirjoittaa korttinsa omalla puhelimellaan, merkitsijä vahvistaa; kun kaikki ovat allekirjoittaneet, kortit on palautettu ja lukittu. Välilehti pelaajaa kohti näyttää vain hänen korttinsa. Virhe: ”Korjaa kortti ›”, valitse kortti – isäntä vahvistaa.",
  "gets {0}, net {1}{2}": "saa {0}, netto {1}{2}",
- "Sum": "Summa"
+ "Sum": "Summa",
+ "given up by {0}": "luovuttanut {0}",
+ "given up": "luovutettu",
+ "Give up the bet?": "Luovutetaanko veto?",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "Se lasketaan nyt hävityksi – jäljellä olevat kierrokset eivät enää lasketa.",
+ "It counts as not made from now on – that costs nothing.": "Se lasketaan nyt epäonnistuneeksi – se ei maksa mitään.",
+ "You pay {0}": "Maksat pelaajalle {0}",
+ "Paid already": "Jo maksettu",
+ "Cash or PayPal – done in the settlement": "Käteisellä tai PayPalilla – hoidettu tilityksessä",
+ "It shows in the settlement as still to pay": "Näkyy tilityksessä vielä maksamattomana",
+ "Give up the bet": "Luovuta veto",
+ "given up by {0} on {1} – „The app judges“ takes it back": "luovuttanut {0} {1} – ”Sovellus arvioi” peruu sen"
 }

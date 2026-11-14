@@ -1258,6 +1258,9 @@ button.tile:disabled { opacity: 1; }
 .bet-matrix tr.bet-sum-row th { color: var(--text); }
 .bet-cell.sum { background: transparent; }
 .bet-cell.sum.up strong { color: var(--brand-text); }
+.bet-cell.given { background: transparent; border: 1.5px dashed var(--line); }
+.bet-cell.given svg { vertical-align: -1px; margin-right: 2px; }
+.concede-cost { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
 .bet-free { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 .bet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .bet-lines li { display: flex; align-items: center; gap: 10px; }

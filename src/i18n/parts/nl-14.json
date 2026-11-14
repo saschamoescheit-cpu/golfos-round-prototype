@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "Hoe leveren we de scorekaarten in bij een toernooi?",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "Open na de laatste hole de scorekaart. „Overzicht” toont wie al getekend heeft – per speler een regel met een vinkje of „tekent op eigen telefoon”. Iedereen tekent zijn kaart op zijn eigen telefoon, de marker bevestigt; als iedereen getekend heeft zijn de kaarten ingeleverd en vergrendeld. Een tabblad per speler toont alleen zijn kaart. Een fout: „Een kaart corrigeren ›”, kies de kaart – de host bevestigt.",
  "gets {0}, net {1}{2}": "krijgt {0}, netto {1}{2}",
- "Sum": "Som"
+ "Sum": "Som",
+ "given up by {0}": "opgegeven door {0}",
+ "given up": "opgegeven",
+ "Give up the bet?": "Weddenschap opgeven?",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "Telt vanaf nu als verloren – de rondes die nog komen tellen niet meer.",
+ "It counts as not made from now on – that costs nothing.": "Telt vanaf nu als niet gehaald – dat kost niets.",
+ "You pay {0}": "Je betaalt {0}",
+ "Paid already": "Al betaald",
+ "Cash or PayPal – done in the settlement": "Contant of PayPal – geregeld in de afrekening",
+ "It shows in the settlement as still to pay": "Staat in de afrekening als nog te betalen",
+ "Give up the bet": "Weddenschap opgeven",
+ "given up by {0} on {1} – „The app judges“ takes it back": "opgegeven door {0} op {1} – „App beoordeelt” draait het terug"
 }

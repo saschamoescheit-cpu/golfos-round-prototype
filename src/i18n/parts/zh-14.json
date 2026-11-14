@@ -23,5 +23,16 @@
  "How do we hand in the scorecards in a tournament?": "比赛中我们如何交记分卡？",
  "After the last hole open the scorecard. \"Overview\" shows who has signed – one row per player with a tick or \"signs on his phone\". Everyone signs his own card on his own phone, the marker or scorer confirms it; when all have signed the cards are handed in and locked. A tab per player shows only his card. A mistake: \"Correct a card ›\", pick the card – the host confirms.": "打完最后一洞后打开记分卡。“总览”显示谁已签名 —— 每位球员一行，带勾或“在自己的手机上签名”。每人在自己的手机上签自己的卡，记分员确认；全部签名后记分卡即已提交并锁定。每位球员一个标签页，只显示他的卡。出错时：“更正记分卡 ›”，选择卡片 —— 由主办人确认。",
  "gets {0}, net {1}{2}": "获得 {0}，净额 {1}{2}",
- "Sum": "合计"
+ "Sum": "合计",
+ "given up by {0}": "{0}已放弃",
+ "given up": "已放弃",
+ "Give up the bet?": "放弃这个赌注？",
+ "It counts as missed from now on – the rounds still to come no longer count for it.": "从现在起算作输 – 剩下的轮次不再计入。",
+ "It counts as not made from now on – that costs nothing.": "从现在起算作未达成 – 不花任何费用。",
+ "You pay {0}": "你付给{0}",
+ "Paid already": "已付款",
+ "Cash or PayPal – done in the settlement": "现金或PayPal – 在结算中已完成",
+ "It shows in the settlement as still to pay": "在结算中显示为仍待支付",
+ "Give up the bet": "放弃赌注",
+ "given up by {0} on {1} – „The app judges“ takes it back": "{0}于{1}放弃 –“由应用判定”可撤回"
 }
