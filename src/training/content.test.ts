@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById } from './content';
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById, sectionOf } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -75,7 +75,7 @@ describe('training content', () => {
   it('every category is complete', () => {
     for (const c of CATEGORIES) {
       expect(filled(c.name) && filled(c.short) && filled(c.intro), c.id).toBe(true);
-      expect(c.sections.length, c.id).toBeGreaterThan(1);
+      expect(c.sections.length + (c.shots?.length ?? 0), c.id).toBeGreaterThan(1);
       expect(DRILLS.filter((d) => d.cat === c.id).length, c.id).toBeGreaterThanOrEqual(5);
       for (const v of c.videos ?? []) expect(v.id, c.id).toMatch(/^[A-Za-z0-9_-]{11}$/);
     }
@@ -172,7 +172,7 @@ describe('training content', () => {
     for (const [cat, m] of Object.entries(SECTION_FIGURE_SKETCHES)) {
       const c = CATEGORIES.find((x) => x.id === cat);
       for (const [title, sk] of Object.entries(m!)) {
-        expect(c?.sections.some((x) => x.title.en === title), `${cat} › ${title}`).toBe(true);
+        expect(!!c && !!sectionOf(c, title), `${cat} › ${title}`).toBe(true);
         all.push([`${cat} › ${title}`, sk]);
       }
     }

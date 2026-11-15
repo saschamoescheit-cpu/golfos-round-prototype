@@ -331,3 +331,13 @@
 .tr-drawer-now { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
 /* the switch "‹ Anleitung ›" stays at the top while the part scrolls, as the tabs did (tr1) */
 .training:not(.mobility) > .step-pick { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 6px 0; margin: -6px 0; }
+
+/* the topics as shots (Sascha 15.11.2026) */
+.tr-shot-short { margin: 0; color: var(--text-2); }
+.tr-shot-rows > div { display: contents; }
+.tr-lie { display: grid; gap: 10px; }
+.tr-lie-head, .tr-lie-row { display: grid; grid-template-columns: 72px 80px minmax(0, 1fr); gap: 10px; align-items: center; }
+.tr-lie-row { border-top: 1px solid var(--line); padding-top: 10px; }
+.tr-lie-pic { width: 100%; height: auto; display: block; }
+.tr-lie-text { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
+.tr-lie-club { color: var(--brand-text); font-weight: 700; }

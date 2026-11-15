@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { at, blend, frameJoints, timeline } from './motion';
-import { CATEGORIES, DRILLS } from './content';
+import { CATEGORIES, DRILLS, sectionOf } from './content';
 import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS } from './content/motions';
 
 // The animated figure (Sascha 17.10.2026): every movement belongs to a picture with a golfer, limbs keep their length
@@ -19,7 +19,8 @@ describe('animated pictures', () => {
     }
     for (const [cat, list] of Object.entries(SECTION_MOTIONS)) {
       for (const title of Object.keys(list!)) {
-        const s = CATEGORIES.find((c) => c.id === cat)?.sections.find((x) => x.title.en === title);
+        const c = CATEGORIES.find((x) => x.id === cat);
+        const s = c && sectionOf(c, title);
         // a 3D video alone also goes with a top view
         const m = list![title];
         if (!m.frames.length) expect((s?.sketch?.view === 'side' || s?.sketch?.view === 'top') && !!s.sketch.motion?.video, `${cat} › ${title}`).toBe(true);

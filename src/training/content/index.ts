@@ -1,4 +1,4 @@
-import type { Category, CategoryId, Drill, Motion, Sketch } from '../types';
+import type { Category, CategoryId, Drill, Motion, Section, TopicShot, ShotPart, Sketch } from '../types';
 import { putting, puttingDrills } from './putting';
 import { greenreading, greenreadingDrills } from './greenreading';
 import { chipping, chippingDrills } from './chipping';
@@ -28,6 +28,7 @@ import { DRILL_OWN_VIDEOS } from './drill-videos-own';
 import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
 import { FIGURE_SKETCHES, SECTION_DRILL_PICTURES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
 import { FAULT_SKETCHES } from './sketches-faults';
+import { SHOTS } from './shots';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
@@ -88,7 +89,33 @@ export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching
   .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c))
   // the picture moves: a play button shows the movement (Sascha 17.10.2026)
   .map((c) => (SECTION_MOTIONS[c.id] ? { ...c, sections: c.sections.map((x) => withMotion(x, SECTION_MOTIONS[c.id]![x.title.en])) } : c))
-  .map((c) => (FAULT_MOTIONS[c.id] ? { ...c, faults: c.faults?.map((f) => withMotion(f, FAULT_MOTIONS[c.id]![f.name.en])) } : c));
+  .map((c) => (FAULT_MOTIONS[c.id] ? { ...c, faults: c.faults?.map((f) => withMotion(f, FAULT_MOTIONS[c.id]![f.name.en])) } : c))
+  // the topic as shots (Sascha 15.11.2026): a tab that names a section shows that section's picture with its movement;
+  // the sections that moved into the shots leave the basics
+  .map((c) => {
+    const sh = SHOTS[c.id];
+    if (!sh) return c;
+    const pic = <T extends ShotPart>(p: T): T => (p.sketch || !p.section ? p : { ...p, sketch: c.sections.find((s) => s.title.en === p.section)?.sketch });
+    const absorbs = sh.absorbs ?? [];
+    return {
+      ...c,
+      shots: sh.shots.map((s) => ({ ...s, setup: pic(s.setup), move: pic(s.move), watch: pic(s.watch) })),
+      lieChart: sh.lie,
+      sections: c.sections.filter((s) => !absorbs.includes(s.title.en)),
+      absorbed: c.sections.filter((s) => absorbs.includes(s.title.en)),
+    };
+  });
+
+/** a section of a topic by its English title – also one whose content moved into the shots */
+export const sectionOf = (c: Category, title: string): Section | undefined => [...c.sections, ...(c.absorbed ?? [])].find((s) => s.title.en === title);
+/** a shot and its topic */
+export const shotById = (id: string): { cat: Category; shot: TopicShot } | undefined => {
+  for (const cat of CATEGORIES) {
+    const shot = cat.shots?.find((s) => s.id === id);
+    if (shot) return { cat, shot };
+  }
+  return undefined;
+};
 
 const TOPIC_VIDEOS = new Map(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => [v.id, v]));
 

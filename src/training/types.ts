@@ -70,6 +70,55 @@ export interface Fault {
   sketch?: Sketch;
 }
 
+/** One tab of a shot (Sascha 15.11.2026: every block with a picture). */
+export interface ShotPart {
+  text?: L[];
+  points?: L[];
+  sketch?: Sketch;
+  /** the English title of a section of the same topic whose picture (with its movement) this tab shows */
+  section?: string;
+}
+
+/** What to set up for a shot, one line each – the rows of the "Set-up" tab. */
+export type ShotRowKind = 'ball' | 'stance' | 'weight' | 'club' | 'face' | 'aim' | 'grip' | 'swing';
+export interface ShotRow {
+  k: ShotRowKind;
+  v: L;
+}
+
+/**
+ * A shot (Sascha 15.11.2026: the topics rebuilt as shots): when you need it, then the tabs Set-up (ball position,
+ * stance, weight, club), Motion, What to watch and Practise (drills and checked videos).
+ */
+export interface TopicShot {
+  id: string;
+  name: L;
+  /** one line for the list: when you play it */
+  short: L;
+  setup: ShotPart & { rows: ShotRow[] };
+  move: ShotPart;
+  watch: ShotPart;
+  drills?: string[];
+  /** YouTube ids from the topic videos that show exactly this shot */
+  videos?: string[];
+}
+
+/** The lie of the ball, drawn in the lie chart. */
+export type LieKind = 'short' | 'up' | 'down' | 'bare' | 'collar' | 'divot' | 'wet';
+/** One row of the overview "lie and grass → ball position and club". ball: −1 = at the trail foot … 0 = middle … 1 = at the lead foot. */
+export interface LieRow {
+  lie: LieKind;
+  name: L;
+  ball: number;
+  club: L;
+  note: L;
+}
+export interface LieChart {
+  title: L;
+  rows: LieRow[];
+  caption?: L;
+}
+
 export interface Category {
   id: CategoryId;
   name: L;
@@ -78,6 +127,12 @@ export interface Category {
   /** key numbers from statistics and tour data */
   facts?: L[];
   sections: Section[];
+  /** the topic as shots (content/shots.ts) – the first tab of the topic */
+  shots?: TopicShot[];
+  /** the overview at the top of the shots */
+  lieChart?: LieChart;
+  /** sections whose content moved into the shots (kept for their pictures and the checks) */
+  absorbed?: Section[];
   faults?: Fault[];
   /** small charts of the key numbers (content/charts.ts) */
   charts?: Chart[];

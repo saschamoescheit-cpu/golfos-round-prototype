@@ -85,6 +85,9 @@ ok(await p.getByRole('heading', { name: 'Wissen' }).isVisible(), 'a reload stays
 await p.locator('.tr-cat').filter({ hasText: 'Chippen' }).first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('.topbar h1').innerText()) === 'Chippen', 'category page');
+// the topic as shots (Sascha 15.11.2026): Chippen opens on its shots (qa/shots.mjs checks them), the drills one tab on
+ok((await viewNow()) === 'Schläge', 'Chippen opens on its shots');
+await view('Übungen');
 ok((await p.locator('.tr-drill-row').count()) >= 10, 'chipping has its drills');
 await p.locator('button.chip').filter({ hasText: 'Könner' }).click();
 const adv = await p.locator('.tr-drill-row').count();
@@ -92,16 +95,20 @@ await p.locator('button.chip').filter({ hasText: /^alle$/ }).first().click();
 ok(adv > 0 && adv < (await p.locator('.tr-drill-row').count()), 'level filter works');
 // the topic page is split into tabs, products are not listed there (Sascha 16.10.2026)
 const topicTabs = await viewNames();
-ok((await p.locator('.tr-tabs, .segmented').count()) === 0 && topicTabs.length === 4 && topicTabs[0].startsWith('Übungen') && topicTabs[1] === 'Grundlagen' && (await viewNow()) === 'Übungen', `topic parts as the switch "‹ Übungen ›", no block of tabs: ${topicTabs.join(' · ')}`);
+ok((await p.locator('.tr-tabs, .segmented').count()) === 0 && topicTabs.length === 5 && topicTabs[0] === 'Schläge' && topicTabs[1].startsWith('Übungen') && topicTabs[2] === 'Grundlagen' && (await viewNow()) === 'Übungen', `topic parts as the switch "‹ Übungen ›", no block of tabs: ${topicTabs.join(' · ')}`);
 ok((await p.locator('.tr-gear-row, .tr-product').count()) === 0, 'no product list on the topic page');
 await view('Grundlagen');
 ok((await p.locator('.tr-intro-text').count()) === 0 && (await p.locator('.tr-coll').count()) > 0 && (await p.locator('.tr-drill-row').count()) === 0, 'basics show only the knowledge – no intro paragraph (tr2)');
 const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
 ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview picture in the basics');
-// moving pictures (Sascha 17.10.2026): the chip stroke as a 3D video (the golfer of Agility), the still picture stays
-const stroke = p.locator('.tr-coll').filter({ hasText: 'Die Bewegung' }).first();
-if (!(await stroke.locator('.tr-coll-body').count())) await stroke.locator('.tr-coll-head').click();
+// moving pictures (Sascha 17.10.2026): the chip stroke as a 3D video (the golfer of Agility), the still picture stays –
+// since 15.11.2026 in the shot "Der Standard-Chip" › Bewegung
+await view('Schläge');
+await p.locator('.tr-shots .list-item').filter({ hasText: 'Der Standard-Chip' }).click();
+await p.waitForTimeout(300);
+await view('Bewegung');
+const stroke = p.locator('main figure.tr-sketch').first();
 const btn3d = stroke.locator('.tr-motion-btn');
 ok((await btn3d.getAttribute('aria-label')) === '3D-Video abspielen' && (await btn3d.innerText()).trim() === '', 'the chip stroke has a 3D video – a symbol in the picture, no text button (Sascha 17.10.2026)');
 const pic = await stroke.locator('.tr-sketch-pic').boundingBox();
@@ -116,6 +123,8 @@ ok((await stroke.locator('.tr-3d canvas').count()) === 1 && (await stroke.locato
 ok((await stroke.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Hinten|Schräg|Oben', 'views: Vorne · Hinten · Schräg · Oben');
 await btn3d.click();
 ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch-pic > svg').count()) === 1, 'the close symbol brings back the still picture');
+await back();
+await p.waitForTimeout(300);
 await view('Fehler');
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);

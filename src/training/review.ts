@@ -14,7 +14,7 @@ export interface ReviewMark {
   at: string;
   by?: string;
 }
-export type ReviewKind = 'fact' | 'drill' | 'section' | 'fault' | 'video' | 'plan' | 'gear';
+export type ReviewKind = 'fact' | 'shot' | 'drill' | 'section' | 'fault' | 'video' | 'plan' | 'gear';
 export interface ReviewItem {
   key: string;
   kind: ReviewKind;
@@ -65,6 +65,7 @@ export function setReviewOn(on: boolean): void {
 }
 
 export const drillKey = (id: string) => `drill:${id}`;
+export const shotKey = (cat: CategoryId, id: string) => `shot:${cat}:${id}`;
 export const sectionKey = (cat: CategoryId, title: L) => `section:${cat}:${title.en}`;
 export const faultKey = (cat: CategoryId, name: L) => `fault:${cat}:${name.en}`;
 export const planKey = (id: string) => `plan:${id}`;
@@ -77,6 +78,7 @@ export function reviewItems(): ReviewItem[] {
   const out: ReviewItem[] = [];
   for (const c of CATEGORIES) {
     for (const f of c.facts ?? []) out.push({ key: factKey(c.id, f), kind: 'fact', cat: c.id, title: f });
+    for (const s of c.shots ?? []) out.push({ key: shotKey(c.id, s.id), kind: 'shot', cat: c.id, title: s.name });
     for (const d of DRILLS.filter((x) => x.cat === c.id)) out.push({ key: drillKey(d.id), kind: 'drill', cat: c.id, title: d.name });
     for (const s of c.sections) out.push({ key: sectionKey(c.id, s.title), kind: 'section', cat: c.id, title: s.title });
     for (const f of c.faults ?? []) out.push({ key: faultKey(c.id, f.name), kind: 'fault', cat: c.id, title: f.name });
@@ -97,6 +99,7 @@ export function nextOpenDrill(after?: string): string | undefined {
 
 const KIND: Record<ReviewKind, L> = {
   fact: { en: 'Good to know (numbers)', de: 'Gut zu wissen (Zahlen)' },
+  shot: { en: 'Shots', de: 'Schläge' },
   drill: { en: 'Drills', de: 'Übungen' },
   section: { en: 'Basics', de: 'Grundlagen' },
   fault: { en: 'Faults', de: 'Fehler' },

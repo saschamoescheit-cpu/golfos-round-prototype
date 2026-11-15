@@ -11,7 +11,8 @@ import { Stepper, TopBar } from '../components/ui';
 import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
-import { CATEGORIES, DRILLS, catById, drillById, drillsOf } from '../training/content';
+import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById } from '../training/content';
+import { LieChartView } from '../training/LieChart';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
@@ -25,7 +26,7 @@ import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
 import { search } from '../training/search';
 import type { RoundsTarget } from '../training/content/rounds-links';
-import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
+import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, shotKey, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
   addLog,
@@ -55,7 +56,7 @@ import {
   type OwnPlan,
   type Session,
 } from '../training/store';
-import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan, Section, Video } from '../training/types';
+import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan, Section, ShotPart, ShotRowKind, TopicShot, Video } from '../training/types';
 import {
   bandName,
   bandOf,
@@ -97,6 +98,7 @@ type View =
   | { name: 'tab'; tab: TrainingTab }
   | { name: 'cat'; id: CategoryId }
   | { name: 'drill'; id: string }
+  | { name: 'shot'; id: string }
   | { name: 'plan'; plan: Plan | OwnPlan; own?: boolean }
   | { name: 'session'; id: string }
   | { name: 'done'; id: string }
@@ -325,6 +327,8 @@ export function TrainingApp(props: {
         return <CategoryView id={view.id} nav={nav} />;
       case 'drill':
         return <DrillView id={view.id} nav={nav} />;
+      case 'shot':
+        return <ShotView id={view.id} nav={nav} />;
       case 'plan':
         return <PlanView plan={view.plan} own={view.own} nav={nav} />;
       case 'builder':
@@ -520,6 +524,105 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
           {tr('Practise these drills now', 'Diese Übungen jetzt üben')}
         </button>
       )}
+      <TopicRow id={c.id} nav={props.nav} />
+    </main>
+  );
+}
+
+// ---------- shot (Sascha 15.11.2026: the topics as shots, each with Set-up · Motion · What to watch · Practise) ----------
+
+const ROW_NAME: Record<ShotRowKind, () => string> = {
+  ball: () => tr('Ball position', 'Ballposition'),
+  stance: () => tr('Stance', 'Stand'),
+  weight: () => tr('Weight', 'Gewicht'),
+  club: () => tr('Club', 'Schläger'),
+  face: () => tr('Clubface', 'Schlagfläche'),
+  aim: () => tr('Aim', 'Ausrichtung'),
+  grip: () => tr('Grip and hands', 'Griff und Hände'),
+  swing: () => tr('Swing', 'Schwung'),
+};
+// the open tab per shot – back from a drill returns to the same tab
+const SHOT_TAB = new Map<string, 'setup' | 'move' | 'watch' | 'practise'>();
+
+/** the text and points of a shot's tab under its picture */
+function ShotText(props: { p: ShotPart; label: string }) {
+  return (
+    <>
+      {props.p.sketch && <SketchView sketch={props.p.sketch} label={props.label} />}
+      {(props.p.text?.length || props.p.points?.length) && (
+        <section className="card tr-section">
+          {props.p.text?.map((x, k) => <p key={k}>{t(x)}</p>)}
+          {props.p.points && (
+            <ul className="tr-points">
+              {props.p.points.map((x, k) => (
+                <li key={k}>{t(x)}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
+function ShotView(props: { id: string; nav: Nav }) {
+  const found = shotById(props.id);
+  const [tab, setTabState] = useState<'setup' | 'move' | 'watch' | 'practise'>(() => SHOT_TAB.get(props.id) ?? 'setup');
+  const setTab = (x: typeof tab) => {
+    SHOT_TAB.set(props.id, x);
+    setTabState(x);
+  };
+  if (!found) return null;
+  const { cat: c, shot: s } = found as { cat: Category; shot: TopicShot };
+  const drills = (s.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
+  const vids = (s.videos ?? []).map((id) => c.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v);
+  vids.sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()));
+  const tabs: StepChoice<typeof tab>[] = [
+    { value: 'setup', name: tr('Set-up', 'Ansprache'), text: tr('Ball position, stance, weight, club', 'Ballposition, Stand, Gewicht, Schläger') },
+    { value: 'move', name: tr('Motion', 'Bewegung'), text: tr('How the stroke goes', 'So läuft die Bewegung') },
+    { value: 'watch', name: tr('What to watch', 'Worauf achten'), text: tr('What matters and the typical faults', 'Was wichtig ist, typische Fehler') },
+    { value: 'practise', name: tr('Practise', 'Üben'), text: tr(`${drills.length} drills${vids.length ? ` · ${vids.length} videos` : ''}`, `${drills.length} Übungen${vids.length ? ` · ${vids.length} Videos` : ''}`) },
+  ];
+  return (
+    <main className="screen training">
+      <TopBar title={t(s.name)} onBack={props.nav.back} />
+      <span className="eyebrow">{t(c.name)}</span>
+      <p className="tr-shot-short">{t(s.short)}</p>
+      <ViewPick options={tabs} value={tab} onChange={setTab} />
+      {tab === 'setup' && (
+        <>
+          {s.setup.sketch && <SketchView sketch={s.setup.sketch} label={t(s.name)} />}
+          <section className="card tr-section">
+            <dl className="tr-fault tr-shot-rows">
+              {s.setup.rows.map((r, i) => (
+                <div key={i}>
+                  <dt>{ROW_NAME[r.k]()}</dt>
+                  <dd>{t(r.v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+          {(s.setup.text?.length || s.setup.points?.length) && <ShotText p={{ ...s.setup, sketch: undefined }} label={t(s.name)} />}
+        </>
+      )}
+      {tab === 'move' && <ShotText p={s.move} label={t(s.name)} />}
+      {tab === 'watch' && <ShotText p={s.watch} label={t(s.name)} />}
+      {tab === 'practise' && (
+        <>
+          <DrillList drills={drills} nav={props.nav} />
+          {drills.length > 0 && (
+            <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(t(s.name), drills.map((d) => ({ drill: d.id, minutes: Math.min(12, d.minutes) }))))}>
+              {tr('Practise these drills now', 'Diese Übungen jetzt üben')}
+            </button>
+          )}
+          {vids.map((v) => (
+            <div key={v.id} className="tr-video-item">
+              <VideoCard v={v} />
+            </div>
+          ))}
+        </>
+      )}
+      <ReviewBar itemKey={shotKey(c.id, s.id)} />
       <TopicRow id={c.id} nav={props.nav} />
     </main>
   );
@@ -1041,11 +1144,12 @@ function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   );
 }
 
-const CAT_TAB = new Map<CategoryId, 'drills' | 'basics' | 'faults' | 'videos'>();
+type CatTab = 'shots' | 'drills' | 'basics' | 'faults' | 'videos';
+const CAT_TAB = new Map<CategoryId, CatTab>();
 
 function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const c = catById(props.id);
-  const [tab, setTabState] = useState<'drills' | 'basics' | 'faults' | 'videos'>(() => CAT_TAB.get(props.id) ?? 'drills');
+  const [tab, setTabState] = useState<CatTab>(() => CAT_TAB.get(props.id) ?? (catById(props.id)?.shots?.length ? 'shots' : 'drills'));
   const setTab = (x: typeof tab) => {
     CAT_TAB.set(props.id, x);
     setTabState(x);
@@ -1058,9 +1162,12 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const drills = all.filter((d) => (lvl === 0 || d.level === lvl) && (!place || d.place === place));
   // Sascha 16.10.2026: no one-pager – one part at a time; the gear only at the drill it belongs to
   // (Facelift 11.11.2026, tr1: the parts as the switch "‹ Übungen ›", each with a line what it holds)
+  // Sascha 15.11.2026: the topic as shots – the first tab; the basics keep what is not a shot
+  const shots = c.shots ?? [];
   const tabs: StepChoice<typeof tab>[] = [
+    ...(shots.length ? [{ value: 'shots' as const, name: tr('Shots', 'Schläge'), text: tr(`${shots.length} shots`, `${shots.length} Schläge`) }] : []),
     { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
-    { value: 'basics', name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') },
+    ...(c.sections.length || c.facts?.length || c.charts?.length ? [{ value: 'basics' as const, name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') }] : []),
     ...(c.faults?.length ? [{ value: 'faults' as const, name: tr('Faults', 'Fehler'), text: tr(`${c.faults.length} common faults`, `${c.faults.length} typische Fehler`) }] : []),
     ...(c.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: tr(`${c.videos.length} videos`, `${c.videos.length} Videos`) }] : []),
   ];
@@ -1072,6 +1179,26 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         <p>{t(c.short)}</p>
       </div>
       <ViewPick options={tabs} value={tab} onChange={setTab} />
+
+      {tab === 'shots' && (
+        <>
+          {c.lieChart && <LieChartView chart={c.lieChart} />}
+          <ul className="list tr-shots">
+            {shots.map((s) => (
+              <li key={s.id}>
+                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'shot', id: s.id })}>
+                  {s.setup.sketch && <SketchThumb sketch={s.setup.sketch} />}
+                  <span className="grow">
+                    <span className="title">{t(s.name)}</span>
+                    <span className="muted small tr-two-lines">{t(s.short)}</span>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {tab === 'drills' && (
         <>
@@ -1731,6 +1858,7 @@ function DrillView(props: { id: string; nav: Nav }) {
 const SIGN: Record<Verdict, JSX.Element> = { ok: <CheckGlyph />, edit: <PenGlyph />, cut: <CrossGlyph /> };
 const KIND_NAME: Record<ReviewKind, () => string> = {
   fact: () => tr('Numbers', 'Zahlen'),
+  shot: () => tr('Shots', 'Schläge'),
   drill: () => tr('Drills', 'Übungen'),
   section: () => tr('Basics', 'Grundlagen'),
   fault: () => tr('Faults', 'Fehler'),
@@ -1754,6 +1882,7 @@ function ReviewView(props: { nav: Nav }) {
   const open = (i: ReviewItem) => {
     const [kind, ...rest] = i.key.split(':');
     if (kind === 'drill') return props.nav.push({ name: 'drill', id: rest.join(':') });
+    if (kind === 'shot') return props.nav.push({ name: 'shot', id: rest.slice(1).join(':') });
     if (kind === 'gear') return props.nav.push({ name: 'gear', id: rest.join(':') });
     if (kind === 'plan') {
       const p = PLANS.find((x) => x.id === rest.join(':'));
