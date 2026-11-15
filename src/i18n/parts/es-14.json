@@ -85,5 +85,7 @@
  "in {0} rounds": "en {0} rondas",
  "chosen rounds": "rondas elegidas",
  "planned – no scores yet": "prevista – aún sin resultados",
- "Tap: back in the pool – it counts again": "Toca: de vuelta en el bote – vuelve a contar"
+ "Tap: back in the pool – it counts again": "Toca: de vuelta en el bote – vuelve a contar",
+ "Tournament · internal": "Torneo · interno",
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Tipo de ronda «Torneo»: sin consejos (Regla 4.3) – solo tus notas y las distancias. Torneo interno: Formato → Tipo de ronda → «Torneo», debajo activa «Todas las funciones» (al preparar la ronda o al planificar el torneo) – viento, caddie y pendientes del green como en cualquier ronda, para todos los del torneo."
 }

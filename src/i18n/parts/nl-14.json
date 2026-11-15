@@ -85,5 +85,7 @@
  "in {0} rounds": "in {0} rondes",
  "chosen rounds": "gekozen rondes",
  "planned – no scores yet": "gepland – nog geen scores",
- "Tap: back in the pool – it counts again": "Tik: terug in de pot – hij telt weer mee"
+ "Tap: back in the pool – it counts again": "Tik: terug in de pot – hij telt weer mee",
+ "Tournament · internal": "Toernooi · intern",
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Rondetype \"Toernooi\": geen adviezen (regel 4.3) – alleen je notities en de afstanden. Intern toernooi: Format → Rondetype → \"Toernooi\", zet daaronder \"Alle functies\" aan (bij het instellen van de ronde of het plannen van het toernooi) – wind, caddie en greenhellingen zoals in elke ronde, voor iedereen in het toernooi."
 }

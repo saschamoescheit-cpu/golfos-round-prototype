@@ -85,5 +85,7 @@
  "in {0} rounds": "på {0} runder",
  "chosen rounds": "valgte runder",
  "planned – no scores yet": "planlagt – ingen scores ennå",
- "Tap: back in the pool – it counts again": "Trykk: tilbake i potten – den teller igjen"
+ "Tap: back in the pool – it counts again": "Trykk: tilbake i potten – den teller igjen",
+ "Tournament · internal": "Turnering · intern",
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Rundetype «Turnering»: ingen råd (regel 4.3) – bare notatene dine og avstandene. Intern turnering: Format → Rundetype → «Turnering», slå på «Alle funksjoner» under (når runden settes opp eller turneringen planlegges) – vind, caddie og greenhelninger som i enhver runde, for alle i turneringen."
 }

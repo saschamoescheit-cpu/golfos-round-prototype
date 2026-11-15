@@ -32,7 +32,7 @@ await H.waitForTimeout(500);
 await H.fill('#tour-name', 'Preis-Cup');
 const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((x) => x.trim().toUpperCase());
 const iw = heads.indexOf('WORUM');
-ok(iw > heads.indexOf('SCORE-ERFASSUNG') && iw < heads.indexOf('EINSTELLUNGEN'), `"Worum" after the score entry, before the settings (${heads.join(' · ')})`);
+ok(iw > heads.indexOf('SONDERWERTUNGEN (OPTIONAL)') && heads.indexOf('SONDERWERTUNGEN (OPTIONAL)') > heads.indexOf('SCORE-ERFASSUNG'), `"Worum" after the special prizes (Sascha 15.11.2026, Variante A) (${heads.join(' · ')})`);
 const prizes = H.locator('.tour-prizes');
 await prizes.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).click();
 await H.getByRole('dialog', { name: 'Worum wird gespielt' }).locator('.pick-option').filter({ hasText: /^Geld/ }).first().click();

@@ -20,12 +20,13 @@ import { dayOf } from '../lib/wagers';
 import { holesFor, specialName, type Special, type SpecialKind } from '../lib/specials';
 import type { TourPrizes } from '../lib/tourprizes';
 import { TourPrizesRows } from '../components/TourPrizesRows';
+import { AidsRow } from '../components/AidsRow';
 import { deal, defaultDraw, drawOrder, FLIGHT_SIZES, GAPS, madeCut, teeSlots, type DrawMode, type Results, type TourDraw } from '../lib/tourdraw';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { SaveButton, TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, ToggleRow, AddRow } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, AddRow } from '../components/Settings';
 
 // Planning a tournament (Sascha 01.11.2026, rebuilt 04.11.2026: "the whole of 'Flights und Startzeiten' rebuilt – a
 // random draw, by handicap up or down, at the final day by result; a tournament over three rounds, each its own day and
@@ -717,7 +718,12 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             value={d.kind ?? 'tournament'}
             onChange={(kind) => set({ kind, ...(d.allowanceSet ? {} : { allowance: whsAllowance(d.mode ?? 'single', false, kind === 'tournament') }) })}
             options={ROUND_KINDS.map((k) => ({ value: k.id, name: k.name(), text: k.text() }))}
-          />
+            shown={(d.kind ?? 'tournament') === 'tournament' && d.aids ? tr('Tournament · internal', 'Turnier · intern') : undefined}
+            stays={(k) => k === 'tournament'}
+          >
+            {/* the aids of Rule 4.3 in the kind's sheet, under "Turnier" (Sascha 15.11.2026: "unter Format … unter Rundenart") */}
+            {(d.kind ?? 'tournament') === 'tournament' && <AidsRow on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
+          </ChoiceRow>
           <ChoiceRow<GameMode>
             label={tr('Mode', 'Modus')}
             title={tr('Choose game mode', 'Spielmodus wählen')}
@@ -735,11 +741,22 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               { value: 'stableford', name: 'Stableford', text: tr('Collect points on every hole from your strokes and handicap – most points win.', 'Auf jedem Loch Punkte sammeln, aus deinen Schlägen und deiner Vorgabe – die meisten Punkte gewinnen.') },
             ]}
           />
+          {/* the handicap allowance and the net classes in the format (Sascha 15.11.2026, Variante A: gross or net is what
+              is played) – under Scoring */}
+          <ChoiceRow<number>
+            label={tr('Handicap allowance', 'HCP-Vorgabe')}
+            value={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
+            onChange={(v) => (d.scoring === 'stableford' ? set({ allowance: v, allowanceSet: true }) : setScoring(v === 0 ? 'stroke' : 'net', v))}
+            options={ALLOWANCES().map(([v, text]) => ({ value: v, name: v > 0 ? `${v} %` : tr('0 % (gross)', '0 % (brutto)'), text }))}
+          />
+          {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
           {/* a new round of a series of single tournaments stays one round */}
           {!d.code && !d.series && (
             <RoundsRow value={d.rounds.length} onChange={setCount} />
           )}
         </SettingsList>
+        {/* the classes' limits under the list – the row stays one line */}
+        {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
         {/* how the teams come about – in every flight */}
         {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>
@@ -834,7 +851,9 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </SettingsList>
         {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
       </section>
-      {/* Worum (Sascha 14.11.2026, "Turnier-Preise"): after Wer, before the settings – a tournament of one round */}
+      {/* Einstellungen: the handicap allowance, Texas, the classes, the cut, the aids (Facelift 11.11.2026, t5) */}
+      <Specials d={d} holes={h0.holes} onChange={(specials) => set({ specials })} />
+      {/* Worum (Sascha 14.11.2026, "Turnier-Preise"): after the special prizes – their prizes among them (Sascha 15.11.2026, Variante A) – a tournament of one round */}
       {!multi && (
         <TourPrizesRows
           value={d.prizes ?? null}
@@ -846,16 +865,11 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           holeName={(i) => h0.holes[i]?.label ?? String(i + 1)}
         />
       )}
-      {/* Einstellungen: the handicap allowance, Texas, the classes, the cut, the aids (Facelift 11.11.2026, t5) */}
+      {/* Einstellungen only what is left – Texas, the cut (Sascha 15.11.2026, Variante A); none: no section */}
+      {((d.mode ?? 'single') === 'scramble' || multi) && (
       <section className="setup-part">
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
-          <ChoiceRow<number>
-            label={tr('Handicap allowance', 'HCP-Vorgabe')}
-            value={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
-            onChange={(v) => (d.scoring === 'stableford' ? set({ allowance: v, allowanceSet: true }) : setScoring(v === 0 ? 'stroke' : 'net', v))}
-            options={ALLOWANCES().map(([v, text]) => ({ value: v, name: v > 0 ? `${v} %` : tr('0 % (gross)', '0 % (brutto)'), text }))}
-          />
           {(d.mode ?? 'single') === 'scramble' && (
             <ChoiceRow<number>
               label={tr('Texas: drives per player', 'Texas: Drives je Spieler')}
@@ -865,7 +879,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               options={[0, 2, 3, 4, 6].map((v) => ({ value: v, name: v ? tr(`at least ${v}`, `mindestens ${v}`) : tr('free', 'frei'), text: v ? tr(`Each player's drive is played at least ${v} times.`, `Der Drive jedes Spielers wird mindestens ${v}-mal gespielt.`) : tr('Any drive, as the team likes.', 'Beliebige Drives, wie das Team will.') }))}
             />
           )}
-          {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
           {multi && (
             <ChoiceRow<number>
               label={tr('Cut', 'Cut')}
@@ -886,12 +899,10 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               options={[4, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60].map((n) => ({ value: n, name: tr(`The best ${n}`, `Die besten ${n}`), text: tr('And everyone level with the last of them.', 'Und alle, die mit dem Letzten gleichauf liegen.') }))}
             />
           )}
-          {/* the aids of Rule 4.3 – off in a tournament, on in an internal one (Sascha 07.11.2026); a row of the format (Sascha 08.11.2026) */}
-          {(d.kind ?? 'tournament') === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
         </SettingsList>
-        {/* the limits under the list – the row stays one line */}
-        {d.scoring !== 'stroke' && (d.allowance ?? 100) > 0 && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
       </section>
+      )}
+
       {pick === 'classes' && (
         <ClassesSheet
           value={d.classes}
@@ -902,8 +913,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           onClose={() => setPick(null)}
         />
       )}
-
-      <Specials d={d} holes={h0.holes} onChange={(specials) => set({ specials })} />
 
       {/* no connection: a green notice – nothing done wrong (Facelift 11.11.2026, o4) */}
       {msg && (

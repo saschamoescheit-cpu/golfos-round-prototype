@@ -28,7 +28,7 @@ const eyebrows = (await P.locator('main .eyebrow').allInnerTexts()).map((t) => t
 const at = (x) => eyebrows.indexOf(x);
 // Facelift 11.11.2026 (r9): Wer (Spieler → Mitspieler einladen → Score-Erfassung) → Worum (the side bet) → Einstellungen
 const wer = Math.max(at('SPIELER'), at('MITSPIELER EINLADEN'), at('SCORE-ERFASSUNG'));
-ok(at('WORUM') === wer + 1 && at('EINSTELLUNGEN') === at('WORUM') + 1 && at('SPIELER') < at('WORUM'), `the setup: the side bet under "Worum", after the players and the invitation (${eyebrows.join(' · ')})`);
+ok(at('WORUM') === wer + 1 && at('EINSTELLUNGEN') === -1 && at('SPIELER') < at('WORUM'), `the setup: the side bet under "Worum", after the players and the invitation (${eyebrows.join(' · ')})`);
 const row = P.locator('.settings-row').filter({ hasText: /^Side-Bet/ });
 ok(/Hinzufügen/.test(await row.innerText()), 'its row: "Side-Bet · Hinzufügen"');
 await row.click();

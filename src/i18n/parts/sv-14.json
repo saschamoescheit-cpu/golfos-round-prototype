@@ -85,5 +85,7 @@
  "in {0} rounds": "på {0} rundor",
  "chosen rounds": "valda rundor",
  "planned – no scores yet": "planerad – inga scores än",
- "Tap: back in the pool – it counts again": "Tryck: tillbaka i potten – den räknas igen"
+ "Tap: back in the pool – it counts again": "Tryck: tillbaka i potten – den räknas igen",
+ "Tournament · internal": "Turnering · intern",
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Rundtyp ”Turnering”: inga råd (regel 4.3) – bara dina anteckningar och avstånden. Intern turnering: Format → Rundtyp → ”Turnering”, slå på ”Alla funktioner” därunder (när rundan läggs upp eller turneringen planeras) – vind, caddie och greenlutningar som i vilken runda som helst, för alla i turneringen."
 }

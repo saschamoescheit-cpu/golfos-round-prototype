@@ -85,5 +85,7 @@
  "in {0} rounds": "{0}ラウンドで",
  "chosen rounds": "選んだラウンド",
  "planned – no scores yet": "予定 – まだスコアなし",
- "Tap: back in the pool – it counts again": "タップ：プールに戻す – 再び集計されます"
+ "Tap: back in the pool – it counts again": "タップ：プールに戻す – 再び集計されます",
+ "Tournament · internal": "大会 · 内部",
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "ラウンドの種類「大会」：アドバイスなし（規則4.3）– メモと距離のみ。内部大会：フォーマット → ラウンドの種類 → 「大会」を選び、その下の「すべての機能」をオンにします（ラウンド設定時または大会の計画時）– 風、キャディー、グリーンの傾斜が通常のラウンドと同じく、大会の全員に表示されます。"
 }
