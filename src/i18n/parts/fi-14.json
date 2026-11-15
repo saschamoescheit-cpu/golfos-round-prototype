@@ -104,5 +104,22 @@
  "Deleted · only you see them": "Poistetut · vain sinä näet ne",
  "counts for no bet": "ei lasketa mihinkään vetoon",
  "Bring back {0}": "Palauta {0}",
- "Bring back – it counts again": "Palauta – se lasketaan taas"
+ "Bring back – it counts again": "Palauta – se lasketaan taas",
+ "Rankings": "Kilpailut",
+ "Which rankings win prizes": "Mitkä kilpailut saavat palkintoja",
+ "Gross + net": "Brutto + netto",
+ "Both rankings win prizes – the usual way.": "Molemmat kilpailut saavat palkintoja – tavallisin tapa.",
+ "Gross only": "Vain brutto",
+ "Only the strokes count.": "Vain lyönnit lasketaan.",
+ "Net only": "Vain netto",
+ "With the handicap allowance.": "Tasoitusosuuden kanssa.",
+ "Places per ranking": "Sijoja per kilpailu",
+ "Winner only": "Vain voittaja",
+ "{0} places": "{0} sijaa",
+ "GROSS": "BRUTTO",
+ "NET": "NETTO",
+ "Prizes · class {0}": "Palkinnot · luokka {0}",
+ "Gross prizes": "Bruttopalkinnot",
+ "Net prizes": "Nettopalkinnot",
+ "{0}. place": "{0}. sija"
 }

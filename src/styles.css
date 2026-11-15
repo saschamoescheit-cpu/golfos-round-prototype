@@ -1233,6 +1233,22 @@ button.tile:disabled { opacity: 1; }
 .tour-prize-board { display: flex; flex-direction: column; gap: 6px; }
 /* the series' prizes: its own, then the day prizes (Sascha 15.11.2026) */
 .tour-prize-sub { font-weight: 600; margin-top: 4px; }
+/* the prizes per ranking (Sascha 15.11.2026, mock-up A): gross blue, net green – a tag in the heading, an edge at the
+   list, the place a number in a ring */
+:root { --gross: #6fa8dc; --gross-soft: #1d2a36; }
+:root[data-theme='sun'] { --gross: #2a64a0; --gross-soft: #dce9f6; }
+.prize-group { display: flex; flex-direction: column; gap: 8px; }
+.prize-group > .eyebrow { display: flex; align-items: center; gap: 8px; }
+.rank-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; border-radius: 6px; padding: 2px 6px; }
+.rank-tag.gross { background: var(--gross-soft); color: var(--gross); }
+.rank-tag.net { background: var(--brand-soft); color: var(--brand-text); }
+.prize-group.gross .settings-list { box-shadow: inset 3px 0 0 var(--gross); }
+.prize-group.net .settings-list { box-shadow: inset 3px 0 0 var(--brand); }
+.prize-group:not(.special) .settings-list { counter-reset: place; }
+.prize-group:not(.special) .settings-row { counter-increment: place; }
+.prize-group:not(.special) .settings-row > span:first-child::before { content: counter(place); display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 10px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 12px; font-weight: 700; vertical-align: middle; }
+.prize-group.gross .settings-row > span:first-child::before { color: var(--gross); }
+.prize-group.net .settings-row > span:first-child::before { color: var(--brand-text); }
 /* the rounds' switch (Sascha 15.11.2026, mock-up A): "6 von 8 ✓ gewertet" – green, or quiet "nicht gewertet"; its sheet
    below the rounds: the host's switch, the bin, the deleted rounds with the round green button */
 .step-status { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }

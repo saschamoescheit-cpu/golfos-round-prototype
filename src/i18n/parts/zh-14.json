@@ -104,5 +104,22 @@
  "Deleted · only you see them": "已删除 · 仅你可见",
  "counts for no bet": "不计入任何赌注",
  "Bring back {0}": "恢复{0}",
- "Bring back – it counts again": "恢复 – 重新计入"
+ "Bring back – it counts again": "恢复 – 重新计入",
+ "Rankings": "排名",
+ "Which rankings win prizes": "哪些排名获得奖金",
+ "Gross + net": "总杆 + 净杆",
+ "Both rankings win prizes – the usual way.": "两个排名都有奖金 – 常见做法。",
+ "Gross only": "仅总杆",
+ "Only the strokes count.": "只计杆数。",
+ "Net only": "仅净杆",
+ "With the handicap allowance.": "按差点比例计算。",
+ "Places per ranking": "每个排名的名次",
+ "Winner only": "仅冠军",
+ "{0} places": "前{0}名",
+ "GROSS": "总杆",
+ "NET": "净杆",
+ "Prizes · class {0}": "奖金 · {0}组",
+ "Gross prizes": "总杆奖金",
+ "Net prizes": "净杆奖金",
+ "{0}. place": "第{0}名"
 }

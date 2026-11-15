@@ -104,5 +104,22 @@
  "Deleted · only you see them": "Eliminati · li vedi solo tu",
  "counts for no bet": "non conta per nessuna scommessa",
  "Bring back {0}": "Ripristina {0}",
- "Bring back – it counts again": "Ripristina – conta di nuovo"
+ "Bring back – it counts again": "Ripristina – conta di nuovo",
+ "Rankings": "Classifiche",
+ "Which rankings win prizes": "Quali classifiche vincono premi",
+ "Gross + net": "Lordo + netto",
+ "Both rankings win prizes – the usual way.": "Entrambe le classifiche vincono premi – il solito.",
+ "Gross only": "Solo lordo",
+ "Only the strokes count.": "Contano solo i colpi.",
+ "Net only": "Solo netto",
+ "With the handicap allowance.": "Con la quota di handicap.",
+ "Places per ranking": "Posti per classifica",
+ "Winner only": "Solo vincitore",
+ "{0} places": "{0} posti",
+ "GROSS": "LORDO",
+ "NET": "NETTO",
+ "Prizes · class {0}": "Premi · categoria {0}",
+ "Gross prizes": "Premi lordo",
+ "Net prizes": "Premi netto",
+ "{0}. place": "{0}° posto"
 }

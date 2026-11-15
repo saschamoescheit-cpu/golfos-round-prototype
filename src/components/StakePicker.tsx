@@ -10,7 +10,7 @@ const STAKES = [0, 0.1, 0.2, 0.5, 1, 2, 5, 10];
 /** The stake as a row with its list (Sascha 03.11.2026: "the stake's sheet looks other than the other menus" – the
  *  amounts as the options of "Vorgabe", the chosen one ticked; "Anderer Betrag …" typed in below). One tap picks and
  *  closes, as every other row. */
-export function StakeRow(props: { label: string; value: number; onChange: (v: number) => void; stakes?: number[]; disabled?: boolean; /** "$" or "× Getränk" – not money: counted (03.11.2026) */ sym?: string }) {
+export function StakeRow(props: { label: string; /** the sheet's title when the row says less – "Sieger" under "Brutto" (15.11.2026) */ title?: string; value: number; onChange: (v: number) => void; stakes?: number[]; disabled?: boolean; /** "$" or "× Getränk" – not money: counted (03.11.2026) */ sym?: string }) {
   const count = !!props.sym && props.sym.startsWith('×');
   const m = (v: number) => money(v, props.sym);
   const stakes = props.stakes ?? STAKES;
@@ -37,7 +37,7 @@ export function StakeRow(props: { label: string; value: number; onChange: (v: nu
       <SettingsRow label={props.label} value={props.value ? m(props.value) : tr('none', 'ohne')} onClick={() => setOpen(true)} disabled={props.disabled} />
       {open && (
         <PickSheet<number>
-          title={props.label}
+          title={props.title ?? props.label}
           current={typing || custom ? OTHER : props.value}
           options={[
             ...stakes.map((v) => ({ value: v, name: v ? m(v) : tr('None', 'Ohne') })),

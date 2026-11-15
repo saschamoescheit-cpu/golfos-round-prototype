@@ -104,5 +104,22 @@
  "Deleted · only you see them": "Verwijderd · alleen jij ziet ze",
  "counts for no bet": "telt voor geen enkele weddenschap",
  "Bring back {0}": "{0} terughalen",
- "Bring back – it counts again": "Terughalen – hij telt weer mee"
+ "Bring back – it counts again": "Terughalen – hij telt weer mee",
+ "Rankings": "Klassementen",
+ "Which rankings win prizes": "Welke klassementen winnen prijzen",
+ "Gross + net": "Bruto + netto",
+ "Both rankings win prizes – the usual way.": "Beide klassementen winnen prijzen – gebruikelijk.",
+ "Gross only": "Alleen bruto",
+ "Only the strokes count.": "Alleen de slagen tellen.",
+ "Net only": "Alleen netto",
+ "With the handicap allowance.": "Met de handicaptoewijzing.",
+ "Places per ranking": "Plaatsen per klassement",
+ "Winner only": "Alleen winnaar",
+ "{0} places": "{0} plaatsen",
+ "GROSS": "BRUTO",
+ "NET": "NETTO",
+ "Prizes · class {0}": "Prijzen · klasse {0}",
+ "Gross prizes": "Brutoprijzen",
+ "Net prizes": "Nettoprijzen",
+ "{0}. place": "{0}e plaats"
 }

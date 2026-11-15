@@ -104,5 +104,22 @@
  "Deleted · only you see them": "削除済み · あなたにだけ表示",
  "counts for no bet": "どの賭けにも集計されません",
  "Bring back {0}": "{0}を戻す",
- "Bring back – it counts again": "戻す – 再び集計されます"
+ "Bring back – it counts again": "戻す – 再び集計されます",
+ "Rankings": "順位区分",
+ "Which rankings win prizes": "賞の対象となる順位区分",
+ "Gross + net": "グロス + ネット",
+ "Both rankings win prizes – the usual way.": "両方の順位区分に賞 – 一般的です。",
+ "Gross only": "グロスのみ",
+ "Only the strokes count.": "打数のみで競います。",
+ "Net only": "ネットのみ",
+ "With the handicap allowance.": "ハンディキャップ適用後。",
+ "Places per ranking": "区分ごとの入賞数",
+ "Winner only": "優勝のみ",
+ "{0} places": "{0}位まで",
+ "GROSS": "グロス",
+ "NET": "ネット",
+ "Prizes · class {0}": "賞 · クラス{0}",
+ "Gross prizes": "グロス賞",
+ "Net prizes": "ネット賞",
+ "{0}. place": "{0}位"
 }

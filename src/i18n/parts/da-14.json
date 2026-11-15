@@ -104,5 +104,22 @@
  "Deleted · only you see them": "Slettet · kun du ser dem",
  "counts for no bet": "tæller ikke for nogen væddemål",
  "Bring back {0}": "Hent {0} tilbage",
- "Bring back – it counts again": "Hent tilbage – den tæller igen"
+ "Bring back – it counts again": "Hent tilbage – den tæller igen",
+ "Rankings": "Klassementer",
+ "Which rankings win prizes": "Hvilke klassementer vinder præmier",
+ "Gross + net": "Brutto + netto",
+ "Both rankings win prizes – the usual way.": "Begge klassementer vinder præmier – det almindelige.",
+ "Gross only": "Kun brutto",
+ "Only the strokes count.": "Kun slagene tæller.",
+ "Net only": "Kun netto",
+ "With the handicap allowance.": "Med handicaptildelingen.",
+ "Places per ranking": "Placeringer pr. klassement",
+ "Winner only": "Kun vinder",
+ "{0} places": "{0} placeringer",
+ "GROSS": "BRUTTO",
+ "NET": "NETTO",
+ "Prizes · class {0}": "Præmier · klasse {0}",
+ "Gross prizes": "Bruttopræmier",
+ "Net prizes": "Nettopræmier",
+ "{0}. place": "{0}. plads"
 }

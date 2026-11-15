@@ -104,5 +104,22 @@
  "Deleted · only you see them": "Raderade · bara du ser dem",
  "counts for no bet": "räknas inte för något vad",
  "Bring back {0}": "Hämta tillbaka {0}",
- "Bring back – it counts again": "Hämta tillbaka – den räknas igen"
+ "Bring back – it counts again": "Hämta tillbaka – den räknas igen",
+ "Rankings": "Klasser",
+ "Which rankings win prizes": "Vilka klasser vinner priser",
+ "Gross + net": "Brutto + netto",
+ "Both rankings win prizes – the usual way.": "Båda klasserna vinner priser – det vanliga.",
+ "Gross only": "Bara brutto",
+ "Only the strokes count.": "Bara slagen räknas.",
+ "Net only": "Bara netto",
+ "With the handicap allowance.": "Med handicapandelen.",
+ "Places per ranking": "Placeringar per klass",
+ "Winner only": "Bara vinnare",
+ "{0} places": "{0} placeringar",
+ "GROSS": "BRUTTO",
+ "NET": "NETTO",
+ "Prizes · class {0}": "Priser · klass {0}",
+ "Gross prizes": "Bruttopriser",
+ "Net prizes": "Nettopriser",
+ "{0}. place": "{0}:e plats"
 }
