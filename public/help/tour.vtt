@@ -61,425 +61,453 @@ die Karte wird dann für unterwegs gespeichert.
 Mit „Runde starten“ geht es los.
 
 10
-00:00:59.473 --> 00:01:01.963 line:-2
+00:00:59.534 --> 00:01:02.024 line:-2
 Unter Format wählst du zuerst die Rundenart:
 
 10-2
-00:01:02.013 --> 00:01:05.767 line:-2
+00:01:02.074 --> 00:01:05.838 line:-2
 Turnier, eine Runde mit Freunden oder Training.
 
 11
-00:01:05.867 --> 00:01:09.617 line:-2
-Im Turnier gibt der Caddie nach Regel 4.3 keine Ratschläge –
+00:01:05.938 --> 00:01:08.128 line:-2
+Wählst du „Turnier“, bleibt das Blatt offen:
 
 11-2
-00:01:09.667 --> 00:01:12.796 line:-2
-Entfernungen und Score gehen weiter.
+00:01:08.178 --> 00:01:11.928 line:-2
+Für ein internes Turnier schaltest du darunter „Alle Funktionen“ an –
+
+11-3
+00:01:11.978 --> 00:01:16.166 line:-2
+Wind, Caddie und Grün-Slopes.
 
 12
-00:01:12.896 --> 00:01:15.446 line:-2
-Der Modus legt fest, wie ihr spielt:
+00:01:16.266 --> 00:01:18.396 line:-2
+Die Zeile zeigt dann „Turnier · intern“.
 
 12-2
-00:01:15.496 --> 00:01:22.096 line:-2
-jeder für sich, im Lochspiel oder in Teams – etwa Vierer, Scramble oder Better Ball.
+00:01:18.446 --> 00:01:22.956 line:-2
+Im offiziellen Turnier gibt der Caddie nach Regel 4.3 keine Ratschläge.
+
+12-3
+00:01:23.006 --> 00:01:26.714 line:-2
+Heute spielen wir „Social“ – mit Freunden.
 
 13
-00:01:22.196 --> 00:01:25.626 line:-2
-Beim Scoring wählst du Zählspiel oder Stableford –
+00:01:26.814 --> 00:01:29.224 line:-2
+Der Modus legt fest, wie ihr spielt:
 
 13-2
-00:01:25.676 --> 00:01:29.192 line:-2
-bei Stableford sammelst du auf jedem Loch Punkte.
+00:01:29.274 --> 00:01:35.913 line:-2
+jeder für sich, im Lochspiel oder in Teams – etwa Vierer, Scramble oder Better Ball.
 
 14
-00:01:29.292 --> 00:01:31.422 line:-2
-Nach dem Platz stellst du unter Spieler
+00:01:36.013 --> 00:01:39.283 line:-2
+Beim Scoring wählst du Zählspiel oder Stableford –
 
 14-2
-00:01:31.472 --> 00:01:34.446 line:-2
-deinen Flight zusammen – bis zu vier Spieler.
+00:01:39.333 --> 00:01:42.901 line:-2
+bei Stableford sammelst du auf jedem Loch Punkte.
 
 15
-00:01:34.546 --> 00:01:39.526 line:-2
-Tippe auf „Spieler hinzufügen“ und trage Name und Handicap ein.
+00:01:43.001 --> 00:01:47.631 line:-2
+Direkt darunter steht die HCP-Vorgabe: der Anteil des Handicaps, der zählt.
 
-16
-00:01:39.626 --> 00:01:41.656 line:-2
-Jeder Spieler hat sein eigenes Tee.
-
-16-2
-00:01:41.706 --> 00:01:46.306 line:-2
-Chris spielt heute von einem anderen Tee – die Vorgabe passt sich an.
-
-17
-00:01:46.406 --> 00:01:48.576 line:-2
-So fügst du weitere Spieler hinzu.
-
-17-2
-00:01:48.626 --> 00:01:53.283 line:-2
-Wer schon mit dir gespielt hat, steht beim nächsten Mal mit einem Tipp bereit.
-
-18
-00:01:53.383 --> 00:01:56.593 line:-2
-Einen Spieler nimmst du heraus, indem du ihn nach links wischst.
-
-18-2
-00:01:56.643 --> 00:01:59.107 line:-2
-„Rückgängig“ holt ihn zurück.
-
-19
-00:01:59.207 --> 00:02:02.437 line:-2
-Darunter lädst du deinen Flight auf ihre eigenen Handys ein –
-
-19-2
-00:02:02.487 --> 00:02:04.297 line:-2
-mit QR-Code, Code oder Link.
-
-19-3
-00:02:04.347 --> 00:02:08.669 line:-2
-Unter „Score-Erfassung“ legt ihr fest, wer die Scores einträgt.
-
-20
-00:02:08.769 --> 00:02:13.639 line:-2
-Unter Einstellungen steht die HCP-Vorgabe: der Anteil des Handicaps, der zählt.
-
-20-2
-00:02:13.689 --> 00:02:17.493 line:-2
+15-2
+00:01:47.681 --> 00:01:51.454 line:-2
 Die App schlägt den üblichen Wert für den Modus vor.
 
+16
+00:01:51.554 --> 00:01:53.824 line:-2
+Nach dem Platz stellst du unter Spieler
+
+16-2
+00:01:53.874 --> 00:01:56.988 line:-2
+deinen Flight zusammen – bis zu vier Spieler.
+
+17
+00:01:57.088 --> 00:02:01.810 line:-2
+Tippe auf „Spieler hinzufügen“ und trage Name und Handicap ein.
+
+18
+00:02:01.910 --> 00:02:04.020 line:-2
+Jeder Spieler hat sein eigenes Tee.
+
+18-2
+00:02:04.070 --> 00:02:08.752 line:-2
+Chris spielt heute von einem anderen Tee – die Vorgabe passt sich an.
+
+19
+00:02:08.852 --> 00:02:10.842 line:-2
+So fügst du weitere Spieler hinzu.
+
+19-2
+00:02:10.892 --> 00:02:15.496 line:-2
+Wer schon mit dir gespielt hat, steht beim nächsten Mal mit einem Tipp bereit.
+
+20
+00:02:15.596 --> 00:02:18.926 line:-2
+Einen Spieler nimmst du heraus, indem du ihn nach links wischst.
+
+20-2
+00:02:18.976 --> 00:02:21.443 line:-2
+„Rückgängig“ holt ihn zurück.
+
 21
-00:02:17.593 --> 00:02:19.523 line:-2
-Mit „Runde starten“ spielt ihr los.
+00:02:21.543 --> 00:02:25.013 line:-2
+Darunter lädst du deinen Flight auf ihre eigenen Handys ein –
 
 21-2
-00:02:19.573 --> 00:02:25.291 line:-2
-Unten in der Scorekarte trägst du die Schläge für jeden Spieler ein.
+00:02:25.063 --> 00:02:26.753 line:-2
+mit QR-Code, Code oder Link.
+
+21-3
+00:02:26.803 --> 00:02:31.096 line:-2
+Unter „Score-Erfassung“ legt ihr fest, wer die Scores einträgt.
 
 22
-00:02:25.310 --> 00:02:30.120 line:-2
-Auf der Runde siehst du das Loch im Luftbild, der blaue Punkt bist du.
+00:02:31.196 --> 00:02:33.406 line:-2
+Mit „Runde starten“ spielt ihr los.
+
+22-2
+00:02:33.456 --> 00:02:47.230 line:-2
+Unten in der Scorekarte trägst du die Schläge für jeden Spieler ein.
 
 23
-00:02:30.220 --> 00:02:33.270 line:-2
-Rechts oben stehen die Entfernungen von deinem Standort:
-
-23-2
-00:02:33.320 --> 00:02:36.965 line:-2
-bis hinten, in die Mitte und nach vorne aufs Grün.
+00:02:47.243 --> 00:02:52.053 line:-2
+Auf der Runde siehst du das Loch im Luftbild, der blaue Punkt bist du.
 
 24
-00:02:37.065 --> 00:02:39.095 line:-2
-Die Linie zeigt den Weg zur Fahne.
+00:02:52.153 --> 00:02:55.203 line:-2
+Rechts oben stehen die Entfernungen von deinem Standort:
 
 24-2
-00:02:39.145 --> 00:02:43.244 line:-2
-Ziehst du den Ring, siehst du die Längen bis zu jeder Stelle.
+00:02:55.253 --> 00:02:58.898 line:-2
+bis hinten, in die Mitte und nach vorne aufs Grün.
 
 25
-00:02:43.344 --> 00:02:45.034 line:-2
-Links oben steht das Wetter.
+00:02:58.998 --> 00:03:01.028 line:-2
+Die Linie zeigt den Weg zur Fahne.
 
 25-2
-00:02:45.084 --> 00:02:49.487 line:-2
-Wind und Temperatur rechnet die App in jede Empfehlung ein.
+00:03:01.078 --> 00:03:05.177 line:-2
+Ziehst du den Ring, siehst du die Längen bis zu jeder Stelle.
 
 26
-00:02:49.587 --> 00:02:51.017 line:-2
-Rechts die Werkzeuge:
+00:03:05.277 --> 00:03:06.967 line:-2
+Links oben steht das Wetter.
 
 26-2
-00:02:51.067 --> 00:02:56.262 line:-2
-die Entfernungen zu Bunkern und Wasser – und 2D für die gezeichnete Bahn.
+00:03:07.017 --> 00:03:11.420 line:-2
+Wind und Temperatur rechnet die App in jede Empfehlung ein.
 
 27
-00:02:56.362 --> 00:03:00.212 line:-2
-Der Kegel zeigt deine Streuung mit dem Schläger, den der Caddie empfiehlt:
+00:03:11.520 --> 00:03:12.950 line:-2
+Rechts die Werkzeuge:
 
 27-2
-00:03:00.262 --> 00:03:03.540 line:-2
-in der Ellipse landen acht von zehn Bällen.
+00:03:13.000 --> 00:03:18.195 line:-2
+die Entfernungen zu Bunkern und Wasser – und 2D für die gezeichnete Bahn.
 
 28
-00:03:03.640 --> 00:03:06.330 line:-2
-Neben dem Kegel wählst du einen anderen Schläger –
+00:03:18.295 --> 00:03:22.145 line:-2
+Der Kegel zeigt deine Streuung mit dem Schläger, den der Caddie empfiehlt:
 
 28-2
-00:03:06.380 --> 00:03:08.290 line:-2
-seine Ellipse liegt dann in seiner Länge.
-
-28-3
-00:03:08.340 --> 00:03:12.201 line:-2
-So siehst du, welcher Schläger zwischen die Gefahren passt.
+00:03:22.195 --> 00:03:25.473 line:-2
+in der Ellipse landen acht von zehn Bällen.
 
 29
-00:03:12.301 --> 00:03:13.791 line:-2
-Unten wechselst du das Loch.
+00:03:25.573 --> 00:03:28.263 line:-2
+Neben dem Kegel wählst du einen anderen Schläger –
 
 29-2
-00:03:13.841 --> 00:03:20.871 line:-2
-Ziehst du die Leiste hoch, siehst du alle Löcher, die Scorekarte, Pause und Beenden.
+00:03:28.313 --> 00:03:30.223 line:-2
+seine Ellipse liegt dann in seiner Länge.
+
+29-3
+00:03:30.273 --> 00:03:34.134 line:-2
+So siehst du, welcher Schläger zwischen die Gefahren passt.
 
 30
-00:03:20.887 --> 00:03:23.633 line:-2
-Tippe auf das Caddie-Symbol rechts.
+00:03:34.234 --> 00:03:35.724 line:-2
+Unten wechselst du das Loch.
+
+30-2
+00:03:35.774 --> 00:03:42.804 line:-2
+Ziehst du die Leiste hoch, siehst du alle Löcher, die Scorekarte, Pause und Beenden.
 
 31
-00:03:23.733 --> 00:03:28.983 line:-2
-Der Caddie nennt den Schläger, die Entfernung und wie lang der Schlag heute spielt –
-
-31-2
-00:03:29.033 --> 00:03:31.429 line:-2
-mit Wind, Temperatur und Höhe.
+00:03:42.820 --> 00:03:45.566 line:-2
+Tippe auf das Caddie-Symbol rechts.
 
 32
-00:03:31.529 --> 00:03:34.359 line:-2
-Darunter stehen sein Plan, deine Notiz zum Loch,
+00:03:45.666 --> 00:03:50.916 line:-2
+Der Caddie nennt den Schläger, die Entfernung und wie lang der Schlag heute spielt –
 
 32-2
-00:03:34.409 --> 00:03:38.864 line:-2
-deine Streuung mit diesem Schläger und die Gefahren mit ihren Entfernungen.
+00:03:50.966 --> 00:03:53.362 line:-2
+mit Wind, Temperatur und Höhe.
 
 33
-00:03:38.964 --> 00:03:42.574 line:-2
-Unter „Fragen“ tippst du eine Frage an – oder du fragst per Sprache.
+00:03:53.462 --> 00:03:56.292 line:-2
+Darunter stehen sein Plan, deine Notiz zum Loch,
 
 33-2
-00:03:42.624 --> 00:03:45.889 line:-2
-Eine kurze Pause beendet deine Frage.
+00:03:56.342 --> 00:04:00.797 line:-2
+deine Streuung mit diesem Schläger und die Gefahren mit ihren Entfernungen.
 
 34
-00:03:45.989 --> 00:03:49.604 line:-2
-„Regeln“ öffnet die Golfregeln zum Nachschlagen.
+00:04:00.897 --> 00:04:04.507 line:-2
+Unter „Fragen“ tippst du eine Frage an – oder du fragst per Sprache.
+
+34-2
+00:04:04.557 --> 00:04:07.822 line:-2
+Eine kurze Pause beendet deine Frage.
 
 35
-00:03:49.704 --> 00:03:52.674 line:-2
-In den Lochnotizen hakst du an, wo das Aus ist,
-
-35-2
-00:03:52.724 --> 00:03:55.194 line:-2
-und hältst fest, was keine Karte zeigt.
-
-35-3
-00:03:55.244 --> 00:04:01.011 line:-2
-Gespeichert wird von selbst.
+00:04:07.922 --> 00:04:11.537 line:-2
+„Regeln“ öffnet die Golfregeln zum Nachschlagen.
 
 36
-00:04:01.111 --> 00:04:05.917 line:-2
-Der grüne Punkt zeigt: hier gibt es eine Notiz.
+00:04:11.637 --> 00:04:14.607 line:-2
+In den Lochnotizen hakst du an, wo das Aus ist,
+
+36-2
+00:04:14.657 --> 00:04:17.127 line:-2
+und hältst fest, was keine Karte zeigt.
+
+36-3
+00:04:17.177 --> 00:04:22.944 line:-2
+Gespeichert wird von selbst.
 
 37
-00:04:05.941 --> 00:04:08.971 line:-2
-Während du spielst, zeichnet die App deinen Weg auf
-
-37-2
-00:04:09.021 --> 00:04:12.257 line:-2
-und findet die Schläge nach der Runde von selbst.
+00:04:23.044 --> 00:04:27.850 line:-2
+Der grüne Punkt zeigt: hier gibt es eine Notiz.
 
 38
-00:04:12.357 --> 00:04:17.928 line:-2
-Genauer wird es mit „Schlag hier“: tippe beim Ball darauf, bevor du schlägst.
+00:04:27.874 --> 00:04:30.904 line:-2
+Während du spielst, zeichnet die App deinen Weg auf
+
+38-2
+00:04:30.954 --> 00:04:34.190 line:-2
+und findet die Schläge nach der Runde von selbst.
 
 39
-00:04:18.028 --> 00:04:21.860 line:-2
-Dann gehst du zu deinem Ball – die Entfernungen gehen mit.
+00:04:34.290 --> 00:04:39.861 line:-2
+Genauer wird es mit „Schlag hier“: tippe beim Ball darauf, bevor du schlägst.
 
 40
-00:04:21.960 --> 00:04:23.990 line:-2
-Auf dem Grün trägst du den Score ein:
-
-40-2
-00:04:24.040 --> 00:04:27.957 line:-2
-unten auf den Score tippen, dann Schläge und Putts.
+00:04:39.961 --> 00:04:43.793 line:-2
+Dann gehst du zu deinem Ball – die Entfernungen gehen mit.
 
 41
-00:04:28.057 --> 00:04:33.628 line:-2
-Mit dem Pfeil geht es zum nächsten Loch. Fehlt ein Score, erinnert dich die App.
+00:04:43.893 --> 00:04:45.923 line:-2
+Auf dem Grün trägst du den Score ein:
+
+41-2
+00:04:45.973 --> 00:04:49.890 line:-2
+unten auf den Score tippen, dann Schläge und Putts.
 
 42
-00:04:33.728 --> 00:04:37.358 line:-2
-Am Ende ziehst du die Leiste hoch und tippst auf „Beenden“.
-
-42-2
-00:04:37.408 --> 00:04:41.954 line:-2
-Danach wählst du, ob du die Runde gleich prüfst.
+00:04:49.990 --> 00:04:55.561 line:-2
+Mit dem Pfeil geht es zum nächsten Loch. Fehlt ein Score, erinnert dich die App.
 
 43
-00:04:41.982 --> 00:04:44.552 line:-2
-Nach der Runde steht sie auf der Startseite bei
+00:04:55.661 --> 00:04:59.291 line:-2
+Am Ende ziehst du die Leiste hoch und tippst auf „Beenden“.
 
 43-2
-00:04:44.602 --> 00:04:48.206 line:-2
-„Runden prüfen & signieren“ – und unter „Runden“.
+00:04:59.341 --> 00:05:03.887 line:-2
+Danach wählst du, ob du die Runde gleich prüfst.
 
 44
-00:04:48.306 --> 00:04:53.960 line:-2
-Öffne die Runde und tippe unten rechts auf „Schläge prüfen“.
+00:05:03.921 --> 00:05:06.491 line:-2
+Nach der Runde steht sie auf der Startseite bei
+
+44-2
+00:05:06.541 --> 00:05:10.148 line:-2
+„Runden prüfen & signieren“ – und unter „Runden“.
 
 45
-00:04:54.060 --> 00:04:58.150 line:-2
-Die App hat die Schläge aus deiner GPS-Spur gefunden –
-
-45-2
-00:04:58.200 --> 00:05:01.430 line:-2
-Schlagart und Schläger schlägt sie so vor, wie du sie bisher gespielt hast.
-
-45-3
-00:05:01.480 --> 00:05:05.915 line:-2
-Stimmt ein Punkt nicht, ziehst du ihn auf der Karte an seine Stelle.
+00:05:10.248 --> 00:05:16.895 line:-2
+Öffne die Runde und tippe unten rechts auf die Lupe – „Schläge prüfen“.
 
 46
-00:05:06.015 --> 00:05:09.425 line:-2
-Ein Tipp auf einen Schlag öffnet Schläger, Lage und Schlagart.
+00:05:16.995 --> 00:05:21.085 line:-2
+Die App hat die Schläge aus deiner GPS-Spur gefunden –
 
 46-2
-00:05:09.475 --> 00:05:14.583 line:-2
-Hat Wind den Schlag länger gemacht, steht dabei, wie lang er gespielt hat.
+00:05:21.135 --> 00:05:24.365 line:-2
+Schlagart und Schläger schlägt sie so vor, wie du sie bisher gespielt hast.
+
+46-3
+00:05:24.415 --> 00:05:28.853 line:-2
+Stimmt ein Punkt nicht, ziehst du ihn auf der Karte an seine Stelle.
 
 47
-00:05:14.683 --> 00:05:19.853 line:-2
-Darunter hältst du fest, wie du getroffen hast und welche Flugbahn der Ball hatte –
+00:05:28.953 --> 00:05:32.743 line:-2
+Ein Tipp auf einen Schlag öffnet seine Maske. Oben in einer Zeile:
 
 47-2
-00:05:19.903 --> 00:05:23.093 line:-2
-die neun von Pull-Hook bis Push-Slice, dazu Draw und Fade.
+00:05:32.793 --> 00:05:35.223 line:-2
+wie weit es noch zur Fahne war und wie lang der Schlag war –
 
 47-3
-00:05:23.143 --> 00:05:26.718 line:-2
-Aus guten Treffern lernt die App deine Weiten.
+00:05:35.273 --> 00:05:37.785 line:-2
+rechts daneben „Ort ändern“.
 
 48
-00:05:26.818 --> 00:05:31.512 line:-2
-Passt alles, tippst du auf „Loch passt“ – und weiter zum nächsten Loch.
+00:05:37.885 --> 00:05:42.055 line:-2
+Hat Wind den Schlag länger gemacht, steht darunter, wie lang er gespielt hat.
+
+48-2
+00:05:42.105 --> 00:05:45.684 line:-2
+Dann wählst du Schläger, Lage und Schlagart.
 
 49
-00:05:31.612 --> 00:05:33.422 line:-2
-Am letzten Loch signierst du die Runde.
+00:05:45.784 --> 00:05:50.054 line:-2
+Darunter hältst du fest, wie du getroffen hast und welche Flugbahn der Ball hatte –
 
 49-2
-00:05:33.472 --> 00:05:40.140 line:-2
-Nur signierte Runden zählen in deiner Statistik.
+00:05:50.104 --> 00:05:53.454 line:-2
+die neun von Pull-Hook bis Push-Slice, dazu Draw und Fade.
+
+49-3
+00:05:53.504 --> 00:05:56.847 line:-2
+Aus guten Treffern lernt die App deine Weiten.
 
 50
-00:05:40.240 --> 00:05:44.910 line:-2
-Danach siehst du dein Rundenfazit, deine Statistik und Strokes Gained dieser Runde.
-
-50-2
-00:05:44.960 --> 00:05:50.327 line:-2
-Ganz unten teilst, exportierst oder löschst du die Runde.
+00:05:56.947 --> 00:06:01.691 line:-2
+Passt alles, tippst du auf „Loch passt“ – und weiter zum nächsten Loch.
 
 51
-00:05:50.350 --> 00:05:54.934 line:-2
-Unter Statistik siehst du, wo du Schläge gewinnst und verlierst.
+00:06:01.791 --> 00:06:03.701 line:-2
+Am letzten Loch signierst du die Runde.
+
+51-2
+00:06:03.751 --> 00:06:10.542 line:-2
+Nur signierte Runden zählen in deiner Statistik.
 
 52
-00:05:55.034 --> 00:05:57.024 line:-2
-Strokes Gained vergleicht Abschlag,
+00:06:10.642 --> 00:06:15.552 line:-2
+Danach siehst du dein Rundenfazit, deine Statistik und Strokes Gained dieser Runde.
 
 52-2
-00:05:57.074 --> 00:06:01.517 line:-2
-Annäherung, kurzes Spiel und Putten mit deiner Vergleichsgruppe.
+00:06:15.602 --> 00:06:20.845 line:-2
+Ganz unten teilst, exportierst oder löschst du die Runde.
 
 53
-00:06:01.617 --> 00:06:04.447 line:-2
-Oben wählst du mit den Pfeilen, welche Runden zählen –
-
-53-2
-00:06:04.497 --> 00:06:07.938 line:-2
-alle, die letzten zehn oder die letzten fünf.
+00:06:20.856 --> 00:06:25.440 line:-2
+Unter Statistik siehst du, wo du Schläge gewinnst und verlierst.
 
 54
-00:06:08.038 --> 00:06:11.948 line:-2
-Darunter das Thema – ein Tipp zeigt alle. Zum Beispiel Schläger:
+00:06:25.540 --> 00:06:27.530 line:-2
+Strokes Gained vergleicht Abschlag,
 
 54-2
-00:06:11.998 --> 00:06:16.199 line:-2
-deine Weiten aus guten Treffern, umgerechnet auf Windstille.
+00:06:27.580 --> 00:06:32.023 line:-2
+Annäherung, kurzes Spiel und Putten mit deiner Vergleichsgruppe.
 
 55
-00:06:16.299 --> 00:06:19.229 line:-2
-Der Streukegel zeigt alle Schläger auf einen Blick:
+00:06:32.123 --> 00:06:34.953 line:-2
+Oben wählst du mit den Pfeilen, welche Runden zählen –
 
 55-2
-00:06:19.279 --> 00:06:22.089 line:-2
-je länger der Schlag, desto breiter die Ellipse.
-
-55-3
-00:06:22.139 --> 00:06:25.393 line:-2
-Damit planst du Löcher und einzelne Schläge.
+00:06:35.003 --> 00:06:38.444 line:-2
+alle, die letzten zehn oder die letzten fünf.
 
 56
-00:06:25.493 --> 00:06:28.643 line:-2
-Je Schläger siehst du jeden Schlag als Punkt um die Ziellinie,
+00:06:38.544 --> 00:06:42.454 line:-2
+Darunter das Thema – ein Tipp zeigt alle. Zum Beispiel Schläger:
 
 56-2
-00:06:28.693 --> 00:06:32.228 line:-2
-deine Treffer und deine häufigste Flugbahn.
+00:06:42.504 --> 00:06:46.705 line:-2
+deine Weiten aus guten Treffern, umgerechnet auf Windstille.
 
 57
-00:06:32.328 --> 00:06:33.638 line:-2
-Ganz unten der Putter:
+00:06:46.805 --> 00:06:49.735 line:-2
+Der Streukegel zeigt alle Schläger auf einen Blick:
 
 57-2
-00:06:33.688 --> 00:06:39.567 line:-2
-wie oft du aus welcher Entfernung einlochst – und ab wo die 3-Putts kommen.
+00:06:49.785 --> 00:06:52.595 line:-2
+je länger der Schlag, desto breiter die Ellipse.
+
+57-3
+00:06:52.645 --> 00:06:55.899 line:-2
+Damit planst du Löcher und einzelne Schläge.
 
 58
-00:06:39.667 --> 00:06:44.778 line:-2
-„Mein Golf“ zeigt deinen Verlauf und deine Bestleistungen.
+00:06:55.999 --> 00:06:59.149 line:-2
+Je Schläger siehst du jeden Schlag als Punkt um die Ziellinie,
+
+58-2
+00:06:59.199 --> 00:07:02.734 line:-2
+deine Treffer und deine häufigste Flugbahn.
 
 59
-00:06:44.787 --> 00:06:48.797 line:-2
-Im Profil stehen deine persönlichen Daten mit deinem Handicap-Index –
+00:07:02.834 --> 00:07:04.144 line:-2
+Ganz unten der Putter:
 
 59-2
-00:06:48.847 --> 00:06:50.913 line:-2
-und die Sprache der App.
+00:07:04.194 --> 00:07:10.074 line:-2
+wie oft du aus welcher Entfernung einlochst – und ab wo die 3-Putts kommen.
 
 60
-00:06:51.013 --> 00:06:54.143 line:-2
-Darunter unter Golf, Zeile für Zeile:
-
-60-2
-00:06:54.193 --> 00:06:58.971 line:-2
-dein Bag, dein Heimatclub, dein Standard-Tee und ob du in Meter oder Yards spielst.
+00:07:10.174 --> 00:07:15.285 line:-2
+„Mein Golf“ zeigt deinen Verlauf und deine Bestleistungen.
 
 61
-00:06:59.071 --> 00:07:01.241 line:-2
-Unter „Mein Bag“ trägst du deine Weiten ein –
+00:07:15.293 --> 00:07:19.303 line:-2
+Im Profil stehen deine persönlichen Daten mit deinem Handicap-Index –
 
 61-2
-00:07:01.291 --> 00:07:03.261 line:-2
-für den vollen Schwung und für Pitches –
-
-61-3
-00:07:03.311 --> 00:07:06.664 line:-2
-oder übernimmst die, die die App gelernt hat.
+00:07:19.353 --> 00:07:21.419 line:-2
+und die Sprache der App.
 
 62
-00:07:06.764 --> 00:07:09.594 line:-2
-Mit einem Konto – Google oder Benutzername –
+00:07:21.519 --> 00:07:24.649 line:-2
+Darunter unter Golf, Zeile für Zeile:
 
 62-2
-00:07:09.644 --> 00:07:15.049 line:-2
-sind Runden und Einstellungen auf iPhone, iPad und Computer gleich.
+00:07:24.699 --> 00:07:29.477 line:-2
+dein Bag, dein Heimatclub, dein Standard-Tee und ob du in Meter oder Yards spielst.
 
 63
-00:07:15.149 --> 00:07:17.959 line:-2
-Mitteilungen erinnern dich an ungeprüfte Runden,
+00:07:29.577 --> 00:07:31.747 line:-2
+Unter „Mein Bag“ trägst du deine Weiten ein –
 
 63-2
-00:07:18.009 --> 00:07:21.879 line:-2
-melden Turniere, Wetten und die Abrechnung und warnen vor Gewitter.
+00:07:31.797 --> 00:07:33.767 line:-2
+für den vollen Schwung und für Pitches –
 
 63-3
-00:07:21.929 --> 00:07:26.308 line:-2
-Jede Art schaltest du in ihrer eigenen Zeile an oder aus.
+00:07:33.817 --> 00:07:37.170 line:-2
+oder übernimmst die, die die App gelernt hat.
 
 64
-00:07:26.408 --> 00:07:30.438 line:-2
-Unter „Hilfe“ findest du diese Videos und Antworten auf häufige Fragen.
+00:07:37.270 --> 00:07:40.100 line:-2
+Mit einem Konto – Google oder Benutzername –
 
 64-2
-00:07:30.488 --> 00:07:34.095 line:-2
+00:07:40.150 --> 00:07:45.555 line:-2
+sind Runden und Einstellungen auf iPhone, iPad und Computer gleich.
+
+65
+00:07:45.655 --> 00:07:48.465 line:-2
+Mitteilungen erinnern dich an ungeprüfte Runden,
+
+65-2
+00:07:48.515 --> 00:07:52.385 line:-2
+melden Turniere, Wetten und die Abrechnung und warnen vor Gewitter.
+
+65-3
+00:07:52.435 --> 00:07:56.814 line:-2
+Jede Art schaltest du in ihrer eigenen Zeile an oder aus.
+
+66
+00:07:56.914 --> 00:08:00.944 line:-2
+Unter „Hilfe“ findest du diese Videos und Antworten auf häufige Fragen.
+
+66-2
+00:08:00.994 --> 00:08:04.601 line:-2
 Viel Spaß auf der Runde!

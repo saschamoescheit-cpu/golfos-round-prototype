@@ -1,97 +1,113 @@
 WEBVTT
 
 1
-00:00:00.006 --> 00:00:02.496 line:-2
+00:00:00.067 --> 00:00:02.557 line:-2
 Unter Format wählst du zuerst die Rundenart:
 
 1-2
-00:00:02.546 --> 00:00:06.300 line:-2
+00:00:02.607 --> 00:00:06.371 line:-2
 Turnier, eine Runde mit Freunden oder Training.
 
 2
-00:00:06.400 --> 00:00:10.150 line:-2
-Im Turnier gibt der Caddie nach Regel 4.3 keine Ratschläge –
+00:00:06.471 --> 00:00:08.661 line:-2
+Wählst du „Turnier“, bleibt das Blatt offen:
 
 2-2
-00:00:10.200 --> 00:00:13.329 line:-2
-Entfernungen und Score gehen weiter.
+00:00:08.711 --> 00:00:12.461 line:-2
+Für ein internes Turnier schaltest du darunter „Alle Funktionen“ an –
+
+2-3
+00:00:12.511 --> 00:00:16.699 line:-2
+Wind, Caddie und Grün-Slopes.
 
 3
-00:00:13.429 --> 00:00:15.979 line:-2
-Der Modus legt fest, wie ihr spielt:
+00:00:16.799 --> 00:00:18.929 line:-2
+Die Zeile zeigt dann „Turnier · intern“.
 
 3-2
-00:00:16.029 --> 00:00:22.629 line:-2
-jeder für sich, im Lochspiel oder in Teams – etwa Vierer, Scramble oder Better Ball.
+00:00:18.979 --> 00:00:23.489 line:-2
+Im offiziellen Turnier gibt der Caddie nach Regel 4.3 keine Ratschläge.
+
+3-3
+00:00:23.539 --> 00:00:27.247 line:-2
+Heute spielen wir „Social“ – mit Freunden.
 
 4
-00:00:22.729 --> 00:00:26.159 line:-2
-Beim Scoring wählst du Zählspiel oder Stableford –
+00:00:27.347 --> 00:00:29.757 line:-2
+Der Modus legt fest, wie ihr spielt:
 
 4-2
-00:00:26.209 --> 00:00:29.725 line:-2
-bei Stableford sammelst du auf jedem Loch Punkte.
+00:00:29.807 --> 00:00:36.446 line:-2
+jeder für sich, im Lochspiel oder in Teams – etwa Vierer, Scramble oder Better Ball.
 
 5
-00:00:29.825 --> 00:00:31.955 line:-2
-Nach dem Platz stellst du unter Spieler
+00:00:36.546 --> 00:00:39.816 line:-2
+Beim Scoring wählst du Zählspiel oder Stableford –
 
 5-2
-00:00:32.005 --> 00:00:34.979 line:-2
-deinen Flight zusammen – bis zu vier Spieler.
+00:00:39.866 --> 00:00:43.434 line:-2
+bei Stableford sammelst du auf jedem Loch Punkte.
 
 6
-00:00:35.079 --> 00:00:40.059 line:-2
-Tippe auf „Spieler hinzufügen“ und trage Name und Handicap ein.
+00:00:43.534 --> 00:00:48.164 line:-2
+Direkt darunter steht die HCP-Vorgabe: der Anteil des Handicaps, der zählt.
 
-7
-00:00:40.159 --> 00:00:42.189 line:-2
-Jeder Spieler hat sein eigenes Tee.
-
-7-2
-00:00:42.239 --> 00:00:46.839 line:-2
-Chris spielt heute von einem anderen Tee – die Vorgabe passt sich an.
-
-8
-00:00:46.939 --> 00:00:49.109 line:-2
-So fügst du weitere Spieler hinzu.
-
-8-2
-00:00:49.159 --> 00:00:53.816 line:-2
-Wer schon mit dir gespielt hat, steht beim nächsten Mal mit einem Tipp bereit.
-
-9
-00:00:53.916 --> 00:00:57.126 line:-2
-Einen Spieler nimmst du heraus, indem du ihn nach links wischst.
-
-9-2
-00:00:57.176 --> 00:00:59.640 line:-2
-„Rückgängig“ holt ihn zurück.
-
-10
-00:00:59.740 --> 00:01:02.970 line:-2
-Darunter lädst du deinen Flight auf ihre eigenen Handys ein –
-
-10-2
-00:01:03.020 --> 00:01:04.830 line:-2
-mit QR-Code, Code oder Link.
-
-10-3
-00:01:04.880 --> 00:01:09.202 line:-2
-Unter „Score-Erfassung“ legt ihr fest, wer die Scores einträgt.
-
-11
-00:01:09.302 --> 00:01:14.172 line:-2
-Unter Einstellungen steht die HCP-Vorgabe: der Anteil des Handicaps, der zählt.
-
-11-2
-00:01:14.222 --> 00:01:18.026 line:-2
+6-2
+00:00:48.214 --> 00:00:51.987 line:-2
 Die App schlägt den üblichen Wert für den Modus vor.
 
+7
+00:00:52.087 --> 00:00:54.357 line:-2
+Nach dem Platz stellst du unter Spieler
+
+7-2
+00:00:54.407 --> 00:00:57.521 line:-2
+deinen Flight zusammen – bis zu vier Spieler.
+
+8
+00:00:57.621 --> 00:01:02.343 line:-2
+Tippe auf „Spieler hinzufügen“ und trage Name und Handicap ein.
+
+9
+00:01:02.443 --> 00:01:04.553 line:-2
+Jeder Spieler hat sein eigenes Tee.
+
+9-2
+00:01:04.603 --> 00:01:09.285 line:-2
+Chris spielt heute von einem anderen Tee – die Vorgabe passt sich an.
+
+10
+00:01:09.385 --> 00:01:11.375 line:-2
+So fügst du weitere Spieler hinzu.
+
+10-2
+00:01:11.425 --> 00:01:16.029 line:-2
+Wer schon mit dir gespielt hat, steht beim nächsten Mal mit einem Tipp bereit.
+
+11
+00:01:16.129 --> 00:01:19.459 line:-2
+Einen Spieler nimmst du heraus, indem du ihn nach links wischst.
+
+11-2
+00:01:19.509 --> 00:01:21.976 line:-2
+„Rückgängig“ holt ihn zurück.
+
 12
-00:01:18.126 --> 00:01:20.056 line:-2
-Mit „Runde starten“ spielt ihr los.
+00:01:22.076 --> 00:01:25.546 line:-2
+Darunter lädst du deinen Flight auf ihre eigenen Handys ein –
 
 12-2
-00:01:20.106 --> 00:01:25.825 line:-2
+00:01:25.596 --> 00:01:27.286 line:-2
+mit QR-Code, Code oder Link.
+
+12-3
+00:01:27.336 --> 00:01:31.629 line:-2
+Unter „Score-Erfassung“ legt ihr fest, wer die Scores einträgt.
+
+13
+00:01:31.729 --> 00:01:33.939 line:-2
+Mit „Runde starten“ spielt ihr los.
+
+13-2
+00:01:33.989 --> 00:01:47.763 line:-2
 Unten in der Scorekarte trägst du die Schläge für jeden Spieler ein.
