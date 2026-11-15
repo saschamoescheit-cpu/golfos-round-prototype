@@ -50,6 +50,10 @@ export interface TourSeries {
   /** one tournament over several rounds (Sascha 04.11.2026: "a tournament over three rounds – or a series of three
    *  tournaments"): one name, one field, set up together; the cut after a round – the best `top` and ties play on */
   multi?: { cut?: { after: number; top: number } | null };
+  /** what the whole series is played for (Sascha 15.11.2026: "Sieger der Turnierserie aus X Runden") – on its total */
+  prizes?: TourPrizes | null;
+  /** the one settlement at its end – day prizes and its own together: a payment marked paid by the host, `${from}>${to}` → when */
+  paid?: Record<string, string>;
 }
 export interface SeriesEntry {
   code: string;
@@ -346,6 +350,14 @@ export async function renameSeries(code: string, name: string): Promise<boolean>
     const ev = await freshTour(r.code);
     if (ev) await changeTour(r.code, { ...ev, series: { code, name } });
   }
+  return true;
+}
+
+/** The host sets what the series is played for, or marks a payment of its settlement paid (Sascha 15.11.2026). */
+export async function changeSeriesPrizes(code: string, patch: { prizes?: TourPrizes | null; paid?: Record<string, string> }): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, ...patch }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
   return true;
 }
 

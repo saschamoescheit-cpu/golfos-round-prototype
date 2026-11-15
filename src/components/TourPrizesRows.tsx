@@ -13,7 +13,7 @@ const COUNTS = [0, 1, 2, 3, 4, 5];
 /** "Worum" of a tournament (Sascha 14.11.2026, mock-ups 2 and 3 "Turnier-Preise"): what is played for as in Games, the
  *  entry fee per player and who collects it, then an amount per place – gross, net (per class), the special prizes;
  *  the pot and the prizes added up below, a warning when the prizes are more than the pot. */
-export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: TourPrizes | null) => void; players: string[]; net: boolean; classes: string[]; specials: Special[]; holeName: (i: number) => string }) {
+export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: TourPrizes | null) => void; players: string[]; net: boolean; classes: string[]; specials: Special[]; holeName: (i: number) => string; /** the heading – "Worum · ganze Serie" on a series (15.11.2026) */ title?: string }) {
   const v = props.value;
   const prize = v?.prize ?? null;
   const on = !!prize && !isNone(prize);
@@ -32,7 +32,7 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
   const amt = (x: number) => (prize ? prizeAmount(x, prize) : String(x));
   return (
     <section className="setup-part tour-prizes">
-      <span className="eyebrow">{tr('Played for', 'Worum')}</span>
+      <span className="eyebrow">{props.title ?? tr('Played for', 'Worum')}</span>
       <SettingsList>
         <PrizeRow
           noWho

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { DoneFab, FloatActions } from '../components/FloatActions';
 import { seriesStandings } from '../lib/seriesstandings';
 import { TourPrizeBoard, tourPrizeResult } from '../components/TourPrizeBoard';
+import { SeriesPrizeBoard, settledInSeries } from '../components/SeriesPrizeBoard';
+import { TourPrizesRows } from '../components/TourPrizesRows';
+import type { TourPrizes } from '../lib/tourprizes';
 import { keyName, wonBy } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { ChoiceRow, OnOffRow, SettingsList, SettingsRow, TickRow, ToggleList, ToggleRow } from '../components/Settings';
@@ -10,7 +13,7 @@ import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
 import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
-import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
+import { adoptIntoSeries, changeSeriesPrizes, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
 import { TopBar } from '../components/ui';
@@ -791,6 +794,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   const [at, setAt] = useState<Date | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // what the series is played for, as just set – saved at once, shown before the server answers (Sascha 15.11.2026)
+  const [prizeDraft, setPrizeDraft] = useState<TourPrizes | null | undefined>(undefined);
   const today = dayOf(new Date());
   const codes = entry?.series.rounds.map((r) => r.code).join() ?? '';
   useEffect(() => {
@@ -874,6 +879,24 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
     props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, rounds: d.rounds.map((r) => ({ ...r, code: undefined, base: r.course ? undefined : r.base, date: next })), name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
   };
   const lastRound = [...s.rounds].reverse().map((r) => tours.find((t) => t.code === r.code)).find(Boolean);
+  // the series' prizes (Sascha 15.11.2026: "Sieger der Turnierserie aus X Runden" – on the series page, one settlement
+  // at the end): each round with its tournament's own prizes, the series' on its total
+  const prizedEvs = roundEvs.map((e, k) => (e ? { ...e, prizes: tours.find((t) => t.code === s.rounds[k].code)?.ev.prizes } : null));
+  const seriesPrizes = prizeDraft !== undefined ? prizeDraft : (s.prizes ?? null);
+  const fieldNames = [...new Map(roundEvs.flatMap((e) => (e ? flightsOf(e).flatMap((fl) => fl.players.map((p) => p.name)) : [])).filter((n) => n.trim()).map((n) => [n.trim().toLowerCase(), n])).values()];
+  const seriesNet = roundEvs.some((e) => !!e && (e.format?.scoring ?? 'net') !== 'stroke' && (e.format?.allowance ?? 100) > 0);
+  const setSeriesPrizes = async (p: TourPrizes | null) => {
+    setPrizeDraft(p);
+    const ok = await changeSeriesPrizes(props.code, { prizes: p });
+    setMsg(ok ? null : NO_NET());
+  };
+  const markSeriesPaid = async (key: string, on: boolean) => {
+    const paid = { ...(s.paid ?? {}) };
+    if (on) paid[key] = new Date().toISOString();
+    else delete paid[key];
+    const ok = await changeSeriesPrizes(props.code, { paid });
+    setMsg(ok ? null : NO_NET());
+  };
   return (
     <main className="screen tour-screen">
       <TopBar
@@ -926,6 +949,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         note={liveNote(evs, at)}
         cutAfter={cutPlayed ? cut!.after : undefined}
       />
+      <SeriesPrizeBoard series={{ prizes: seriesPrizes, paid: s.paid }} evs={prizedEvs} host={host} onPaid={(k, on) => void markSeriesPaid(k, on)} />
       {/* the host deals a round by result once the rounds before are played (Sascha 04.11.2026) */}
       {host &&
         toDeal.map(({ r, k, e }) => {
@@ -976,6 +1000,19 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
             <SettingsRow label={multi ? tr('Take in a tournament as a round', 'Turnier als Runde aufnehmen') : tr('Take in a tournament', 'Vorhandenes Turnier aufnehmen')} onClick={() => setSheet('adopt')} />
           )}
         </SettingsList>
+      )}
+      {/* what the whole series is played for – the host's rows, under the rounds (Sascha 15.11.2026, "Auf der Serienseite") */}
+      {host && (
+        <TourPrizesRows
+          title={tr('Played for · the whole series', 'Worum · ganze Serie')}
+          value={seriesPrizes}
+          onChange={(p) => void setSeriesPrizes(p)}
+          players={fieldNames}
+          net={seriesNet}
+          classes={[]}
+          specials={[]}
+          holeName={(i) => String(i + 1)}
+        />
       )}
       {host && <TourInvite code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} />}
       {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
@@ -1100,7 +1137,9 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
 
 export function TourScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
   useTop(props.code);
-  const entry = useTours().find((e) => e.code === props.code);
+  const allTours = useTours();
+  const allSeries = useSeries();
+  const entry = allTours.find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete' | 'live'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -1192,6 +1231,10 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   // the prizes (Sascha 14.11.2026): from the live scores, the plan's prizes and payments – the host's marks come with the
   // plan, not with the flights
   const prized = { ...(live ?? ev), prizes: ev.prizes };
+  // a tournament of a series: its prizes settled once at the end of the series, together with the series' own (Sascha
+  // 15.11.2026: "Eine Abrechnung am Ende") – here only who wins what
+  const mySeries = ev.series ? allSeries.find((x) => x.code === ev.series!.code && !x.series.deletedAt) : undefined;
+  const settledIn = mySeries && settledInSeries(mySeries.series, mySeries.series.rounds.map((r) => allTours.find((t) => t.code === r.code)?.ev.prizes), ev.prizes) ? mySeries.series.name : undefined;
   const prizeResult = played ? tourPrizeResult(prized) : null;
   const won = prizeResult ? wonBy(prizeResult.awards) : null;
   const markPaid = async (key: string, on: boolean) => {
@@ -1289,7 +1332,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           }
         />
       )}
-      <TourPrizeBoard ev={prized} done={done} played={played} host={host} onPaid={(k, on) => void markPaid(k, on)} />
+      <TourPrizeBoard ev={prized} done={done} played={played} host={host} onPaid={(k, on) => void markPaid(k, on)} seriesName={settledIn} />
       {(ev.specials ?? []).length > 0 &&
         specialBoard(live ?? ev).map(({ special, rows }) => (
           <section key={special.id} className="card tour-special-board" aria-label={specialName(special.kind)}>

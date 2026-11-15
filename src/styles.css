@@ -1231,6 +1231,8 @@ button.tile:disabled { opacity: 1; }
 .prize-chip { background: var(--brand); color: #fff; border-radius: 8px; padding: 2px 8px; font-weight: 700; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lb-prize { margin-left: 6px; vertical-align: 1px; }
 .tour-prize-board { display: flex; flex-direction: column; gap: 6px; }
+/* the series' prizes: its own, then the day prizes (Sascha 15.11.2026) */
+.tour-prize-sub { font-weight: 600; margin-top: 4px; }
 .tour-prize-list li { align-items: center; }
 .tour-prize-pay-head { margin-top: 6px; }
 .tour-prize-pays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

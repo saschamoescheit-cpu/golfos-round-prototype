@@ -4,11 +4,12 @@ import { tr } from '../lib/i18n';
 import { canLink, pendingAsk } from '../lib/friendlinks';
 import { amHost, cachedEvent, confirmReopen, eventOwner, liveFlights, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
 import { tourPrizeResult } from './TourPrizeBoard';
+import { seriesPrizeResult, settledInSeries } from './SeriesPrizeBoard';
 import { keyName, wonBy } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
 import { SwipeRow } from './SwipeRow';
-import { isTourHost, loadTours } from '../lib/tourstore';
+import { isTourHost, loadSeries, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import { loadGames } from '../lib/gamestore';
 import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
@@ -175,8 +176,13 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
   }
   // a tournament's prizes, once every card is in (Sascha 14.11.2026, mock-up 7): "Du hast 50 $ gewonnen" – and what this
   // phone's player still pays
-  for (const t of loadTours()) {
+  const tours = loadTours();
+  const series = loadSeries().filter((x) => !x.series.deletedAt);
+  for (const t of tours) {
     if (!t.ev.prizes || t.ev.deletedAt) continue;
+    // a tournament of a series: paid once at the series' end (Sascha 15.11.2026) – its own line there
+    const sr = t.ev.series ? series.find((x) => x.code === t.ev.series!.code) : undefined;
+    const inSeries = !!sr && settledInSeries(sr.series, sr.series.rounds.map((r) => tours.find((x) => x.code === r.code)?.ev.prizes), t.ev.prizes);
     const live = cachedEvent(t.code);
     if (!live || !liveFlights(live).length) continue;
     const res = tourPrizeResult({ ...live, prizes: t.ev.prizes });
@@ -189,9 +195,31 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const labels = res.awards.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
       out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), ask: true });
     }
-    for (const x of res.settle.transfers) {
+    for (const x of inSeries ? [] : res.settle.transfers) {
       if (keyName(x.from) !== keyName(mine) || res.tp.paid?.[x.key]) continue;
       out.push({ key: `prizepay:${t.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${t.ev.name} · prizes and entry fee`, `${t.ev.name} · Preise und Startgeld`), go: () => goTour(t.code) });
+    }
+  }
+  // a series' one settlement once its last round is in (Sascha 15.11.2026): what it won – and what this phone's player pays
+  for (const sr of series) {
+    const evs = sr.series.rounds.map((r) => {
+      const live = cachedEvent(r.code);
+      return live ? { ...live, prizes: tours.find((x) => x.code === r.code)?.ev.prizes } : null;
+    });
+    const res = seriesPrizeResult(sr.series, evs);
+    if (!res.any || !res.done || !res.ref) continue;
+    const codes = new Set(sr.series.rounds.map((r) => r.code));
+    const mine = loadRounds().find((r) => !!r.shared && codes.has(r.shared.code))?.players.find((p) => p.isMe)?.name;
+    if (!mine) continue;
+    const amt = (v: number) => prizeAmount(v, res.ref!);
+    const w = wonBy(res.own).get(keyName(mine));
+    if (w && w.amount > 0) {
+      const labels = res.own.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
+      out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), ask: true });
+    }
+    for (const x of res.transfers) {
+      if (keyName(x.from) !== keyName(mine) || sr.series.paid?.[x.key]) continue;
+      out.push({ key: `seriespay:${sr.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${sr.series.name} · prizes and entry fees`, `${sr.series.name} · Preise und Startgelder`), go: () => goTour(sr.code) });
     }
   }
   const sign = roundsToSign(loadRounds());

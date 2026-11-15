@@ -629,6 +629,16 @@ export const FAQ: FaqTopic[] = [
         video: 'tours',
       },
       {
+        // Sascha 14./15.11.2026: prizes of a tournament – and of a whole series, settled once at its end
+        q: () => tr('Can we play a tournament or a series for prizes?', 'Können wir ein Turnier oder eine Serie um Preise spielen?'),
+        a: () =>
+          tr(
+            'Yes. A tournament: "Played for" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, then an amount per place: gross and net 1–3, Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, "Played for · the whole series" – the same rows for the series total. A tie shares the prize. Once the last card is in, "Who pays whom" – in a series once at its end, day prizes and series prizes together.',
+            'Ja. Ein Turnier: „Worum“ (nach den Sonderwertungen) – Geld, Getränke, Essen …, Startgeld je Spieler und wer es sammelt, dann ein Betrag je Platz: brutto und netto 1–3, Long Drive, Nearest to the Pin. Eine ganze Serie: auf der Serienseite unter den Runden „Worum · ganze Serie“ – dieselben Zeilen für die Gesamtwertung. Bei Gleichstand wird geteilt. Ist die letzte Karte drin, steht da „Wer zahlt wem“ – in einer Serie einmal am Ende, Tages- und Serienpreise zusammen.',
+          ),
+        video: 'tours',
+      },
+      {
         // Sascha 04.11.2026: "a tournament over three rounds – the final day by result, as at the club championship"
         q: () => tr('A tournament over several days – with a cut and the final by result?', 'Ein Turnier über mehrere Tage – mit Cut und Finalrunde nach Ergebnis?'),
         a: () =>

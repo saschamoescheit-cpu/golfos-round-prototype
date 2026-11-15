@@ -87,5 +87,16 @@
  "planned – no scores yet": "suunniteltu – ei vielä tuloksia",
  "Tap: back in the pool – it counts again": "Napauta: takaisin pottiin – se lasketaan taas",
  "Tournament · internal": "Turnaus · sisäinen",
- "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Kierroksen tyyppi ”Turnaus”: ei neuvoja (sääntö 4.3) – vain omat muistiinpanot ja etäisyydet. Sisäinen turnaus: Muoto → Kierroksen tyyppi → ”Turnaus”, kytke sen alta päälle ”Kaikki toiminnot” (kierrosta luodessa tai turnausta suunnitellessa) – tuuli, caddie ja griinien kallistukset kuten millä tahansa kierroksella, kaikille turnauksessa."
+ "Round type \"Tournament\": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → \"Tournament\", below it switch on \"All functions\" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.": "Kierroksen tyyppi ”Turnaus”: ei neuvoja (sääntö 4.3) – vain omat muistiinpanot ja etäisyydet. Sisäinen turnaus: Muoto → Kierroksen tyyppi → ”Turnaus”, kytke sen alta päälle ”Kaikki toiminnot” (kierrosta luodessa tai turnausta suunnitellessa) – tuuli, caddie ja griinien kallistukset kuten millä tahansa kierroksella, kaikille turnauksessa.",
+ "{0} · prizes and entry fees": "{0} · palkinnot ja osallistumismaksut",
+ "Prizes of the series": "Sarjan palkinnot",
+ "The whole series": "Koko sarja",
+ "entry fee {0} per player for the series": "osallistumismaksu {0} pelaajaa kohden koko sarjasta",
+ "Day prizes": "Päiväpalkinnot",
+ "Settled once after the last round – day prizes and the series together.": "Tilitetään kerran viimeisen kierroksen jälkeen – päiväpalkinnot ja sarja yhdessä.",
+ "prizes and entry fees of the series": "sarjan palkinnot ja osallistumismaksut",
+ "Settled at the end of the series \"{0}\" – together with its prizes.": "Tilitetään sarjan ”{0}” lopussa – yhdessä sarjan palkintojen kanssa.",
+ "Played for · the whole series": "Pelataan · koko sarja",
+ "Can we play a tournament or a series for prizes?": "Voimmeko pelata turnausta tai sarjaa palkinnoista?",
+ "Yes. A tournament: \"Played for\" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, then an amount per place: gross and net 1–3, Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, \"Played for · the whole series\" – the same rows for the series total. A tie shares the prize. Once the last card is in, \"Who pays whom\" – in a series once at its end, day prizes and series prizes together.": "Kyllä. Turnaus: ”Pelataan” (erikoiskilpailujen jälkeen) – rahaa, juomia, ateria …, osallistumismaksu pelaajaa kohden ja kuka sen kerää, sitten summa sijoitusta kohden: brutto ja netto 1–3, Long Drive, Nearest to the Pin. Koko sarja: sarjan sivulla kierrosten alla ”Pelataan · koko sarja” – samat rivit kokonaistulokselle. Tasatilanteessa palkinto jaetaan. Kun viimeinen kortti on sisällä, näkyy ”Kuka maksaa kenelle” – sarjassa kerran lopussa, päivä- ja sarjapalkinnot yhdessä."
 }
