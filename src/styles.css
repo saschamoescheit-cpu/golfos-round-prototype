@@ -2504,6 +2504,11 @@ button.balance-item-row { cursor: pointer; }
 /* a shot's place and how far it still was to the flag, on top of its sheet (Sascha 12.11.2026) */
 .shot-where { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .shot-where .chip { white-space: nowrap; flex: none; }
+/* the head on its own line over the whole width (Sascha 15.11.2026): each part unbroken, the button below beside the wind */
+.shot-where:has(> .shot-where-head) { flex-wrap: wrap; align-items: flex-end; row-gap: 4px; }
+.shot-where-head { flex: 1 0 100%; }
+.shot-where-head > * { white-space: nowrap; }
+.shot-where:has(> .shot-where-head) > .grow:empty { display: none; }
 /* a hole without a map set up while checking the shots (Sascha 12.11.2026) */
 .review-nomap { display: flex; flex-direction: column; gap: 10px; }
 .review-setup-layer { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; }
@@ -2822,3 +2827,4 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-plays, .shot-wind { display: block; }
 .shot-wind { margin-top: 2px; }
 .wind-tag.plain svg { color: inherit; }
+.shot-where:has(> .shot-where-head) > .chip { margin-left: auto; }
