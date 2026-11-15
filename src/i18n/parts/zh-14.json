@@ -121,5 +121,8 @@
  "Prizes · class {0}": "奖金 · {0}组",
  "Gross prizes": "总杆奖金",
  "Net prizes": "净杆奖金",
- "{0}. place": "第{0}名"
+ "{0}. place": "第{0}名",
+ "Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were. The house at the top of the sheet, next to ✕, goes back to the start page.": "点击左上角的模块按钮。下方会弹出一个面板，列出所有模块以及每个模块里要做的事——你当前所在的模块以绿色框标出。点一下即可前往；每个模块都会记住你上次的位置。面板顶部 ✕ 旁边的小房子图标可返回首页。",
+ "As the host: pool → \"Standing\" → tap the round switch → pick the round → switch off \"Count\" at the bottom of the sheet. It counts for no bet any more, for everyone – its bets show ⊘; the scores of the round stay where they are. Switched on again, it counts again. A round not counted can be deleted from the pool in the same sheet; under \"Deleted · only you see them\" the arrow brings it back.": "作为主持人：赌池 →「排名」→ 点击轮次切换 → 选择该轮 → 在面板底部关闭「计入轮次」。该轮对所有人都不再计入任何赌注——其赌注显示 ⊘；该轮的成绩保持不变。重新打开后，它会再次计入。不计入的轮次可以在同一面板中从赌池删除；在「已删除 · 仅你可见」下，箭头可将其恢复。",
+ "Yes. A tournament: \"Played for\" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, the rankings (gross + net, gross only or net only) and the places per ranking, then an amount per place – gross in blue, net in green – and Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, \"Played for · the whole series\" – the same rows for the series total. A tie shares the prize. Once the last card is in, \"Who pays whom\" – in a series once at its end, day prizes and series prizes together.": "可以。单场比赛：「赌注内容」（在特别奖之后）——金钱、饮料、一顿饭……，每位球员的报名费以及由谁收取，排名方式（总杆 + 净杆、仅总杆或仅净杆）和每个排名的名次，然后是每个名次的金额——总杆为蓝色，净杆为绿色——还有 Long Drive 和 Nearest to the Pin。整个系列赛：在系列赛页面的轮次下方「奖励 · 整个系列赛」——系列赛总排名使用相同的设置。并列时奖金平分。最后一张记分卡提交后，会显示「谁付给谁」——系列赛只在最后结算一次，单日奖和系列赛奖一起结算。"
 }
