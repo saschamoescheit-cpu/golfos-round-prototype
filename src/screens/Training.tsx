@@ -11,7 +11,8 @@ import { Stepper, TopBar } from '../components/ui';
 import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
-import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById } from '../training/content';
+import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById, videoById } from '../training/content';
+import { ShotGraphic } from '../training/ShotGraphics';
 import { LieChartView } from '../training/LieChart';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
@@ -529,10 +530,17 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
   );
 }
 
+/** Sascha 15.11.2026: "Die Videos können wir vorerst aus allen Übungen entfernen" – no videos at the drills and in
+ *  "Üben" of a shot until the video review (Übungs-Sichtung) is done; the data stays, the topics keep their videos. */
+export const DRILL_VIDEOS_SHOWN = false;
+
 // ---------- shot (Sascha 15.11.2026: the topics as shots, each with Set-up · Motion · What to watch · Practise) ----------
 
 const ROW_NAME: Record<ShotRowKind, () => string> = {
   ball: () => tr('Ball position', 'Ballposition'),
+  lie: () => tr('Lie', 'Lage'),
+  gear: () => tr('Ball and club', 'Ball und Schläger'),
+  entry: () => tr('Entry into the sand', 'Eintritt in den Sand'),
   stance: () => tr('Stance', 'Stand'),
   weight: () => tr('Weight', 'Gewicht'),
   club: () => tr('Club', 'Schläger'),
@@ -549,6 +557,7 @@ function ShotText(props: { p: ShotPart; label: string }) {
   return (
     <>
       {props.p.sketch && <SketchView sketch={props.p.sketch} label={props.label} />}
+      {props.p.graphic && <ShotGraphic kind={props.p.graphic} />}
       {(props.p.text?.length || props.p.points?.length) && (
         <section className="card tr-section">
           {props.p.text?.map((x, k) => <p key={k}>{t(x)}</p>)}
@@ -575,7 +584,7 @@ function ShotView(props: { id: string; nav: Nav }) {
   if (!found) return null;
   const { cat: c, shot: s } = found as { cat: Category; shot: TopicShot };
   const drills = (s.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
-  const vids = (s.videos ?? []).map((id) => c.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v);
+  const vids = DRILL_VIDEOS_SHOWN ? (s.videos ?? []).map(videoById).filter((v): v is Video => !!v) : [];
   vids.sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()));
   const tabs: StepChoice<typeof tab>[] = [
     { value: 'setup', name: tr('Set-up', 'Ansprache'), text: tr('Ball position, stance, weight, club', 'Ballposition, Stand, Gewicht, Schläger') },
@@ -592,6 +601,7 @@ function ShotView(props: { id: string; nav: Nav }) {
       {tab === 'setup' && (
         <>
           {s.setup.sketch && <SketchView sketch={s.setup.sketch} label={t(s.name)} />}
+          {s.setup.graphic && <ShotGraphic kind={s.setup.graphic} />}
           <section className="card tr-section">
             <dl className="tr-fault tr-shot-rows">
               {s.setup.rows.map((r, i) => (
@@ -602,7 +612,7 @@ function ShotView(props: { id: string; nav: Nav }) {
               ))}
             </dl>
           </section>
-          {(s.setup.text?.length || s.setup.points?.length) && <ShotText p={{ ...s.setup, sketch: undefined }} label={t(s.name)} />}
+          {(s.setup.text?.length || s.setup.points?.length) && <ShotText p={{ ...s.setup, sketch: undefined, graphic: undefined }} label={t(s.name)} />}
         </>
       )}
       {tab === 'move' && <ShotText p={s.move} label={t(s.name)} />}
@@ -1187,7 +1197,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
             {shots.map((s) => (
               <li key={s.id}>
                 <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'shot', id: s.id })}>
-                  {s.setup.sketch && <SketchThumb sketch={s.setup.sketch} />}
+                  {s.setup.sketch ? <SketchThumb sketch={s.setup.sketch} /> : s.move.sketch ? <SketchThumb sketch={s.move.sketch} /> : null}
                   <span className="grow">
                     <span className="title">{t(s.name)}</span>
                     <span className="muted small tr-two-lines">{t(s.short)}</span>
@@ -1537,7 +1547,7 @@ function DrillView(props: { id: string; nav: Nav }) {
   const tabs: StepChoice<DrillTab>[] = [
     { value: 'learn', name: tr('How to', 'Anleitung'), text: tr('Set-up, steps, tips', 'Aufbau, Ablauf, Tipps') },
     ...(scored ? [{ value: 'result' as const, name: tr('Result', 'Ergebnis'), text: tr('Enter it, your history', 'Eintragen, Historie') }] : []),
-    ...(d.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: d.videos.length > 1 ? tr(`${Math.min(2, d.videos.length)} videos`, `${Math.min(2, d.videos.length)} Videos`) : tr('1 video', '1 Video') }] : []),
+    ...(DRILL_VIDEOS_SHOWN && d.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: d.videos.length > 1 ? tr(`${Math.min(2, d.videos.length)} videos`, `${Math.min(2, d.videos.length)} Videos`) : tr('1 video', '1 Video') }] : []),
     ...(gear.length ? [{ value: 'gear' as const, name: tr('Gear', 'Zubehör'), text: tr(`${gear.length} for this drill`, `${gear.length} für diese Übung`) }] : []),
   ];
   const tab: DrillTab = tabs.some((x) => x.value === tabState) ? tabState : 'learn';

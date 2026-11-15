@@ -161,7 +161,8 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).cli
 await p.waitForTimeout(300);
 ok((await p.locator('figure.tr-sketch').first().locator('.tr-motion-btn').getAttribute('aria-label')) === '3D-Video abspielen', 'Landering plays a 3D video');
 // the drill page in tabs (Sascha 17.10.2026: no one-pager)
-ok((await viewNames()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page parts: Anleitung · Ergebnis · Videos · Zubehör');
+// Sascha 15.11.2026: no videos at the drills for now (the topics keep theirs – qa/shots.mjs plays one)
+ok((await viewNames()).join('|') === 'Anleitung|Ergebnis|Zubehör', 'drill page parts: Anleitung · Ergebnis · Zubehör (no videos for now)');
 ok((await p.locator('.tr-steps li').count()) >= 2 && (await p.locator('.tr-log').count()) === 0, 'Anleitung shows the steps, not the result part');
 ok((await eyebrow('Aufbau').count()) === 1 && (await eyebrow('Ablauf').count()) === 1 && (await p.locator('main h2').count()) === 0 && (await p.getByText('So geht’s').count()) === 0, 'Anleitung: eyebrows AUFBAU · ABLAUF above plain blocks, no heading in a card (tr2)');
 await p.locator('.tr-fav').click();
@@ -180,11 +181,6 @@ ok((await p.locator('.tr-history li').count()) === 0 && (await p.locator('.undo-
 await p.locator('.undo-toast button').click();
 ok((await p.locator('.tr-history li').count()) === 1, 'Undo brings the result back');
 await shot('drill');
-await view('Videos');
-// video loads only on tap
-ok((await p.locator('iframe').count()) === 0, 'no video before tapping');
-await p.locator('.tr-video-cover').first().click();
-ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'video loads from youtube-nocookie on tap');
 // gear belongs to the drill
 await view('Zubehör');
 const gearRows = p.locator('.tr-gear-row');
@@ -427,7 +423,8 @@ await back();
 
 // the rules that belong to a topic: the rule book opens at the rule, back leads to Training again (18.10.2026)
 await tab('Wissen');
-await p.locator('.tr-cat').filter({ hasText: 'Bunker' }).first().click();
+// by its name – "Bunker" also stands in the line of other topics (Lob Shot: "über einen Bunker")
+await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Bunker$/ }) }).first().click();
 await view('Grundlagen');
 const ruleRow = p.locator('.tr-rules .list-item').first();
 ok((await ruleRow.innerText().catch(() => '')).includes('12.2'), 'topic › Grundlagen: „Die Regeln dazu“ names rule 12.2');

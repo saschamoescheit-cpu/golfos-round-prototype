@@ -98,7 +98,13 @@ ok((await p.locator('main .tr-sketch svg').count()) >= 1, 'standard chip: the se
 await view('Bewegung');
 ok((await p.locator('.tr-motion-btn').count()) >= 1, 'standard chip: the stroke moves (play symbol in the picture)');
 await view('Üben');
-ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'standard chip: a checked video with its preview picture');
+// Sascha 15.11.2026: "Die Videos können wir vorerst aus allen Übungen entfernen" – no videos at the drills and shots
+ok((await p.locator('.tr-video-thumb img, .tr-video').count()) === 0, 'standard chip: no videos in Üben for now (Sascha 15.11.2026)');
+await p.locator('.tr-drill-row .list-item').first().click();
+await p.waitForTimeout(300);
+ok(!(await viewNames()).includes('Videos'), 'a drill has no Videos tab for now');
+await back();
+await p.waitForTimeout(300);
 await back();
 await p.waitForTimeout(300);
 
@@ -106,12 +112,61 @@ await p.waitForTimeout(300);
 await view('Grundlagen');
 const secs = (await p.locator('.tr-coll-head').allInnerTexts()).filter((x) => !/Quellen/.test(x));
 ok(secs.length === 1 && /So übst du/.test(secs[0]), `basics: only "So übst du" left (${secs.join(' · ')})`);
+// the topic videos stay: a video loads only on tap, from youtube-nocookie
+const sec = p.locator('.tr-coll').filter({ hasText: 'So übst du' }).first();
+if (!(await sec.locator('.tr-coll-body').count())) await sec.locator('.tr-coll-head').click();
+ok((await p.locator('iframe').count()) === 0 && (await sec.locator('.tr-video-cover').count()) === 1, 'basics: a topic video with its cover, nothing loaded');
+await sec.locator('.tr-video-cover').click();
+ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'the video loads from youtube-nocookie on tap');
 // a topic without shots still opens on its drills
 await back();
 await p.waitForTimeout(300);
 await p.locator('.tr-cat').filter({ hasText: 'Putten' }).first().click();
 await p.waitForTimeout(300);
 ok((await viewNow()).startsWith('Übungen'), 'Putten (no shots yet) still opens on the drills');
+await back();
+await p.waitForTimeout(300);
+
+// every topic Sascha named: every shot, every tab with its picture (and the pictures for a contact sheet)
+const TOPICS = [
+  ['Pitchen', 4],
+  ['Lob Shot', 2],
+  ['Spinkontrolle', 3],
+  ['Bunker', 6],
+  ['Hanglagen', 4],
+  ['Schwierige Lagen', 5],
+  ['Hoch & flach', 2],
+  ['Low Point', 4],
+];
+let pics = 0;
+for (const [topic, n] of TOPICS) {
+  await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: new RegExp(`^${topic.replace('&', '\\&')}`) }) }).first().click();
+  await p.waitForTimeout(300);
+  const count = await p.locator('.tr-shots .list-item').count();
+  ok((await viewNow()) === 'Schläge' && count === n, `${topic}: opens on ${n} shots (${count})`);
+  for (let i = 0; i < count; i++) {
+    await p.locator('.tr-shots .list-item').nth(i).click();
+    await p.waitForTimeout(250);
+    const name = await p.locator('.topbar h1').innerText();
+    for (const tab of ['Ansprache', 'Bewegung', 'Worauf achten']) {
+      if (tab !== 'Ansprache') await view(tab);
+      const fig = p.locator('main figure.tr-sketch').first();
+      const has = (await fig.count()) > 0 && (await fig.locator('svg').count()) > 0;
+      ok(has, `${topic} › ${name} › ${tab}: a picture`);
+      if (has && shots) {
+        pics++;
+        await fig.screenshot({ path: `${shots}/pic-${String(pics).padStart(3, '0')}.png` });
+      }
+    }
+    await view('Üben');
+    ok((await p.locator('.tr-drill-row').count()) >= 1, `${topic} › ${name} › Üben: drills`);
+    await view('Ansprache');
+    await back();
+    await p.waitForTimeout(250);
+  }
+  await back();
+  await p.waitForTimeout(250);
+}
 
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 await b.close();

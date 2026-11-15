@@ -1,6 +1,7 @@
-import { L, type CategoryId, type LieChart, type P, type TopicShot, type SideItem, type Sketch, type SketchItem } from '../types';
-import type { GolferOptions, JointName } from '../Golfer';
+import { L, type CategoryId, type LieChart, type TopicShot } from '../types';
+import { G0, S, aimCurve, ball, co, fig, ground, hill, landRoll } from './shots-kit';
 import { FIGURE_SKETCHES } from './sketches-figures';
+import { ABSORBS, BUNKER_SHOTS, HIGHLOW_SHOTS, LOB_SHOTS, LOWPOINT_SHOTS, PITCH_SHOTS, SLOPE_SHOTS, SPIN_SHOTS, TROUBLE_SHOTS } from './shots-more';
 
 // The topics rebuilt as shots (Sascha 15.11.2026): "Chip-Pitch: standard chip/pitch, slopes uphill/downhill, ball
 // below/above the feet, bad lies: bare patch (club choice, ball position), deep in the grass … How do ball position
@@ -8,18 +9,6 @@ import { FIGURE_SKETCHES } from './sketches-figures';
 // watch and Practise, every tab with a picture. Values are the common teaching standard – our pro checks them in
 // "Review the content". Pictures: face-on = target to the right (right-hander), the golfer 1.75 m, ground at y = 0.2.
 
-const S = (w: number, h: number, items: SideItem[], caption?: L): Sketch => ({ view: 'side', w, h, items, caption });
-const T = (w: number, h: number, items: SketchItem[], caption?: L): Sketch => ({ view: 'top', w, h, items, caption });
-const G0 = 0.2;
-const ground = (w: number): SideItem => ({ k: 'ground', pts: [[0, G0], [w, G0]] });
-/** a slope from y0 (left) to y1 (right); at(x) is the height of the ground at x */
-const hill = (w: number, y0: number, y1: number) => ({ item: { k: 'ground', pts: [[0, y0], [w, y1]] } as SideItem, at: (x: number) => y0 + ((y1 - y0) * x) / w, deg: (Math.atan((y1 - y0) / w) * 180) / Math.PI });
-const fig = (x: number, pose: GolferOptions['pose'], o: Omit<GolferOptions, 'pose'> & { tilt?: number; y?: number } = {}): SideItem => ({ k: 'figure', at: [x, o.y ?? G0], pose, ...o });
-const co = (on: JointName, t: L, at: P, figIndex?: number): SideItem => ({ k: 'callout', on, t, at, fig: figIndex });
-const ball = (x: number, y = G0): SideItem => ({ k: 'ball', at: [x, y] });
-const txt = (at: P, t: L | string, size = 11, anchor: 'start' | 'middle' | 'end' = 'middle'): SideItem => ({ k: 'text', at, t, size, anchor });
-const arrow = (from: P, to: P): SideItem => ({ k: 'arrow', from, to });
-const flight = (pts: P[]): SideItem => ({ k: 'flight', pts, dashed: true });
 
 // ---------- chipping ----------
 
@@ -28,15 +17,6 @@ const down = hill(4, 0.9, 0.2); // the ground falls to the target
 const aboveFeet = hill(5, 0.0, 0.55); // from the side: the ground rises to the ball
 const belowFeet = hill(5, 0.6, 0.0); // from the side: the ground falls to the ball
 
-/** the line of the ground through a flight: where it lands and how far it rolls */
-const landRoll = (w: number, from: number, land: number, end: number, top: number, at: (x: number) => number, labels: [L, L]): SideItem[] => [
-  ball(from, at(from)),
-  flight([[from, at(from) + 0.05], [(from + land) / 2, at((from + land) / 2) + top], [land, at(land) + 0.04]]),
-  arrow([land, at(land) + 0.06], [end, at(end) + 0.06]),
-  txt([(from + land) / 2, at((from + land) / 2) + top + 0.22], labels[0], 11),
-  txt([(land + end) / 2, at((land + end) / 2) + 0.28], labels[1], 11),
-  { k: 'flag', at: [Math.min(w - 0.2, end + 0.3), at(Math.min(w - 0.2, end + 0.3))] },
-];
 
 export const CHIP_LIES: LieChart = {
   title: L('Lie and grass → ball position and club', 'Lage und Gras → Ballposition und Schläger'),
@@ -217,16 +197,7 @@ const CHIP_SHOTS: TopicShot[] = [
         L('The face points left of where the leading edge points – the more loft, the more.', 'Die Schlagfläche zeigt weiter links als die Vorderkante – je mehr Loft, desto mehr.'),
         L('Fat shots come from standing too close or too low – grip down instead.', 'Fette Schläge kommen davon, zu nah oder zu tief zu stehen – stattdessen kürzer greifen.'),
       ],
-      sketch: T(4, 7, [
-        { k: 'fringe', x: 0, y: 0, w: 4, h: 4.2 },
-        { k: 'green', x: 0.3, y: 0.3, w: 3.4, h: 3.6, round: true },
-        { k: 'hole', at: [1.8, 1.0], flag: true },
-        { k: 'ball', at: [1.8, 5.9] },
-        { k: 'player', at: [1.2, 5.9], face: 'up' },
-        { k: 'path', pts: [[1.8, 5.9], [2.8, 1.0]], style: 'aim' },
-        { k: 'path', pts: [[1.8, 5.9], [2.3, 3.4], [1.85, 1.15]], style: 'flight', arrow: true },
-        { k: 'text', at: [3.1, 1.6], t: L('aim here', 'hierhin zielen'), size: 0.26 },
-      ], L('From above: aim right, the ball comes back left.', 'Von oben: rechts zielen, der Ball kommt nach links zurück.')),
+      sketch: aimCurve(1, L('From above: aim right, the ball comes back left.', 'Von oben: rechts zielen, der Ball kommt nach links zurück.')),
     },
     drills: ['slope-chips', 'aim-for-slope', 'slope-home-balance'],
   },
@@ -265,16 +236,7 @@ const CHIP_SHOTS: TopicShot[] = [
         L('The ball starts right and stays right – aim left.', 'Der Ball startet rechts und bleibt rechts – links zielen.'),
         L('Thin and right: you stood up. Fat: too much weight on the toes.', 'Dünn und rechts: Du hast dich aufgerichtet. Fett: zu viel Gewicht auf den Zehen.'),
       ],
-      sketch: T(4, 7, [
-        { k: 'fringe', x: 0, y: 0, w: 4, h: 4.2 },
-        { k: 'green', x: 0.3, y: 0.3, w: 3.4, h: 3.6, round: true },
-        { k: 'hole', at: [2.2, 1.0], flag: true },
-        { k: 'ball', at: [2.2, 5.9] },
-        { k: 'player', at: [1.6, 5.9], face: 'up' },
-        { k: 'path', pts: [[2.2, 5.9], [1.2, 1.0]], style: 'aim' },
-        { k: 'path', pts: [[2.2, 5.9], [1.7, 3.4], [2.15, 1.15]], style: 'flight', arrow: true },
-        { k: 'text', at: [0.9, 1.6], t: L('aim here', 'hierhin zielen'), size: 0.26 },
-      ], L('From above: aim left, the ball comes back right.', 'Von oben: links zielen, der Ball kommt nach rechts zurück.')),
+      sketch: aimCurve(-1, L('From above: aim left, the ball comes back right.', 'Von oben: links zielen, der Ball kommt nach rechts zurück.')),
     },
     drills: ['below-feet-stay', 'slope-chips', 'slope-home-balance'],
   },
@@ -376,4 +338,12 @@ export interface TopicShots {
 
 export const SHOTS: Partial<Record<CategoryId, TopicShots>> = {
   chipping: { shots: CHIP_SHOTS, lie: CHIP_LIES, absorbs: ['The set-up', 'The stroke', 'Landing spot and club choice', 'Special chips'] },
+  pitching: { shots: PITCH_SHOTS, absorbs: ABSORBS.pitching },
+  lob: { shots: LOB_SHOTS },
+  spin: { shots: SPIN_SHOTS },
+  bunker: { shots: BUNKER_SHOTS, absorbs: ABSORBS.bunker },
+  slopes: { shots: SLOPE_SHOTS, absorbs: ABSORBS.slopes },
+  trouble: { shots: TROUBLE_SHOTS, absorbs: ABSORBS.trouble },
+  highlow: { shots: HIGHLOW_SHOTS },
+  lowpoint: { shots: LOWPOINT_SHOTS },
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById, sectionOf } from './content';
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById, drillsOf, sectionOf } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -76,7 +76,8 @@ describe('training content', () => {
     for (const c of CATEGORIES) {
       expect(filled(c.name) && filled(c.short) && filled(c.intro), c.id).toBe(true);
       expect(c.sections.length + (c.shots?.length ?? 0), c.id).toBeGreaterThan(1);
-      expect(DRILLS.filter((d) => d.cat === c.id).length, c.id).toBeGreaterThanOrEqual(5);
+      // the topics new as shots (15.11.2026) are built from the drills their shots use
+      expect(c.shots?.length && !DRILLS.some((d) => d.cat === c.id) ? drillsOf(c.id).length >= 3 : DRILLS.filter((d) => d.cat === c.id).length >= 5, c.id).toBe(true);
       for (const v of c.videos ?? []) expect(v.id, c.id).toMatch(/^[A-Za-z0-9_-]{11}$/);
     }
   });
@@ -119,7 +120,7 @@ describe('training content', () => {
         expect(s.sketch ?? (s.drill ? drillById(s.drill)?.sketch : undefined), where).toBeTruthy();
         for (const id of s.videos ?? []) expect(c.videos?.some((v) => v.id === id), `${where} → ${id}`).toBe(true);
       });
-    const withVideo = CATEGORIES.flatMap((c) => c.sections).filter((s) => s.videos?.length).length;
+    const withVideo = CATEGORIES.flatMap((c) => [...c.sections, ...(c.absorbed ?? [])]).filter((s) => s.videos?.length).length;
     expect(withVideo).toBeGreaterThan(50);
   });
 

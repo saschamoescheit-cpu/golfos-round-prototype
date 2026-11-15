@@ -20,9 +20,13 @@ export type CategoryId =
   | 'greenreading'
   | 'chipping'
   | 'pitching'
+  | 'lob'
+  | 'spin'
   | 'bunker'
   | 'slopes'
   | 'trouble'
+  | 'highlow'
+  | 'lowpoint'
   | 'irons'
   | 'woods'
   | 'driver'
@@ -75,12 +79,19 @@ export interface ShotPart {
   text?: L[];
   points?: L[];
   sketch?: Sketch;
-  /** the English title of a section of the same topic whose picture (with its movement) this tab shows */
+  /** the English title of a section whose picture (with its movement) this tab shows – of the same topic, or "topic/Title" */
   section?: string;
+  /** the id of a drill whose picture this tab shows */
+  drillPic?: string;
+  /** a drawn overview instead of (or with) the sketch (training/ShotGraphics.tsx) */
+  graphic?: ShotGraphicKind;
 }
 
+/** The drawn overviews of the shots: the bounce of a wedge, sand types, spin loft, the low point of the swing. */
+export type ShotGraphicKind = 'bounce' | 'bounceOpen' | 'sand' | 'sandEntry' | 'spinLoft' | 'lowIron' | 'lowChip' | 'lowBunker' | 'lowDriver';
+
 /** What to set up for a shot, one line each – the rows of the "Set-up" tab. */
-export type ShotRowKind = 'ball' | 'stance' | 'weight' | 'club' | 'face' | 'aim' | 'grip' | 'swing';
+export type ShotRowKind = 'ball' | 'stance' | 'weight' | 'club' | 'face' | 'aim' | 'grip' | 'swing' | 'lie' | 'gear' | 'entry';
 export interface ShotRow {
   k: ShotRowKind;
   v: L;
