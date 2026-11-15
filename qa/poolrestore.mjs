@@ -20,12 +20,12 @@ const days = await H.evaluate(() => {
     const x = new Date(Date.now() + n * 864e5);
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
   };
-  return { first: d(-3), second: d(-2), today: d(0) };
+  return { first: d(-3), second: d(-2), today: d(0), tomorrow: d(1) };
 });
 const code = await H.evaluate(async (days) => {
   const ws = await import('/src/lib/wagerstore.ts');
   const pool = {
-    kind: 'wager-pool', id: 'usa', name: 'USA-Wetten', from: days.first, to: days.today, createdAt: new Date().toISOString(), currency: 'USD',
+    kind: 'wager-pool', id: 'usa', name: 'USA-Wetten', from: days.first, to: days.tomorrow, createdAt: new Date().toISOString(), currency: 'USD',
     players: [{ id: 'ps', name: 'Sascha', joined: { name: 'Sascha', at: new Date().toISOString(), uid: 'Sascha' } }, { id: 'pc', name: 'Cedric' }],
     wagers: [{ id: 'w-p', player: 'pc', kind: 'pars', target: 10, stake: 20, payout: 'success', attempts: 'any', by: 'Sascha' }],
     progress: {},
@@ -39,6 +39,10 @@ const code = await H.evaluate(async (days) => {
 ok(!!code, `the pool: ${code}`);
 sim.shared.get(code).game.progress = { 'w-p': { perRound: [{ day: days.today, course: 'Hetzenhof', value: 6, counted: true }], at: new Date().toISOString(), best: 6, done: false, rounds: 1 } };
 
+// tomorrow's tournament on the server, not on this phone (Sascha 15.11.2026 on the iPad: "Die morgige Runde Hawks Landing
+// ist hier nicht zu sehen" – set up on the iPhone): the pool fetches it
+await sim.plan(H, { name: 'Hawks Landing', date: days.tomorrow, flights: [{ players: [{ name: 'Sascha', playingHandicap: 5 }] }] });
+await H.evaluate(() => localStorage.removeItem('golfos.tours.v1'));
 await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await H.goto('about:blank');
 await H.goto(url);
@@ -46,8 +50,17 @@ await H.waitForTimeout(2000);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
 await H.waitForTimeout(2000);
+{
+  await H.locator('.pool-standings .step-pick-value, .pool-standings [aria-label="Runden"]').first().click().catch(() => {});
+  await H.waitForTimeout(500);
+  const opts = (await H.locator('.sheet .pick-option').allInnerTexts()).map((x) => x.replace(/\s+/g, ' '));
+  ok(opts.some((x) => /geplant – noch keine Scores/.test(x)), `tomorrow's tournament, set up elsewhere: in the rounds, planned (${opts.join(' | ')})`);
+  await H.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click({ timeout: 2000 }).catch(() => {});
+  await H.waitForTimeout(300);
+}
 const row = H.locator('.pool-standings .settings-row').filter({ hasText: 'Gelöschte Runden' });
 ok((await row.count()) === 1 && /2/.test(await row.innerText()), `the host's total: "Gelöschte Runden 2" (${(await row.allInnerTexts()).join(' | ').replace(/\s+/g, ' ')})`);
+if (process.env.SHOTS) { await row.scrollIntoViewIfNeeded(); await H.screenshot({ path: process.env.SHOTS + '/poolrestore-row.png' }); }
 await row.click();
 const sheet = H.getByRole('dialog', { name: 'Gelöschte Runden' });
 await sheet.waitFor({ timeout: 5000 }).catch(() => {});

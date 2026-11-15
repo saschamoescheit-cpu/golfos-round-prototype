@@ -35,7 +35,7 @@ import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet, pushWagers } from '../lib/push';
-import { loadSeries, loadTours } from '../lib/tourstore';
+import { loadSeries, loadTours, syncTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
 import { LiveShare } from '../components/LiveShare';
 import { ServerStale } from '../components/ServerStale';
@@ -1349,6 +1349,16 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // this round of the round's leaderboard among the pool's – its course on its day, else its day; not counted yet: the latest
   const roundNow = (): string | null => (props.round ? roundNowOf(standingRounds(pool), props.round) : null);
   const [picked, setPicked] = useState(false);
+  // the tournaments planned in the pool's days fetched here too (Sascha 15.11.2026 on the iPad: "Die morgige Runde Hawks
+  // Landing ist hier nicht zu sehen" – set up on the iPhone, this device had not opened Tournaments since): read on opening,
+  // shown once they are in
+  const [, setToursSeen] = useState(0);
+  useEffect(() => {
+    const again = () => setToursSeen((n) => n + 1);
+    window.addEventListener('golfos:tours-changed', again);
+    void syncTours();
+    return () => window.removeEventListener('golfos:tours-changed', again);
+  }, []);
   // the rounds deleted from the pool – back for the host (Sascha 15.11.2026: "Celebration war die erste Runde … worauf
   // Wetten liegen" – deleted once, there was no way back after the undo)
   const [goneOpen, setGoneOpen] = useState(false);
@@ -1587,44 +1597,6 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           ]}
         />
       )}
-      {/* the host counts a round or not (Sascha 12.11.2026: "remove these two rounds at last"; 11.11.2026: "eine andere
-          Lösung" – a row "Runde werten · An/Aus" like every setting): out, no bet counts it, its scores stay */}
-      {one && props.onCount && (
-        <div className="settings-list skip-row">
-          <OnOffRow
-            label={tr('Count this round', 'Runde werten')}
-            on={!one.out}
-            onChange={(v) => void props.onCount!({ day: one.day, course: one.course }, v)}
-            onText={tr('It counts for the bets of the pool', 'Sie zählt für die Wetten des Pools')}
-            offText={tr('It counts for no bet – for everyone in the pool. The scores stay.', 'Sie zählt für keine Wette – für alle im Pool. Die Scores bleiben.')}
-          />
-        </div>
-      )}
-      {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
-      {/* a round not counted taken out of the pool altogether – gone from the switch for everyone, "Undo" for a moment
-          (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben") */}
-      {/* the red bin of the action bar, as everywhere (Facelift-Abnahme W4) */}
-      {one?.out && props.onHide && (
-        <div className="skip-delete">
-          <ActionBar
-            label={tr('This round', 'Diese Runde')}
-            actions={[
-              {
-                label: tr('Delete from the pool', 'Aus dem Pool löschen'),
-                aria: tr('Delete the round from the pool', 'Runde aus dem Pool löschen'),
-                icon: 'delete',
-                danger: true,
-                onClick: async () => {
-                  const r = { day: one.day, course: one.course };
-                  if (!(await props.onHide!(r, true))) return;
-                  setShown(null);
-                  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
-                },
-              },
-            ]}
-          />
-        </div>
-      )}
       {rows.length > 0 && !one?.out && (
         <div className="matrix-wrap">
           {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}
@@ -1660,6 +1632,44 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
               )}
             </tbody>
           </table>
+        </div>
+      )}
+      {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
+      {/* the host counts a round or not – at the bottom of the card, under the sum (Sascha 15.11.2026: "hat noch nicht die richtige Stelle"; 12.11.2026: "remove these two rounds at last"; 11.11.2026: "eine andere
+          Lösung" – a row "Runde werten · An/Aus" like every setting): out, no bet counts it, its scores stay */}
+      {one && props.onCount && (
+        <div className="settings-list skip-row">
+          <OnOffRow
+            label={tr('Count this round', 'Runde werten')}
+            on={!one.out}
+            onChange={(v) => void props.onCount!({ day: one.day, course: one.course }, v)}
+            onText={tr('It counts for the bets of the pool', 'Sie zählt für die Wetten des Pools')}
+            offText={tr('It counts for no bet – for everyone in the pool. The scores stay.', 'Sie zählt für keine Wette – für alle im Pool. Die Scores bleiben.')}
+          />
+        </div>
+      )}
+      {/* a round not counted taken out of the pool altogether – gone from the switch for everyone, "Undo" for a moment
+          (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben") */}
+      {/* the red bin of the action bar, as everywhere (Facelift-Abnahme W4) */}
+      {one?.out && props.onHide && (
+        <div className="skip-delete">
+          <ActionBar
+            label={tr('This round', 'Diese Runde')}
+            actions={[
+              {
+                label: tr('Delete from the pool', 'Aus dem Pool löschen'),
+                aria: tr('Delete the round from the pool', 'Runde aus dem Pool löschen'),
+                icon: 'delete',
+                danger: true,
+                onClick: async () => {
+                  const r = { day: one.day, course: one.course };
+                  if (!(await props.onHide!(r, true))) return;
+                  setShown(null);
+                  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
+                },
+              },
+            ]}
+          />
         </div>
       )}
       {!one && props.onCount && gone.length > 0 && (

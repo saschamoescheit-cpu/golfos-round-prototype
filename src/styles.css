@@ -2507,10 +2507,18 @@ button.balance-item-row { cursor: pointer; }
 .shot-where { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .shot-where .chip { white-space: nowrap; flex: none; }
 /* the head on its own line over the whole width (Sascha 15.11.2026): each part unbroken, the button below beside the wind */
-.shot-where:has(> .shot-where-head) { flex-wrap: wrap; align-items: flex-end; row-gap: 4px; }
-.shot-where-head { flex: 1 0 100%; }
+/* (Sascha 15.11.2026, later: "Ort ändern in der Höhe zentriert rechts"): a grid – the head over the whole width on a
+   phone, the button beside the lines under it, centred; wide enough (the iPad), the button right of all of it, centred */
+.shot-where:has(> .shot-where-head) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 4px; align-items: center; }
+.shot-where-head { grid-column: 1 / -1; grid-row: 1; }
 .shot-where-head > * { white-space: nowrap; }
+.shot-where:has(> .shot-where-head) > .grow { grid-column: 1; grid-row: 2; }
 .shot-where:has(> .shot-where-head) > .grow:empty { display: none; }
+.shot-where:has(> .shot-where-head) > .chip { grid-column: 2; grid-row: 2; align-self: center; }
+@media (min-width: 560px) {
+  .shot-where-head { grid-column: 1; }
+  .shot-where:has(> .shot-where-head) > .chip { grid-row: 1 / span 2; }
+}
 /* a hole without a map set up while checking the shots (Sascha 12.11.2026) */
 .review-nomap { display: flex; flex-direction: column; gap: 10px; }
 .review-setup-layer { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; }
@@ -2829,4 +2837,3 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-plays, .shot-wind { display: block; }
 .shot-wind { margin-top: 2px; }
 .wind-tag.plain svg { color: inherit; }
-.shot-where:has(> .shot-where-head) > .chip { margin-left: auto; }

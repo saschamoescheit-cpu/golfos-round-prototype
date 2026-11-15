@@ -7,6 +7,7 @@ import { checksShots, fmtHcp, playerTotals, playing18, roundStats, finishRound }
 import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { FloatActions } from '../components/FloatActions';
+import { CheckShotsIcon } from '../components/RoundIcons';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
@@ -488,7 +489,7 @@ export function Scorecard(props: {
       {/* the round's actions in one row with their symbols (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete */}
       {/* "Schläge prüfen" floating bottom right (Sascha 12.11.2026: "Hier wäre ein Schwebebalken für Schläge prüfen gut") –
           the round's other actions stay in the row below */}
-      {finished && canReview && editHole == null && <FloatActions pen={{ label: tr('Check shots', 'Schläge prüfen'), onClick: () => props.onReview({ ...round, capture: 'full' }) }} />}
+      {finished && canReview && editHole == null && <FloatActions pen={{ label: tr('Check shots', 'Schläge prüfen'), icon: <CheckShotsIcon size={26} />, onClick: () => props.onReview({ ...round, capture: 'full' }) }} />}
       {finished && (
         <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
           <button

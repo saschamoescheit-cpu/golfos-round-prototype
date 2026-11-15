@@ -107,6 +107,20 @@ ok(crowded === 0, `nothing wider than the 320-px screen (${crowded} not)`);
     });
     ok(lines === 1 && below, `the head "${(await head.innerText().catch(() => '')).trim()}" on one line (${lines}), "Ort ändern" below it (${below})`);
     if (process.env.SHOTS) await p.locator('.sheet').screenshot({ path: process.env.SHOTS + '/reviewwind-sheet.png' });
+    // the iPad (Sascha 15.11.2026: "Ort ändern sollte in der Höhe zentriert rechts ausgerichtet sein"): right of all the
+    // lines, in their middle
+    const was = p.viewportSize();
+    await p.setViewportSize({ width: 1000, height: 800 });
+    await p.waitForTimeout(300);
+    const mid = await p.evaluate(() => {
+      const box = document.querySelector('.sheet .shot-where')?.getBoundingClientRect();
+      const c = document.querySelector('.sheet .shot-where > .chip')?.getBoundingClientRect();
+      const h = document.querySelector('.sheet .shot-where-head')?.getBoundingClientRect();
+      return box && c && h ? { off: Math.abs(box.top + box.height / 2 - (c.top + c.height / 2)), right: box.right - c.right, beside: c.left > h.right } : null;
+    });
+    ok(!!mid && mid.off <= 3 && mid.right < 20 && mid.beside, `wide: "Ort ändern" right, centred in the height (${JSON.stringify(mid)})`);
+    if (process.env.SHOTS) await p.locator('.sheet .shot-where').screenshot({ path: process.env.SHOTS + '/reviewwind-wide.png' });
+    if (was) await p.setViewportSize(was);
   }
   ok(/zur Fahne/.test(where) && /^spielte sich wie \d+ m$/.test(plays) && own === 'block', `the shot's sheet: "${plays}" – a line of its own`);
   ok(/^(Gegenwind|Rückenwind|Wind)( von (links|rechts))? \d+ km\/h/.test(windText) && windOwn === 'block' && (await wind.locator('svg').count()) === 1 && !green(arrow), `below it the wind as under the map: "${windText}" – its arrow, not green (${arrow})`);
