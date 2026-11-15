@@ -1474,9 +1474,15 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
     if (one && isVoided(w, one))
       return (
-        <span key={w.id} className="bet-cell voided" title={wagerLabel(w)}>
+        // the sign instead of the words – the cell as high as every other (Sascha 15.11.2026: "zerschießt die Optik", mock-up C)
+        <span key={w.id} className="bet-cell voided" title={`${wagerLabel(w)} – ${tr('not counted', 'nicht gewertet')}`} aria-label={`${targetOf(w)} – ${tr('not counted', 'nicht gewertet')}`}>
           <strong>{targetOf(w)}</strong>
-          <small className="bet-made">{tr('not counted', 'nicht gewertet')}</small>
+          <small className="bet-made">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M6 18L18 6" />
+            </svg>
+          </small>
         </span>
       );
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
@@ -1723,6 +1729,15 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
             </tbody>
           </table>
         </div>
+      )}
+      {one && rows.length > 0 && !one.out && pool.wagers.some((w) => inRound(w) && isVoided(w, one)) && (
+        <span className="bet-legend muted small">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M6 18L18 6" />
+            </svg>
+          {tr('not counted', 'nicht gewertet')}
+        </span>
       )}
       {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
       {lines.length > 0 && (

@@ -1307,8 +1307,9 @@ button.tile:disabled { opacity: 1; }
 .bet-cell.given { background: color-mix(in srgb, var(--text) 16%, var(--surface-2)); }
 .bet-cell.given svg { vertical-align: -1px; margin-right: 2px; color: var(--brand-text); }
 .bet-cell.voided { background: color-mix(in srgb, var(--text) 10%, var(--surface-2)); }
-.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); font-size: 10.5px; }
-.bet-matrix td .bet-cell.voided { white-space: normal; }
+.bet-cell.voided strong { color: var(--muted); }
+.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); display: inline-flex; justify-content: center; }
+.bet-legend { display: inline-flex; align-items: center; gap: 6px; }
 .bet-matrix td .bet-cell.given { white-space: normal; }
 .bet-matrix td .bet-cell.given small.bet-made, .bet-cell.given small.bet-made { color: var(--brand-text); font-size: 10.5px; overflow-wrap: anywhere; hyphens: auto; }
 .concede-cost { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -2556,12 +2557,10 @@ button.balance-item-row { cursor: pointer; }
 .module-sheet .module-card { padding: 12px 14px; }
 .module-sheet .module-card strong { font-size: 19px; }
 .module-sheet .module-icon { width: 44px; height: 44px; }
-.module-sheet .module-home .module-icon svg { width: 28px; height: 28px; } /* the house as big as the module icons */
+/* the start page: a round house button beside ✕ (Sascha 15.11.2026, mock-up A) */
+.module-sheet .module-home-btn { color: var(--brand-text); border-color: var(--brand); }
+.module-sheet .module-home-btn svg { width: 20px; height: 20px; }
 /* "Startseite" set off in green (Sascha 11.11.2026, design round 3: "Startseite in grün, um es hervorzuheben") */
-.module-sheet .module-home { background: var(--brand-soft); } /* no green frame: that marks the module one is in */
-.module-sheet .module-home strong { color: var(--brand-text); }
-.module-sheet .module-home .module-icon { background: var(--brand); color: #fff; }
-.module-sheet .module-home > span:last-child { color: var(--brand-text); }
 .module-card.on { border: 2px solid var(--brand); }
 /* the host takes a round out of a pool's standing (Sascha 12.11.2026) */
 .skip-round { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-2); }

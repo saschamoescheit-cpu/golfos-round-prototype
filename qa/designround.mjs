@@ -72,11 +72,12 @@ await p.locator('.home-hero .module-card').filter({ hasText: 'Rounds' }).click()
 await p.waitForTimeout(800);
 await p.locator('.module-switch').first().click();
 const ms = p.getByRole('dialog', { name: 'Modul wechseln' });
-const home = ms.locator('.module-home');
-const look = await home.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el.querySelector('strong')).color]);
+// "Startseite" a round house button in the sheet's head (Sascha 15.11.2026, mock-up A), green – no row of its own
+const home = ms.locator('.sheet-head .module-home-btn');
+const look = await home.evaluate((el) => getComputedStyle(el).color).catch(() => '');
 const brand = await p.evaluate(() => { const d = document.createElement('i'); d.style.color = 'var(--brand-text)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
-ok(look[1] === brand && !/rgba\(0, 0, 0, 0\)|transparent/.test(look[0]), `"Startseite" set off in green (${look.join(' · ')})`);
-ok((await home.locator('.small').count()) === 0, '"Startseite" without a line under it');
+ok((await home.count()) === 1 && look === brand, `"Startseite": the green house button in the head (${look})`);
+ok((await ms.locator('.module-card').filter({ hasText: 'Startseite' }).count()) === 0, 'no "Startseite" row among the modules');
 await ms.getByRole('button', { name: 'Schließen' }).click();
 
 // the bin: a round green "restore" right in the row – one tap brings it back
