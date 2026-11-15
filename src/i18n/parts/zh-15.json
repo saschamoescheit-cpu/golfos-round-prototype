@@ -1,8 +1,4 @@
 {
- "18": "总计",
- "n": "数量",
- "E": "E",
- "rpm": "rpm",
  "The shot for it": "对应的击球",
  "Ball and club": "球与球杆",
  "Entry into the sand": "入沙点",
@@ -18,7 +14,6 @@
  "{0} drills{1}": "{0} 项练习{1}",
  "Part of the shot": "属于该击球",
  "Shots ({0})": "击球（{0}）",
- "paypal": "PayPal",
  "The standard pitch": "标准劈起球",
  "From 15 to 60 m: a higher flight, a short roll – the body turns, the arms follow.": "15 至 60 m：较高弹道、短滚动 – 身体转动，手臂跟随。",
  "Middle of the stance": "站姿中间",
@@ -657,7 +652,6 @@
  "Low point": "最低点",
  "Where the club reaches the bottom of its arc – the key to clean contact.": "球杆到达挥杆弧最低处的位置 – 干净击球的关键。",
  "The club swings on an arc; its lowest point decides the contact. With irons and wedges it must be after the ball (ball first, then ground), in the bunker under the ball in the sand, with the driver before the ball so it is hit on the way up. Weight and hands forward move it forward – the most common fault is a low point behind the ball: fat and thin shots.": "球杆沿弧线挥动；它的最低点决定击球质量。铁杆和挖起杆的最低点必须在球之后（先球后地），沙坑中在球下方的沙里，一号木则在球之前，以便向上击球。重心和手在前会让它前移 – 最常见的错误是最低点在球后：打厚和打薄。",
- "hands": "双手",
  "Little bounce · 4–6°": "小反弹角 · 4–6°",
  "hard ground, bare lies, firm sand": "硬地、裸地、实沙",
  "Medium · 8–10°": "中等 · 8–10°",
@@ -700,8 +694,5 @@
  "entry 3–5 cm behind – the ball is never touched": "在球后 3–5 cm 入沙 – 永远不碰球",
  "Driver: hit up on the ball": "一号木：向上击球",
  "low point before the ball": "最低点在球之前",
- "ball at the lead heel, teed up high": "球在前脚脚跟处，球座插高",
- "“{0}” …": "“{0}”…",
- "“{0}”": "“{0}”",
- "get": "get"
+ "ball at the lead heel, teed up high": "球在前脚脚跟处，球座插高"
 }
