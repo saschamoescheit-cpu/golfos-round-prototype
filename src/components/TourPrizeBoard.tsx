@@ -23,7 +23,7 @@ export function tourPrizeResult(ev: PrizedEvent): { tp: TourPrizes; awards: Awar
 
 /** The tournament's prizes on its page (Sascha 14.11.2026, mock-ups 4 and 5): who wins what – provisional while it is
  *  played –, and once every card is in, who pays whom through the collector; the host marks a payment "Bezahlt". */
-export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: boolean; host: boolean; onPaid: (key: string, on: boolean) => void }) {
+export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: boolean; host: boolean; onPaid: (key: string, on: boolean) => void; /** settled at the end of this series (Sascha 15.11.2026) – no "Wer zahlt wem" here */ seriesName?: string }) {
   const r = tourPrizeResult(props.ev);
   if (!r) return null;
   const { tp, awards, settle } = r;
@@ -59,7 +59,8 @@ export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: 
         </span>
       )}
       {props.played && !props.done && awards.length > 0 && <span className="muted small">{tr('Provisional – final once every card is in.', 'Vorläufig – fest, sobald alle Karten drin sind.')}</span>}
-      {props.done && settle.transfers.length > 0 && (
+      {props.seriesName && <span className="muted small">{tr(`Settled at the end of the series "${props.seriesName}" – together with its prizes.`, `Abgerechnet wird am Ende der Serie „${props.seriesName}“ – zusammen mit den Serienpreisen.`)}</span>}
+      {!props.seriesName && props.done && settle.transfers.length > 0 && (
         <>
           <span className="eyebrow tour-prize-pay-head">{tr('Who pays whom', 'Wer zahlt wem')}</span>
           <ul className="tour-prize-pays">

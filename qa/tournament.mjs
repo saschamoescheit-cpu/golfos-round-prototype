@@ -84,9 +84,12 @@ ok((await aids.count()) === 0, 'a round with friends: no switch');
 await p.locator('.settings-row').filter({ hasText: 'Rundenart' }).click();
 await p.locator('.sheet .pick-option').filter({ hasText: /^Turnier/ }).click();
 ok((await aids.count()) === 1 && (await aids.getAttribute('data-on')) === 'false', 'Rundenart Turnier: "Alle Funktionen", off (Rule 4.3)');
-// a row of the format list (Sascha 08.11.2026: "Alle Funktionen vllt auch in Format integrieren?")
-ok((await p.locator('.settings-list').filter({ hasText: 'HCP-Vorgabe' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the settings list (Facelift 11.11.2026, t5: under "Einstellungen")');
+// in the sheet of Rundenart, under "Turnier" – the sheet stays open (Sascha 15.11.2026: "unter Format … unter Rundenart")
+const kindSheet = p.getByRole('dialog', { name: 'Rundenart' });
+ok((await kindSheet.locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" in the sheet of Rundenart, under its choices');
 await flip(aids);
+await kindSheet.getByRole('button', { name: 'Schließen' }).click();
+ok(/Turnier · intern/.test(await p.locator('.settings-row').filter({ hasText: 'Rundenart' }).innerText()), 'Rundenart: "Turnier · intern"');
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(4000);

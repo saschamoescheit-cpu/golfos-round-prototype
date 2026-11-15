@@ -346,7 +346,7 @@ export const FAQ: FaqTopic[] = [
       },
       {
         q: () => tr('And in a tournament?', 'Und im Turnier?'),
-        a: () => tr('Round type "Tournament": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: switch on "All functions" in the format (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.', 'Rundenart „Turnier“: keine Ratschläge (Regel 4.3) – nur deine Notizen und die Entfernungen. Internes Turnier: im Format „Alle Funktionen“ einschalten (beim Einrichten der Runde oder beim Planen des Turniers) – Wind, Caddie und Grün-Slopes wie in jeder Runde, für alle im Turnier.'),
+        a: () => tr('Round type "Tournament": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: Format → Kind of round → "Tournament", below it switch on "All functions" (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.', 'Rundenart „Turnier“: keine Ratschläge (Regel 4.3) – nur deine Notizen und die Entfernungen. Internes Turnier: Format → Rundenart → „Turnier“, darunter „Alle Funktionen“ einschalten (beim Einrichten der Runde oder beim Planen des Turniers) – Wind, Caddie und Grün-Slopes wie in jeder Runde, für alle im Turnier.'),
         video: 'start',
       },
     ],
@@ -625,6 +625,16 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Yes: Tournaments (on the start page) → "New tournament" – the name, the format as in Rounds (kind of round, mode – simple game, Better Ball, scramble, foursomes, greensome or Chapman, the teams formed in each flight: players 1 & 2 and 3 & 4 –, scoring and the number of rounds), the course and the day, the players with their HCP, the flights, "Score entry", under "Settings" the handicap allowance and net classes if you like, and last the special prizes. Under "Flights and tee times" you choose the draw – by hand, random, by handicap up or down –, the players per flight (2 to 4), the first tee time and the interval, from tee 1 or from tees 1 and 10. The app deals the flights and shows who marks whom; hold a player and drag him onto another flight – or tap him. Invite with the code or link: whoever has it is in. On the day the tournament shows in Rounds from 00:01 – "take part", pick yourself, play; the live leaderboard runs in Rounds and on the tournament\'s page, a player tapped shows his scorecard. Only whoever set it up changes or deletes it.',
             'Ja: Tournaments (auf der Startseite) → „Neues Turnier“ – Name, das Format wie in Rounds (Rundenart, Modus – Einfaches Spiel, Better Ball, Scramble, Vierer, Greensome oder Chapman, die Teams je Flight: Spieler 1 & 2 und 3 & 4 –, Scoring und die Anzahl der Runden), Platz und Tag, die Spieler mit HCP, die Flights, „Score-Erfassung“, unter „Einstellungen“ die HCP-Vorgabe und auf Wunsch Netto-Klassen, zum Schluss die Sonderwertungen. Unter „Flights und Startzeiten“ wählst du die Einteilung – manuell, zufällig, nach HCP auf- oder absteigend –, die Spieler je Flight (2 bis 4), die erste Startzeit und den Abstand, von Tee 1 oder von Tee 1 und Tee 10. Die App teilt die Flights ein und zeigt, wer wen zählt; einen Spieler gedrückt halten und auf einen anderen Flight ziehen – oder antippen. Mit Code oder Link einladen: Wer ihn hat, ist dabei. Am Turniertag steht das Turnier ab 00:01 in Rounds – „teilnehmen“, sich wählen, spielen; das Live-Leaderboard läuft in Rounds und auf der Turnierseite, ein Tipp auf einen Spieler zeigt seine Scorekarte. Ändern oder löschen kann nur, wer es angelegt hat.',
+          ),
+        video: 'tours',
+      },
+      {
+        // Sascha 14./15.11.2026: prizes of a tournament – and of a whole series, settled once at its end
+        q: () => tr('Can we play a tournament or a series for prizes?', 'Können wir ein Turnier oder eine Serie um Preise spielen?'),
+        a: () =>
+          tr(
+            'Yes. A tournament: "Played for" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, then an amount per place: gross and net 1–3, Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, "Played for · the whole series" – the same rows for the series total. A tie shares the prize. Once the last card is in, "Who pays whom" – in a series once at its end, day prizes and series prizes together.',
+            'Ja. Ein Turnier: „Worum“ (nach den Sonderwertungen) – Geld, Getränke, Essen …, Startgeld je Spieler und wer es sammelt, dann ein Betrag je Platz: brutto und netto 1–3, Long Drive, Nearest to the Pin. Eine ganze Serie: auf der Serienseite unter den Runden „Worum · ganze Serie“ – dieselben Zeilen für die Gesamtwertung. Bei Gleichstand wird geteilt. Ist die letzte Karte drin, steht da „Wer zahlt wem“ – in einer Serie einmal am Ende, Tages- und Serienpreise zusammen.',
           ),
         video: 'tours',
       },

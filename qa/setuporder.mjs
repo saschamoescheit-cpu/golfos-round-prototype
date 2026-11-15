@@ -54,14 +54,13 @@ await P.waitForTimeout(1500);
   // the score entry is there once the phone can share (signed in to the server – in the gate's run of all tests the
   // simulated server may not say so in time): then right after the invitation, else the rest in the same order
   const entry = h.includes('SCORE-ERFASSUNG');
-  ok(h.join('|') === (entry ? 'FORMAT|PLATZ|SPIELER|MITSPIELER EINLADEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN' : 'FORMAT|PLATZ|SPIELER|MITSPIELER EINLADEN|WORUM|EINSTELLUNGEN'), `r9: Was → Wo → Wer (Spieler, Einladen, Score-Erfassung) → Worum → Einstellungen (${h.join(' · ')})`);
+  // Sascha 15.11.2026 (Variante A): the allowance in the format – no "Einstellungen" left without Texas
+  ok(h.join('|') === (entry ? 'FORMAT|PLATZ|SPIELER|MITSPIELER EINLADEN|SCORE-ERFASSUNG|WORUM' : 'FORMAT|PLATZ|SPIELER|MITSPIELER EINLADEN|WORUM'), `r9: Was → Wo → Wer (Spieler, Einladen, Score-Erfassung) → Worum, no Einstellungen (${h.join(' · ')})`);
   ok((await P.locator('.topbar h1').innerText()).trim() === 'Neue Runde', 'r9: the title "Neue Runde" – the course a row below');
   const fmt = await rowsOf('Format');
-  ok(fmt.map((t) => t.split(' ')[0]).join('|') === 'Rundenart|Modus|Scoring', `r9: Format – ${fmt.join(' | ')}`);
+  ok(fmt.map((t) => t.split(' ')[0]).join('|') === 'Rundenart|Modus|Scoring|HCP-Vorgabe' && /^HCP-Vorgabe 100 %$/.test(fmt[3] ?? ''), `r9: Format – ${fmt.join(' | ')} (the allowance under Scoring, 15.11.2026)`);
   const wo = await rowsOf('Platz');
   ok(/^Platz Golfclub Hetzenhof/.test(wo[0] ?? '') && (await P.getByRole('group', { name: 'Löcher' }).locator('.choice-loop').count()) > 0, `r9: Wo – "${wo[0]}", the holes below`);
-  const set = await rowsOf('Einstellungen');
-  ok(/^HCP-Vorgabe 100 %$/.test(set[0] ?? ''), `r9: Einstellungen – ${set.join(' | ')}`);
   ok((!entry || /^Wer erfasst/.test((await rowsOf('Score-Erfassung'))[0] ?? '')) && /^Side-Bet/.test((await rowsOf('Worum'))[0] ?? ''), `r9: "Wer erfasst" after the invitation, the side bet under "Worum"${entry ? '' : ' (no sharing here – score entry not shown)'}`);
 }
 // the add row: its plus and its words on one line; the course rating form: both fields wide enough (12.11.2026, night
@@ -220,10 +219,10 @@ await P.locator('button.list-item').first().click();
 await P.locator('#tour-name').waitFor({ timeout: 30000 });
 {
   const h = await heads('main.screen > .setup-part > .eyebrow');
-  ok(h.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `t5: Was → Wo/Wann → Wer → Worum (Preise, 14.11.2026) → Einstellungen → Sonderwertungen (${h.join(' · ')})`);
+  // Sascha 15.11.2026 (Variante A): Sonderwertungen, then Worum (their prizes among them); no Einstellungen without Texas/cut
+  ok(h.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|SONDERWERTUNGEN (OPTIONAL)|WORUM', `t5: Was → Wo/Wann → Wer → Sonderwertungen → Worum (${h.join(' · ')})`);
   const fmt = (await rowsOf('Format')).map((t) => t.split(' ')[0]);
-  const set = (await rowsOf('Einstellungen')).map((t) => t.split(' ')[0]);
-  ok(fmt.join('|') === 'Rundenart|Modus|Scoring|Runden' && set[0] === 'HCP-Vorgabe', `t5: Format ${fmt.join(' | ')} – Einstellungen ${set.join(' | ')}`);
+  ok(fmt.join('|') === 'Rundenart|Modus|Scoring|HCP-Vorgabe|Netto-Klassen|Runden', `t5: Format ${fmt.join(' | ')} – the allowance under Scoring`);
 }
 await shot('tour');
 // g3: Long Drive – ✕ first

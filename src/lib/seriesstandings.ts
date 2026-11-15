@@ -13,11 +13,13 @@ export interface SeriesPart {
   /** given up as "No Return" – shown "NR", not counted in the total (Sascha 11.11.2026) */
   noReturn?: boolean;
 }
-export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; anyNoReturn: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[]; noReturn: boolean }[] } {
+/** `gross`: every round gross (true) or with its handicap allowance (false) – the series' prizes (Sascha 15.11.2026); left
+ *  out: as each round is scored (stroke play gross, else net) */
+export function seriesStandings(evs: RoundEvent[], o: { gross?: boolean } = {}): { higherBetter: boolean; anyNoReturn: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[]; noReturn: boolean }[] } {
   const by = new Map<string, { name: string; sum: number; rounds: number; parts: SeriesPart[]; noReturn: boolean }>();
   let hb = false;
   evs.forEach((ev, k) => {
-    const st = eventStandings(ev, { gross: (ev.format?.scoring ?? 'net') === 'stroke' });
+    const st = eventStandings(ev, { gross: o.gross ?? (ev.format?.scoring ?? 'net') === 'stroke' });
     hb = st.higherBetter;
     for (const r of st.rows) {
       // "No Return" (Sascha 11.11.2026): the round shown "NR", not added – he stands on the rounds he finished

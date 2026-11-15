@@ -101,7 +101,9 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
 /** A row with its own sheet of choices – the usual case: a choice of several, each with what it means. `prompt`: a
  *  required choice – shown in green ("Gegner wählen") while none is made. */
 /** `shown`: the row's value other than the choice's name – e.g. in two lines (Sascha 13.11.2026: "Hcp 5 / (automatisch)") */
-export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string; shown?: ReactNode }) {
+/** `children`: rows under the choices in the same sheet (Sascha 15.11.2026: "Alle Funktionen" under "Turnier" in
+ *  Rundenart); `stays`: a choice after which the sheet stays open, so those rows can be set at once. */
+export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string; shown?: ReactNode; children?: ReactNode; stays?: (v: T) => boolean }) {
   const [open, setOpen] = useState(false);
   const current = props.options.find((o) => o.value === props.value);
   return (
@@ -114,10 +116,12 @@ export function ChoiceRow<T>(props: { label: string; title?: string; options: Ch
           current={props.value}
           onPick={(v) => {
             props.onChange(v);
-            setOpen(false);
+            if (!props.stays?.(v)) setOpen(false);
           }}
           onClose={() => setOpen(false)}
-        />
+        >
+          {props.children}
+        </PickSheet>
       )}
     </>
   );

@@ -158,9 +158,8 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
 // WHS allowance to start with, 95 %
 {
   const rows = (await H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Format$/ }) }).locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
-  // the allowance under "Einstellungen" (Facelift 11.11.2026, t5)
-  const settings = (await H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Einstellungen$/ }) }).locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
-  ok(rows.slice(0, 4).join(' | ') === 'Rundenart Turnier | Modus Einfaches Spiel | Scoring Zählspiel | Runden 1 Runde' && settings[0] === 'HCP-Vorgabe 95 %', `Format: ${rows.join(' | ')} – Einstellungen: ${settings.join(' | ')}`);
+  // the allowance under Scoring (Sascha 15.11.2026, Variante A)
+  ok(rows.slice(0, 6).join(' | ') === 'Rundenart Turnier | Modus Einfaches Spiel | Scoring Zählspiel | HCP-Vorgabe 95 % | Netto-Klassen Keine | Runden 1 Runde', `Format: ${rows.join(' | ')}`);
   await H.locator('.settings-row').filter({ hasText: /^Modus/ }).click();
   const modes = (await H.locator('.sheet .pick-option strong').allInnerTexts()).join(', ');
   ok(/Einfaches Spiel/.test(modes) && /Better Ball/.test(modes) && /Scramble/.test(modes) && /Vierer/.test(modes) && !/Lochspiel/.test(modes), `the modes – no match play in a field: ${modes}`);
@@ -215,7 +214,7 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
 {
   const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
   // Facelift 11.11.2026 (t5): Was → Wo/Wann → Wer (Spieler, Flights, Wer erfasst) → Einstellungen → Sonderwertungen
-  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|WORUM|EINSTELLUNGEN|SONDERWERTUNGEN (OPTIONAL)', `the order: ${heads.join(' · ')}`);
+  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SPIELER|FLIGHTS UND STARTZEITEN|SCORE-ERFASSUNG|SONDERWERTUNGEN (OPTIONAL)|WORUM', `the order (15.11.2026: Sonderwertungen → Worum, no Einstellungen): ${heads.join(' · ')}`);
 }
 for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
   await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();

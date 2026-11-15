@@ -96,6 +96,18 @@ ok(crowded === 0, `nothing wider than the 320-px screen (${crowded} not)`);
   const windOwn = await wind.evaluate((el) => getComputedStyle(el).display).catch(() => '');
   const arrow = await wind.locator('svg').evaluate((el) => getComputedStyle(el).color).catch(() => '');
   const green = (c) => { const n = (c.match(/[\d.]+/g) ?? []).map(Number); return n.length >= 3 && n[1] > n[0] + 30 && n[1] > n[2] + 30; };
+  // the head on one line – "Schlag 201 m" never broken, "Ort ändern" below it (Sascha 15.11.2026)
+  {
+    const head = p.locator('.sheet .shot-where-head');
+    const lines = await head.evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '20'))).catch(() => 0);
+    const below = await p.evaluate(() => {
+      const h = document.querySelector('.sheet .shot-where-head')?.getBoundingClientRect();
+      const c = document.querySelector('.sheet .shot-where > .chip')?.getBoundingClientRect();
+      return !!h && !!c && c.top >= h.bottom - 1;
+    });
+    ok(lines === 1 && below, `the head "${(await head.innerText().catch(() => '')).trim()}" on one line (${lines}), "Ort ändern" below it (${below})`);
+    if (process.env.SHOTS) await p.locator('.sheet').screenshot({ path: process.env.SHOTS + '/reviewwind-sheet.png' });
+  }
   ok(/zur Fahne/.test(where) && /^spielte sich wie \d+ m$/.test(plays) && own === 'block', `the shot's sheet: "${plays}" – a line of its own`);
   ok(/^(Gegenwind|Rückenwind|Wind)( von (links|rechts))? \d+ km\/h/.test(windText) && windOwn === 'block' && (await wind.locator('svg').count()) === 1 && !green(arrow), `below it the wind as under the map: "${windText}" – its arrow, not green (${arrow})`);
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});

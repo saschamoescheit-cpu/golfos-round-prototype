@@ -21,7 +21,8 @@ import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel, myName } from '../components/ShareRound';
-import { SettingsList, SettingsRow, ToggleRow, AddRow } from '../components/Settings';
+import { SettingsList, SettingsRow, AddRow } from '../components/Settings';
+import { AidsRow } from '../components/AidsRow';
 import { SwipeRow } from '../components/SwipeRow';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
@@ -330,7 +331,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                     setKind(k.id);
                     // single play: 95 % in a competition, 100 % with friends – unless chosen by hand
                     if (!allowanceSet) setFormat((f) => ({ ...f, allowance: whsAllowance(f.mode, formatOf(f).matchplay, k.id === 'tournament') }));
-                    setKindOpen(false);
+                    // "Turnier": open on – "Alle Funktionen" under it (Sascha 15.11.2026)
+                    if (k.id !== 'tournament') setKindOpen(false);
                   }}
                 >
                   <span className="grow">
@@ -341,6 +343,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                 </button>
               ))}
             </div>
+            {/* the aids of Rule 4.3 under "Turnier" (Sascha 15.11.2026: "unter Format … unter Rundenart") */}
+            {kind === 'tournament' && <AidsRow on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
           </section>
         </div>
       )}
@@ -353,7 +357,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           {/* the kind of round first, in the format block (Sascha 15.10.2026) */}
           <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
             <span>{tr('Kind of round', 'Rundenart')}</span>
-            <span className="settings-value">{kindName(kind)}</span>
+            <span className="settings-value">{kind === 'tournament' && format.aids ? tr('Tournament · internal', 'Turnier · intern') : kindName(kind)}</span>
             <span aria-hidden="true">›</span>
           </button>
           <button type="button" className="settings-row" onClick={() => setPicker('mode')}>
@@ -364,6 +368,12 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           <button type="button" className="settings-row" onClick={() => setPicker('scoring')}>
             <span>Scoring</span>
             <span className="settings-value">{format.scoring === 'stableford' ? 'Stableford' : tr('Stroke play', 'Zählspiel')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          {/* gross or net is what is played (Sascha 15.11.2026, Variante A): the allowance under Scoring */}
+          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
+            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
+            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -508,27 +518,21 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         }}
       />
 
-      {/* Einstellungen – the handicap allowance, Texas, the aids of a tournament (Facelift 11.11.2026, r9) */}
+      {/* Einstellungen – what is left: Texas (Sascha 15.11.2026, Variante A: the allowance in the format, the aids under
+          Rundenart); nothing left – no section */}
+      {format.mode === 'scramble' && (
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <div className="settings-list">
-          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
-            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
-            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
+          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
+          <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
+            <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
+            <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
             <span aria-hidden="true">›</span>
           </button>
-          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
-          {format.mode === 'scramble' && (
-            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
-              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
-              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )}
-          {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026) */}
-          {kind === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
         </div>
       </section>
+      )}
 
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>

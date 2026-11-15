@@ -169,3 +169,34 @@ export function prizeSettle(tp: TourPrizes, players: string[], awards: Award[]):
   }
   return { balance, transfers, collector };
 }
+
+/** Several balances added up – a series' day prizes and its own (Sascha 15.11.2026: "Eine Abrechnung am Ende"): what
+ *  each one has to get (+) or to pay (−) over all of them. */
+export function addBalances(...bs: Map<string, { name: string; net: number }>[]): Map<string, { name: string; net: number }> {
+  const out = new Map<string, { name: string; net: number }>();
+  for (const b of bs)
+    for (const [k, v] of b) {
+      const cur = out.get(k);
+      out.set(k, { name: cur?.name ?? v.name, net: cents((cur?.net ?? 0) + v.net) });
+    }
+  return out;
+}
+
+/** The fewest payments for the balances: the one who owes most pays the one who gets most, and so on – nobody sends
+ *  money one way for a tournament and back for the series. */
+export function settleBalances(b: Map<string, { name: string; net: number }>): { from: string; to: string; amount: number; key: string }[] {
+  const owe = [...b.values()].filter((x) => x.net < -0.005).map((x) => ({ ...x, left: -x.net })).sort((a, c) => c.left - a.left || a.name.localeCompare(c.name));
+  const get = [...b.values()].filter((x) => x.net > 0.005).map((x) => ({ ...x, left: x.net })).sort((a, c) => c.left - a.left || a.name.localeCompare(c.name));
+  const out: { from: string; to: string; amount: number; key: string }[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < owe.length && j < get.length) {
+    const v = cents(Math.min(owe[i].left, get[j].left));
+    if (v > 0) out.push({ from: owe[i].name, to: get[j].name, amount: v, key: `${keyName(owe[i].name)}>${keyName(get[j].name)}` });
+    owe[i].left = cents(owe[i].left - v);
+    get[j].left = cents(get[j].left - v);
+    if (owe[i].left < 0.005) i++;
+    if (get[j].left < 0.005) j++;
+  }
+  return out;
+}

@@ -114,11 +114,17 @@ export function ShotSheet(props: {
         </div>
         {props.where && (
           <div className="shot-where">
+            {/* the head over the whole width, "Schlag 201 m" never broken – "Ort ändern" below it beside the wind (Sascha
+                15.11.2026: "sollte nicht umbrechen … dann geht ‚Ort ändern' tiefer") */}
+            {props.where.toPin ? (
+              <span className="shot-where-head">
+                <strong>{tr(`${props.where.toPin} to the flag`, `Noch ${props.where.toPin} zur Fahne`)}</strong>
+                {props.where.length ? <span className="muted"> · {tr(`shot ${props.where.length}`, `Schlag ${props.where.length}`)}</span> : null}
+              </span>
+            ) : null}
             <span className="grow">
               {props.where.toPin ? (
                 <>
-                  <strong>{tr(`${props.where.toPin} to the flag`, `Noch ${props.where.toPin} zur Fahne`)}</strong>
-                  {props.where.length ? <span className="muted"> · {tr(`shot ${props.where.length}`, `Schlag ${props.where.length}`)}</span> : null}
                   {props.where.plays ? <span className="muted small shot-plays">{props.where.plays}</span> : null}
                   {props.where.wind ? <span className="small shot-wind">{props.where.wind}</span> : null}
                 </>

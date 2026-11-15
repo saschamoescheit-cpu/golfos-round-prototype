@@ -38,11 +38,14 @@ await H.waitForTimeout(200);
 ok(/Vierer/.test(await row('Modus').innerText()) && /100 %/.test(await row('HCP-Vorgabe').innerText()), `Vierer: the team handicap carries the share – 100 % (${(await row('HCP-Vorgabe').innerText()).replace(/\s+/g, ' ')})`);
 ok((await H.getByText(/Spieler 1 & 2 und 3 & 4 als Team mit einem Ball/).count()) === 1, 'how the teams come about, under the format');
 // an internal tournament (Sascha 07.11.2026): every function – the switch under the format, off to start with
-const aids = onOff(H, /Alle Funktionen/);
-ok((await aids.count()) === 1 && (await aids.getAttribute('data-on')) === 'false', '"Alle Funktionen" in the format, off (Rule 4.3)');
-// a row of the format list (Sascha 08.11.2026)
-ok((await H.locator('.settings-list').filter({ hasText: 'HCP-Vorgabe' }).locator('.onoff-row').filter({ hasText: 'Alle Funktionen' }).count()) === 1, '"Alle Funktionen" is a row of the settings list (Facelift 11.11.2026, t5: under "Einstellungen")');
+// in the sheet of Rundenart, under "Turnier" (Sascha 15.11.2026)
+await row('Rundenart').click();
+const kindSheet = H.getByRole('dialog', { name: 'Rundenart' });
+const aids = onOff(kindSheet, /Alle Funktionen/);
+ok((await aids.count()) === 1 && (await aids.getAttribute('data-on')) === 'false', '"Alle Funktionen" in the sheet of Rundenart, off (Rule 4.3)');
 await flip(aids);
+await kindSheet.getByRole('button', { name: 'Schließen' }).click();
+ok(/Turnier · intern/.test(await row('Rundenart').innerText()), 'Rundenart: "Turnier · intern"');
 await H.locator('input[id^="hcp-"]').first().fill('10');
 for (const [n, h] of [['Erik', '4'], ['Cedric', '20'], ['Christopher', '0']]) {
   await H.getByRole('button', { name: 'Spieler hinzufügen' }).click();
@@ -67,7 +70,7 @@ ok(/Vierer · Zählspiel netto/.test(await H.locator('main').innerText()), 'the 
 await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
 await H.waitForTimeout(800);
 const names = await H.locator('input[id^="name-"]').evaluateAll((xs) => xs.map((x) => x.value));
-ok(names.length === 4 && ['Sascha', 'Erik', 'Cedric', 'Christopher'].every((n) => names.includes(n)) && /Vierer/.test(await row('Modus').innerText()) && (await aids.getAttribute('data-on')) === 'true', `changed: the four players one by one, the mode kept (${names.join(', ')})`);
+ok(names.length === 4 && ['Sascha', 'Erik', 'Cedric', 'Christopher'].every((n) => names.includes(n)) && /Vierer/.test(await row('Modus').innerText()) && /Turnier · intern/.test(await row('Rundenart').innerText()), `changed: the four players one by one, the mode kept (${names.join(', ')})`);
 
 // ---------- on the day: a phone joins by its name – its team ----------
 const erik = await sim.phone('Erik');

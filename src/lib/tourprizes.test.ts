@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasPrizes, prizeAwards, prizeSettle, prizeSlots, prizeSum, wonBy, type RankRow, type TourPrizes } from './tourprizes';
+import { addBalances, settleBalances, hasPrizes, prizeAwards, prizeSettle, prizeSlots, prizeSum, wonBy, type RankRow, type TourPrizes } from './tourprizes';
 
 // The mock-ups' example (Sascha 14.11.2026, "Turnier-Preise"): Orlando Invitational, 4 players, 20 $ entry fee, Sascha
 // collects; gross winner 50 $, net winner 30 $, Long Drive 10 $, Nearest to the Pin 10 $.
@@ -75,5 +75,33 @@ describe('tournament prizes', () => {
   it('sums', () => {
     expect(prizeSum(tp)).toBe(100);
     expect(wonBy(prizeAwards(tp, { gross, net, specials })).get('sascha')?.amount).toBe(10);
+  });
+});
+
+// A series (Sascha 15.11.2026: "Eine Abrechnung am Ende"): the day prizes of its tournaments and its own added up, then
+// the fewest payments.
+describe('one settlement for a series', () => {
+  const m = (xs: [string, number][]) => new Map(xs.map(([n, v]) => [n.toLowerCase(), { name: n, net: v }]));
+  it('adds the balances of the days and the series', () => {
+    const day1 = m([['Sascha', 30], ['Chris', -10], ['Cedric', -20]]);
+    const own = m([['Sascha', -50], ['Chris', 70], ['Cedric', -20]]);
+    const b = addBalances(day1, own);
+    expect([...b.values()].map((x) => [x.name, x.net])).toEqual([['Sascha', -20], ['Chris', 60], ['Cedric', -40]]);
+  });
+  it('the fewest payments – each who owes pays one who gets', () => {
+    const t = settleBalances(m([['Sascha', -20], ['Chris', 60], ['Cedric', -40]]));
+    expect(t).toEqual([
+      { from: 'Cedric', to: 'Chris', amount: 40, key: 'cedric>chris' },
+      { from: 'Sascha', to: 'Chris', amount: 20, key: 'sascha>chris' },
+    ]);
+  });
+  it('nobody owes: nothing to pay', () => {
+    expect(settleBalances(m([['Sascha', 0], ['Chris', 0]]))).toEqual([]);
+  });
+  it('the money sums to zero over all transfers', () => {
+    const b = m([['A', -33.33], ['B', -33.33], ['C', 66.66]]);
+    const t = settleBalances(b);
+    expect(t.reduce((s, x) => s + x.amount, 0)).toBeCloseTo(66.66, 2);
+    expect(t.every((x) => x.to === 'C')).toBe(true);
   });
 });
