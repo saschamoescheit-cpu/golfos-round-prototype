@@ -121,9 +121,9 @@ ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'the 
 // a topic without shots still opens on its drills
 await back();
 await p.waitForTimeout(300);
-await p.locator('.tr-cat').filter({ hasText: 'Putten' }).first().click();
+await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Grün lesen$/ }) }).first().click();
 await p.waitForTimeout(300);
-ok((await viewNow()).startsWith('Übungen'), 'Putten (no shots yet) still opens on the drills');
+ok((await viewNow()).startsWith('Übungen'), 'Grün lesen (no shots) still opens on the drills');
 await back();
 await p.waitForTimeout(300);
 
@@ -137,6 +137,10 @@ const TOPICS = [
   ['Schwierige Lagen', 5],
   ['Hoch & flach', 2],
   ['Low Point', 4],
+  ['Putten', 6],
+  ['Eisen', 3],
+  ['Fairwayhölzer', 3],
+  ['Driver', 3],
 ];
 let pics = 0;
 for (const [topic, n] of TOPICS) {

@@ -48,7 +48,7 @@ export const aimCurve = (side: 1 | -1, caption: L, wind?: L): Sketch => {
     { k: 'player', at: [hx - 0.6, 1.0], face: 'up' },
     { k: 'path', pts: [[hx, 1.0], [ax, 5.9]], style: 'aim' },
     { k: 'path', pts: [[hx, 1.0], [hx + side * 0.55, 3.6], [hx + side * 0.05, 5.75]], style: 'flight', arrow: true },
-    { k: 'text', at: [ax, 6.45], t: { en: 'aim here', de: 'hierhin zielen' }, size: 0.3 },
+    { k: 'text', at: [ax, 6.45], t: { en: 'aim here', de: 'hierhin zielen' }, size: 11 },
     ...(wind ? [{ k: 'slope' as const, at: [side === 1 ? 0.7 : 3.3, 2.1] as P, dir: side === 1 ? 270 : 90, label: wind }] : []),
   ], caption);
 };

@@ -1,6 +1,7 @@
 import { L, type CategoryId, type LieChart, type TopicShot } from '../types';
 import { G0, S, aimCurve, ball, co, fig, ground, hill, landRoll } from './shots-kit';
 import { FIGURE_SKETCHES } from './sketches-figures';
+import { ABSORBS2, DRIVER_SHOTS, IRON_SHOTS, PUTT_SHOTS, WOOD_SHOTS } from './shots-more2';
 import { ABSORBS, BUNKER_SHOTS, HIGHLOW_SHOTS, LOB_SHOTS, LOWPOINT_SHOTS, PITCH_SHOTS, SLOPE_SHOTS, SPIN_SHOTS, TROUBLE_SHOTS } from './shots-more';
 
 // The topics rebuilt as shots (Sascha 15.11.2026): "Chip-Pitch: standard chip/pitch, slopes uphill/downhill, ball
@@ -337,6 +338,7 @@ export interface TopicShots {
 }
 
 export const SHOTS: Partial<Record<CategoryId, TopicShots>> = {
+  putting: { shots: PUTT_SHOTS, absorbs: ABSORBS2.putting },
   chipping: { shots: CHIP_SHOTS, lie: CHIP_LIES, absorbs: ['The set-up', 'The stroke', 'Landing spot and club choice', 'Special chips'] },
   pitching: { shots: PITCH_SHOTS, absorbs: ABSORBS.pitching },
   lob: { shots: LOB_SHOTS },
@@ -346,4 +348,7 @@ export const SHOTS: Partial<Record<CategoryId, TopicShots>> = {
   trouble: { shots: TROUBLE_SHOTS, absorbs: ABSORBS.trouble },
   highlow: { shots: HIGHLOW_SHOTS },
   lowpoint: { shots: LOWPOINT_SHOTS },
+  irons: { shots: IRON_SHOTS, absorbs: ABSORBS2.irons },
+  woods: { shots: WOOD_SHOTS, absorbs: ABSORBS2.woods },
+  driver: { shots: DRIVER_SHOTS, absorbs: ABSORBS2.driver },
 };

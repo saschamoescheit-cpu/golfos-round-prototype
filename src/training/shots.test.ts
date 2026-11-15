@@ -84,6 +84,13 @@ describe('shots', () => {
     expect(ids('spin')).toEqual(['spin-low', 'spin-less', 'spin-factors']);
     expect(ids('highlow')).toEqual(['shot-high', 'shot-low']);
     expect(ids('lowpoint')).toEqual(['lowpoint-iron', 'lowpoint-chip', 'lowpoint-bunker', 'lowpoint-driver']);
+    // night run 15./16.11.2026: putting, irons, woods and driver as shots too
+    expect(ids('putting')).toEqual(['putt-short', 'putt-long', 'putt-uphill', 'putt-downhill', 'putt-break', 'putt-fringe']);
+    expect(ids('irons')).toEqual(['iron-standard', 'iron-approach', 'iron-long']);
+    expect(ids('woods')).toEqual(['wood-fairway', 'wood-tee', 'hybrid']);
+    expect(ids('driver')).toEqual(['driver-standard', 'driver-safe', 'driver-wind']);
+    // putting keeps rhythm (with the metronome), the two skills and how to practise in its basics
+    expect(CATEGORIES.find((c) => c.id === 'putting')!.sections.some((s) => s.metronome === 'putt')).toBe(true);
     // the new topics come right after their neighbours and show the drills their shots use
     const order = CATEGORIES.map((c) => c.id);
     expect(order.slice(2, 11)).toEqual(['chipping', 'pitching', 'lob', 'spin', 'bunker', 'slopes', 'trouble', 'highlow', 'lowpoint']);
