@@ -9,6 +9,7 @@ import type { LieChart, LieKind } from './types';
 const GRASS = '#6ea545';
 const GRASS_DARK = '#3d6b22';
 const SOIL = '#a07a4a';
+const LAWN = '#8cc95c'; // the grass seen from above, as in the sketches
 
 /** grass blades from x0 to x1, height h, standing on the ground at y = 40 */
 function blades(x0: number, x1: number, h: number, step = 3.2) {
@@ -103,7 +104,7 @@ export function StancePicture(p: { ball: number }) {
   const x = 45 + Math.max(-1, Math.min(1, p.ball)) * 20;
   return (
     <svg className="tr-lie-pic" viewBox="0 0 90 50" role="img" aria-hidden="true">
-      <rect x="0" y="0" width="90" height="50" rx="6" fill="#8cc95c" />
+      <rect x="0" y="0" width="90" height="50" rx="6" fill={LAWN} />
       <line x1="25" y1="14" x2="65" y2="14" stroke="#ffffff99" strokeWidth="1" strokeDasharray="2 2" />
       <ellipse cx="25" cy="34" rx="5.5" ry="10" fill="#2b3a44" />
       <ellipse cx="65" cy="34" rx="5.5" ry="10" fill="#2b3a44" />
