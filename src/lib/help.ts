@@ -80,8 +80,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How do I switch to another module quickly?', 'Wie wechsle ich schnell in ein anderes Modul?'),
         a: () =>
           tr(
-            'Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were. The first row, "Start page", goes back to the start page.',
-            'Oben links auf den Modul-Knopf tippen. Von unten kommt ein Blatt mit allen Modulen und was in jedem zu tun ist – das, in dem du bist, ist grün umrandet. Ein Tipp wechselt dorthin; jedes Modul merkt sich, wo du warst. Die erste Zeile „Startseite“ führt zurück zur Startseite.',
+            'Tap the module button top left. A sheet comes up from below with all modules and what is to do in each – the one you are in is marked green. A tap goes there; each module keeps where you were. The house at the top of the sheet, next to ✕, goes back to the start page.',
+            'Oben links auf den Modul-Knopf tippen. Von unten kommt ein Blatt mit allen Modulen und was in jedem zu tun ist – das, in dem du bist, ist grün umrandet. Ein Tipp wechselt dorthin; jedes Modul merkt sich, wo du warst. Das Haus oben im Blatt, neben ✕, führt zurück zur Startseite.',
           ),
         video: 'start',
       },
@@ -582,8 +582,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A round in the pool should not count – how do I take it out?', 'Eine Runde im Pool soll nicht zählen – wie nehme ich sie raus?'),
         a: () =>
           tr(
-            'As the host: pool → "Standing" → with the arrows to that round → "Do not count this round" → "Do not count". It is gone from the standing for everyone and counts for no bet; the scores of the round stay where they are. The pencil → "Rounds not counted" → "Count again" brings it back.',
-            'Als Host: Pool → „Stand“ → mit den Pfeilen zu der Runde → „Runde nicht werten“ → „Nicht werten“. Sie verschwindet bei allen aus dem Stand und zählt für keine Wette mehr; die Scores der Runde bleiben, wo sie sind. Stift → „Nicht gewertete Runden“ → „Wieder werten“ holt sie zurück.',
+            'As the host: pool → "Standing" → tap the round switch → pick the round → switch off "Count" at the bottom of the sheet. It counts for no bet any more, for everyone – its bets show ⊘; the scores of the round stay where they are. Switched on again, it counts again. A round not counted can be deleted from the pool in the same sheet; under "Deleted · only you see them" the arrow brings it back.',
+            'Als Host: Pool → „Stand“ → auf die Runden-Auswahl tippen → die Runde wählen → unten im Blatt „Runde werten“ ausschalten. Sie zählt bei allen für keine Wette mehr – ihre Wetten zeigen ⊘; die Scores der Runde bleiben, wo sie sind. Wieder eingeschaltet, zählt sie wieder. Eine nicht gewertete Runde lässt sich im selben Blatt aus dem Pool löschen; unter „Gelöscht · nur für dich“ holt der Pfeil sie zurück.',
           ),
         video: 'wagers',
       },
@@ -633,8 +633,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Can we play a tournament or a series for prizes?', 'Können wir ein Turnier oder eine Serie um Preise spielen?'),
         a: () =>
           tr(
-            'Yes. A tournament: "Played for" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, then an amount per place: gross and net 1–3, Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, "Played for · the whole series" – the same rows for the series total. A tie shares the prize. Once the last card is in, "Who pays whom" – in a series once at its end, day prizes and series prizes together.',
-            'Ja. Ein Turnier: „Worum“ (nach den Sonderwertungen) – Geld, Getränke, Essen …, Startgeld je Spieler und wer es sammelt, dann ein Betrag je Platz: brutto und netto 1–3, Long Drive, Nearest to the Pin. Eine ganze Serie: auf der Serienseite unter den Runden „Worum · ganze Serie“ – dieselben Zeilen für die Gesamtwertung. Bei Gleichstand wird geteilt. Ist die letzte Karte drin, steht da „Wer zahlt wem“ – in einer Serie einmal am Ende, Tages- und Serienpreise zusammen.',
+            'Yes. A tournament: "Played for" (after the special prizes) – money, drinks, a meal …, an entry fee per player and who collects it, the rankings (gross + net, gross only or net only) and the places per ranking, then an amount per place – gross in blue, net in green – and Long Drive, Nearest to the Pin. A whole series: on the series page under the rounds, "Played for · the whole series" – the same rows for the series total. A tie shares the prize. Once the last card is in, "Who pays whom" – in a series once at its end, day prizes and series prizes together.',
+            'Ja. Ein Turnier: „Worum“ (nach den Sonderwertungen) – Geld, Getränke, Essen …, Startgeld je Spieler und wer es sammelt, die Wertungen (Brutto + Netto, nur Brutto oder nur Netto) und die Plätze je Wertung, dann ein Betrag je Platz – Brutto blau, Netto grün –, dazu Long Drive und Nearest to the Pin. Eine ganze Serie: auf der Serienseite unter den Runden „Worum · ganze Serie“ – dieselben Zeilen für die Gesamtwertung. Bei Gleichstand wird geteilt. Ist die letzte Karte drin, steht da „Wer zahlt wem“ – in einer Serie einmal am Ende, Tages- und Serienpreise zusammen.',
           ),
         video: 'tours',
       },
