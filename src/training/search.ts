@@ -1,6 +1,6 @@
 import { CATEGORIES, DRILLS } from './content';
 import { GEAR } from './content/gear';
-import type { Category, Drill, Fault, Gear, L } from './types';
+import type { Category, Drill, Fault, Gear, L, TopicShot } from './types';
 
 // The search of the Training module (night run 16./17.10.2026: "Slice" found no drill, "Lag" found 131).
 // - a drill is found by its own texts, its topic and the faults that point to it (Slice → the slice drills)
@@ -61,6 +61,8 @@ export interface SearchResult {
   faults: { c: Category; f: Fault; index: number }[];
   drills: Drill[];
   gear: Gear[];
+  /** the shots (15./16.11.2026): by name, line, set-up, motion and what to watch, the name hits first */
+  shots: { c: Category; s: TopicShot }[];
 }
 
 // the faults that point to each drill – their names make the drill findable ("Slice", "Shank", "Dreiputts")
@@ -79,7 +81,7 @@ const DRILL_TEXT = new Map(
 
 export function search(q: string): SearchResult {
   const words = tokens(q.replace(/(\d)-(?=\p{L})/gu, '$1'));
-  const empty = { cats: [], faults: [], drills: [], gear: [] };
+  const empty = { cats: [], faults: [], drills: [], gear: [], shots: [] };
   if (!words.length) return empty;
   const hit = (raw: string) => {
     const text = norm(raw);
@@ -95,6 +97,9 @@ export function search(q: string): SearchResult {
     cats: CATEGORIES.filter((c) => hit(`${both(c.name)} ${both(c.short)}`)),
     faults: CATEGORIES.flatMap((c) => (c.faults ?? []).map((f, index) => ({ c, f, index }))).filter(({ f }) => hit(`${both(f.name)} ${both(f.looks)} ${both(f.cause)}`)),
     drills,
+    shots: CATEGORIES.flatMap((c) => (c.shots ?? []).map((s) => ({ c, s })))
+      .filter(({ c, s }) => hit([both(s.name), both(s.short), both(c.name), ...s.setup.rows.map((r) => both(r.v)), ...[...(s.move.text ?? []), ...(s.move.points ?? []), ...(s.watch.text ?? []), ...(s.watch.points ?? [])].map(both)].join(' ')))
+      .sort((a, b) => Number(hit(both(b.s.name))) - Number(hit(both(a.s.name)))),
     gear: GEAR.filter((g) => hit(`${typeof g.name === 'string' ? g.name : both(g.name)} ${typeof g.brand === 'string' ? g.brand : both(g.brand)} ${both(g.what)} ${both(g.why)}`)),
   };
 }

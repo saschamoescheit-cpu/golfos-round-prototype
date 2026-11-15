@@ -172,6 +172,35 @@ for (const [topic, n] of TOPICS) {
   await p.waitForTimeout(250);
 }
 
+// linked (night run 15./16.11.2026): the search finds shots, a fault and a drill lead to their shot
+await p.locator('.tr-search input').fill('Spiegelei');
+await p.locator('.tr-search input').press('Enter');
+await p.waitForTimeout(400);
+const found = p.locator('.tr-shot-links').first();
+ok((await found.count()) === 1 && /Eingebohrter Ball/.test(await found.innerText()), 'search "Spiegelei": the shot first, in "Schläge"');
+await found.locator('.list-item').first().click();
+await p.waitForTimeout(300);
+ok((await p.locator('.topbar h1').innerText()) === 'Eingebohrter Ball (Spiegelei)', 'it opens the shot');
+await back();
+await back();
+await p.waitForTimeout(300);
+await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Chippen$/ }) }).first().click();
+await p.waitForTimeout(300);
+await view('Fehler');
+await p.locator('.list .list-item').filter({ hasText: 'Fetter Chip' }).first().click();
+await p.waitForTimeout(300);
+const faultShot = p.locator('.tr-shot-links');
+ok((await faultShot.count()) === 1 && /Der Schlag dazu/i.test(await faultShot.innerText()) && /Der Standard-Chip/.test(await faultShot.innerText()), 'the fault "Fetter Chip" leads to the standard chip');
+await back();
+await p.waitForTimeout(300);
+await view('Übungen');
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).first().click();
+await p.waitForTimeout(300);
+ok(/Gehört zum Schlag/i.test(await p.locator('.tr-shot-links').innerText().catch(() => '')) && /Der Standard-Chip/.test(await p.locator('.tr-shot-links').innerText().catch(() => '')), 'the drill names its shot');
+await back();
+await back();
+await p.waitForTimeout(300);
+
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 await b.close();
 console.log(bad ? `${bad} check(s) failed` : 'all checks passed');

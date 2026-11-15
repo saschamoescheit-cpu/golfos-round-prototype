@@ -115,6 +115,19 @@ export const CATEGORIES: Category[] = BUILT
     };
   });
 
+/** The shots that use these drills, the most shared first (night run 15./16.11.2026: a fault, an advice from the
+ *  rounds or a coach fault leads to its shot). Ties keep the library order. */
+export const shotsForDrills = (ids: string[], max = 2): { cat: Category; shot: TopicShot }[] => {
+  const all = CATEGORIES.flatMap((cat) => (cat.shots ?? []).map((shot) => ({ cat, shot, n: (shot.drills ?? []).filter((d) => ids.includes(d)).length })));
+  return all
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, max)
+    .map(({ cat, shot }) => ({ cat, shot }));
+};
+/** the shots a drill belongs to */
+export const shotsOfDrill = (id: string): { cat: Category; shot: TopicShot }[] => CATEGORIES.flatMap((cat) => (cat.shots ?? []).filter((s) => s.drills?.includes(id)).map((shot) => ({ cat, shot })));
+
 /** a section of a topic by its English title – also one whose content moved into the shots */
 export const sectionOf = (c: Category, title: string): Section | undefined => [...c.sections, ...(c.absorbed ?? [])].find((s) => s.title.en === title);
 /** a shot and its topic */

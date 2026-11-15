@@ -81,7 +81,10 @@ ok((await eyebrow('Themen').count()) === 1, 'Wissen: the blocks under eyebrows (
 await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Putten$/ }) }).first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('main .segmented, main .tr-tabs, [role="tablist"]').count()) === 0 && (await p.locator('main .step-pick').count()) === 1, 'topic: the switch "‹ Übungen ›", no block of tabs (tr1)');
-ok((await viewNow()) === 'Übungen' && /Übungen · 1 von 4/.test(await p.locator('.step-pick-now .small').innerText()), `topic: "Übungen", "… · 1 von 4" (${await p.locator('.step-pick-now .small').innerText()})`);
+// since 15./16.11.2026 Putten opens on its shots: Schläge › Übungen › Grundlagen › Fehler › Videos
+ok((await viewNow()) === 'Schläge' && /Schläge · 1 von 5/.test(await p.locator('.step-pick-now .small').innerText()), `topic: "Schläge", "… · 1 von 5" (${await p.locator('.step-pick-now .small').innerText()})`);
+await p.getByRole('button', { name: 'Nächste' }).click();
+ok((await viewNow()) === 'Übungen', '› steps to "Übungen"');
 await p.getByRole('button', { name: 'Nächste' }).click();
 ok((await viewNow()) === 'Grundlagen', '› steps to "Grundlagen"');
 // tr2 – no intro paragraph

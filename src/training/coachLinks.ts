@@ -1,6 +1,10 @@
+import { shotsForDrills } from './content';
 // Coach → Training (prepared 16.10.2026): for every fault of the Coach module's catalogue
 // (coach-prototype/src/coach/faults/catalog.json, the same ids) the Training drills that work on it, best first.
 // When the swing analysis finds a fault, the app can offer exactly these drills. To be checked by Chris.
+
+/** the shot that belongs to a fault the coach found (night run 15./16.11.2026) – through the drills it names */
+export const coachShots = (fault: string, max = 2) => shotsForDrills(COACH_FAULT_DRILLS[fault] ?? [], max);
 
 export const COACH_FAULT_DRILLS: Record<string, string[]> = {
   early_extension: ['glute-bridge', 'hip-9090', 'below-feet-stay', 'posture-club-spine'],

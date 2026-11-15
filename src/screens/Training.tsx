@@ -11,7 +11,7 @@ import { Stepper, TopBar } from '../components/ui';
 import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
-import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById, videoById } from '../training/content';
+import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById, shotsForDrills, shotsOfDrill, videoById } from '../training/content';
 import { ShotGraphic } from '../training/ShotGraphics';
 import { LieChartView } from '../training/LieChart';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
@@ -506,6 +506,7 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
         </dl>
       </section>
       <ReviewBar itemKey={faultKey(c.id, f.name)} />
+      <ShotLinks title={tr('The shot for it', 'Der Schlag dazu')} items={shotsForDrills(f.drills ?? [])} nav={props.nav} />
       {/* the fault itself next to the right way (Sascha 17.10.2026); the drills below keep their own pictures */}
       {f.sketch ? (
         <>
@@ -533,6 +534,30 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
 /** Sascha 15.11.2026: "Die Videos können wir vorerst aus allen Übungen entfernen" – no videos at the drills and in
  *  "Üben" of a shot until the video review (Übungs-Sichtung) is done; the data stays, the topics keep their videos. */
 export const DRILL_VIDEOS_SHOWN = false;
+
+/** shots to open from elsewhere – the search, a fault, a drill (night run 15./16.11.2026) */
+function ShotLinks(props: { title: string; items: { cat: Category; shot: TopicShot }[]; nav: Nav }) {
+  if (!props.items.length) return null;
+  return (
+    <section className="tr-block tr-shot-links">
+      <Eyebrow>{props.title}</Eyebrow>
+      <ul className="list">
+        {props.items.map(({ cat, shot }) => (
+          <li key={shot.id}>
+            <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'shot', id: shot.id })}>
+              {shot.setup.sketch ? <SketchThumb sketch={shot.setup.sketch} /> : <span className="tr-cat-icon small">{CAT_ICON[cat.id]}</span>}
+              <span className="grow">
+                <span className="title">{t(shot.name)}</span>
+                <span className="muted small tr-two-lines">{t(cat.name)} · {t(shot.short)}</span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 // ---------- shot (Sascha 15.11.2026: the topics as shots, each with Set-up · Motion · What to watch · Practise) ----------
 
@@ -711,8 +736,10 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
           {advice.map((a) => {
             const c = catById(a.cat);
             if (!c) return null;
+            const fit = shotsForDrills(a.drills, 1)[0];
             return (
-              <button key={a.cat} type="button" className="list-item tr-advice-item" onClick={() => props.nav.push({ name: 'cat', id: a.cat })}>
+              <div key={a.cat} className="tr-advice-row">
+              <button type="button" className="list-item tr-advice-item" onClick={() => props.nav.push({ name: 'cat', id: a.cat })}>
                 <span className="tr-cat-icon">{CAT_ICON[a.cat]}</span>
                 <span className="grow">
                   <span className="title">{t(c.name)}</span>
@@ -720,6 +747,12 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
                 </span>
                 <span aria-hidden="true">›</span>
               </button>
+              {fit && (
+                <button type="button" className="chip tr-chip-go tr-advice-shot" onClick={() => props.nav.push({ name: 'shot', id: fit.shot.id })}>
+                  {tr('Shot', 'Schlag')}: {t(fit.shot.name)} {TR_GLYPH.next()}
+                </button>
+              )}
+              </div>
             );
           })}
         </section>
@@ -1627,6 +1660,7 @@ function DrillView(props: { id: string; nav: Nav }) {
               </section>
             </>
           )}
+          <ShotLinks title={tr('Part of the shot', 'Gehört zum Schlag')} items={shotsOfDrill(d.id)} nav={props.nav} />
           <Sources list={d.sources} />
         </>
       )}
@@ -2295,7 +2329,7 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
 
 function SearchView(props: { q: string; nav: Nav }) {
   const [q, setQ] = useState(props.q);
-  const { cats, faults, drills, gear } = useMemo(() => search(q), [q]);
+  const { cats, faults, drills, gear, shots } = useMemo(() => search(q), [q]);
   return (
     <main className="screen training">
       <TopBar title={tr('Search', 'Suche')} onBack={props.nav.back} />
@@ -2309,6 +2343,7 @@ function SearchView(props: { q: string; nav: Nav }) {
           ))}
         </div>
       )}
+      {shots.length > 0 && <ShotLinks title={tr(`Shots (${shots.length})`, `Schläge (${shots.length})`)} items={shots.map(({ c, s }) => ({ cat: c, shot: s }))} nav={props.nav} />}
       {faults.length > 0 && (
         <section className="tr-block">
           <Eyebrow>{tr('Faults', 'Fehler')}</Eyebrow>
