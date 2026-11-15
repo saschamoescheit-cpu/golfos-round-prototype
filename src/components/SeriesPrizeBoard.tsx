@@ -2,7 +2,7 @@ import { tr } from '../lib/i18n';
 import { prizeAmount, prizeName, type Prize } from '../lib/prize';
 import { eventStandings, liveFlights, type RoundEvent } from '../lib/sharedround';
 import { seriesStandings } from '../lib/seriesstandings';
-import { addBalances, hasPrizes, prizeAwards, prizeSettle, prizeSum, settleBalances, type Award, type RankRow, type TourPrizes } from '../lib/tourprizes';
+import { addBalances, hasPrizes, prizeAwards, prizeSettle, prizeSum, rankKind, settleBalances, type Award, type RankRow, type TourPrizes } from '../lib/tourprizes';
 import type { TourSeries } from '../lib/tourstore';
 import { tourPrizeResult } from './TourPrizeBoard';
 
@@ -71,11 +71,12 @@ export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'p
             <ul className="game-pays tour-prize-list">
               {r.own.map((a) => (
                 <li key={a.slot}>
-                  <span>
+                  <span className="prize-line">
+                    {rankKind(a.slot) !== 'special' && <span className={`rank-tag ${rankKind(a.slot)}`}>{rankKind(a.slot) === 'gross' ? tr('GROSS', 'BRUTTO') : tr('NET', 'NETTO')}</span>}
                     {a.label}
                     <span className="muted small"> · {a.winners.map((w) => w.name).join(', ')}</span>
                   </span>
-                  <span className="prize-chip">{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
+                  <span className={`prize-chip ${rankKind(a.slot)}`}>{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
                 </li>
               ))}
             </ul>
@@ -94,11 +95,12 @@ export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'p
             {dayAwards.flatMap((d) =>
               d.r.awards.map((a) => (
                 <li key={`${d.k}:${a.slot}`}>
-                  <span>
+                  <span className="prize-line">
+                    {rankKind(a.slot) !== 'special' && <span className={`rank-tag ${rankKind(a.slot)}`}>{rankKind(a.slot) === 'gross' ? tr('GROSS', 'BRUTTO') : tr('NET', 'NETTO')}</span>}
                     R{d.k + 1} · {a.label}
                     <span className="muted small"> · {a.winners.map((w) => w.name).join(', ')}</span>
                   </span>
-                  <span className="prize-chip">{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
+                  <span className={`prize-chip ${rankKind(a.slot)}`}>{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
                 </li>
               )),
             )}

@@ -1230,6 +1230,10 @@ button.tile:disabled { opacity: 1; }
 /* the prizes of a tournament (Sascha 14.11.2026, "Turnier-Preise") – white on green, as every number on colour */
 .prize-chip { background: var(--brand); color: #fff; border-radius: 8px; padding: 2px 8px; font-weight: 700; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lb-prize { margin-left: 6px; vertical-align: 1px; }
+/* gross blue, net green – the chip and a tag before the prize's name (Sascha 15.11.2026) */
+.prize-chip.gross { background: var(--gross); }
+.prize-chip.net { background: var(--brand); }
+.prize-line { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tour-prize-board { display: flex; flex-direction: column; gap: 6px; }
 /* the series' prizes: its own, then the day prizes (Sascha 15.11.2026) */
 .tour-prize-sub { font-weight: 600; margin-top: 4px; }

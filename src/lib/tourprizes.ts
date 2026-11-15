@@ -136,6 +136,14 @@ export function prizeAwards(tp: TourPrizes, o: { gross: RankRow[]; net?: RankRow
   return out;
 }
 
+/** A prize's ranking – gross (blue), net (green), a special prize (Sascha 15.11.2026, "Brutto/Netto-Farben überall"). */
+export const rankKind = (slot: string): 'gross' | 'net' | 'special' => (slot.startsWith('gross') ? 'gross' : slot.startsWith('net') ? 'net' : 'special');
+/** One name's prizes of one kind only – its colour; mixed: the special (brand) one. */
+export function wonKind(awards: Award[], name: string): 'gross' | 'net' | 'special' {
+  const kinds = new Set(awards.filter((a) => a.winners.some((w) => keyName(w.name) === keyName(name))).map((a) => rankKind(a.slot)));
+  return kinds.size === 1 ? [...kinds][0] : 'special';
+}
+
 /** Each name's prizes added up. */
 export function wonBy(awards: Award[]): Map<string, { name: string; amount: number }> {
   const m = new Map<string, { name: string; amount: number }>();

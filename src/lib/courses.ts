@@ -105,7 +105,8 @@ const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 export function bundledCourses(): CourseSummary[] {
   const seen = new Set<string>();
   const seeds = Object.entries(SEED_COURSES).flatMap(([id, s]) => {
-    if (seen.has(s.name)) return [];
+    // a card course bundled since (Hawks Landing, 15.11.2026): listed once, as the card course – with its place and box
+    if (seen.has(s.name) || CARD_COURSES[id]) return [];
     seen.add(s.name);
     return [{ id, source: 'osm' as const, name: s.name, place: '', lat: s.lat, lon: s.lon }];
   });

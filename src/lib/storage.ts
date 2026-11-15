@@ -216,9 +216,13 @@ export function loadGeometry(courseId: string): CourseGeometry {
   if (stored && !seeds.has(courseId)) geoKept.set(courseId, stored);
   let base: CourseGeometry = holesAsLines(stored ?? geoKept.get(courseId) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] });
   // no holes in the map, but worked out for this course (Hawks Landing, 27.10.2026): those, with par and stroke index
-  if (!base.holes.length && COURSE_LINES[courseId]) {
+  // – and where the map has only some of them (15.11.2026: OSM got hole 18 of Hawks Landing, the other 17 were gone):
+  // the missing ones from the card's lines, the mapped ones kept
+  if (COURSE_LINES[courseId]) {
     const card = CARDS[courseId] ?? [];
-    base = { ...base, holes: COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })) };
+    const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
+    const add = COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })).filter((h) => !have.has(h.ref));
+    if (add.length) base = { ...base, holes: [...base.holes.filter((h) => h.line && h.line.length >= 2), ...add].sort((a, b) => Number(a.ref) - Number(b.ref)) };
   }
   // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
   // …and the lines the event's other phones set up (kept apart from the own since 11.11.2026), the server's latest over them

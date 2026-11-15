@@ -37,6 +37,23 @@ def wms(lon, lat):
     if -10 <= lon <= 4.5 and 35 <= lat <= 44:
         return 0.25, ('https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
                 '&LAYERS=OI.OrthoimageCoverage&STYLES=&CRS=EPSG:3857&BBOX={b}&WIDTH={w}&HEIGHT={h}&FORMAT=image/jpeg')
+    # Florida (night 14./15.11.2026, the USA trip): Osceola County's 2026 aerial (Property Appraiser, 3–6 inch, flown
+    # 12/2025–01/2026) where it covers the course; else Esri World Imagery (Orange County's and the state's own imagery
+    # need a token now). Read at 0.3 m.
+    if -88 <= lon <= -80 and 24.5 <= lat <= 31:
+        osceola = ('https://paags.property-appraiser.org/server/rest/services/AGS_AERIALS_2026_WM/MapServer/export'
+                   '?bbox={b}&bboxSR=3857&imageSR=3857&size={w},{h}&format=jpg&f=image')
+        # Osceola only where the course lies in it – Hawks Landing straddles the county line (its north is white there):
+        # FL_IMAGERY=esri for such a course
+        x, y = merc(lon, lat)
+        try:
+            probe = fetch(osceola, x - 80, y - 80, x + 80, y + 80, 200, 200)
+            if probe.std() > 8 and os.environ.get('FL_IMAGERY') != 'esri':
+                return 0.3, osceola
+        except Exception:
+            pass
+        return 0.3, ('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export'
+                     '?f=image&format=jpg&bbox={b}&bboxSR=3857&imageSR=3857&size={w},{h}')
     return None, None
 
 
