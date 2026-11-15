@@ -112,12 +112,11 @@ await p.waitForTimeout(300);
 await view('Grundlagen');
 const secs = (await p.locator('.tr-coll-head').allInnerTexts()).filter((x) => !/Quellen/.test(x));
 ok(secs.length === 1 && /So übst du/.test(secs[0]), `basics: only "So übst du" left (${secs.join(' · ')})`);
-// the topic videos stay: a video loads only on tap, from youtube-nocookie
+// Sascha 16.11.2026 "Ja, alle Videos raus": no video in the basics either, and no topic tab "Videos"
 const sec = p.locator('.tr-coll').filter({ hasText: 'So übst du' }).first();
 if (!(await sec.locator('.tr-coll-body').count())) await sec.locator('.tr-coll-head').click();
-ok((await p.locator('iframe').count()) === 0 && (await sec.locator('.tr-video-cover').count()) === 1, 'basics: a topic video with its cover, nothing loaded');
-await sec.locator('.tr-video-cover').click();
-ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'the video loads from youtube-nocookie on tap');
+ok((await p.locator('iframe, .tr-video-cover, .tr-video-thumb').count()) === 0, 'basics: no video (Sascha 16.11.2026)');
+ok(!(await viewNames()).includes('Videos'), 'the topic has no tab "Videos" (Sascha 16.11.2026)');
 // a topic without shots still opens on its drills
 await back();
 await p.waitForTimeout(300);

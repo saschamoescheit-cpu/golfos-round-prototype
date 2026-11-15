@@ -87,6 +87,7 @@ import {
   VideoNote,
 } from '../training/ui';
 import '../training/training.css';
+import { DRILL_VIDEOS_SHOWN, TOPIC_VIDEOS_SHOWN } from '../training/videos-shown';
 
 // The "Training" module (Sascha 15.10.2026): a golf knowledge base for practice. Library of categories (basics,
 // faults, drills with sketches, videos, gear), practice sessions with a timer (pause / finish / cancel as in Rounds
@@ -531,9 +532,8 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
   );
 }
 
-/** Sascha 15.11.2026: "Die Videos können wir vorerst aus allen Übungen entfernen" – no videos at the drills and in
- *  "Üben" of a shot until the video review (Übungs-Sichtung) is done; the data stays, the topics keep their videos. */
-export const DRILL_VIDEOS_SHOWN = false;
+// which videos show: src/training/videos-shown.ts (Sascha 15.11.2026: none at the drills; 16.11.2026: none at all)
+export { DRILL_VIDEOS_SHOWN, TOPIC_VIDEOS_SHOWN };
 
 /** shots to open from elsewhere – the search, a fault, a drill (night run 15./16.11.2026) */
 function ShotLinks(props: { title: string; items: { cat: Category; shot: TopicShot }[]; nav: Nav }) {
@@ -1166,7 +1166,7 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
 function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   const d = props.s.drill ? drillById(props.s.drill) : undefined;
   const sketch = props.s.sketch ?? d?.sketch;
-  const vids = (props.s.videos ?? []).map((id) => props.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v);
+  const vids = TOPIC_VIDEOS_SHOWN ? (props.s.videos ?? []).map((id) => props.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v) : [];
   const video = vids.find((v) => v.lang === getLang()) ?? vids[0];
   return (
     <>
@@ -1192,7 +1192,10 @@ const CAT_TAB = new Map<CategoryId, CatTab>();
 
 function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const c = catById(props.id);
-  const [tab, setTabState] = useState<CatTab>(() => CAT_TAB.get(props.id) ?? (catById(props.id)?.shots?.length ? 'shots' : 'drills'));
+  const [tab, setTabState] = useState<CatTab>(() => {
+    const saved = CAT_TAB.get(props.id);
+    return (saved === 'videos' && !TOPIC_VIDEOS_SHOWN ? undefined : saved) ?? (catById(props.id)?.shots?.length ? 'shots' : 'drills');
+  });
   const setTab = (x: typeof tab) => {
     CAT_TAB.set(props.id, x);
     setTabState(x);
@@ -1212,7 +1215,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
     { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
     ...(c.sections.length || c.facts?.length || c.charts?.length ? [{ value: 'basics' as const, name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') }] : []),
     ...(c.faults?.length ? [{ value: 'faults' as const, name: tr('Faults', 'Fehler'), text: tr(`${c.faults.length} common faults`, `${c.faults.length} typische Fehler`) }] : []),
-    ...(c.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: tr(`${c.videos.length} videos`, `${c.videos.length} Videos`) }] : []),
+    ...(TOPIC_VIDEOS_SHOWN && c.videos?.length ? [{ value: 'videos' as const, name: 'Videos', text: tr(`${c.videos.length} videos`, `${c.videos.length} Videos`) }] : []),
   ];
   return (
     <main className="screen training">
@@ -1334,7 +1337,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         </>
       )}
 
-      {tab === 'videos' && c.videos?.length ? (
+      {TOPIC_VIDEOS_SHOWN && tab === 'videos' && c.videos?.length ? (
         <>
           <VideoNote />
           {/* videos in the player's language first */}
@@ -1464,7 +1467,7 @@ function TopicRow(props: { id: CategoryId; nav: Nav }) {
     tr(`${n} drills`, `${n} Übungen`),
     ...(c.sections.length || c.facts?.length || c.charts?.length ? [tr('Basics', 'Grundlagen')] : []),
     ...(c.faults?.length ? [tr(`${c.faults.length} common faults`, `${c.faults.length} typische Fehler`)] : []),
-    ...(c.videos?.length ? [tr(`${c.videos.length} videos`, `${c.videos.length} Videos`)] : []),
+    ...(TOPIC_VIDEOS_SHOWN && c.videos?.length ? [tr(`${c.videos.length} videos`, `${c.videos.length} Videos`)] : []),
   ];
   return (
     <button type="button" className="list-item tr-topic-row" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>

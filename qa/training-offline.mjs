@@ -57,6 +57,10 @@ await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.locator('.tr-cat').first().waitFor({ timeout: 20000 }).catch(() => {});
 ok((await p.locator('.tr-cat').count()) >= 17, 'offline: Training opens with all topics');
 await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Putten$/ }) }).first().click();
+// since 15./16.11.2026 a topic opens on its shots – offline too
+await p.waitForTimeout(400);
+ok((await p.locator('.tr-shots .list-item').count()) >= 5, 'offline: Putten opens on its shots');
+await view('Übungen');
 ok((await p.locator('.tr-drill-row').count()) >= 10, 'offline: the putting drills are there');
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Leiter-Übung' }).first().click();
 await p.waitForTimeout(300);
@@ -67,9 +71,8 @@ for (let i = 0; i < 6; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click(); // the round green tick bottom right (Facelift 11.11.2026, tr3)
 ok(/Gespeichert/.test(await p.locator('.tr-save-note').innerText()) && (await p.locator('.tr-history li').count()) >= 1, 'offline: a result is saved');
 await p.waitForTimeout(1500);
-await view('Videos');
-const thumbs = await p.locator('.tr-video-thumb img').count();
-ok(thumbs === 0 || (await p.locator('.tr-video-cover').count()) > 0, 'offline: videos show their card without breaking');
+// no videos in Training (Sascha 15./16.11.2026) – the drill has no tab "Videos"
+ok((await p.locator('.tr-video-thumb, .tr-video-cover, iframe').count()) === 0, 'offline: no videos at the drill');
 await back();
 await back();
 await p.locator('.tabbar button').filter({ hasText: 'Üben' }).click();

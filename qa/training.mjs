@@ -95,13 +95,13 @@ await p.locator('button.chip').filter({ hasText: /^alle$/ }).first().click();
 ok(adv > 0 && adv < (await p.locator('.tr-drill-row').count()), 'level filter works');
 // the topic page is split into tabs, products are not listed there (Sascha 16.10.2026)
 const topicTabs = await viewNames();
-ok((await p.locator('.tr-tabs, .segmented').count()) === 0 && topicTabs.length === 5 && topicTabs[0] === 'Schläge' && topicTabs[1].startsWith('Übungen') && topicTabs[2] === 'Grundlagen' && (await viewNow()) === 'Übungen', `topic parts as the switch "‹ Übungen ›", no block of tabs: ${topicTabs.join(' · ')}`);
+ok((await p.locator('.tr-tabs, .segmented').count()) === 0 && topicTabs.length === 4 && topicTabs[0] === 'Schläge' && topicTabs[1].startsWith('Übungen') && topicTabs[2] === 'Grundlagen' && (await viewNow()) === 'Übungen', `topic parts as the switch "‹ Übungen ›", no block of tabs: ${topicTabs.join(' · ')}`);
 ok((await p.locator('.tr-gear-row, .tr-product').count()) === 0, 'no product list on the topic page');
 await view('Grundlagen');
 ok((await p.locator('.tr-intro-text').count()) === 0 && (await p.locator('.tr-coll').count()) > 0 && (await p.locator('.tr-drill-row').count()) === 0, 'basics show only the knowledge – no intro paragraph (tr2)');
 const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
-ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview picture in the basics');
+ok((await p.locator('.tr-video-thumb, .tr-video-cover, iframe').count()) === 0, 'no videos in the basics (Sascha 16.11.2026: "alle Videos raus")');
 // moving pictures (Sascha 17.10.2026): the chip stroke as a 3D video (the golfer of Agility), the still picture stays –
 // since 15.11.2026 in the shot "Der Standard-Chip" › Bewegung
 await view('Schläge');

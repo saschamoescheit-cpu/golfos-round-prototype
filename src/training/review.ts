@@ -1,6 +1,7 @@
 import { CATEGORIES, DRILLS } from './content';
 import { PLANS } from './content/plans';
 import { GEAR } from './content/gear';
+import { TOPIC_VIDEOS_SHOWN } from './videos-shown';
 import type { CategoryId, L } from './types';
 
 // Review mode for the golf pro (Sascha 16.10.2026: "next step: go through it with Chris" – and shorten it).
@@ -82,7 +83,8 @@ export function reviewItems(): ReviewItem[] {
     for (const d of DRILLS.filter((x) => x.cat === c.id)) out.push({ key: drillKey(d.id), kind: 'drill', cat: c.id, title: d.name });
     for (const s of c.sections) out.push({ key: sectionKey(c.id, s.title), kind: 'section', cat: c.id, title: s.title });
     for (const f of c.faults ?? []) out.push({ key: faultKey(c.id, f.name), kind: 'fault', cat: c.id, title: f.name });
-    for (const v of c.videos ?? []) out.push({ key: videoKey(v.id), kind: 'video', cat: c.id, title: v.title });
+    // the videos only while Training shows them (Sascha 16.11.2026: none for now)
+    if (TOPIC_VIDEOS_SHOWN) for (const v of c.videos ?? []) out.push({ key: videoKey(v.id), kind: 'video', cat: c.id, title: v.title });
   }
   for (const p of PLANS) out.push({ key: planKey(p.id), kind: 'plan', title: p.name });
   for (const g of GEAR) out.push({ key: gearKey(g.id), kind: 'gear', title: g.name });
