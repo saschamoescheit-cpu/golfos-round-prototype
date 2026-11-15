@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 import { liveLink, liveState, setLive, type LiveState } from '../lib/live';
 import { copyLink, InviteCard, shareLink } from './InviteCard';
-import { OnOffRow, ToggleRow } from './Settings';
+import { ChoiceRow, OnOffRow } from './Settings';
 import { DoneFab } from './FloatActions';
 import type { Action } from './ActionBar';
 
@@ -59,15 +59,34 @@ export function LiveShare(props: {
       <div className="card invite-card">
         {/* a row with An/Aus, no slider (Sascha 11.11.2026: "ohne Schieberegler – in der gesamten App") */}
         <div className="settings-list onoff-card-row">
-          <OnOffRow
-            label={tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}
-            ariaLabel={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
-            on={on}
-            disabled={busy || (!st && !failed)}
-            onChange={(v) => void change(v, st?.money ?? false)}
-            onText={tr('A link to watch the leaderboard live', 'Ein Link, mit dem man das Leaderboard live verfolgt')}
-            offText={tr('No link – an old one no longer opens', 'Kein Link – ein alter öffnet nicht mehr')}
-          />
+          {props.money ? (
+            // a pool, a game: one choice – off, on without the amounts, on with them (Sascha 15.11.2026: "Beträge zeigen
+            // als Auswahl integrieren – bei An mit und ohne Beträge unterscheiden")
+            <ChoiceRow<'off' | 'on' | 'money'>
+              label={tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}
+              title={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
+              value={!on ? 'off' : st?.money ? 'money' : 'on'}
+              // short in the row beside the long label – the sheet says it in full
+              shown={!on ? tr('Off', 'Aus') : st?.money ? tr('With amounts', 'Mit Beträgen') : tr('No amounts', 'Ohne Beträge')}
+              disabled={busy || (!st && !failed)}
+              onChange={(v) => void change(v !== 'off', v === 'money')}
+              options={[
+                { value: 'off', name: tr('Off', 'Aus'), text: tr('No link – an old one no longer opens', 'Kein Link – ein alter öffnet nicht mehr') },
+                { value: 'on', name: tr('On – no amounts', 'An – ohne Beträge'), text: tr('The bets and where they stand – no stakes, no money', 'Die Wetten und ihr Stand – keine Einsätze, kein Geld') },
+                { value: 'money', name: tr('On – with amounts', 'An – mit Beträgen'), text: tr('Stakes and who is up', 'Einsätze und wer vorn liegt') },
+              ]}
+            />
+          ) : (
+            <OnOffRow
+              label={tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}
+              ariaLabel={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
+              on={on}
+              disabled={busy || (!st && !failed)}
+              onChange={(v) => void change(v, false)}
+              onText={tr('A link to watch the leaderboard live', 'Ein Link, mit dem man das Leaderboard live verfolgt')}
+              offText={tr('No link – an old one no longer opens', 'Kein Link – ein alter öffnet nicht mehr')}
+            />
+          )}
         </div>
         {!on && (
           <span className="muted small">
@@ -88,16 +107,7 @@ export function LiveShare(props: {
             ]}
           />
         )}
-        {on && props.money && (
-          <ToggleRow
-            label={tr('Show amounts', 'Beträge zeigen')}
-            text={tr('Stakes and who is up – off: only the bets and where they stand', 'Einsätze und wer vorn liegt – aus: nur die Wetten und ihr Stand')}
-            on={!!st?.money}
-            disabled={busy}
-            onChange={(m) => void change(true, m)}
-          />
-        )}
-        {msg && <span className="muted small">{msg}</span>}
+        {msg &&<span className="muted small">{msg}</span>}
       </div>
     </section>
   );

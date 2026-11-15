@@ -161,6 +161,13 @@ if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betr
   // the sign ⊘ in the cell, the words in the legend under the table (Sascha 15.11.2026, mock-up C)
   const voidedCell = stand.locator('.bet-cell.voided');
   ok((await voidedCell.count()) === 1 && /nicht gewertet/.test((await voidedCell.getAttribute('aria-label')) ?? '') && (await voidedCell.locator('svg').count()) === 1 && /nicht gewertet/.test(await stand.locator('.bet-legend').innerText().catch(() => '')), `yesterday's round: Chris ⊘, the legend "nicht gewertet" (${cellNow})`);
+  // as high as every other cell, the sign under the target (Sascha 15.11.2026: "alles muss immer gleich dargestellt werden")
+  {
+    const hs = await stand.locator('.bet-matrix td .bet-cell').evaluateAll((es) => es.filter((e) => !e.classList.contains('sum') && !e.closest('tr')?.classList.contains('bet-sum')).map((e) => ({ v: e.classList.contains('voided'), h: Math.round(e.getBoundingClientRect().height), lines: e.querySelector('small') ? Math.round(e.querySelector('small').getBoundingClientRect().top - e.querySelector('strong').getBoundingClientRect().top) : 0 })));
+    const vh = hs.find((x) => x.v);
+    const plain = hs.filter((x) => !x.v && x.lines > 0).map((x) => x.h);
+    ok(!!vh && vh.lines > 5 && plain.includes(vh.h), `the voided cell as high as the others, ⊘ on its own line (${vh?.h} px vs ${[...new Set(plain)].join('/')} px)`);
+  }
   const s = await sumRow();
   ok(/^– netto −20 \$$/.test(s.Chris) && /^\+40 \$ netto \+40 \$$/.test(s.Sascha) && /^– netto −20 \$$/.test(s.Erik), `the sum without it – Sascha "${s.Sascha}", Chris "${s.Chris}", Erik "${s.Erik}"`);
   if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/voided.png` });

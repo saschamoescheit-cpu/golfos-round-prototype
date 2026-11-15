@@ -1598,12 +1598,13 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           options={[
             { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden'), uncounted: true },
             // no tick – only rounds played or in play are there (Sascha 11.11.2026); "läuft" for one in play
-            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : r.planned ? tr('planned – no scores yet', 'geplant – noch keine Scores') : played.has(r.key) ? undefined : tr('in play', 'läuft'), ...(r.out && props.onCount ? { short: '' } : {}) })),
+            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : r.planned ? tr('planned – no scores yet', 'geplant – noch keine Scores') : played.has(r.key) ? undefined : tr('in play', 'läuft'), ...(r.out && props.onCount ? { short: '' } : {}), ...(!r.out && r.planned ? { after: tr('planned', 'geplant') } : {}) })),
           ]}
           // the host (Sascha 15.11.2026, mock-up A: "6 von 8 gewertet"): whether the round shown counts, under its name –
           // a tap opens the rounds' sheet, the switch and the deleted rounds there
           status={
-            props.onCount && one ? (
+            // a planned round: "6 von 8 geplant" says it – no "gewertet" beside it (Sascha 15.11.2026: "zu unübersichtlich")
+            props.onCount && one && (one.out || !one.planned) ? (
               <span className={`step-status ${one.out ? 'off' : 'on'}`}>
                 {!one.out && (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

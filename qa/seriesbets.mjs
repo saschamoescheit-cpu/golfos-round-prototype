@@ -67,6 +67,17 @@ await H.waitForTimeout(500);
 const opts = (await H.locator('.sheet .pick-option, .sheet [role="option"], .sheet button').allInnerTexts()).map((x) => x.replace(/\s+/g, ' '));
 ok(opts.some((x) => /Hetzenhof/.test(x) && /geplant – noch keine Scores/.test(x)), `tomorrow's tournament among the rounds: "geplant – noch keine Scores" (${opts.filter((x) => /\d\d\.\d\d\./.test(x)).join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/seriesbets-rounds.png' });
+// picked: under its name only "N von M geplant" – no "gewertet" beside it (Sascha 15.11.2026: "sonst wird es zu
+// unübersichtlich")
+{
+  const planned = H.locator('.sheet .pick-option').filter({ hasText: 'geplant – noch keine Scores' }).first();
+  if (await planned.count()) {
+    await planned.click();
+    await H.waitForTimeout(500);
+    const sub = (await H.locator('.pool-standings .step-pick-now .muted').first().innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    ok(/^\d+ von \d+ geplant$/.test(sub), `the planned round picked: "${sub}" under its name`);
+  } else ok(false, 'the planned round picked: not in the sheet');
+}
 await H.keyboard.press('Escape');
 await H.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click({ timeout: 2000 }).catch(() => {});
 

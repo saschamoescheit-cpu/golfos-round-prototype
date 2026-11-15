@@ -123,6 +123,13 @@ ok(crowded === 0, `nothing wider than the 320-px screen (${crowded} not)`);
     if (was) await p.setViewportSize(was);
   }
   ok(/zur Fahne/.test(where) && /^spielte sich wie \d+ m$/.test(plays) && own === 'block', `the shot's sheet: "${plays}" – a line of its own`);
+  // not bold, the colour of "spielte sich wie" (Sascha 15.11.2026)
+  {
+    const look = (sel) => p.locator(sel).evaluate((el) => `${getComputedStyle(el).fontWeight}|${getComputedStyle(el).color}`).catch(() => '');
+    const w = await look('.sheet .shot-where .shot-wind .wind-tag');
+    const pl = await look('.sheet .shot-where .shot-plays');
+    ok(!!w && w === pl && Number(w.split('|')[0]) < 600, `the wind like "spielte sich wie": not bold, the same colour (${w} / ${pl})`);
+  }
   ok(/^(Gegenwind|Rückenwind|Wind)( von (links|rechts))? \d+ km\/h/.test(windText) && windOwn === 'block' && (await wind.locator('svg').count()) === 1 && !green(arrow), `below it the wind as under the map: "${windText}" – its arrow, not green (${arrow})`);
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
 }

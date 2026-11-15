@@ -42,7 +42,9 @@ export function roundsFromEvents(events: { code: string; ev: RoundEvent }[], pla
     if (!ev.date) continue;
     const r = tourRoundOf(ev, code, ev.date, player, today);
     if (!r) continue;
-    const f = (_: Round, pid: string) => Object.values(ev.flights).find((x) => x.players.some((p) => p.id === pid));
+    // the round's own flight – the ids are per flight (p1, p2 … in each), so a search by id alone finds another flight's
+    // player (15.11.2026: Sascha's 13.11. judged on Christopher's card, both "p1")
+    const f = (round: Round, pid: string) => (round.shared?.flight ? ev.flights[round.shared.flight] : undefined) ?? Object.values(ev.flights).find((x) => x.players.some((p) => p.id === pid));
     const counted = (round: Round, pid: string) => {
       const fl = f(round, pid);
       return !!fl && (!!fl.entered?.[pid] || (!!markerOf(fl, pid) && isSigned(fl, pid)));

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seriesStandings } from './seriesstandings';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { classOf, eventCard, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
+import { classOf, eventCard, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, withEventPars, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -634,5 +634,25 @@ describe('markers make sense; one scorer countersigns, each player signs his own
     expect(markerOf(m, 'd')).toBeUndefined(); // markers left in the plan beside a scorer do not count
     expect(markerOf(m, 'c')).toBe('d');
     expect(isSigned(m, 'd')).toBe(true);
+  });
+});
+
+// Hawks Landing (Sascha 15.11.2026): the tournament planned while the course had no card – par 0; mended in the plan
+// later, a phone in the round before takes the par and stroke index over, its own values stay
+describe('withEventPars', () => {
+  const r = (ps: number[], si: number[]): Round => ({ id: 'r', createdAt: '', finishedAt: null, courseId: 'c', courseName: 'C', loopOrder: ['A'], holes: ps.map((par, i) => ({ index: i, label: String(i + 1), loop: 'A', number: i + 1, par, strokeIndex: si[i] })), mode: 'quick', players: [], entries: {}, currentHole: 0 });
+  it('fills par 0 and stroke index 0 from the event', () => {
+    const out = withEventPars(r([0, 0, 0], [0, 0, 0]), r([4, 3, 5], [2, 3, 1]));
+    expect(out.holes.map((h) => h.par)).toEqual([4, 3, 5]);
+    expect(out.holes.map((h) => h.strokeIndex)).toEqual([2, 3, 1]);
+  });
+  it('keeps what the round has – and the same round when nothing is missing', () => {
+    const own = r([4, 4, 4], [1, 2, 3]);
+    expect(withEventPars(own, r([5, 5, 5], [3, 2, 1]))).toBe(own);
+    expect(withEventPars(r([4, 0, 4], [1, 0, 3]), r([5, 3, 5], [3, 2, 1])).holes.map((h) => `${h.par}/${h.strokeIndex}`)).toEqual(['4/1', '3/2', '4/3']);
+  });
+  it('another hole count or other labels: unchanged', () => {
+    const own = r([0, 0], [0, 0]);
+    expect(withEventPars(own, r([4, 3, 5], [1, 2, 3]))).toBe(own);
   });
 });

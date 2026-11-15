@@ -1498,7 +1498,11 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   const r0 = share === s0 ? round : { ...round, shared: share };
   let merged: ReturnType<typeof mergeFlight> | null = null;
   // the holes and the format from the phone that set the event up (changed in the setup after the code was made)
-  const frameOf = (e: RoundEvent) => (e.by === share.phone && JSON.stringify(eventFrame(r0)) !== JSON.stringify(eventFrame({ ...r0, ...pickFrame(e) })) ? eventFrame(r0) : null);
+  // (par and stroke index the event has and this round lacks first taken over – never par 0 written back over them)
+  const frameOf = (e: RoundEvent) => {
+    const r = withEventPars(r0, e);
+    return e.by === share.phone && JSON.stringify(eventFrame(r)) !== JSON.stringify(eventFrame({ ...r, ...pickFrame(e) })) ? eventFrame(r) : null;
+  };
   let ev: RoundEvent | null = null;
   // a tournament: the flight's own row (the frame, rarely changed, in the event's row)
   const own = share.tournament ? await updateFlight(share.code, share.flight, (f, e) => ((merged = mergeFlight(r0, f, e.tournament, who)).changedHere ? merged.flight : null)) : 'legacy';
@@ -1506,7 +1510,7 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   if (own !== 'legacy') {
     ev = own;
     if (frameOf(own)) {
-      const written = await update(share.code, (e) => (frameOf(e) ? withFrame(e, r0) : null));
+      const written = await update(share.code, (e) => (frameOf(e) ? withFrame(e, withEventPars(r0, e)) : null));
       if (written) {
         ev = { ...written, flights: own.flights }; // the flights as their own rows have them
         keepEvent(share.code, ev);
@@ -1516,12 +1520,12 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
     ev = await update(share.code, (e) => {
       merged = mergeFlight(r0, e.flights[share.flight], e.tournament, who);
       const frame = frameOf(e);
-      return merged.changedHere || frame ? { ...(frame ? withFrame(e, r0) : e), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
+      return merged.changedHere || frame ? { ...(frame ? withFrame(e, withEventPars(r0, e)) : e), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
     });
   if (!ev || !merged) return null;
   const m = merged as ReturnType<typeof mergeFlight>;
   // another phone set the holes: taken over while nothing is entered yet
-  let out = m.round;
+  let out = withEventPars(m.round, ev);
   if (ev.by !== share.phone && ev.holes.map((h) => h.label).join() !== out.holes.map((h) => h.label).join() && !Object.values(out.entries).some((l) => l.some((e) => e.strokes != null || e.pickedUp))) {
     out = { ...out, ...eventFrame({ ...out, ...pickFrame(ev) }), entries: Object.fromEntries(out.players.map((p) => [p.id, ev.holes.map(() => emptyEntry())])) };
   }
@@ -1534,6 +1538,24 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   if (ev.tournament && round.finishedAt && liveFlights(ev).every((f) => f.finishedAt)) window.dispatchEvent(new CustomEvent('golfos:event-in', { detail: { code: share.code, ev } }));
   return { ...out, shared: { ...share, tournament: ev.tournament, base: m.base, roles: m.roles } };
 }
+/** The par and stroke index the event knows and this phone's round lacks (Sascha 15.11.2026, Hawks Landing: planned
+ *  while the course had no card, mended in the plan later – a phone in the round before kept par 0): filled in hole by
+ *  hole, what the round has stays, nothing else changes. The same round when nothing was missing. */
+export function withEventPars(round: Round, ev: Pick<RoundEvent, 'holes'>): Round {
+  if (ev.holes.length !== round.holes.length) return round;
+  let changed = false;
+  const holes = round.holes.map((h, i) => {
+    const e = ev.holes[i];
+    if (!e || e.label !== h.label) return h;
+    const par = h.par > 0 ? h.par : e.par;
+    const strokeIndex = h.strokeIndex > 0 ? h.strokeIndex : e.strokeIndex;
+    if (par === h.par && strokeIndex === h.strokeIndex) return h;
+    changed = true;
+    return { ...h, par, strokeIndex };
+  });
+  return changed ? { ...round, holes } : round;
+}
+
 const pickFrame = (e: RoundEvent): Partial<Round> => ({ loopOrder: e.loopOrder, holes: e.holes, format: e.format, tee: e.tee, rating: e.rating, kind: e.roundKind });
 
 // ---------- rounds nearby (Sascha 29.10.2026: "invite only people signed in with Google and nearby – by GPS") ----------

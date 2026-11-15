@@ -188,6 +188,34 @@ await stand.waitFor({ timeout: 15000 });
   await lib.getByRole('button', { name: 'Schließen' }).click();
 }
 
+// "Live-Leaderboard zum Zuschauen" one choice – Aus, An ohne Beträge, An mit Beträgen (Sascha 15.11.2026: "Beträge zeigen
+// als Auswahl integrieren – bei An mit und ohne Beträge unterscheiden"), no row of its own for the amounts
+{
+  sim.shared.get(code).live = 'b'.repeat(4) + '0123456789abcdef0123';
+  sim.shared.get(code).liveMoney = true;
+  await H.reload();
+  await H.waitForTimeout(1500);
+  await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+  await H.getByText('USA-Wetten').first().click();
+  const live = H.locator('section.live-share');
+  const row = live.locator('.settings-row').filter({ hasText: 'Live-Leaderboard zum Zuschauen' });
+  await row.filter({ hasText: 'Mit Beträgen' }).waitFor({ timeout: 15000 }).catch(() => {});
+  const rows = (await live.locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  // the value not broken inside a word – at most its two words on two lines
+  const broken = await row.locator('.settings-value').evaluate((e) => Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || '20'))).catch(() => 9);
+  ok(rows.length === 1 && /Mit Beträgen/.test(rows[0]) && !rows.some((t) => /Beträge zeigen/.test(t)) && broken <= 2, `one row: "Live-Leaderboard zum Zuschauen · Mit Beträgen", no "Beträge zeigen", the value ${broken} line(s) (${rows.join(' | ')})`);
+  if (shots) await live.screenshot({ path: `${shots}/wettenface-live.png` });
+  await row.click();
+  const pick = H.getByRole('dialog', { name: 'Live-Leaderboard für Zuschauer' });
+  await pick.waitFor({ timeout: 5000 }).catch(() => {});
+  const names = (await pick.locator('.pick-option').allInnerTexts()).map((t) => t.split('\n')[0].trim());
+  ok(names.join('|') === 'Aus|An – ohne Beträge|An – mit Beträgen', `its sheet: ${names.join(' · ')}`);
+  if (shots) await pick.screenshot({ path: `${shots}/wettenface-live-pick.png` });
+  await pick.locator('.pick-option').filter({ hasText: 'ohne Beträge' }).click();
+  await H.waitForTimeout(1500);
+  ok(sim.shared.get(code).liveMoney === false && !!sim.shared.get(code).live && /Ohne Beträge/.test(await row.innerText()), `"An – ohne Beträge": the link stays, the amounts off – on the server too (money ${sim.shared.get(code).liveMoney})`);
+}
+
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 console.log(fails ? `${fails} failed` : 'all passed');

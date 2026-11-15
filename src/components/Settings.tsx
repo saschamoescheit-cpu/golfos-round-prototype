@@ -420,6 +420,8 @@ export interface StepChoice<T> extends Choice<T> {
   uncounted?: boolean;
   /** under the name in the switch instead of `text` ('' – none): the status says it there (Sascha 15.11.2026) */
   short?: string;
+  /** right after the place instead of `text` – "6 von 8 geplant" (Sascha 15.11.2026: "sonst wird es zu unübersichtlich") */
+  after?: string;
 }
 /** `status`: after the place – "6 von 8 gewertet" (Sascha 15.11.2026, mock-up A); `extra`: rows under the choices in its
  *  sheet (the host counts the round shown, brings back a deleted one) – given the close. */
@@ -453,6 +455,7 @@ export function StepPick<T>(props: { label: string; options: StepChoice<T>[]; va
             const counted = props.options.filter((o) => !o.uncounted);
             const at = counted.indexOf(cur);
             const pos = cur.uncounted || at < 0 ? '' : tr(`${at + 1} of ${counted.length}`, `${at + 1} von ${counted.length}`);
+            if (cur.after && pos) return `${pos} ${cur.after}`;
             return [cur.short !== undefined ? cur.short : cur.text, pos].filter(Boolean).join(' · ');
           })()}
           {props.status ? <> {props.status}</> : null}

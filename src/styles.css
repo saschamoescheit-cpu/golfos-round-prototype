@@ -977,6 +977,10 @@ button.tile:disabled { opacity: 1; }
   border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; font-weight: 600;
 }
 .settings-row:last-child { border-bottom: 0; }
+/* the live choice of a pool or game ("Mit Beträgen" – Sascha 15.11.2026): the value whole on its line, the long label
+   wraps instead */
+.live-share .settings-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.live-share .settings-value { white-space: nowrap; }
 /* a switch as a row of a settings list ("Alle Funktionen" in the format, Sascha 08.11.2026) – as tall as the rows */
 .settings-list > .drawer-row { min-height: 54px; gap: 12px; padding-block: 10px; }
 /* the › always at the right end, also in a row with only a label (home club, SG comparison – Sascha 17.10.2026) */
@@ -1312,7 +1316,10 @@ button.tile:disabled { opacity: 1; }
 .bet-cell.given svg { vertical-align: -1px; margin-right: 2px; color: var(--brand-text); }
 .bet-cell.voided { background: color-mix(in srgb, var(--text) 10%, var(--surface-2)); }
 .bet-cell.voided strong { color: var(--muted); }
-.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); display: inline-flex; justify-content: center; }
+/* the sign on the second line, as high as the value of every other cell (Sascha 15.11.2026: "alles muss immer gleich
+   dargestellt werden") */
+.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); display: block; text-align: center; }
+.bet-cell.voided small.bet-made svg { width: 1.1em; height: 1.1em; vertical-align: -0.2em; }
 .bet-legend { display: inline-flex; align-items: center; gap: 6px; }
 .bet-matrix td .bet-cell.given { white-space: normal; }
 .bet-matrix td .bet-cell.given small.bet-made, .bet-cell.given small.bet-made { color: var(--brand-text); font-size: 10.5px; overflow-wrap: anywhere; hyphens: auto; }
@@ -2867,3 +2874,5 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-plays, .shot-wind { display: block; }
 .shot-wind { margin-top: 2px; }
 .wind-tag.plain svg { color: inherit; }
+/* the wind under "spielte sich wie" in the same look – not bold (Sascha 15.11.2026) */
+.shot-wind, .shot-wind .wind-tag { color: var(--muted); font-weight: 400; }
