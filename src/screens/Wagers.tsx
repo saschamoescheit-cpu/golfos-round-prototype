@@ -35,7 +35,7 @@ import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet, pushWagers } from '../lib/push';
-import { loadSeries, loadTours } from '../lib/tourstore';
+import { loadSeries, loadTours, syncTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
 import { LiveShare } from '../components/LiveShare';
 import { ServerStale } from '../components/ServerStale';
@@ -1349,9 +1349,18 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // this round of the round's leaderboard among the pool's – its course on its day, else its day; not counted yet: the latest
   const roundNow = (): string | null => (props.round ? roundNowOf(standingRounds(pool), props.round) : null);
   const [picked, setPicked] = useState(false);
+  // the tournaments planned in the pool's days fetched here too (Sascha 15.11.2026 on the iPad: "Die morgige Runde Hawks
+  // Landing ist hier nicht zu sehen" – set up on the iPhone, this device had not opened Tournaments since): read on opening,
+  // shown once they are in
+  const [, setToursSeen] = useState(0);
+  useEffect(() => {
+    const again = () => setToursSeen((n) => n + 1);
+    window.addEventListener('golfos:tours-changed', again);
+    void syncTours();
+    return () => window.removeEventListener('golfos:tours-changed', again);
+  }, []);
   // the rounds deleted from the pool – back for the host (Sascha 15.11.2026: "Celebration war die erste Runde … worauf
   // Wetten liegen" – deleted once, there was no way back after the undo)
-  const [goneOpen, setGoneOpen] = useState(false);
   const gone = (pool.skip ?? []).filter((s) => s.hidden).sort((a, b) => (a.day < b.day ? -1 : 1));
   const [shown, setShown] = useState<string | null>(() => {
     try {
@@ -1465,9 +1474,15 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   const roundCell = ({ w }: { w: Wager; against: boolean }) => {
     if (one && isVoided(w, one))
       return (
-        <span key={w.id} className="bet-cell voided" title={wagerLabel(w)}>
+        // the sign instead of the words – the cell as high as every other (Sascha 15.11.2026: "zerschießt die Optik", mock-up C)
+        <span key={w.id} className="bet-cell voided" title={`${wagerLabel(w)} – ${tr('not counted', 'nicht gewertet')}`} aria-label={`${targetOf(w)} – ${tr('not counted', 'nicht gewertet')}`}>
           <strong>{targetOf(w)}</strong>
-          <small className="bet-made">{tr('not counted', 'nicht gewertet')}</small>
+          <small className="bet-made">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M6 18L18 6" />
+            </svg>
+          </small>
         </span>
       );
     const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
@@ -1583,47 +1598,100 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           options={[
             { value: '', name: tr('Total', 'Gesamt'), text: tr('all rounds', 'alle Runden'), uncounted: true },
             // no tick – only rounds played or in play are there (Sascha 11.11.2026); "läuft" for one in play
-            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : r.planned ? tr('planned – no scores yet', 'geplant – noch keine Scores') : played.has(r.key) ? undefined : tr('in play', 'läuft') })),
+            ...roundsShown.map((r) => ({ value: r.key, name: `${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`, text: r.out ? tr('not counted', 'nicht gewertet') : r.planned ? tr('planned – no scores yet', 'geplant – noch keine Scores') : played.has(r.key) ? undefined : tr('in play', 'läuft'), ...(r.out && props.onCount ? { short: '' } : {}) })),
           ]}
+          // the host (Sascha 15.11.2026, mock-up A: "6 von 8 gewertet"): whether the round shown counts, under its name –
+          // a tap opens the rounds' sheet, the switch and the deleted rounds there
+          status={
+            props.onCount && one ? (
+              <span className={`step-status ${one.out ? 'off' : 'on'}`}>
+                {!one.out && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                )}
+                {one.out ? tr('not counted', 'nicht gewertet') : tr('counted', 'gewertet')}
+              </span>
+            ) : undefined
+          }
+          extra={
+            props.onCount
+              ? (close) => (
+                  <>
+                    {/* the round shown counted or not (Sascha 11./12.11.2026) – out: no bet counts it, its scores stay */}
+                    {one && (
+                      <div className="settings-list">
+                        <OnOffRow
+                          label={tr(`Count ${one.day.slice(8, 10)}.${one.day.slice(5, 7)}.`, `Runde werten · ${one.day.slice(8, 10)}.${one.day.slice(5, 7)}.`)}
+                          on={!one.out}
+                          onChange={(v) => void props.onCount!({ day: one.day, course: one.course }, v)}
+                          onText={tr('It counts for the bets of the pool', 'Sie zählt für die Wetten des Pools')}
+                          offText={tr('It counts for no bet – for everyone in the pool. The scores stay.', 'Sie zählt für keine Wette – für alle im Pool. Die Scores bleiben.')}
+                        />
+                      </div>
+                    )}
+                    {/* not counted: out of the pool altogether, "Undo" for a moment (Sascha 11.11.2026) – the red bin */}
+                    {one?.out && props.onHide && (
+                      <div className="skip-delete">
+                        <ActionBar
+                          label={tr('This round', 'Diese Runde')}
+                          actions={[
+                            {
+                              label: tr('Delete from the pool', 'Aus dem Pool löschen'),
+                              aria: tr('Delete the round from the pool', 'Runde aus dem Pool löschen'),
+                              icon: 'delete',
+                              danger: true,
+                              onClick: async () => {
+                                const r = { day: one.day, course: one.course };
+                                if (!(await props.onHide!(r, true))) return;
+                                close();
+                                setShown(null);
+                                window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
+                              },
+                            },
+                          ]}
+                        />
+                      </div>
+                    )}
+                    {/* deleted ones at the end, the round green button to bring one back as in the bin (mock-up A) */}
+                    {gone.length > 0 && (
+                      <>
+                        <span className="eyebrow">{tr('Deleted · only you see them', 'Gelöscht · nur für dich')}</span>
+                        <ul className="settings-list gone-list" aria-label={tr('Deleted rounds', 'Gelöschte Runden')}>
+                          {gone.map((g) => (
+                            <li key={`${g.day}|${g.course}`} className="gone-row">
+                              <span className="grow">
+                                {`${g.day.slice(8, 10)}.${g.day.slice(5, 7)}. ${g.course}`}
+                                <span className="muted small">{tr('counts for no bet', 'zählt für keine Wette')}</span>
+                              </span>
+                              <button
+                                type="button"
+                                className="icon-btn bin-restore"
+                                aria-label={tr(`Bring back ${g.course}`, `${g.course} zurückholen`)}
+                                title={tr('Bring back – it counts again', 'Zurückholen – sie zählt wieder')}
+                                onClick={async () => {
+                                  if (await props.onCount!({ day: g.day, course: g.course }, true)) {
+                                    close();
+                                    setPicked(true);
+                                    setShown(`${g.day}|${g.course}`);
+                                  }
+                                }}
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M9 14L4 9l5-5" />
+                                  <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+                                </svg>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </>
+                )
+              : undefined
+          }
         />
-      )}
-      {/* the host counts a round or not (Sascha 12.11.2026: "remove these two rounds at last"; 11.11.2026: "eine andere
-          Lösung" – a row "Runde werten · An/Aus" like every setting): out, no bet counts it, its scores stay */}
-      {one && props.onCount && (
-        <div className="settings-list skip-row">
-          <OnOffRow
-            label={tr('Count this round', 'Runde werten')}
-            on={!one.out}
-            onChange={(v) => void props.onCount!({ day: one.day, course: one.course }, v)}
-            onText={tr('It counts for the bets of the pool', 'Sie zählt für die Wetten des Pools')}
-            offText={tr('It counts for no bet – for everyone in the pool. The scores stay.', 'Sie zählt für keine Wette – für alle im Pool. Die Scores bleiben.')}
-          />
-        </div>
-      )}
-      {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
-      {/* a round not counted taken out of the pool altogether – gone from the switch for everyone, "Undo" for a moment
-          (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben") */}
-      {/* the red bin of the action bar, as everywhere (Facelift-Abnahme W4) */}
-      {one?.out && props.onHide && (
-        <div className="skip-delete">
-          <ActionBar
-            label={tr('This round', 'Diese Runde')}
-            actions={[
-              {
-                label: tr('Delete from the pool', 'Aus dem Pool löschen'),
-                aria: tr('Delete the round from the pool', 'Runde aus dem Pool löschen'),
-                icon: 'delete',
-                danger: true,
-                onClick: async () => {
-                  const r = { day: one.day, course: one.course };
-                  if (!(await props.onHide!(r, true))) return;
-                  setShown(null);
-                  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'poolround', id: one.key, label: one.course, undo: () => void props.onHide!(r, false) } }));
-                },
-              },
-            ]}
-          />
-        </div>
       )}
       {rows.length > 0 && !one?.out && (
         <div className="matrix-wrap">
@@ -1662,28 +1730,16 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
           </table>
         </div>
       )}
-      {!one && props.onCount && gone.length > 0 && (
-        <div className="settings-list skip-row">
-          <SettingsRow label={tr('Deleted rounds', 'Gelöschte Runden')} value={String(gone.length)} onClick={() => setGoneOpen(true)} />
-        </div>
+      {one && rows.length > 0 && !one.out && pool.wagers.some((w) => inRound(w) && isVoided(w, one)) && (
+        <span className="bet-legend muted small">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M6 18L18 6" />
+            </svg>
+          {tr('not counted', 'nicht gewertet')}
+        </span>
       )}
-      {goneOpen && (
-        <PickSheet<string>
-          title={tr('Deleted rounds', 'Gelöschte Runden')}
-          options={gone.map((g) => ({ value: `${g.day}|${g.course}`, name: `${g.day.slice(8, 10)}.${g.day.slice(5, 7)}. ${g.course}`, text: tr('Tap: back in the pool – it counts again', 'Antippen: wieder im Pool – sie zählt wieder') }))}
-          current=""
-          onClose={() => setGoneOpen(false)}
-          onPick={async (v) => {
-            const g = gone.find((x) => `${x.day}|${x.course}` === v);
-            if (!g) return;
-            setGoneOpen(false);
-            if (await props.onCount!({ day: g.day, course: g.course }, true)) {
-              setPicked(true);
-              setShown(v);
-            }
-          }}
-        />
-      )}
+      {one?.out && <span className="muted small">{tr('This round counts for no bet of the pool.', 'Diese Runde zählt für keine Wette des Pools.')}</span>}
       {lines.length > 0 && (
         <div className="bet-free" aria-label={tr('Free bets', 'Freie Wetten')} role="group">
           <span className="eyebrow">{tr('Free bets – decided by the host', 'Freie Wetten – entscheidet der Host')}</span>

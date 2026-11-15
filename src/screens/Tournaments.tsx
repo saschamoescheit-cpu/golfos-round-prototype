@@ -5,7 +5,7 @@ import { TourPrizeBoard, tourPrizeResult } from '../components/TourPrizeBoard';
 import { SeriesPrizeBoard, settledInSeries } from '../components/SeriesPrizeBoard';
 import { TourPrizesRows } from '../components/TourPrizesRows';
 import type { TourPrizes } from '../lib/tourprizes';
-import { keyName, wonBy } from '../lib/tourprizes';
+import { keyName, wonBy, wonKind } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { ChoiceRow, OnOffRow, SettingsList, SettingsRow, TickRow, ToggleList, ToggleRow } from '../components/Settings';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -1319,7 +1319,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
             value: played && r.thru ? r.value : '–',
             thru: r.retired ? (r.noReturn ? tr(`after ${r.thru}`, `nach ${r.thru}`) : tr(`WD after ${r.thru}`, `Aufg. nach ${r.thru}`)) : r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
             // the prize won – white on green beside the name (Sascha 14.11.2026, mock-up 4)
-            ...(won?.get(keyName(r.name)) && prizeResult ? { extra: <span className="prize-chip lb-prize">{prizeAmount(won.get(keyName(r.name))!.amount, prizeResult.tp.prize)}</span> } : {}),
+            ...(won?.get(keyName(r.name)) && prizeResult ? { extra: <span className={`prize-chip lb-prize ${wonKind(prizeResult.awards, r.name)}`}>{prizeAmount(won.get(keyName(r.name))!.amount, prizeResult.tp.prize)}</span> } : {}),
             // tapped: his scorecard opens below (Sascha 04.11.2026)
             ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}

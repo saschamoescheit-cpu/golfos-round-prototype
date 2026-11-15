@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 // The floating actions bottom right (Sascha 12.11.2026, mock-up "Neu starten": "C with the floating button, but looking
 // like A"; the pencil "also bottom right, floating – the same in the whole app"): a round green "+" for something new
 // on a list page (a round, a game, a bet, a tournament, a payment, a friend) and the page's pencil (change the pool,
@@ -6,7 +7,7 @@
 import { createPortal } from 'react-dom';
 import { tr } from '../lib/i18n';
 
-export type FloatAction = { label: string; onClick: () => void; disabled?: boolean };
+export type FloatAction = { label: string; onClick: () => void; disabled?: boolean; /** another sign than the pen – "Schläge prüfen" its magnifier (Sascha 15.11.2026: "bearbeiten irritiert") */ icon?: ReactNode };
 
 const Plus = () => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -48,7 +49,7 @@ export function FloatActions(props: { plus?: FloatAction | null; pen?: FloatActi
       )}
       {props.pen && (
         <button type="button" className={`fab fab-pen${props.plus ? ' small' : ''}`} aria-label={props.pen.label} title={props.pen.label} onClick={props.pen.onClick}>
-          <Pen />
+          {props.pen.icon ?? <Pen />}
         </button>
       )}
       {props.plus && (

@@ -37,7 +37,7 @@ await p.locator('.module-switch').first().click();
 const sheet = p.getByRole('dialog', { name: 'Modul wechseln' });
 await sheet.waitFor({ timeout: 5000 }).catch(() => {});
 ok(await sheet.isVisible(), 'the module button opens the sheet "Modul wechseln"');
-const names = (await sheet.locator('.module-card:not(.module-home) strong').allInnerTexts()).map((t) => t.trim());
+const names = (await sheet.locator('.module-card strong').allInnerTexts()).map((t) => t.trim());
 ok(names.join('|') === 'Rounds|Games & Bets|Tournaments|Training (Beta)|Agility (Beta)', `the same five cards as the start page (${names.join(' | ')})`);
 const on = await sheet.locator('.module-card.on strong').allInnerTexts();
 ok(on.length === 1 && on[0].trim() === 'Games & Bets', `the module one is in is marked (${on.join(', ')})`);
@@ -67,9 +67,9 @@ ok((await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).count()) ===
 // "Startseite" (Sascha 13.11.2026: "one does not get back to the start page any more"): the sheet's first row
 await p.locator('.module-switch').first().click();
 await sheet.waitFor();
-const first = (await sheet.locator('.module-card strong').first().innerText()).trim();
-ok(first === 'Startseite', `the sheet's first row is "Startseite" (${first})`);
-await sheet.locator('.module-home').click();
+// since 15.11.2026 (mock-up A) a round house button beside ✕
+ok((await sheet.getByRole('button', { name: 'Startseite' }).count()) === 1, 'the house button "Startseite" in the head');
+await sheet.getByRole('button', { name: 'Startseite' }).click();
 await p.waitForTimeout(800);
 ok((await sheet.count()) === 0 && (await p.locator('.module-switch').count()) === 0, 'it goes to the start page (no module pill there)');
 ok((await p.locator('.module-card').filter({ hasText: 'Rounds' }).count()) === 1, 'the start page with its module cards');

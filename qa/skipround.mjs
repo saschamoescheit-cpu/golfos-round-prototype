@@ -67,26 +67,37 @@ const listRounds = async () => {
   const names = await dlg.locator('.pick-option strong').allInnerTexts();
   return { dlg, names };
 };
-// since 11.11.2026 (Sascha: "eine andere Lösung") a row "Runde werten · An/Aus" under the round shown – rounds taken out
-// stay in the switch, "nicht gewertet"; no list in the pencil any more
+// since 15.11.2026 (Sascha, mock-up A): under the round's name "6 von 8 ✓ gewertet" / "nicht gewertet"; the switch
+// "Runde werten · An/Aus" and the deleted rounds in the rounds' sheet (a tap on the name); rounds taken out stay in the
+// switch, "nicht gewertet"
+const closeSheet = async () => {
+  await H.getByRole('dialog', { name: 'Runden' }).getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
+  await H.waitForTimeout(200);
+};
 let { dlg, names } = await listRounds();
 ok(names.length === 4, `the switch lists Gesamt + 3 rounds (${names.join(' | ')})`);
-const countRow = () => onOff(stand, 'Runde werten');
-ok((await countRow().count()) === 0, 'on "Gesamt": no "Runde werten"');
+const countRow = () => onOff(H.getByRole('dialog', { name: 'Runden' }), /^Runde werten · \d\d\.\d\d\.: (An|Aus)$/);
+ok((await countRow().count()) === 0, 'on "Gesamt": no "Runde werten" in the sheet');
 await dlg.locator('.pick-option').filter({ hasText: 'Reunion' }).click();
 await H.waitForTimeout(300);
-ok((await countRow().count()) === 1 && (await isOn(countRow())), 'a round: the row "Runde werten · An"');
+const status = async () => (await sw.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ');
+ok(/\d von \d gewertet/.test(await status()), `a round: "… von … gewertet" under its name (${await status()})`);
+({ dlg } = await listRounds());
+ok((await countRow().count()) === 1 && (await isOn(countRow())), 'the sheet: "Runde werten · An" for the round shown');
 await flip(countRow());
 await H.waitForTimeout(800);
 const server = sim.shared.get(code)?.game ?? sim.shared.get(code);
 const skip = (server?.skip ?? server?.pool?.skip ?? []).map((x) => `${x.day}|${x.course}`);
 ok(skip.length === 1 && skip[0] === `${d2}|Reunion Resort Golf Course`, `on the server: pool.skip = ${JSON.stringify(skip)}`);
-ok(!(await isOn(countRow())) && /zählt für keine Wette/.test(await stand.innerText()), 'Reunion "Runde werten · Aus" – it counts for no bet, said so');
+ok(!(await isOn(countRow())), 'Reunion "Runde werten · Aus"');
+await closeSheet();
+ok(/\d von \d nicht gewertet/.test(await status()) && /zählt für keine Wette/.test(await stand.innerText()), `under its name "nicht gewertet", said so (${await status()})`);
 ({ dlg, names } = await listRounds());
 const texts = (await dlg.locator('.pick-option').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(names.length === 4 && texts.some((t) => /Reunion.*nicht gewertet/.test(t)) && texts.some((t) => /Celebration/.test(t) && !/nicht gewertet/.test(t)), `Reunion stays in the switch, "nicht gewertet"; Celebration of the same day counts (${texts.join(' | ')})`);
 await dlg.locator('.pick-option').filter({ hasText: 'Celebration' }).click();
 await H.waitForTimeout(300);
+await listRounds();
 await flip(countRow());
 await H.waitForTimeout(800);
 const skip2 = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).length;
@@ -96,27 +107,26 @@ await flip(countRow());
 await H.waitForTimeout(800);
 const skip3 = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).map((x) => x.course);
 ok(skip3.length === 1 && skip3[0].includes('Reunion') && (await isOn(countRow())), `Celebration counted again, Reunion still out (${skip3.join(', ')})`);
+await closeSheet();
 // a round not counted deleted from the pool altogether (Sascha 11.11.2026: "die Runden will ich auch gelöscht haben"):
 // gone from the switch, "Rückgängig" brings it back
 ({ dlg, names } = await listRounds());
 await dlg.locator('.pick-option').filter({ hasText: 'Reunion' }).click();
 await H.waitForTimeout(300);
-ok((await countRow().count()) === 1 && (await stand.getByRole('button', { name: 'Runde aus dem Pool löschen' }).count()) === 1, 'a round not counted: "Runde aus dem Pool löschen"');
-await stand.getByRole('button', { name: 'Runde aus dem Pool löschen' }).click();
+({ dlg } = await listRounds());
+ok((await countRow().count()) === 1 && (await dlg.getByRole('button', { name: 'Runde aus dem Pool löschen' }).count()) === 1, 'a round not counted: in the sheet "Runde aus dem Pool löschen"');
+await dlg.getByRole('button', { name: 'Runde aus dem Pool löschen' }).click();
 await H.waitForTimeout(800);
 const hid = ((sim.shared.get(code)?.game ?? sim.shared.get(code))?.skip ?? []).find((x) => x.course.includes('Reunion'));
 ({ dlg, names } = await listRounds());
-ok(!!hid?.hidden && !names.some((n) => n.includes('Reunion')) && names.length === 3, `deleted: on the server hidden, gone from the switch (${names.join(' | ')})`);
-await H.keyboard.press('Escape');
-await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
-await H.waitForTimeout(200);
-await H.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
+const goneRows = (await dlg.locator('.gone-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(!!hid?.hidden && !names.some((n) => n.includes('Reunion')) && names.length === 3 && goneRows.some((t) => /Reunion/.test(t)), `deleted: on the server hidden, out of the rounds, under "Gelöscht" (${names.join(' | ')} – ${goneRows.join(' | ')})`);
+await closeSheet();
+await H.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click().catch(() => {});
 await H.waitForTimeout(800);
 ({ dlg, names } = await listRounds());
 ok(names.some((n) => n.includes('Reunion')), `"Rückgängig": back in the switch (${names.join(' | ')})`);
-await H.keyboard.press('Escape');
-await H.locator('.sheet-backdrop').first().click({ position: { x: 5, y: 5 } }).catch(() => {});
-await H.waitForTimeout(200);
+await closeSheet();
 // the pencil: no list of rounds not counted any more
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const edit = H.getByRole('dialog', { name: 'Pool bearbeiten' });
@@ -142,7 +152,9 @@ await H.getByText('USA-Wetten').first().click();
 await stand.waitFor({ timeout: 15000 });
 await sw.getByRole('button', { name: 'Nächste' }).click();
 await H.waitForTimeout(300);
-ok((await onOff(stand, 'Runde werten').count()) === 0, 'not the host: no "Runde werten"');
+ok(!/gewertet/.test(await sw.locator('.step-pick-now').innerText()) || /nicht gewertet/.test(await sw.locator('.step-pick-now').innerText()), 'not the host: no "gewertet" under the name');
+await sw.locator('.step-pick-now').click();
+ok((await H.getByRole('dialog', { name: 'Runden' }).locator('.onoff-row, .gone-row').count()) === 0, 'not the host: no "Runde werten", no deleted rounds in the sheet');
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

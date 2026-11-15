@@ -43,13 +43,33 @@ ok(/US-Dollar|\$/.test(await txt(prizes.locator('.settings-row').filter({ hasTex
 await prizes.locator('.settings-row').filter({ hasText: 'Startgeld je Spieler' }).click();
 await H.getByRole('dialog', { name: 'Startgeld je Spieler' }).locator('.pick-option').filter({ hasText: /^20 \$$/ }).first().click();
 await H.waitForTimeout(300);
-await prizes.locator('.settings-row').filter({ hasText: 'Sieger brutto' }).click();
+await prizes.locator('.prize-group.gross .settings-row').filter({ hasText: 'Sieger' }).click();
 await H.getByRole('dialog', { name: 'Sieger brutto' }).locator('.pick-option').filter({ hasText: /^50 \$$/ }).first().click();
 await H.waitForTimeout(300);
 const pots = await prizes.locator('.tour-pot').allInnerTexts();
 ok(pots.some((x) => /Topf · 1 Spieler × 20 \$/.test(x.replace(/\s+/g, ' ')) && /20 \$/.test(x)) && pots.some((x) => /Preise zusammen/.test(x) && /50 \$/.test(x)), `the pot and the prizes added up (${pots.map((x) => x.replace(/\s+/g, ' ')).join(' | ')})`);
 ok(/30 \$ mehr als im Topf/.test(await txt(prizes)), 'more prizes than in the pot: a warning');
-ok((await prizes.locator('.settings-row').filter({ hasText: 'Sieger netto' }).count()) === 1, 'a net tournament: the net places too');
+ok((await prizes.locator('.prize-group.net .settings-row').filter({ hasText: 'Sieger' }).count()) === 1, 'a net tournament: the net places too');
+// gross and net apart (Sascha 15.11.2026, mock-up A): each its group, its tag, its colour; the rankings and places set
+{
+  const tags = (await prizes.locator('.rank-tag').allInnerTexts()).map((x) => x.trim());
+  const edge = async (k) => prizes.locator(`.prize-group.${k} .settings-list`).evaluate((el) => getComputedStyle(el).boxShadow).catch(() => '');
+  ok(tags.join('|') === 'BRUTTO|NETTO' && (await edge('gross')) !== (await edge('net')), `two groups, BRUTTO and NETTO, each its colour (${tags.join(', ')})`);
+  ok((await prizes.locator('.prize-group.gross .settings-row').count()) === 3, 'three gross places to start with');
+  await prizes.locator('.settings-row').filter({ hasText: 'Plätze je Wertung' }).click();
+  await H.getByRole('dialog', { name: 'Plätze je Wertung' }).locator('.pick-option').filter({ hasText: /^2 Plätze$/ }).click();
+  await H.waitForTimeout(300);
+  ok((await prizes.locator('.prize-group.gross .settings-row').count()) === 2 && (await prizes.locator('.prize-group.net .settings-row').count()) === 2, 'Plätze je Wertung 2: two places each');
+  await prizes.locator('.settings-row').filter({ hasText: 'Wertungen' }).click();
+  await H.getByRole('dialog', { name: 'Welche Wertungen gewinnen Preise' }).locator('.pick-option').filter({ hasText: /^Nur Brutto/ }).click();
+  await H.waitForTimeout(300);
+  ok((await prizes.locator('.prize-group.net').count()) === 0 && (await prizes.locator('.prize-group.gross').count()) === 1, 'Nur Brutto: no net group');
+  await prizes.locator('.settings-row').filter({ hasText: 'Wertungen' }).click();
+  await H.getByRole('dialog', { name: 'Welche Wertungen gewinnen Preise' }).locator('.pick-option').filter({ hasText: 'Brutto + Netto' }).click();
+  await prizes.locator('.settings-row').filter({ hasText: 'Plätze je Wertung' }).click();
+  await H.getByRole('dialog', { name: 'Plätze je Wertung' }).locator('.pick-option').filter({ hasText: /^3 Plätze$/ }).click();
+  await H.waitForTimeout(300);
+}
 if (shots) await H.screenshot({ path: `${shots}/tourprizes-setup.png`, fullPage: true });
 
 // ---------- 2. a tournament played ----------

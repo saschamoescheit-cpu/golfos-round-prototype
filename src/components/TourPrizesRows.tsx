@@ -1,6 +1,6 @@
 import { tr } from '../lib/i18n';
 import { isNone, prizeAmount, prizeSym, type Prize } from '../lib/prize';
-import { keyName, prizeSlots, prizeSum, type TourPrizes } from '../lib/tourprizes';
+import { keyName, PLACE_CHOICES, placesOf, prizeSlots, prizeSum, type TourPrizes } from '../lib/tourprizes';
 import type { Special } from '../lib/specials';
 import { ChoiceRow, SettingsList } from './Settings';
 import { StakeRow } from './StakePicker';
@@ -22,7 +22,7 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
   const set = (patch: Partial<TourPrizes>) => props.onChange({ ...(v ?? { prize: prize!, amounts: {} }), ...patch } as TourPrizes);
   const names = props.players.filter((n) => n.trim());
   const collector = names.find((n) => keyName(n) === keyName(v?.collector ?? '')) ?? names[0] ?? '';
-  const slots = prizeSlots({ net: props.net, classes: props.classes, specials: props.specials, holeName: props.holeName });
+  const slots = prizeSlots({ net: props.net, classes: props.classes, specials: props.specials, holeName: props.holeName, tp: v });
   const amounts = v?.amounts ?? {};
   const fee = v?.fee ?? 0;
   const pot = fee * names.length;
@@ -30,6 +30,14 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
   const grossSet = slots.some((s) => s.id.startsWith('gross') && (amounts[s.id] ?? 0) > 0);
   const netSet = slots.some((s) => s.id.startsWith('net') && (amounts[s.id] ?? 0) > 0);
   const amt = (x: number) => (prize ? prizeAmount(x, prize) : String(x));
+  // gross, net (each net class its own), the special prizes
+  const cls = (id: string) => id.split(':')[1] ?? '';
+  const netClasses = [...new Set(slots.filter((x) => x.group === 'net').map((x) => cls(x.id)))];
+  const groups = [
+    ...(slots.some((x) => x.group === 'gross') ? [{ key: 'gross', kind: 'gross' as const, title: tr('Prizes', 'Preise'), aria: tr('Gross prizes', 'Brutto-Preise'), slots: slots.filter((x) => x.group === 'gross') }] : []),
+    ...netClasses.map((c) => ({ key: `net:${c}`, kind: 'net' as const, title: c ? tr(`Prizes · class ${c}`, `Preise · Klasse ${c}`) : tr('Prizes', 'Preise'), aria: tr('Net prizes', 'Netto-Preise'), slots: slots.filter((x) => x.group === 'net' && cls(x.id) === c) })),
+    ...(slots.some((x) => x.group === 'special') ? [{ key: 'special', kind: 'special' as const, title: tr('Special prizes', 'Sonderwertungen'), aria: tr('Special prizes', 'Sonderwertungen'), slots: slots.filter((x) => x.group === 'special') }] : []),
+  ];
   return (
     <section className="setup-part tour-prizes">
       <span className="eyebrow">{props.title ?? tr('Played for', 'Worum')}</span>
@@ -49,6 +57,28 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
             options={names.map((n) => ({ value: keyName(n), name: n }))}
           />
         )}
+        {/* which rankings win prizes and how many places (Sascha 15.11.2026, mock-up A: "konfigurierbar") */}
+        {on && props.net && (
+          <ChoiceRow<'both' | 'gross' | 'net'>
+            label={tr('Rankings', 'Wertungen')}
+            title={tr('Which rankings win prizes', 'Welche Wertungen gewinnen Preise')}
+            value={v?.scoring ?? 'both'}
+            onChange={(sc) => set({ scoring: sc === 'both' ? undefined : sc })}
+            options={[
+              { value: 'both', name: tr('Gross + net', 'Brutto + Netto'), text: tr('Both rankings win prizes – the usual way.', 'Beide Wertungen gewinnen Preise – üblich.') },
+              { value: 'gross', name: tr('Gross only', 'Nur Brutto'), text: tr('Only the strokes count.', 'Nur die Schläge zählen.') },
+              { value: 'net', name: tr('Net only', 'Nur Netto'), text: tr('With the handicap allowance.', 'Mit der HCP-Vorgabe.') },
+            ]}
+          />
+        )}
+        {on && (
+          <ChoiceRow<number>
+            label={tr('Places per ranking', 'Plätze je Wertung')}
+            value={placesOf(v)}
+            onChange={(n) => set({ places: n === 3 ? undefined : n })}
+            options={PLACE_CHOICES.map((n) => ({ value: n, name: n === 1 ? tr('Winner only', 'Nur Sieger') : tr(`${n} places`, `${n} Plätze`) }))}
+          />
+        )}
       </SettingsList>
       {on && fee > 0 && (
         <div className="tour-pot" role="status">
@@ -58,12 +88,22 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
       )}
       {on && (
         <>
-          <span className="eyebrow">{tr('Prizes', 'Preise')}</span>
-          <SettingsList label={tr('Prizes', 'Preise')}>
-            {slots.map((s) => (
-              <StakeRow key={s.id} label={s.label} value={amounts[s.id] ?? 0} sym={sym} stakes={money ? AMOUNTS : COUNTS} onChange={(x) => set({ amounts: { ...amounts, [s.id]: x } })} />
-            ))}
-            {grossSet && netSet && (
+          {/* a group per ranking (Sascha 15.11.2026: "brutto und netto noch visuell anders darstellen", mock-up A) */}
+          {groups.map((g) => (
+            <div key={g.key} className={`prize-group ${g.kind}`}>
+              <span className="eyebrow">
+                {g.kind !== 'special' && <span className={`rank-tag ${g.kind}`}>{g.kind === 'gross' ? tr('GROSS', 'BRUTTO') : tr('NET', 'NETTO')}</span>}
+                {g.title}
+              </span>
+              <SettingsList label={g.aria}>
+                {g.slots.map((sl) => (
+                  <StakeRow key={sl.id} label={sl.place ? (sl.place === 1 ? tr('Winner', 'Sieger') : tr(`${sl.place}. place`, `${sl.place}. Platz`)) : sl.label} title={sl.label} value={amounts[sl.id] ?? 0} sym={sym} stakes={money ? AMOUNTS : COUNTS} onChange={(x) => set({ amounts: { ...amounts, [sl.id]: x } })} />
+                ))}
+              </SettingsList>
+            </div>
+          ))}
+          {grossSet && netSet && (
+            <SettingsList>
               <ChoiceRow<'gross' | 'both'>
                 label={tr('Gross and net winner', 'Brutto- und Netto-Sieg')}
                 title={tr('One player wins gross and net', 'Ein Spieler gewinnt brutto und netto')}
@@ -74,8 +114,8 @@ export function TourPrizesRows(props: { value: TourPrizes | null; onChange: (v: 
                   { value: 'both', name: tr('Both prizes', 'Beide Preise'), text: tr('He gets the gross and the net prize.', 'Er bekommt Brutto- und Netto-Preis.') },
                 ]}
               />
-            )}
-          </SettingsList>
+            </SettingsList>
+          )}
           {sum > 0 && (
             <div className="tour-pot" role="status">
               <span>{tr('Prizes together', 'Preise zusammen')}</span>

@@ -2,7 +2,7 @@ import { tr } from '../lib/i18n';
 import { prizeAmount, prizeName } from '../lib/prize';
 import { eventStandings, liveFlights, netClasses, CLASS_NAMES, type RoundEvent } from '../lib/sharedround';
 import { specialBoard } from '../lib/specials';
-import { hasPrizes, keyName, prizeAwards, prizeSettle, prizeSum, type Award, type TourPrizes } from '../lib/tourprizes';
+import { hasPrizes, keyName, prizeAwards, prizeSettle, prizeSum, rankKind, type Award, type TourPrizes } from '../lib/tourprizes';
 
 type PrizedEvent = RoundEvent & { prizes?: TourPrizes };
 
@@ -44,11 +44,12 @@ export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: 
         <ul className="game-pays tour-prize-list">
           {awards.map((a) => (
             <li key={a.slot}>
-              <span>
+              <span className="prize-line">
+                {rankKind(a.slot) !== 'special' && <span className={`rank-tag ${rankKind(a.slot)}`}>{rankKind(a.slot) === 'gross' ? tr('GROSS', 'BRUTTO') : tr('NET', 'NETTO')}</span>}
                 {a.label}
                 <span className="muted small"> · {a.winners.map((w) => w.name).join(', ')}</span>
               </span>
-              <span className="prize-chip">{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
+              <span className={`prize-chip ${rankKind(a.slot)}`}>{a.winners.length > 1 ? tr(`${amt(a.winners[0].amount)} each`, `je ${amt(a.winners[0].amount)}`) : amt(a.winners[0].amount)}</span>
             </li>
           ))}
         </ul>

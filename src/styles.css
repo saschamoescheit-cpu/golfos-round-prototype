@@ -1230,9 +1230,40 @@ button.tile:disabled { opacity: 1; }
 /* the prizes of a tournament (Sascha 14.11.2026, "Turnier-Preise") – white on green, as every number on colour */
 .prize-chip { background: var(--brand); color: #fff; border-radius: 8px; padding: 2px 8px; font-weight: 700; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lb-prize { margin-left: 6px; vertical-align: 1px; }
+/* gross blue, net green – the chip and a tag before the prize's name (Sascha 15.11.2026) */
+.prize-chip.gross { background: var(--gross); }
+.prize-chip.net { background: var(--brand); }
+.prize-line { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tour-prize-board { display: flex; flex-direction: column; gap: 6px; }
 /* the series' prizes: its own, then the day prizes (Sascha 15.11.2026) */
 .tour-prize-sub { font-weight: 600; margin-top: 4px; }
+/* the prizes per ranking (Sascha 15.11.2026, mock-up A): gross blue, net green – a tag in the heading, an edge at the
+   list, the place a number in a ring */
+:root { --gross: #6fa8dc; --gross-soft: #1d2a36; }
+:root[data-theme='sun'] { --gross: #2a64a0; --gross-soft: #dce9f6; }
+.prize-group { display: flex; flex-direction: column; gap: 8px; }
+.prize-group > .eyebrow { display: flex; align-items: center; gap: 8px; }
+.rank-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; border-radius: 6px; padding: 2px 6px; }
+.rank-tag.gross { background: var(--gross-soft); color: var(--gross); }
+.rank-tag.net { background: var(--brand-soft); color: var(--brand-text); }
+.prize-group.gross .settings-list { box-shadow: inset 3px 0 0 var(--gross); }
+.prize-group.net .settings-list { box-shadow: inset 3px 0 0 var(--brand); }
+.prize-group:not(.special) .settings-list { counter-reset: place; }
+.prize-group:not(.special) .settings-row { counter-increment: place; }
+.prize-group:not(.special) .settings-row > span:first-child::before { content: counter(place); display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 10px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 12px; font-weight: 700; vertical-align: middle; }
+.prize-group.gross .settings-row > span:first-child::before { color: var(--gross); }
+.prize-group.net .settings-row > span:first-child::before { color: var(--brand-text); }
+/* the rounds' switch (Sascha 15.11.2026, mock-up A): "6 von 8 ✓ gewertet" – green, or quiet "nicht gewertet"; its sheet
+   below the rounds: the host's switch, the bin, the deleted rounds with the round green button */
+.step-status { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+.step-status.on { color: var(--brand); }
+.step-status.off { color: var(--muted); }
+.pick-extra { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+.gone-list { list-style: none; margin: 0; padding: 0; }
+.gone-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; opacity: .85; }
+.gone-row + .gone-row { border-top: 1px solid var(--line); }
+.gone-row .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.gone-row .bin-restore { background: var(--brand); border-color: var(--brand); color: #fff; flex: none; }
 .tour-prize-list li { align-items: center; }
 .tour-prize-pay-head { margin-top: 6px; }
 .tour-prize-pays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -1280,8 +1311,9 @@ button.tile:disabled { opacity: 1; }
 .bet-cell.given { background: color-mix(in srgb, var(--text) 16%, var(--surface-2)); }
 .bet-cell.given svg { vertical-align: -1px; margin-right: 2px; color: var(--brand-text); }
 .bet-cell.voided { background: color-mix(in srgb, var(--text) 10%, var(--surface-2)); }
-.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); font-size: 10.5px; }
-.bet-matrix td .bet-cell.voided { white-space: normal; }
+.bet-cell.voided strong { color: var(--muted); }
+.bet-cell.voided small.bet-made, .bet-matrix td .bet-cell.voided small.bet-made { color: var(--muted); display: inline-flex; justify-content: center; }
+.bet-legend { display: inline-flex; align-items: center; gap: 6px; }
 .bet-matrix td .bet-cell.given { white-space: normal; }
 .bet-matrix td .bet-cell.given small.bet-made, .bet-cell.given small.bet-made { color: var(--brand-text); font-size: 10.5px; overflow-wrap: anywhere; hyphens: auto; }
 .concede-cost { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
@@ -2507,10 +2539,18 @@ button.balance-item-row { cursor: pointer; }
 .shot-where { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .shot-where .chip { white-space: nowrap; flex: none; }
 /* the head on its own line over the whole width (Sascha 15.11.2026): each part unbroken, the button below beside the wind */
-.shot-where:has(> .shot-where-head) { flex-wrap: wrap; align-items: flex-end; row-gap: 4px; }
-.shot-where-head { flex: 1 0 100%; }
+/* (Sascha 15.11.2026, later: "Ort ändern in der Höhe zentriert rechts"): a grid – the head over the whole width on a
+   phone, the button beside the lines under it, centred; wide enough (the iPad), the button right of all of it, centred */
+.shot-where:has(> .shot-where-head) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 4px; align-items: center; }
+.shot-where-head { grid-column: 1 / -1; grid-row: 1; }
 .shot-where-head > * { white-space: nowrap; }
+.shot-where:has(> .shot-where-head) > .grow { grid-column: 1; grid-row: 2; }
 .shot-where:has(> .shot-where-head) > .grow:empty { display: none; }
+.shot-where:has(> .shot-where-head) > .chip { grid-column: 2; grid-row: 2; align-self: center; }
+@media (min-width: 560px) {
+  .shot-where-head { grid-column: 1; }
+  .shot-where:has(> .shot-where-head) > .chip { grid-row: 1 / span 2; }
+}
 /* a hole without a map set up while checking the shots (Sascha 12.11.2026) */
 .review-nomap { display: flex; flex-direction: column; gap: 10px; }
 .review-setup-layer { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; }
@@ -2521,12 +2561,10 @@ button.balance-item-row { cursor: pointer; }
 .module-sheet .module-card { padding: 12px 14px; }
 .module-sheet .module-card strong { font-size: 19px; }
 .module-sheet .module-icon { width: 44px; height: 44px; }
-.module-sheet .module-home .module-icon svg { width: 28px; height: 28px; } /* the house as big as the module icons */
+/* the start page: a round house button beside ✕ (Sascha 15.11.2026, mock-up A) */
+.module-sheet .module-home-btn { color: var(--brand-text); border-color: var(--brand); }
+.module-sheet .module-home-btn svg { width: 20px; height: 20px; }
 /* "Startseite" set off in green (Sascha 11.11.2026, design round 3: "Startseite in grün, um es hervorzuheben") */
-.module-sheet .module-home { background: var(--brand-soft); } /* no green frame: that marks the module one is in */
-.module-sheet .module-home strong { color: var(--brand-text); }
-.module-sheet .module-home .module-icon { background: var(--brand); color: #fff; }
-.module-sheet .module-home > span:last-child { color: var(--brand-text); }
 .module-card.on { border: 2px solid var(--brand); }
 /* the host takes a round out of a pool's standing (Sascha 12.11.2026) */
 .skip-round { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-2); }
@@ -2829,4 +2867,3 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-plays, .shot-wind { display: block; }
 .shot-wind { margin-top: 2px; }
 .wind-tag.plain svg { color: inherit; }
-.shot-where:has(> .shot-where-head) > .chip { margin-left: auto; }

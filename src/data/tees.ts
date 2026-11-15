@@ -27,6 +27,11 @@ export const TEES: Record<string, CourseTees> = {"osm:relation/1654444":{"tees":
 // 13 holes within a few metres of the card's blue lengths
 TEES['osm:relation/4039888'].at = {"1":[null,[-81.625722,28.3579],null,null],"2":[null,[-81.626652,28.361013],null,null],"3":[null,[-81.624947,28.358899],null,null],"4":[null,[-81.623723,28.359788],null,null],"5":[null,[-81.620169,28.361887],null,null],"6":[null,[-81.619862,28.361981],null,null],"7":[null,[-81.615803,28.360868],null,null],"8":[null,[-81.617047,28.358168],null,null],"9":[null,[-81.621421,28.358782],null,null],"10":[null,[-81.622855,28.355399],null,null],"11":[null,[-81.621028,28.351171],null,null],"12":[null,[-81.624186,28.350379],null,null],"13":[null,[-81.623414,28.34768],null,null],"14":[null,[-81.619621,28.347697],null,null],"15":[null,[-81.619621,28.350238],null,null],"16":[null,[-81.61971,28.355195],null,null],"17":[null,[-81.620246,28.358489],null,null],"18":[null,[-81.623173,28.355984],null,null]};
 
+// Celebration Golf Club, the club's scorecard (celebrationgolf.com, June 2023 – GolfPass and 18Birdies the same; Silver 8 =
+// 287 yd as GolfPass, the club's 278 does not add up to its total): Black 6757 / Gold 6340 / Silver 5711 / White 5032 yd,
+// in metres (night 14./15.11.2026)
+TEES['osm:relation/1231691'] = {"tees":["Black","Gold","Silver","White"],"holes":{"1":[338,304,283,272],"2":[347,324,322,218],"3":[181,156,147,136],"4":[466,435,394,350],"5":[143,131,121,97],"6":[464,434,402,358],"7":[402,377,341,300],"8":[365,345,262,239],"9":[347,315,283,251],"10":[299,280,251,231],"11":[407,379,349,307],"12":[522,515,461,440],"13":[179,171,133,120],"14":[361,347,313,281],"15":[300,290,249,211],"16":[177,172,154,109],"17":[350,313,285,259],"18":[529,509,473,422]}};
+
 /** Tee colour in the player's language. */
 export const teeName = (t: string): string =>
   /^\d+$/.test(t) ? `Tee ${t}` : tr(t, ({ White: 'Weiß', Yellow: 'Gelb', Blue: 'Blau', Red: 'Rot', Orange: 'Orange', Green: 'Grün', Pink: 'Rosa', Black: 'Schwarz', Gold: 'Gold', Silver: 'Silber', Teal: 'Petrol', Purple: 'Lila' } as Record<string, string>)[t] ?? t);

@@ -158,7 +158,9 @@ if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/betr
   const w1 = sim.shared.get(pool).game.wagers.find((w) => w.id === 'w1');
   ok(w1?.voided?.length === 1 && w1.voided[0].day === yesterday, `the pool: the round taken out of this bet only (${JSON.stringify(w1?.voided ?? [])})`);
   const cellNow = await cellText('Birdies in Folge', 'Chris');
-  ok(/nicht gewertet/.test(cellNow) && (await stand.locator('.bet-cell.voided').count()) === 1, `yesterday's round: Chris "${cellNow}"`);
+  // the sign ⊘ in the cell, the words in the legend under the table (Sascha 15.11.2026, mock-up C)
+  const voidedCell = stand.locator('.bet-cell.voided');
+  ok((await voidedCell.count()) === 1 && /nicht gewertet/.test((await voidedCell.getAttribute('aria-label')) ?? '') && (await voidedCell.locator('svg').count()) === 1 && /nicht gewertet/.test(await stand.locator('.bet-legend').innerText().catch(() => '')), `yesterday's round: Chris ⊘, the legend "nicht gewertet" (${cellNow})`);
   const s = await sumRow();
   ok(/^– netto −20 \$$/.test(s.Chris) && /^\+40 \$ netto \+40 \$$/.test(s.Sascha) && /^– netto −20 \$$/.test(s.Erik), `the sum without it – Sascha "${s.Sascha}", Chris "${s.Chris}", Erik "${s.Erik}"`);
   if (process.env.SHOTS) await stand.screenshot({ path: `${process.env.SHOTS}/voided.png` });

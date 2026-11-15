@@ -81,7 +81,7 @@ await H.waitForTimeout(800);
 await rows.locator('.settings-row').filter({ hasText: 'Startgeld je Spieler' }).click();
 await H.getByRole('dialog', { name: 'Startgeld je Spieler' }).locator('.pick-option').filter({ hasText: /^50 \$$/ }).first().click();
 await H.waitForTimeout(800);
-await rows.locator('.settings-row').filter({ hasText: 'Sieger brutto' }).click();
+await rows.locator('.prize-group.gross .settings-row').filter({ hasText: 'Sieger' }).click();
 await H.getByRole('dialog', { name: 'Sieger brutto' }).locator('.pick-option').filter({ hasText: /^100 \$$/ }).first().click();
 await H.waitForTimeout(2000);
 const sp = shared.get(series).game.prizes;

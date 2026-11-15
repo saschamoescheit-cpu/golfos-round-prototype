@@ -41,22 +41,19 @@ export function ModuleSheetHost() {
       <section className="sheet module-sheet" role="dialog" aria-label={tr('Switch module', 'Modul wechseln')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{tr('Switch module', 'Modul wechseln')}</strong>
+          {/* the start page a round house button beside ✕ (Sascha 15.11.2026, mock-up A) – no green row of its own any more */}
+          <span className="sheet-head-acts">
+          <button type="button" className="icon-btn module-home-btn" aria-label={tr('Start page', 'Startseite')} title={tr('Start page', 'Startseite')} onClick={home}>
+            {MENU_ICONS.home}
+          </button>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(null)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
+          </span>
         </div>
         <div className="module-sheet-list">
-          <button type="button" className="module-card module-home" onClick={home}>
-            <span className="module-icon" aria-hidden="true">
-              {MENU_ICONS.home}
-            </span>
-            <span className="grow">
-              <strong>{tr('Start page', 'Startseite')}</strong>
-            </span>
-            <span aria-hidden="true">›</span>
-          </button>
           <ModuleCardList {...open.info} current={open.current} onPick={pick} />
         </div>
       </section>
