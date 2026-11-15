@@ -1349,6 +1349,10 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
   // this round of the round's leaderboard among the pool's – its course on its day, else its day; not counted yet: the latest
   const roundNow = (): string | null => (props.round ? roundNowOf(standingRounds(pool), props.round) : null);
   const [picked, setPicked] = useState(false);
+  // the rounds deleted from the pool – back for the host (Sascha 15.11.2026: "Celebration war die erste Runde … worauf
+  // Wetten liegen" – deleted once, there was no way back after the undo)
+  const [goneOpen, setGoneOpen] = useState(false);
+  const gone = (pool.skip ?? []).filter((s) => s.hidden).sort((a, b) => (a.day < b.day ? -1 : 1));
   const [shown, setShown] = useState<string | null>(() => {
     try {
       const d = sessionStorage.getItem('golfos.openPoolDay');
@@ -1657,6 +1661,28 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
             </tbody>
           </table>
         </div>
+      )}
+      {!one && props.onCount && gone.length > 0 && (
+        <div className="settings-list skip-row">
+          <SettingsRow label={tr('Deleted rounds', 'Gelöschte Runden')} value={String(gone.length)} onClick={() => setGoneOpen(true)} />
+        </div>
+      )}
+      {goneOpen && (
+        <PickSheet<string>
+          title={tr('Deleted rounds', 'Gelöschte Runden')}
+          options={gone.map((g) => ({ value: `${g.day}|${g.course}`, name: `${g.day.slice(8, 10)}.${g.day.slice(5, 7)}. ${g.course}`, text: tr('Tap: back in the pool – it counts again', 'Antippen: wieder im Pool – sie zählt wieder') }))}
+          current=""
+          onClose={() => setGoneOpen(false)}
+          onPick={async (v) => {
+            const g = gone.find((x) => `${x.day}|${x.course}` === v);
+            if (!g) return;
+            setGoneOpen(false);
+            if (await props.onCount!({ day: g.day, course: g.course }, true)) {
+              setPicked(true);
+              setShown(v);
+            }
+          }}
+        />
       )}
       {lines.length > 0 && (
         <div className="bet-free" aria-label={tr('Free bets', 'Freie Wetten')} role="group">

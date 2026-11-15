@@ -1,0 +1,67 @@
+// QA (Sascha 15.11.2026, USA): "Celebration war die erste Runde die wir gespielt haben und worauf Wetten liegen" – the
+// round deleted from the pool once (Runde werten · Aus → Aus dem Pool löschen), no way back after the undo. Now: the
+// host's total shows "Gelöschte Runden", tapping one brings it back – on the server it counts again, the others' stay.
+// Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/poolrestore.mjs [url]   (SHOTS=dir)
+import { webkit } from 'playwright';
+import { sharedServer } from './sharesim.mjs';
+
+const url = process.argv[2] ?? 'http://localhost:5173/';
+const b = await webkit.launch();
+let fails = 0;
+const ok = (c, m) => {
+  console.log(`${c ? '✓' : '✗'} ${m}`);
+  if (!c) fails++;
+};
+const sim = sharedServer(b, url);
+const host = await sim.phone('Sascha');
+const H = host.p;
+const days = await H.evaluate(() => {
+  const d = (n) => {
+    const x = new Date(Date.now() + n * 864e5);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  };
+  return { first: d(-3), second: d(-2), today: d(0) };
+});
+const code = await H.evaluate(async (days) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  const pool = {
+    kind: 'wager-pool', id: 'usa', name: 'USA-Wetten', from: days.first, to: days.today, createdAt: new Date().toISOString(), currency: 'USD',
+    players: [{ id: 'ps', name: 'Sascha', joined: { name: 'Sascha', at: new Date().toISOString(), uid: 'Sascha' } }, { id: 'pc', name: 'Cedric' }],
+    wagers: [{ id: 'w-p', player: 'pc', kind: 'pars', target: 10, stake: 20, payout: 'success', attempts: 'any', by: 'Sascha' }],
+    progress: {},
+    skip: [
+      { day: days.first, course: 'Celebration Golf Club', hidden: true },
+      { day: days.second, course: 'Reunion Resort Golf Course', hidden: true },
+    ],
+  };
+  return (await ws.createPool(pool, 'ps'))?.code ?? null;
+}, days);
+ok(!!code, `the pool: ${code}`);
+sim.shared.get(code).game.progress = { 'w-p': { perRound: [{ day: days.today, course: 'Hetzenhof', value: 6, counted: true }], at: new Date().toISOString(), best: 6, done: false, rounds: 1 } };
+
+await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+await H.goto('about:blank');
+await H.goto(url);
+await H.waitForTimeout(2000);
+await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+await H.waitForTimeout(2000);
+const row = H.locator('.pool-standings .settings-row').filter({ hasText: 'Gelöschte Runden' });
+ok((await row.count()) === 1 && /2/.test(await row.innerText()), `the host's total: "Gelöschte Runden 2" (${(await row.allInnerTexts()).join(' | ').replace(/\s+/g, ' ')})`);
+await row.click();
+const sheet = H.getByRole('dialog', { name: 'Gelöschte Runden' });
+await sheet.waitFor({ timeout: 5000 }).catch(() => {});
+const items = (await sheet.innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/Celebration Golf Club/.test(items) && /Reunion/.test(items), `the sheet lists both deleted rounds (${items.slice(0, 160)})`);
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/poolrestore-sheet.png' });
+await sheet.getByText('Celebration Golf Club').first().click();
+await H.waitForTimeout(2500);
+{
+  const skip = sim.shared.get(code).game.skip ?? [];
+  ok(!skip.some((s) => s.day === days.first), `on the server: Celebration counts again (skip: ${skip.map((s) => s.day + ' ' + s.course).join(', ')})`);
+  ok(skip.some((s) => s.day === days.second && s.hidden), 'Reunion stays deleted');
+}
+ok(/1/.test(await row.innerText().catch(() => '')), 'the row: one deleted round left');
+ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);
+await b.close();
+process.exit(fails ? 1 : 0);
