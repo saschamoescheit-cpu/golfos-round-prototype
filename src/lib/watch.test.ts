@@ -113,9 +113,10 @@ describe('the hole drawn on the watch', () => {
     expect(m.line[0]).toEqual([0, 0]);
   });
   it('small enough for the watch: 18 holes of Hetzenhof under 40 kB', async () => {
-    const { SEED_GEOMETRY } = await import('../data/seedGeometry');
+    // Hetzenhof alone (15.11.2026: every bundled course at once got slow with the Florida crowns and fairways)
+    const { SEED_LOADERS } = await import('../data/seedLoaders');
     const { holeMapData } = await import('./geo');
-    const geo = SEED_GEOMETRY['osm:relation/1326323'];
+    const geo = await SEED_LOADERS['osm:relation/1326323']();
     const maps = ['A', 'B'].flatMap((loop) => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => holeMapData(geo, loop, n)));
     const r18 = { ...round, holes: maps.map((_, k) => ({ label: String(k + 1), par: 4 })) } as unknown as Round;
     const w = watchRound(r18, maps, 'm', 'de');
