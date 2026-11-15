@@ -148,10 +148,16 @@ for (const [topic, n] of TOPICS) {
   await p.waitForTimeout(300);
   const count = await p.locator('.tr-shots .list-item').count();
   ok((await viewNow()) === 'Schläge' && count === n, `${topic}: opens on ${n} shots (${count})`);
+  const topicParts = await viewNames();
   for (let i = 0; i < count; i++) {
     await p.locator('.tr-shots .list-item').nth(i).click();
     await p.waitForTimeout(250);
     const name = await p.locator('.topbar h1').innerText();
+    if (i === 0) {
+      // the topic row under a shot names what the topic really holds (night run 15./16.11.2026)
+      const holds = await p.locator('.tr-topic-row .muted').innerText();
+      ok(/Übungen/.test(holds) && /Grundlagen/.test(holds) === topicParts.includes('Grundlagen') && /Videos/.test(holds) === topicParts.includes('Videos') && /Fehler/.test(holds) === topicParts.includes('Fehler'), `${topic}: the topic row "${holds}" fits its parts (${topicParts.join(' · ')})`);
+    }
     for (const tab of ['Ansprache', 'Bewegung', 'Worauf achten']) {
       if (tab !== 'Ansprache') await view(tab);
       const fig = p.locator('main figure.tr-sketch').first();

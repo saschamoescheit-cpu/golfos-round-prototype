@@ -1458,13 +1458,21 @@ function RuleLinks(props: { id: CategoryId }) {
 function TopicRow(props: { id: CategoryId; nav: Nav }) {
   const c = catById(props.id);
   if (!c) return null;
+  // what the topic really holds – the same lines as its parts (night run 15./16.11.2026: Low Point has no basics)
+  const n = drillsOf(c.id).length;
+  const holds = [
+    tr(`${n} drills`, `${n} Übungen`),
+    ...(c.sections.length || c.facts?.length || c.charts?.length ? [tr('Basics', 'Grundlagen')] : []),
+    ...(c.faults?.length ? [tr(`${c.faults.length} common faults`, `${c.faults.length} typische Fehler`)] : []),
+    ...(c.videos?.length ? [tr(`${c.videos.length} videos`, `${c.videos.length} Videos`)] : []),
+  ];
   return (
     <button type="button" className="list-item tr-topic-row" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
       <span className="tr-cat-icon small">{CAT_ICON[c.id]}</span>
       <span className="grow">
         <span className="eyebrow">{tr('Topic', 'Thema')}</span>
         <span className="title">{t(c.name)}</span>
-        <span className="muted small">{tr('All drills, basics, faults and videos', 'Alle Übungen, Grundlagen, Fehler und Videos')}</span>
+        <span className="muted small">{holds.join(' · ')}</span>
       </span>
       <span aria-hidden="true">›</span>
     </button>
