@@ -1,5 +1,6 @@
 import { CATEGORIES, DRILLS } from './content';
 import { GEAR } from './content/gear';
+import { getLang, tr } from '../lib/i18n';
 import type { Category, Drill, Fault, Gear, L, TopicShot } from './types';
 
 // The search of the Training module (night run 16./17.10.2026: "Slice" found no drill, "Lag" found 131).
@@ -41,20 +42,29 @@ const SYNONYMS: Record<string, string[]> = {
   getoppt: ['topp', 'topping'],
 };
 
-const tokens = (s: string) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+// letters of every script are word letters (16.11.2026: Japanese and Chinese words were cut away; the marks stay with
+// their letters – バ is ハ and its mark after norm)
+const tokens = (s: string) => norm(s).split(/[^\p{L}\p{M}\p{N}]+/u).filter(Boolean);
+/** Japanese, Chinese, Korean: no spaces between words – a query word is found anywhere */
+const CJK = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/;
 
 /** Does the text (already normalized, with its tokens) contain the query word? */
 function matchWord(w: string, text: string, toks: string[]): boolean {
   const alts = SYNONYMS[w] ?? [w];
   return alts.some((a) => {
-    if (a.includes(' ') || a.includes('-')) return text.includes(a);
+    if (a.includes(' ') || a.includes('-') || CJK.test(a)) return text.includes(a);
     if (a.length <= 3) return toks.includes(a);
     if (a.length === 4) return toks.some((t) => t.startsWith(a));
     return text.includes(a);
   });
 }
 
-const both = (x?: L) => (x ? `${x.en} ${x.de}` : '');
+/** English and German – and in another language the player's own words too (16.11.2026: in French „œuf“ found nothing) */
+const both = (x?: L) => {
+  if (!x) return '';
+  const l = getLang();
+  return l === 'en' || l === 'de' ? `${x.en} ${x.de}` : `${x.en} ${x.de} ${tr(x.en, x.de)}`;
+};
 
 export interface SearchResult {
   cats: Category[];
@@ -65,11 +75,14 @@ export interface SearchResult {
   shots: { c: Category; s: TopicShot }[];
 }
 
-// the faults that point to each drill – their names make the drill findable ("Slice", "Shank", "Dreiputts")
-const FAULT_NAMES = new Map<string, string>();
-for (const c of CATEGORIES) for (const f of c.faults ?? []) for (const id of f.drills ?? []) FAULT_NAMES.set(id, `${FAULT_NAMES.get(id) ?? ''} ${both(f.name)}`);
-
-const DRILL_TEXT = new Map(
+// the faults that point to each drill – their names make the drill findable ("Slice", "Shank", "Dreiputts");
+// the texts per language (made on the first search in it)
+let drillText: { lang: string; map: Map<string, { text: string; toks: string[] }> } | null = null;
+function drillTexts() {
+  if (drillText?.lang === getLang()) return drillText.map;
+  const FAULT_NAMES = new Map<string, string>();
+  for (const c of CATEGORIES) for (const f of c.faults ?? []) for (const id of f.drills ?? []) FAULT_NAMES.set(id, `${FAULT_NAMES.get(id) ?? ''} ${both(f.name)}`);
+  const map = new Map(
   DRILLS.map((d) => {
     const c = CATEGORIES.find((x) => x.id === d.cat);
     const text = norm(
@@ -77,7 +90,10 @@ const DRILL_TEXT = new Map(
     );
     return [d.id, { text, toks: tokens(text) }];
   }),
-);
+  );
+  drillText = { lang: getLang(), map };
+  return map;
+}
 
 export function search(q: string): SearchResult {
   const words = tokens(q.replace(/(\d)-(?=\p{L})/gu, '$1'));
@@ -89,8 +105,9 @@ export function search(q: string): SearchResult {
     return words.every((w) => matchWord(w, text, toks));
   };
   const nameHit = (d: Drill) => hit(both(d.name));
+  const texts = drillTexts();
   const drills = DRILLS.filter((d) => {
-    const x = DRILL_TEXT.get(d.id)!;
+    const x = texts.get(d.id)!;
     return words.every((w) => matchWord(w, x.text, x.toks));
   }).sort((a, b) => Number(nameHit(b)) - Number(nameHit(a)));
   return {
