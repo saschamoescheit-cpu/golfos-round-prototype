@@ -1233,6 +1233,17 @@ button.tile:disabled { opacity: 1; }
 .tour-prize-board { display: flex; flex-direction: column; gap: 6px; }
 /* the series' prizes: its own, then the day prizes (Sascha 15.11.2026) */
 .tour-prize-sub { font-weight: 600; margin-top: 4px; }
+/* the rounds' switch (Sascha 15.11.2026, mock-up A): "6 von 8 ✓ gewertet" – green, or quiet "nicht gewertet"; its sheet
+   below the rounds: the host's switch, the bin, the deleted rounds with the round green button */
+.step-status { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+.step-status.on { color: var(--brand); }
+.step-status.off { color: var(--muted); }
+.pick-extra { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+.gone-list { list-style: none; margin: 0; padding: 0; }
+.gone-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; opacity: .85; }
+.gone-row + .gone-row { border-top: 1px solid var(--line); }
+.gone-row .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.gone-row .bin-restore { background: var(--brand); border-color: var(--brand); color: #fff; flex: none; }
 .tour-prize-list li { align-items: center; }
 .tour-prize-pay-head { margin-top: 6px; }
 .tour-prize-pays { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

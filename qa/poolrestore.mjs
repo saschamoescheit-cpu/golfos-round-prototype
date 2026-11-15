@@ -58,23 +58,26 @@ await H.waitForTimeout(2000);
   await H.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click({ timeout: 2000 }).catch(() => {});
   await H.waitForTimeout(300);
 }
-const row = H.locator('.pool-standings .settings-row').filter({ hasText: 'Gelöschte Runden' });
-ok((await row.count()) === 1 && /2/.test(await row.innerText()), `the host's total: "Gelöschte Runden 2" (${(await row.allInnerTexts()).join(' | ').replace(/\s+/g, ' ')})`);
-if (process.env.SHOTS) { await row.scrollIntoViewIfNeeded(); await H.screenshot({ path: process.env.SHOTS + '/poolrestore-row.png' }); }
-await row.click();
-const sheet = H.getByRole('dialog', { name: 'Gelöschte Runden' });
-await sheet.waitFor({ timeout: 5000 }).catch(() => {});
-const items = (await sheet.innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/Celebration Golf Club/.test(items) && /Reunion/.test(items), `the sheet lists both deleted rounds (${items.slice(0, 160)})`);
+// since 15.11.2026 (mock-up A): the deleted rounds in the rounds' sheet, under "Gelöscht", each with the round green button
+const openSheet = async () => {
+  await H.locator('.pool-standings .step-pick-now').first().click();
+  const d = H.getByRole('dialog', { name: 'Runden' });
+  await d.waitFor({ timeout: 5000 });
+  return d;
+};
+let sheet = await openSheet();
+const gone = async () => (await sheet.locator('.gone-row').allInnerTexts()).map((x) => x.replace(/s+/g, ' '));
+ok((await gone()).length === 2 && (await gone()).some((x) => /Celebration Golf Club/.test(x)) && (await gone()).some((x) => /Reunion/.test(x)), `the sheet: both deleted rounds under "Gelöscht" (${(await gone()).join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/poolrestore-sheet.png' });
-await sheet.getByText('Celebration Golf Club').first().click();
+await sheet.locator('.gone-row').filter({ hasText: 'Celebration' }).getByRole('button', { name: /zurückholen/ }).click();
 await H.waitForTimeout(2500);
 {
   const skip = sim.shared.get(code).game.skip ?? [];
   ok(!skip.some((s) => s.day === days.first), `on the server: Celebration counts again (skip: ${skip.map((s) => s.day + ' ' + s.course).join(', ')})`);
   ok(skip.some((s) => s.day === days.second && s.hidden), 'Reunion stays deleted');
 }
-ok(/1/.test(await row.innerText().catch(() => '')), 'the row: one deleted round left');
+sheet = await openSheet();
+ok((await gone()).length === 1, 'one deleted round left');
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
