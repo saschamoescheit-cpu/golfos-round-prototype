@@ -99,12 +99,15 @@ await stand.waitFor({ timeout: 15000 });
   await stand.getByRole('group', { name: 'Runden' }).locator('.step-pick-now').click();
   await H.getByRole('dialog', { name: 'Runden' }).locator('.pick-option').filter({ hasText: 'Reunion' }).click();
   await H.waitForTimeout(300);
-  const del = stand.getByRole('button', { name: 'Runde aus dem Pool löschen' });
-  ok((await del.count()) === 1 && /sc-action/.test(await del.getAttribute('class')) && /danger/.test(await del.getAttribute('class')) && (await del.innerText()).trim() === 'Aus dem Pool löschen' && (await del.locator('svg').count()) === 1, 'a round not counted: "Aus dem Pool löschen" – the red bin of an action bar');
-  ok((await stand.locator('.btn-ghost').count()) === 0, 'no red text button any more');
-  if (shots) await stand.screenshot({ path: `${shots}/wettenface-skip.png` });
+  // since 14.11.2026 the bin sits in the rounds' sheet, under "Runde werten" (Sascha: "nicht die richtige Stelle")
   await stand.getByRole('group', { name: 'Runden' }).locator('.step-pick-now').click();
-  await H.getByRole('dialog', { name: 'Runden' }).locator('.pick-option').filter({ hasText: 'Gesamt' }).click();
+  await H.waitForTimeout(300);
+  const dlg = H.getByRole('dialog', { name: 'Runden' });
+  const del = dlg.getByRole('button', { name: 'Runde aus dem Pool löschen' });
+  ok((await del.count()) === 1 && /sc-action/.test(await del.getAttribute('class')) && /danger/.test(await del.getAttribute('class')) && (await del.innerText()).trim() === 'Aus dem Pool löschen' && (await del.locator('svg').count()) === 1, 'a round not counted: "Aus dem Pool löschen" – the red bin of an action bar');
+  ok((await stand.locator('.btn-ghost').count()) === 0 && (await dlg.locator('.btn-ghost').count()) === 0, 'no red text button any more');
+  if (shots) await dlg.screenshot({ path: `${shots}/wettenface-skip.png` });
+  await dlg.locator('.pick-option').filter({ hasText: 'Gesamt' }).click();
 }
 
 // G4: a payment taken back by swiping left
