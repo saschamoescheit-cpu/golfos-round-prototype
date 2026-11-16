@@ -134,6 +134,12 @@ export function HoleMap(props: HoleMapProps) {
   };
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
+  // the shots' marks as last made, and one under the finger (Sascha 16.11.2026: "er springt wieder")
+  const lastTrackKey = useRef('');
+  const lastCamHole = useRef('');
+  const trackTouched = useRef(0);
+  // held or moved within the last seconds – a drag the phone broke off (a call, touchcancel) never freezes the marks
+  const trackDragging = () => Date.now() - trackTouched.current < 8000 && markers.current.track.some((x) => isDragging(x));
   const lastSpread = useRef<string>('');
   latest.current = props;
   const userCam = useRef(false);
@@ -264,6 +270,7 @@ export function HoleMap(props: HoleMapProps) {
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
       autoCamera(m, 0);
+      lastCamHole.current = JSON.stringify([latest.current.holeKey, latest.current.data.tee, latest.current.data.greenCenter]);
       render();
     });
     // Imagery server down (e.g. the state's aerial service): several tile errors before any tile arrived.
@@ -307,6 +314,11 @@ export function HoleMap(props: HoleMapProps) {
     const m = map.current;
     if (!m || !ready.current) return;
     (m.getSource('shapes') as maplibregl.GeoJSONSource).setData(shapes(props.data));
+    // the view back to the whole hole only for another hole (or its tee and green elsewhere) – not for a new copy of the
+    // same hole's data (a sync, a save: the player's zoomed view jumped away – Sascha 16.11.2026)
+    const camHole = JSON.stringify([props.holeKey, props.data.tee, props.data.greenCenter]);
+    if (camHole === lastCamHole.current) return;
+    lastCamHole.current = camHole;
     userCam.current = false; // a new hole: the automatic view again
     latest.current.onUserCamera?.(false);
     autoCamera(m, 0);
@@ -402,7 +414,7 @@ export function HoleMap(props: HoleMapProps) {
       pm.puttBall = undefined;
       pm.puttAim = undefined;
     }
-    (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
+    if (!trackDragging()) (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
     (m.getSource('walked') as maplibregl.GeoJSONSource | undefined)?.setData(walkedData(p));
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     syncGreenChart(m, p.greenChart ?? null);
@@ -425,6 +437,41 @@ export function HoleMap(props: HoleMapProps) {
       d.innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" style="transform:rotate(${p.greenSlope.downDeg - m.getBearing()}deg)" aria-hidden="true"><path d="M12 3v16M12 21l-6-6M12 21l6-6" stroke="#0E1418" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M12 3v16M12 21l-6-6M12 21l6-6" stroke="#FFFFFF" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span>${p.greenSlope.label}</span>`;
       mk.slope = new maplibregl.Marker({ element: d }).setLngLat(p.greenSlope.pos).addTo(m);
     }
+    // The shots' marks only when they changed – and never while one is under the finger (Sascha 16.11.2026, after Hawks
+    // Landing: "er springt wieder – darf nicht mehr vorkommen"). Every render made them anew: the sync, a save, a track
+    // from the watch in the middle of a drag removed the mark being dragged – the shot jumped back and was not moved.
+    const trackKey = JSON.stringify([
+      (p.track ?? []).map((t) => [t.id, t.pos, t.label, t.hand, t.sound, t.time, t.shotByHand, t.green, t.tone]),
+      p.onTrackMove != null,
+      p.onTrackHold != null,
+      p.onTrackTap != null,
+    ]);
+    if (!trackDragging()) {
+      if (trackKey !== lastTrackKey.current) {
+        lastTrackKey.current = trackKey;
+        syncTrackMarkers(m, p);
+      }
+      // on top as before, when they were made anew each time: over the flag and the player, under the distances drawn
+      // after them – the putt balls lie on the green under the flag (QA shotsuggest: P2 under the flag took no finger)
+      for (const x of mk.track) {
+        const e = x.getElement();
+        e.parentElement?.appendChild(e);
+      }
+    }
+
+    // Player
+    if (p.player) {
+      if (!mk.player) mk.player = new maplibregl.Marker({ element: el('map-player') }).setLngLat(p.player).addTo(m);
+      else mk.player.setLngLat(p.player);
+    } else if (mk.player) {
+      mk.player.remove();
+      mk.player = undefined;
+    }
+    renderRest(m, p);
+  }
+
+  function syncTrackMarkers(m: maplibregl.Map, p: HoleMapProps) {
+    const mk = markers.current;
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
       // a shot noted by hand: the hand circle where it was noted, with its number and club – one mark, not two (Sascha 20.10.2026)
@@ -480,6 +527,7 @@ export function HoleMap(props: HoleMapProps) {
       const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
       if (movable) {
         marker.on('drag', () => {
+          trackTouched.current = Date.now();
           const ll = marker.getLngLat();
           const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
           if (text != null) {
@@ -499,24 +547,32 @@ export function HoleMap(props: HoleMapProps) {
           const pts = (latest.current.track ?? []).filter((x) => !x.hand && !x.sound).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
           (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
         });
+        const touched = () => {
+          trackTouched.current = Date.now();
+        };
+        d.addEventListener('pointerdown', touched);
+        d.addEventListener('touchstart', touched, { passive: true });
+        d.addEventListener('mousedown', touched);
+        marker.on('dragstart', touched);
         marker.on('dragend', () => {
+          trackTouched.current = 0;
           m.getContainer().querySelector('.map-drag-readout')?.remove();
           const ll = marker.getLngLat();
+          // the marks are made anew from what was saved – also when nothing was (a drop the review refuses): the
+          // shot then shows where it is, not where the finger left it
+          lastTrackKey.current = '';
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
+          window.setTimeout(() => {
+            if (lastTrackKey.current === '' && map.current === m && ready.current) render();
+          }, 250);
         });
       }
       return marker;
     });
+  }
 
-    // Player
-    if (p.player) {
-      if (!mk.player) mk.player = new maplibregl.Marker({ element: el('map-player') }).setLngLat(p.player).addTo(m);
-      else mk.player.setLngLat(p.player);
-    } else if (mk.player) {
-      mk.player.remove();
-      mk.player = undefined;
-    }
-
+  function renderRest(m: maplibregl.Map, p: HoleMapProps) {
+    const mk = markers.current;
     // Pin (draggable flag)
     if (!mk.pin) {
       mk.pin = new maplibregl.Marker({ element: flagEl(), draggable: true, anchor: 'bottom-left', offset: [-2, 0] }).setLngLat(p.pin).addTo(m);
@@ -866,7 +922,8 @@ function planLine(p: HoleMapProps): GeoJSON.FeatureCollection {
 }
 
 function isDragging(marker: maplibregl.Marker): boolean {
-  return marker.getElement().classList.contains('maplibregl-marker-dragging') || (marker as unknown as { _isDragging?: boolean })._isDragging === true;
+  const x = marker as unknown as { _isDragging?: boolean; _state?: string };
+  return marker.getElement().classList.contains('maplibregl-marker-dragging') || x._isDragging === true || x._state === 'pending' || x._state === 'active';
 }
 
 function el(className: string): HTMLDivElement {
