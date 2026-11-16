@@ -20,7 +20,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:56' },
   { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:45' },
   { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:36' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:27' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:38' },
   { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:54' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:49' },
   // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
@@ -37,7 +37,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:04' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:15' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:26' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
