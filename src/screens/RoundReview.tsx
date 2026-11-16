@@ -540,10 +540,15 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }
     const pinNow = base.pin ?? data.greenCenter;
     const shots = base.shots.slice();
-    if (shots.length === 0 && !nearTee(pos, data)) shots.push({ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: null, penalty: false });
+    // a shot set by hand into a tee box of the hole is the tee shot – shot 1, "Tee" (Sascha 16.11.2026, Hawks Landing 4: the
+    // drive from the forward box came in as shot 2 behind a shot at the drawn tee) – unless a shot before it was played
+    // again from there (out of bounds, water: stroke and distance)
+    const inBox = data.tees.some((r) => pointInRing(pos, r));
+    if (shots.length === 0 && !nearTee(pos, data) && !inBox) shots.push({ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: null, penalty: false });
     const toPin = distanceM(pos, pinNow);
     let at = shots.findIndex((x) => x.pos != null && distanceM(x.pos, pinNow) < toPin);
     if (at < 0) at = shots.length;
+    if (inBox && at > 0 && !shots.slice(0, at).some((x) => x.penalty || playedAgain(x))) at = 0;
     shots.splice(at, 0, { pos, lie: lieFor(pos, at, data), club: null, penalty: false });
     saveDetail(k, withClubs({ ...base, shots }));
     if (adding) {
