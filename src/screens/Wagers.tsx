@@ -2094,7 +2094,7 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
         )}
         {!duel && (
           <Pick<Payout>
-            label={tr('Paid', 'Auszahlung')}
+            label={tr('Paid [payout]', 'Auszahlung')}
             value={w.payout}
             onChange={(v) => set({ payout: v })}
             options={[

@@ -201,6 +201,6 @@ function hazardNearPin(pin: LngLat, from: LngLat, data: HoleMapData, aim: LngLat
   const shot = bearingDeg(from, pin);
   const rel = ((bearingDeg(pin, c) - shot + 540) % 360) - 180; // 0 = behind the pin, ±180 = in front
   const where =
-    Math.abs(rel) <= 45 ? tr('long', 'hinten') : Math.abs(rel) >= 135 ? tr('short', 'vorne') : rel > 0 ? tr('right', 'rechts') : tr('left', 'links');
+    Math.abs(rel) <= 45 ? tr('long [where]', 'hinten') : Math.abs(rel) >= 135 ? tr('short [where]', 'vorne') : rel > 0 ? tr('right', 'rechts') : tr('left', 'links');
   return { kind: all[0].kind, where };
 }
