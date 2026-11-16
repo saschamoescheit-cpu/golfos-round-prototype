@@ -138,5 +138,8 @@
  "Guest": "Ospite",
  "Guests below the line: counted in their own rounds only, not in the total.": "Ospiti sotto la linea: contano solo nei loro giri, non nella classifica totale.",
  "{0}'s card is empty": "Lo score di {0} è vuoto",
- "{0} · enter the scores": "{0} · inserisci i punteggi"
+ "{0} · enter the scores": "{0} · inserisci i punteggi",
+ "Someone did not play a round – does it count for them?": "Qualcuno non ha giocato un giro – conta per lui?",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "No. In un giro della classifica compaiono solo quelli che l’hanno giocato, e una scommessa riuscita in quel giro la pagano solo loro; «Totale» mostra tutti. Un giocatore il cui score è rimasto vuoto ha comunque giocato – l’organizzatore riceve «Lo score di … è vuoto» nella posta in arrivo e inserisce i punteggi nel torneo («Inserisci punteggi»).",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "Sì: apri la panoramica delle buche (la barra in basso) → «Tee». Distanze, caddie, course rating e slope e il tuo handicap di gioco seguono il nuovo tee; le buche già giocate mantengono il loro. I tuoi compagni mantengono il loro. Dopo il giro: scorecard → tocca il tee accanto alla data. In un torneo solo l'organizzatore può cambiare il tee in seguito – nel suo score, per un giocatore del suo flight nella scheda di quel giocatore."
 }

@@ -138,5 +138,8 @@
  "Guest": "Gæst",
  "Guests below the line: counted in their own rounds only, not in the total.": "Gæster under linjen: tæller kun i deres egne runder, ikke i den samlede stilling.",
  "{0}'s card is empty": "{0}s kort er tomt",
- "{0} · enter the scores": "{0} · indtast scorerne"
+ "{0} · enter the scores": "{0} · indtast scorerne",
+ "Someone did not play a round – does it count for them?": "Nogen spillede ikke en runde – tæller den for dem?",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "Nej. I én runde af stillingen vises kun dem, der spillede den, og et væddemål, der klares i den, betales kun af dem; „Samlet“ viser alle. En spiller, hvis kort forblev tomt, har alligevel spillet – arrangøren får „Kortet til … er tomt“ i indbakken og indtaster scorerne i turneringen („Indtast scorer“).",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "Ja: åbn hulloversigten (bjælken nederst) → “Tee”. Længderne, caddien, course rating og slope og dit spillehandicap følger det nye teested; de allerede spillede huller beholder deres. Dine medspillere beholder deres. Efter runden: scorekort → tryk på teestedet ved siden af datoen. I en turnering kan kun arrangøren ændre teestedet bagefter – på sit scorekort, for en spiller i sin flight på spillerens fane."
 }

@@ -138,5 +138,8 @@
  "Guest": "Gast",
  "Guests below the line: counted in their own rounds only, not in the total.": "Gasten onder de lijn: tellen alleen in hun eigen rondes, niet in de totaalstand.",
  "{0}'s card is empty": "De kaart van {0} is leeg",
- "{0} · enter the scores": "{0} · scores invoeren"
+ "{0} · enter the scores": "{0} · scores invoeren",
+ "Someone did not play a round – does it count for them?": "Iemand speelde een ronde niet mee – telt die voor hem?",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "Nee. Bij één ronde in de stand staan alleen de spelers die hem speelden, en een weddenschap die daarin lukt, betalen alleen zij; „Totaal” toont iedereen. Een speler wiens kaart leeg bleef, heeft toch gespeeld – de organisator krijgt „De kaart van … is leeg” in de inbox en voert de scores in het toernooi in („Scores invoeren”).",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "Ja: open het holeoverzicht (de balk onderaan) → „Tee”. De afstanden, de caddie, course rating en slope en je playing handicap volgen de nieuwe afslag; de al gespeelde holes houden de hunne. Je medespelers houden de hunne. Na de ronde: scorekaart → tik op de afslag naast de datum. In een toernooi kan alleen de organisator de tee achteraf wijzigen – in zijn scorekaart, voor een speler van zijn flight op het tabblad van die speler."
 }

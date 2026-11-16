@@ -138,5 +138,8 @@
  "Guest": "Gość",
  "Guests below the line: counted in their own rounds only, not in the total.": "Goście pod linią: liczeni tylko w swoich rundach, nie w stanie łącznym.",
  "{0}'s card is empty": "Karta {0} jest pusta",
- "{0} · enter the scores": "{0} · wpisz wyniki"
+ "{0} · enter the scores": "{0} · wpisz wyniki",
+ "Someone did not play a round – does it count for them?": "Ktoś nie grał rundy – czy liczy się dla niego?",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "Nie. W jednej rundzie stanu widać tylko tych, którzy ją grali, a zakład wygrany w tej rundzie płacą tylko oni; „Razem” pokazuje wszystkich. Gracz, którego karta pozostała pusta, mimo to grał – organizator dostaje w skrzynce „Karta … jest pusta” i wpisuje wyniki w turnieju („Wpisz wyniki”).",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "Tak: otwórz przegląd dołków (pasek na dole) → „Tee”. Odległości, caddie, course rating i slope oraz twój handicap gry dostosowują się do nowego tee; rozegrane już dołki zachowują swoje. Partnerzy zachowują swoje. Po rundzie: karta wyników → dotknij tee obok daty. W turnieju tylko organizator może później zmienić tee – na swojej karcie wyników, a graczowi ze swojego flightu na karcie tego gracza."
 }

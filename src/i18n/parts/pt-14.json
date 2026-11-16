@@ -138,5 +138,8 @@
  "Guest": "Convidado",
  "Guests below the line: counted in their own rounds only, not in the total.": "Convidados abaixo da linha: contam só nas suas próprias voltas, não na classificação total.",
  "{0}'s card is empty": "O cartão de {0} está vazio",
- "{0} · enter the scores": "{0} · introduzir os resultados"
+ "{0} · enter the scores": "{0} · introduzir os resultados",
+ "Someone did not play a round – does it count for them?": "Alguém não jogou uma volta – conta para ele?",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "Não. Numa volta da classificação só aparecem os que a jogaram, e uma aposta conseguida nela só é paga por eles; «Total» mostra todos. Um jogador cujo cartão ficou vazio jogou na mesma – o organizador recebe «O cartão de … está vazio» na caixa de entrada e introduz os resultados no torneio («Introduzir resultados»).",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "Sim: abre a vista dos buracos (a barra em baixo) → «Tee». As distâncias, o caddie, o course rating e o slope e o teu handicap de jogo seguem a nova saída; os buracos já jogados mantêm a sua. Os teus parceiros mantêm a deles. Depois da volta: cartão → toca na saída ao lado da data. Num torneio só o organizador pode alterar o tee depois – no seu cartão; para um jogador do seu grupo, no separador desse jogador."
 }

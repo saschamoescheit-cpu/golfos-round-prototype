@@ -397,8 +397,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
         a: () =>
           tr(
-            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.',
-            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier kann nur der Veranstalter den Abschlag nachträglich ändern – in seiner Scorekarte.',
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier kann nur der Veranstalter den Abschlag nachträglich ändern – in seiner Scorekarte, für einen Spieler seines Flights auf dessen Reiter.',
           ),
         video: 'map',
       },
@@ -553,6 +553,17 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Yes: tap your own open bet in the pool (the host: any bet) → "Give up" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet "only when made" costs nothing. Paid already in cash or by PayPal? Turn "Paid already" on – the settlement shows it as paid and the other gets "… paid you" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, "given up". The host takes it back with "Decided by hand" → "The app judges". Under the bets, "Sum" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in "Total" and in each round.',
             'Ja: im Pool die eigene offene Wette antippen (der Host: jede Wette) → „Aufgeben“ (die Fahne). Das Blatt sagt, was es kostet – eine Wette gegen jemanden: du zahlst ihm jetzt den Einsatz; eine Wette „nur bei Erfolg“ kostet nichts. Schon bar oder per PayPal bezahlt? „Schon bezahlt“ an – die Abrechnung zeigt es als bezahlt, und der andere bekommt „… hat dir … bezahlt“ zum Bestätigen in die Inbox. Ab dann zählt die Wette als verloren; im Stand steht sie mit Fahne, „aufgegeben“. Der Host nimmt es mit „Von Hand entscheiden“ → „App wertet aus“ zurück. Unter den Wetten zeigt „Summe“, was jedem die geschafften Wetten bringen, und darunter netto – nach dem, was er den anderen zahlt; in „Gesamt“ und je Runde.',
+          ),
+        video: 'wagers',
+      },
+      {
+        // Sascha 16.11.2026 after Hawks Landing: "Heute haben nur Cedric, Erik und Sascha gespielt … bei der einzelnen Runde
+        // Chris und Moritz gar nicht anzeigen" – and Moritz's empty Oaks card
+        q: () => tr('Someone did not play a round – does it count for them?', 'Jemand hat eine Runde nicht gespielt – zählt sie für ihn?'),
+        a: () =>
+          tr(
+            'No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; "Total" shows everyone. A player whose card stayed empty played all the same – the host gets "Card of … is empty" in the inbox and enters the scores in the tournament ("Enter scores").',
+            'Nein. In einer einzelnen Runde des Stands stehen nur die, die sie gespielt haben, und eine darin geschaffte Wette zahlen nur sie; „Gesamt“ zeigt alle. Wer gespielt hat, dessen Karte aber leer blieb: Der Veranstalter bekommt „Karte von … ist leer“ in die Inbox und trägt die Scores im Turnier nach („Scores eintragen“).',
           ),
         video: 'wagers',
       },
