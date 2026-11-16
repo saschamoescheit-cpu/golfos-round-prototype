@@ -1,4 +1,4 @@
-import { dec, tr } from './i18n';
+import { dec, tr, trIn } from './i18n';
 import { symOf } from './fx';
 
 // The "Games" module (Sascha 15.10.2026): side games among friends as a product of its own, not tied to the round
@@ -470,8 +470,8 @@ export const FORMS: FormDef[] = [
       const res = g.holes.map((_, i) => holeWinner(best(g, A, i), best(g, B, i)));
       const half = g.holes.length >= 18 ? 9 : Math.ceil(g.holes.length / 2);
       const parts = [
-        { label: tr('Front', 'Vorne'), from: 0, to: half },
-        { label: tr('Back', 'Hinten'), from: half, to: g.holes.length },
+        { label: trIn('nine', 'Front', 'Vorne'), from: 0, to: half },
+        { label: trIn('nine', 'Back', 'Hinten'), from: half, to: g.holes.length },
         { label: tr('Total', 'Gesamt'), from: 0, to: g.holes.length },
       ];
       let bets = 0; // + side A won bets

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { tr, trIn, useDict, useLangForTests } from '../lib/i18n';
 
 // The merge of the translators' parts (scripts/i18n-merge.mjs): words written with a hyphen and short words ("3-wood",
 // "left-handed", "to", "in") are texts and get translated; identifiers and locale codes never (night 16./17.11.2026 –
@@ -18,6 +19,30 @@ describe('the dictionaries', () => {
     expect(dict('zh')['.']).toBeUndefined();
     expect(dict('ja')['.']).toBeUndefined();
     for (const l of ['da', 'es', 'fr', 'it', 'nb', 'nl', 'pl', 'pt', 'sv', 'fi']) expect(dict(l)['.'], l).toBe(',');
+  });
+  it('a word in its sense: the back and front of the green, the halves of a match, the 3D front view (17.11.2026)', () => {
+    for (const l of LANGS) {
+      const d = dict(l);
+      for (const k of ['Back [green]', 'Front [green]', 'Front [nine]', 'Back [nine]', 'Front [view]']) expect(d[k], `${l} ${k}`).toBeTruthy();
+      // never the navigation's "Back" (Zurück) on the green
+      expect(d['Back [green]'], l).not.toBe(d['Back']);
+    }
+    useDict(dict('pt'));
+    useLangForTests('pt');
+    try {
+      expect(trIn('green', 'Back', 'Hinten')).toBe('Fundo');
+      expect(trIn('green', 'Front', 'Vorne')).toBe('Frente');
+      expect(tr('Back', 'Zurück')).toBe('Voltar');
+      // a sense without its own text: the plain word
+      expect(trIn('nowhere', 'Back', 'Hinten')).toBe('Voltar');
+      useLangForTests('de');
+      expect(trIn('green', 'Back', 'Hinten')).toBe('Hinten');
+      useLangForTests('en');
+      expect(trIn('green', 'Back', 'Hinten')).toBe('Back');
+    } finally {
+      useLangForTests('en');
+      useDict({});
+    }
   });
   it('never translate an identifier or a locale code', () => {
     for (const l of LANGS) {

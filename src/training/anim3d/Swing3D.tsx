@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { tr } from '../../lib/i18n';
+import { tr, trIn } from '../../lib/i18n';
 import { isLeftHanded } from '../../lib/profile';
 import { createGolfViewer, wantRealistic, type View, type Viewer } from './golf3d';
 import { loadRealisticBody, realisticBodyReady } from '../../mobility/anim3d/rigSkin';
@@ -13,7 +13,7 @@ import { sided } from '../sides';
 // WebGL the still picture stays.
 
 const VIEW_NAMES: Record<View, () => string> = {
-  front: () => tr('Front', 'Vorne'),
+  front: () => trIn('view', 'Front', 'Vorne'),
   side: () => tr('Behind', 'Hinten'),
   angle: () => tr('Angle', 'Schräg'),
   above: () => tr('Above', 'Oben'),

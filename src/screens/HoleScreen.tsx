@@ -70,7 +70,7 @@ import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
 import { isTeamMode, isTeamRound, texasDrives } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
-import { clubCode, dec, getLang, tr } from '../lib/i18n';
+import { clubCode, dec, getLang, tr, trIn } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
@@ -1915,7 +1915,7 @@ export function HoleScreen(props: {
         <div className="map-green stacked" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
           {green.back != null && (
             <>
-              <span className="small">{tr('Back', 'Hinten')}</span>
+              <span className="small">{trIn('green', 'Back', 'Hinten')}</span>
               <span className="map-green-num">{fmt(green.back)}</span>
             </>
           )}
@@ -1923,7 +1923,7 @@ export function HoleScreen(props: {
           <span className="map-green-num big">{fmt(green.center)}</span>
           {green.front != null && (
             <>
-              <span className="small">{tr('Front', 'Vorne')}</span>
+              <span className="small">{trIn('green', 'Front', 'Vorne')}</span>
               <span className="map-green-num">{fmt(green.front)}</span>
             </>
           )}

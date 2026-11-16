@@ -160,6 +160,19 @@ export function tr(en: string, de: string): string {
   return fromDict(en);
 }
 
+/**
+ * A word with more than one meaning in English, in its sense here: trIn('green', 'Back', 'Hinten') – the dictionary's
+ * "Back [green]" (the back of the green), not "Back" (Zurück). English and German as written; a language without the
+ * keyed text takes the plain one (night 16./17.11.2026: the green's "Back · Center · Front" read "Retour · Centre ·
+ * Aller", "Voltar · Meio · Primeiros", "返回 · 中 · 前九" on the course).
+ */
+export function trIn(sense: string, en: string, de: string): string {
+  if (lang === 'de') return de;
+  if (lang === 'en') return en;
+  const keyed = dict[`${en} [${sense}]`];
+  return keyed ?? fromDict(en);
+}
+
 /** For tests: the language without reload. */
 export function useLangForTests(l: Lang): void {
   lang = l;

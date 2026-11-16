@@ -41,6 +41,15 @@ for (const f of files) {
       if (en == null || de == null) dynamic++;
       else if (!(en in out)) out[en] = de;
     }
+    // trIn('green', 'Back', 'Hinten') – a word in one of its senses: the key "Back [green]" (night 16./17.11.2026)
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'trIn' && n.arguments.length === 3) {
+      calls++;
+      const sense = keyOf(n.arguments[0]);
+      const en = keyOf(n.arguments[1]);
+      const de = keyOf(n.arguments[2]);
+      if (sense == null || en == null || de == null) dynamic++;
+      else if (!(`${en} [${sense}]` in out)) out[`${en} [${sense}]`] = de;
+    }
     // { en: '…', de: '…' } – the texts of Training, Agility and the rules (each handed to tr(x.en, x.de))
     if (ts.isObjectLiteralExpression(n)) {
       const prop = (name) => n.properties.find((p) => ts.isPropertyAssignment(p) && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === name);

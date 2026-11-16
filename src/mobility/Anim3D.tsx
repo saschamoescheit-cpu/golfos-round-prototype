@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { tr } from '../lib/i18n';
+import { tr, trIn } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import { CLIPS } from './anim3d/clips';
 import { createViewer, type Clip, type View, type Viewer } from './anim3d/scene';
@@ -14,7 +14,7 @@ import type { TestId } from './types';
 // or drill runs with the camera, the voice reads the how-to anyway – there it matters most.)
 
 const VIEW_NAMES: Record<View, () => string> = {
-  front: () => tr('Front', 'Vorne'),
+  front: () => trIn('view', 'Front', 'Vorne'),
   side: () => tr('Side', 'Seite'),
   angle: () => tr('Angle', 'Schräg'),
   above: () => tr('Above', 'Oben'),
