@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
+import type { AimKind, Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, STRIKES, toggleStance } from '../lib/shotfacts';
 import { isLeftHanded } from '../lib/profile';
@@ -42,6 +42,17 @@ export function ShotSheet(props: {
    *  it was played from – "noch 145 m zur Fahne · Schlag 160 m", or the place missing – and setting it on the map */
   where?: { toPin: string | null; length: string | null; /** "spielte sich wie 121 m · Gegenwind 14 km/h" – with the hole's wind (14.11.2026) */ plays?: string | null; /** the wind below it, as under the map (Sascha 14.11.2026: "spielte sich wie" one line, the wind the next, with its arrow) */ wind?: ReactNode };
   onPlace?: () => void;
+  /** where the player aimed (Sascha 16.11.2026: "Ich ziele ja nicht immer Mitte Bahn"): the chips of this shot, the one set,
+   *  the line "Ziel: Bahn links" with the ball off it, and the map to drag the aim – each change saved at once */
+  aim?: {
+    choices: { value: AimKind; label: () => string }[];
+    kind: AimKind | null;
+    title: string;
+    dev: string | null;
+    onChoose: (k: AimKind) => void;
+    onClear: () => void;
+    onMap: () => void;
+  };
   editing: boolean;
   bag?: { club: Club; m: number; carry?: number }[]; // the player's distances – m the total; carry as set in "My bag"
   replay?: boolean;
@@ -137,6 +148,27 @@ export function ShotSheet(props: {
                 {props.where.toPin ? tr('Move', 'Ort ändern') : tr('Set on the map', 'Auf der Karte setzen')}
               </button>
             )}
+          </div>
+        )}
+        {props.aim && (
+          <div className="field shot-aim">
+            <label>{tr('Where did you aim?', 'Wohin hast du gezielt?')}</label>
+            {/* its own box – not "shot-where", which stays the one line of where the shot was played from */}
+            <div className="shot-aim-box">
+              <span className="shot-aim-text">
+                <strong>{props.aim.title}</strong>
+                {props.aim.dev ? <span className="muted small">{props.aim.dev}</span> : null}
+              </span>
+              <button type="button" className="chip" onClick={props.aim.onMap}>
+                {tr('On the map', 'Auf der Karte')}
+              </button>
+            </div>
+            <Chips<AimKind>
+              label={tr('Aim', 'Ziel')}
+              value={props.aim.kind}
+              onChange={(v) => (v ? props.aim!.onChoose(v) : props.aim!.onClear())}
+              options={props.aim.choices.map((c) => ({ value: c.value, label: c.label() }))}
+            />
           </div>
         )}
         <div className="field">

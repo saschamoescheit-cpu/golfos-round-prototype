@@ -2879,3 +2879,9 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .wind-tag.plain svg { color: inherit; }
 /* the wind under "spielte sich wie" in the same look – not bold (Sascha 15.11.2026) */
 .shot-wind, .shot-wind .wind-tag { color: var(--muted); font-weight: 400; }
+/* a shot's aim on the map (Sascha 16.11.2026): the card short, so the shot stays in view; "Ziel entfernen" a quiet link */
+.aim-layer .aim-card { gap: 4px; }
+.aim-layer .aim-clear { align-self: flex-start; padding: 4px 0; min-height: 0; font-size: 14px; color: var(--muted); text-decoration: underline; border: 0; background: none; }
+.shot-aim-box { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); margin-bottom: 8px; }
+.shot-aim-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.shot-aim-box .chip { white-space: nowrap; flex: none; }

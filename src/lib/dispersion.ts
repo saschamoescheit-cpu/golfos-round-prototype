@@ -49,9 +49,11 @@ export function clubDispersion(rounds: Round[]): ClubDispersion[] {
         if (k === 0 && h.par >= 4) return; // tee shot on par 4/5: the target is the fairway, not the pin
         const toPin = distanceM(s.pos, d.pin!);
         if (toPin < 40) return; // chips and pitches: not about the club's dispersion
+        // where the player aimed when set in the round check – the green's middle, a lay-up spot (Sascha 16.11.2026)
+        const target = s.aim ?? d.pin!;
         const e = by.get(s.club) ?? { side: [], long: [] };
-        e.side.push(sideOf(s.pos, d.pin!, end));
-        e.long.push(pastPin(s.pos, d.pin!, end));
+        e.side.push(sideOf(s.pos, target, end));
+        e.long.push(pastPin(s.pos, target, end));
         by.set(s.club, e);
       });
     });

@@ -1,8 +1,8 @@
-import type { Course, CourseGeometry, LngLat, Round } from '../types';
+import type { Course, CourseGeometry, LngLat, Ring, Round } from '../types';
 import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
-import { holesAsLines } from './geo';
+import { centroid, holesAsLines, pointInRing } from './geo';
 import { CARDS, LINES as COURSE_LINES } from '../data/cards';
 import { GEO, touchGeometry } from './storageguard';
 import { decodeTrack } from './trackcodec';
@@ -147,6 +147,20 @@ export function saveHoleLine(courseId: string, loop: string, number: number, lin
   else linesKept.set(courseId, all);
 }
 
+// The green drawn round with the finger when a hole is marked anew (Sascha 16.11.2026, Hawks Landing 2: "Vielleicht muss
+// man … mit dem Finger um das Grün malen, um das Grün festzusetzen") – a tap took the map's green within 15 m, there the
+// wrong one. Keyed "loop#number" like the lines; in the course map it comes first, so the hole ends on it.
+const GREENS = 'golfos.holegreens.v1.';
+export function loadHoleGreens(courseId: string): Record<string, Ring> {
+  return read<Record<string, Ring>>(GREENS + courseId, {});
+}
+export function saveHoleGreen(courseId: string, loop: string, number: number, ring: Ring | null): void {
+  const all = { ...loadHoleGreens(courseId) };
+  if (ring && ring.length >= 3) all[`${loop}#${number}`] = ring;
+  else delete all[`${loop}#${number}`];
+  write(GREENS + courseId, all);
+}
+
 /** The player's own marking of a hole taken away, asked for by him (Sascha 11.11.2026, Moritz on Cypress: a hole set by
  *  hand wrongly wins over the course map – "Platzkarte verwenden"): the course's map (or the others' line) again. */
 export function removeHoleLine(courseId: string, loop: string, number: number): void {
@@ -155,6 +169,7 @@ export function removeHoleLine(courseId: string, loop: string, number: number): 
   if (write(LINES + courseId, all)) linesKept.delete(courseId);
   else linesKept.set(courseId, all);
   refuseFlightLines(courseId, [`${loop}#${number}`]);
+  saveHoleGreen(courseId, loop, number, null);
 }
 
 // The lines the event's other phones set up (lib/courselines keeps them) – over the course map (Sascha 11.11.2026: a hole
@@ -179,6 +194,7 @@ export function removeAllHoleLines(courseId: string): void {
   if (write(LINES + courseId, {})) linesKept.delete(courseId);
   else linesKept.set(courseId, {});
   refuseFlightLines(courseId, null);
+  write(GREENS + courseId, {});
 }
 /** Is a marking over the course map – the player's own, or one of his flight's he has not refused ("Platzkarte")? */
 export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean => !!loadHoleLines(courseId)[`${loop}#${number}`] || !!flightLines(courseId)[`${loop}#${number}`];
@@ -250,6 +266,10 @@ export function loadGeometry(courseId: string): CourseGeometry {
     });
     base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
   }
+  // the greens the player drew round (16.11.2026): first, so a hole ends on them; a mapped green whose middle lies in one
+  // is the same green, drawn worse – it goes
+  const drawn = Object.values(loadHoleGreens(courseId));
+  if (drawn.length) base = { ...base, green: [...drawn, ...base.green.filter((g) => !drawn.some((r) => pointInRing(centroid(g), r)))] };
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {
