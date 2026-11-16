@@ -667,7 +667,7 @@ const mirrored = (p: Progress | undefined): Progress | undefined =>
 
 /** "5+5+10": what the player stands at against his opponent – won (green), lost (red), level or not played yet. */
 function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
-  if (!props.played) return <span className="badge warn">{tr('Open', 'Offen')}</span>;
+  if (!props.played) return <span className="badge warn">{tr('Open [state]', 'Offen')}</span>;
   const v = props.amount;
   return <span className={`badge ${v > 0 ? 'ok' : v < 0 ? 'bad' : 'warn'}`}>{`${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, props.sym)}`}</span>;
 }
@@ -821,7 +821,7 @@ function StateBadge(props: { state: WagerState; provisional?: boolean; /** each 
   if (props.state === 'missed') return <span className="badge bad">{tr('Missed', 'Verloren')}</span>;
   // made in a round not signed yet (Sascha 02.11.2026: "a result even when the marker has not signed")
   if (props.provisional) return <span className="badge warn">{tr('Made · provisional', 'Geschafft · vorläufig')}</span>;
-  return <span className="badge warn">{tr('Open', 'Offen')}</span>;
+  return <span className="badge warn">{tr('Open [state]', 'Offen')}</span>;
 }
 
 export function PoolScreen(props: { code: string; onBack: () => void; /** where back leads, when not to "Wetten" */ backLabel?: string; onRound?: (code: string) => void; /** today's tournament: Rounds, to take part (Sascha 09.11.2026) */ onTour?: () => void }) {
@@ -1784,7 +1784,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
 /** A free bet's state as a sign, the same as an invitation's (DuelMark): made – a tick, missed – a cross, open – a clock
  *  (Sascha 11.11.2026, Facelift-Abnahme W6: no "✓", "✗", "…" as text). */
 function FreeMark(props: { state: WagerState }) {
-  const label = props.state === 'done' ? tr('Made', 'Geschafft') : props.state === 'missed' ? tr('Missed', 'Verloren') : tr('Open', 'Offen');
+  const label = props.state === 'done' ? tr('Made', 'Geschafft') : props.state === 'missed' ? tr('Missed', 'Verloren') : tr('Open [state]', 'Offen');
   return (
     <svg className={`free-mark ${props.state === 'done' ? 'good-text' : props.state === 'missed' ? 'bad-text' : 'muted'}`} data-state={props.state} role="img" aria-label={label} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <title>{label}</title>
@@ -2572,7 +2572,7 @@ export function WagerSheet(props: {
                   options={[
                     { value: 'done', label: tr('Made', 'Geschafft') },
                     { value: 'missed', label: tr('Missed', 'Verloren') },
-                    { value: 'app', label: w.kind === 'free' ? tr('Open', 'Offen') : tr('The app judges', 'App wertet aus'), text: w.kind === 'free' ? undefined : tr('From the rounds – by hand only for an argument or a mistake', 'Aus den Runden – von Hand nur bei Streitfall oder Fehler') },
+                    { value: 'app', label: w.kind === 'free' ? tr('Open [state]', 'Offen') : tr('The app judges', 'App wertet aus'), text: w.kind === 'free' ? undefined : tr('From the rounds – by hand only for an argument or a mistake', 'Aus den Runden – von Hand nur bei Streitfall oder Fehler') },
                   ]}
                 />
               </SettingsList>

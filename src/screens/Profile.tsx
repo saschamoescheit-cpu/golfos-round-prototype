@@ -371,7 +371,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                   <rect x="6" y="6" width="12" height="12" rx="3" />
                   <path d="M9 6l1-3h4l1 3M9 18l1 3h4l1-3M12 9.5V12l1.5 1.5" />
                 </svg>
-                <span>{tr('Watch', 'Uhr')}</span>
+                <span>{tr('Watch [device]', 'Uhr')}</span>
               </button>
               <p className="data-text muted small">{tr(`Your Apple Watch's ${swings.count} swings as a file – to tune the shot detection.`, `Die ${swings.count} Schwünge deiner Apple Watch als Datei – zum Feinjustieren der Schlagerkennung.`)}</p>
             </div>

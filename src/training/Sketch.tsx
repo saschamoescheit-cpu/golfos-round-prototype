@@ -690,7 +690,7 @@ function Palm(props: { label?: string; thumb?: boolean }) {
         {!props.thumb && <Badge jx={mid.x} jy={mid.y} mx={mid.x - 26} my={mid.y - 18} no={no} />}
         {!props.thumb && (
           <MText x={ox + 80} y={226} fontSize={12} fontWeight={800} fill="#16324a" textAnchor="middle">
-            {no === 1 ? tr('The fault', 'Der Fehler') : tr('Right', 'Richtig')}
+            {no === 1 ? tr('The fault', 'Der Fehler') : tr('Right [correct]', 'Richtig')}
           </MText>
         )}
       </g>

@@ -94,7 +94,7 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip; compact?: bo
     <figure className={`mob-3d${props.compact ? ' compact' : ''}`} data-said={said || undefined}>
       <div className="mob-3d-stage" ref={stageRef}>
         {!props.compact && (
-        <button type="button" className="mob-3d-play" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
+        <button type="button" className="mob-3d-play" aria-label={playing ? tr('Pause', 'Pause') : tr('Play [video]', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
             {playing ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <rect x="6" y="5" width="4" height="14" rx="1" />

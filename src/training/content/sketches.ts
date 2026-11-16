@@ -737,7 +737,7 @@ export const SKETCHES: Record<string, Sketch> = {
     { k: 'line', from: [3, 0.4], to: [3, 0.48] },
     { k: 'ball', at: [3, 0.48] },
     { k: 'ball', at: [5, 0.4] },
-    stxt([1, 1.2], L('tee', 'Tee'), 10),
+    stxt([1, 1.2], L('tee [peg]', 'Tee'), 10),
     stxt([3, 1.2], L('low tee', 'tiefer Tee'), 10),
     stxt([5, 1.2], L('grass', 'Gras'), 10),
   ]),
@@ -930,7 +930,7 @@ export const SKETCHES: Record<string, Sketch> = {
     { k: 'figure', at: [6.6, 0.3], pose: 'finish' },
     stxt([1.3, 0.05], L('set-up', 'Ansprache'), 10),
     stxt([4.0, 0.05], L('top', 'Top'), 10),
-    stxt([6.6, 0.05], L('finish', 'Finish'), 10),
+    stxt([6.6, 0.05], L('finish [swing]', 'Finish'), 10),
   ]),
   'l-to-l': S(4, 3, [
     ground(0.3, 4),

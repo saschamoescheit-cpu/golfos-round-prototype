@@ -286,7 +286,7 @@ function FlightTab(props: { club: Club; shots: LmShot[]; fmt: (v: number, d?: nu
     <>
       <Block title={tr(`${flights.length} shots · recognised by the device`, `${flights.length} Schläge · vom Gerät erkannt`)}>
       <section className="card stats-card">
-        <div className="flight-picker" role="group" aria-label={tr('Flights', 'Flugbahnen')}>
+        <div className="flight-picker" role="group" aria-label={tr('Flights [ball]', 'Flugbahnen')}>
           <div className="flight-grid">{FLIGHTS.filter((f) => !f.shape).map(tile)}</div>
           <div className="flight-grid two">{FLIGHTS.filter((f) => f.shape).map(tile)}</div>
         </div>

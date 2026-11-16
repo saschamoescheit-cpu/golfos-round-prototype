@@ -1257,7 +1257,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
             ))}
           </div>
           {places.length > 1 && (
-            <div className="chip-set" role="group" aria-label={tr('Place', 'Ort')}>
+            <div className="chip-set" role="group" aria-label={tr('Place [where]', 'Ort')}>
               {places.map((p) => (
                 <button key={p} type="button" className={`chip${place === p ? ' on' : ''}`} aria-pressed={place === p} onClick={() => setPlace(place === p ? null : p)}>
                   {placeName(p)}
@@ -2652,7 +2652,7 @@ function Checkout(props: { nav: Nav; onOrdered: (o: Order) => void }) {
         </ul>
         <div className="row">
           <span>{tr('Shipping', 'Versand')}</span>
-          <span>{shipping ? euro(shipping) : tr('free', 'kostenlos')}</span>
+          <span>{shipping ? euro(shipping) : tr('free [price]', 'kostenlos')}</span>
         </div>
         <div className="row tr-total">
           <span>{tr('Total', 'Gesamt')}</span>

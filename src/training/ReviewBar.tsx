@@ -28,7 +28,7 @@ export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => v
   const opts: { v: Verdict; label: string }[] = [
     { v: 'ok', label: tr('Keep', 'Passt') },
     { v: 'edit', label: tr('Change', 'Ändern') },
-    { v: 'cut', label: tr('Cut', 'Streichen') },
+    { v: 'cut', label: tr('Cut [remove]', 'Streichen') },
   ];
   return (
     <div className={`tr-reviewbar${props.compact ? ' compact' : ''}${mark ? ` ${mark.verdict}` : ''}`} role="group" aria-label={tr('Review', 'Prüfung')}>

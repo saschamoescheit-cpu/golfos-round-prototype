@@ -44,6 +44,29 @@ describe('the dictionaries', () => {
       useDict({});
     }
   });
+  it('every word with a sense has its own text in every language, English shows the word without it', () => {
+    const source: Record<string, string> = JSON.parse(readFileSync('src/i18n/source.json', 'utf8'));
+    const senses = Object.keys(source).filter((k) => / \[[a-z]+\]$/.test(k));
+    expect(senses.length).toBeGreaterThanOrEqual(17);
+    for (const l of LANGS) for (const k of senses) expect(dict(l)[k], `${l} ${k}`).toBeTruthy();
+    useLangForTests('en');
+    expect(tr('Finish [swing]', 'Finish')).toBe('Finish');
+    expect(tr('Watch [device]', 'Uhr')).toBe('Watch');
+    useLangForTests('de');
+    expect(tr('Watch [device]', 'Uhr')).toBe('Uhr');
+    useDict(dict('fr'));
+    useLangForTests('fr');
+    try {
+      // the swing's finish, not "Terminer"; the watch, not "Regarde"
+      expect(tr('Finish [swing]', 'Finish')).toBe('Finish');
+      expect(tr('Finish', 'Beenden')).toBe('Terminer');
+      expect(tr('Watch [device]', 'Uhr')).toBe('Montre');
+      expect(tr('Right [correct]', 'Richtig')).toBe('Correct');
+    } finally {
+      useLangForTests('en');
+      useDict({});
+    }
+  });
   it('never translate an identifier or a locale code', () => {
     for (const l of LANGS) {
       const d = dict(l);

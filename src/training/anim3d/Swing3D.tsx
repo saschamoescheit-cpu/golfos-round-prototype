@@ -85,7 +85,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
     <div className="tr-3d">
       <div className="tr-3d-stage" ref={stageRef}>
         <div className="tr-3d-controls">
-          <button type="button" className="icon-btn" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
+          <button type="button" className="icon-btn" aria-label={playing ? tr('Pause', 'Pause') : tr('Play [video]', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
             {playing ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <rect x="6" y="5" width="4" height="14" rx="1" />

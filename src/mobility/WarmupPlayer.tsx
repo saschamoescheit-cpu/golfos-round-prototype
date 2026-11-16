@@ -20,7 +20,7 @@ const AREA_SHORT: Record<Area, { en: string; de: string }> = {
   hips: { en: 'hips', de: 'Hüfte' },
   spine: { en: 'trunk', de: 'Rumpf' },
   shoulders: { en: 'shoulders', de: 'Schultern' },
-  stability: { en: 'balance', de: 'Stabilität' },
+  stability: { en: 'balance [body]', de: 'Stabilität' },
   legs: { en: 'legs', de: 'Beine' },
   neck: { en: 'neck', de: 'Nacken' },
   wrists: { en: 'wrists', de: 'Handgelenke' },

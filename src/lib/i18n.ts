@@ -153,6 +153,14 @@ function fromDict(en: string): string {
 /** The text in the player's language. */
 export function tr(en: string, de: string): string {
   if (lang === 'de') return de;
+  // a word in one of its senses: "Finish [swing]" – shown "Finish", its own text in the dictionary (see trIn)
+  if (en.endsWith(']')) {
+    const m = SENSE.exec(en);
+    if (m) {
+      const plain = en.slice(0, m.index);
+      return lang === 'en' ? plain : (dict[en] ?? fromDict(plain));
+    }
+  }
   if (lang === 'en') return en;
   // a locale or a language code asked for (dates, numbers, speech): the language's own
   if (/^[a-z]{2}-[A-Z]{2}$/.test(en)) return langLocale();
@@ -167,11 +175,10 @@ export function tr(en: string, de: string): string {
  * Aller", "Voltar · Meio · Primeiros", "返回 · 中 · 前九" on the course).
  */
 export function trIn(sense: string, en: string, de: string): string {
-  if (lang === 'de') return de;
-  if (lang === 'en') return en;
-  const keyed = dict[`${en} [${sense}]`];
-  return keyed ?? fromDict(en);
+  return tr(`${en} [${sense}]`, de);
 }
+/** The sense at the end of an English text: "Finish [swing]", "tee [peg]" – also in the {en, de} texts of the content. */
+const SENSE = / \[([a-z]+)\]$/;
 
 /** For tests: the language without reload. */
 export function useLangForTests(l: Lang): void {

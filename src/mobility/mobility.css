@@ -122,12 +122,17 @@
 .mob-3d { margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .mob-3d-stage { position: relative; border-radius: 14px; overflow: hidden; background: #cfe6f5; aspect-ratio: 4 / 3; }
 .mob-3d-stage canvas { display: block; width: 100%; height: 100%; }
-.mob-3d-controls { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; align-items: center; gap: 6px; }
+.mob-3d-controls { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; align-items: flex-start; gap: 6px; }
 .mob-3d-controls .grow { flex: 1; }
 .mob-3d-controls .chip, .mob-3d-controls .icon-btn { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
 .mob-3d-controls .icon-btn { width: 44px; padding: 0; }
 .mob-3d-controls .chip.on { background: var(--brand); border-color: var(--brand); color: #ffffff; }
-.mob-3d-views { display: flex; gap: 6px; }
+.mob-3d-views { display: flex; gap: 6px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+/* an iPhone SE: "Zeitlupe" and three views in Dutch/Portuguese ("Van boven · Voorste · Hoek") ran 6–16 px past the
+   screen (night 16./17.11.2026) – narrower chips, and a fourth goes into a second row rather than off the screen */
+@media (max-width: 360px) {
+  .mob-3d-controls .chip { padding: 0 9px; }
+}
 .mob-3d-wait { aspect-ratio: 4 / 3; border-radius: 14px; background: #cfe6f5; }
 
 

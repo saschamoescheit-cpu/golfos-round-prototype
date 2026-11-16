@@ -7,7 +7,7 @@ import type { GolferOptions, JointName } from '../Golfer';
 // Keyed by topic and the English name of the fault.
 
 const FAULT = L('The fault', 'Der Fehler');
-const RIGHT = L('Right', 'Richtig');
+const RIGHT = L('Right [correct]', 'Richtig');
 const FACE_ON = L('Face-on, target to the right.', 'Von vorn, Ziel rechts.');
 const FROM_ABOVE = L('From above, target up.', 'Von oben, Ziel oben.');
 

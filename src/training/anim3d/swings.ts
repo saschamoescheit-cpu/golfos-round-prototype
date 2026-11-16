@@ -996,7 +996,7 @@ export const SAND_FAIRWAY: Swing = relabel(quiet({ ...SAND_SWING, choke: 0.025, 
   0: L('Feet only a little dug in, grip 2–3 cm shorter, ball a little back of centre', 'Füße nur leicht eingraben, 2–3 cm kürzer greifen, Ball leicht hinter der Mitte'),
   2.0: L('A quiet lower body', 'Ruhiger Unterkörper'),
   2.8: L('Ball first – rather thin than fat', 'Erst der Ball – lieber dünn als fett'),
-  3.5: L('Finish', 'Finish'),
+  3.5: L('Finish [swing]', 'Finish'),
 });
 
 /** feeling the slope with the feet: halfway on the line, the line between the feet, facing the hole (the player
