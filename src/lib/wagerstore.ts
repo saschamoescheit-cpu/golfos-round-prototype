@@ -684,14 +684,17 @@ export const takeBackDuel = (code: string, id: string): Promise<WagerPool | null
  *  the app makes one"): the first one running then with this phone's owner in it – else a new one of that day, he its
  *  host and its only player ("Sidebets 10.11."). Null offline. */
 export async function poolForDuel(day: string, o: { me: string; currency?: string; /** "without a pool of bets" (Sascha 10.11.2026): a pool of its own for these duels, named "5+5+10 · 10.11." */ own?: boolean }): Promise<PoolEntry | null> {
-  const there = o.own ? null : duelPoolsOn(day)[0];
+  // "Ohne Wett-Pool": the day's own one when there is one already (Sascha 16.11.2026: Daniel against Sascha and Erik each –
+  // one settlement of the day for the duels outside the trip's pool, not one per challenge)
+  const ownName = `5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.`;
+  const there = o.own ? (duelPoolsOn(day).find((e) => e.pool.from === day && e.pool.to === day && e.pool.name === ownName) ?? null) : duelPoolsOn(day)[0];
   if (there) return there;
   const uid = myAccount();
   const at = new Date().toISOString();
   const pool: WagerPool = {
     kind: 'wager-pool',
     id: newId(),
-    name: o.own ? `5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.` : tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Side-Bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
+    name: o.own ? ownName : tr(`Side bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`, `Side-Bets ${day.slice(8, 10)}.${day.slice(5, 7)}.`),
     from: day,
     to: day,
     createdAt: at,

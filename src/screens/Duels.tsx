@@ -77,15 +77,35 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
     flip(p ? `p:${p.id}` : `n:${named.find((x) => sameName(x.name, name))?.name ?? name}`, true);
     setTyped('');
   };
+  // a player not in the chosen pool (Sascha 16.11.2026: "Daniel nimmt nicht an den USA-Wetten teil und ist auch nicht im
+  // Pool" → "automatisch ohne Pool"): his duel goes into the day's own settlement ("5+5+10 · 16.11."), the pool untouched
+  const outside = entry ? chosen.filter((k) => !k.startsWith('p:')) : [];
+  const outsideNames = outside.map(nameOf).filter(Boolean);
   const go = async () => {
     setBusy(true);
     setMsg(null);
-    const e = entry ?? (await poolForDuel(day, { me: meName, currency, own: own || !pools.length }));
-    if (!e) {
+    const inPool = entry ? chosen.filter((k) => k.startsWith('p:')) : chosen;
+    const e = inPool.length ? (entry ?? (await poolForDuel(day, { me: meName, currency, own: own || !pools.length }))) : null;
+    const o = outside.length ? await poolForDuel(day, { me: meName, currency: entry?.pool.currency ?? currency, own: true }) : null;
+    if ((inPool.length && !e) || (outside.length && !o)) {
       setBusy(false);
       return setMsg(NO_NET());
     }
-    const opps: (string | NewOpponent)[] = chosen.map((k) => {
+    const done: string[] = [];
+    for (const [pe, keys] of [[e, inPool], [o, outside]] as const) {
+      if (!pe || !keys.length) continue;
+      const code = await challengeIn(pe, keys);
+      if (!code) {
+        setBusy(false);
+        return setMsg(NO_NET());
+      }
+      done.push(code);
+    }
+    setBusy(false);
+    props.onDone(done[0]);
+  };
+  const challengeIn = async (e: PoolEntry, keys: string[]): Promise<string | null> => {
+    const opps: (string | NewOpponent)[] = keys.map((k) => {
       if (k.startsWith('p:')) return k.slice(2);
       if (k.startsWith('n:')) {
         const x = named.find((y) => `n:${y.name}` === k)!;
@@ -103,11 +123,10 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
       ...(on ? { on: { code: on.code, name: on.ev.name, course: on.ev.course.name } } : {}),
       by: meName,
     });
-    setBusy(false);
-    if (!r) return setMsg(NO_NET());
+    if (!r) return null;
     if (r.ids.length) pushWagers(e.code, r.ids); // the one challenged hears of it
     for (const f of r.invite) void inviteFriend(e.code, f.uid, f.name, meName); // a friend brought in: let in, told
-    props.onDone(e.code);
+    return e.code;
   };
   return (
     <>
@@ -195,6 +214,15 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             ]}
           />
         </SettingsList>
+        {/* who is not in the pool: said before "Herausfordern" – settled on its own */}
+        {pool && outsideNames.length > 0 && (
+          <span className="small muted duel-outside">
+            {tr(
+              `Not in "${pool.name}": ${outsideNames.join(', ')} – settled on its own ("5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.").`,
+              `Nicht im Pool „${pool.name}“: ${outsideNames.join(', ')} – eigene Abrechnung („5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.“).`,
+            )}
+          </span>
+        )}
       </section>
       {/* Worum – the stakes (Facelift 11.11.2026, g2) */}
       <section className="setup-part">
