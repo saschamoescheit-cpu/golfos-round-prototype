@@ -199,6 +199,17 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'start',
       },
+      // Sascha 16.11.2026: "Auf der Apple Watch wäre auch die Anzeige vom Wind hilfreich" – "wenn die Grün-Slopes kommen,
+      // wenn der Spieler auf dem Grün ist"
+      {
+        q: () => tr('Does the watch show the wind and the green’s slope?', 'Zeigt die Uhr den Wind und das Gefälle des Grüns?'),
+        a: () =>
+          tr(
+            'Yes. Under the distances: the wind – the arrow shows where it blows (up is towards the flag), its speed in km/h, how it plays (into the wind, downwind, from the right or left) and the gusts when they are stronger; the hole’s picture shows it too. It comes from the phone and is renewed every 10 minutes. On the green, the watch shows the green instead of the distances: its slope in the colours of the phone’s green charts, arrows where the ball runs, the flag and where you stand – and below the green’s main slope, e.g. “2.1 % · falls to the left”. That needs the green’s heights on the phone and “Green slope on the green” on in the caddie settings – not in a tournament.',
+            'Ja. Unter den Entfernungen steht der Wind: Der Pfeil zeigt, wohin er weht (nach oben ist Richtung Fahne), dazu km/h, wie er spielt (Gegenwind, Rückenwind, von rechts oder links) und die Böen, wenn sie stärker sind; auch das Lochbild zeigt ihn. Er kommt vom Handy und wird alle 10 Minuten erneuert. Auf dem Grün zeigt die Uhr statt der Entfernungen das Grün: sein Gefälle in den Farben der Grün-Karten im Handy, Pfeile, wohin der Ball läuft, die Fahne und deinen Standort – darunter das Hauptgefälle, z. B. „2,1 % · fällt nach links“. Dafür braucht das Handy die Höhen des Grüns und „Grün-Neigung auf dem Grün“ in den Caddie-Einstellungen – nicht im Turnier.',
+          ),
+        video: 'start',
+      },
       {
         q: () => tr('How do I put GolfOS on the home screen?', 'Wie lege ich GolfOS auf den Home-Bildschirm?'),
         a: () =>
