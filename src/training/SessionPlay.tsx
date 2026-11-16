@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { TopBar } from '../components/ui';
-import { drillById } from './content';
+import { anyDrillById as drillById } from './content'; // a started session keeps drills our pro took out later
 import { SketchView } from './Sketch';
 import { Metronome } from './Metronome';
 import { addLog, saveSession, type Session } from './store';

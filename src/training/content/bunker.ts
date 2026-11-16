@@ -282,8 +282,8 @@ export const bunkerDrills: Drill[] = [
     balls: 10,
     setup: L('5 balls on the uphill face of the bunker, 5 on a downhill spot.', '5 Bälle am ansteigenden Bunkerrand, 5 an einer abfallenden Stelle.'),
     steps: [
-      L('Uphill: shoulders parallel to the slope, swing up the slope, harder than usual – the ball flies high and short.', 'Bergauf: Schultern parallel zum Hang, den Hang hinauf schwingen, kräftiger als sonst – der Ball fliegt hoch und kurz.'),
-      L('Downhill: shoulders along the slope, weight forward, club follows the slope down – the ball comes out low and runs.', 'Bergab: Schultern entlang des Hangs, Gewicht vorn, der Schläger folgt dem Hang nach unten – der Ball kommt flach und rollt.'),
+      L('Uphill: the weight stays on the lead foot, as always in the bunker; swing up the slope, harder than usual – the ball flies high and short.', 'Bergauf: Das Gewicht bleibt auf dem vorderen Fuß, wie immer im Bunker; den Hang hinauf schwingen, kräftiger als sonst – der Ball fliegt hoch und kurz.'),
+      L('Downhill: shoulders along the slope, the weight on the lead foot, the club follows the slope down – the ball comes out low and runs.', 'Bergab: Schultern entlang des Hangs, das Gewicht auf dem vorderen Fuß, der Schläger folgt dem Hang nach unten – der Ball kommt flach und rollt.'),
     ],
     scoring: { kind: 'made', of: 10, unit: L('on the green', 'auf dem Grün') },
     targets: { high: 4, mid: 6, low: 8 },

@@ -163,7 +163,7 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     ball(2.0, 0.47),
     co('leadShoulder', L('uphill: shoulders parallel to the slope', 'bergauf: Schultern parallel zum Hang'), [3.6, 2.6]),
     { k: 'flight', pts: [[2.05, 0.5], [2.8, 2.4], [3.6, 1.0]], dashed: true },
-    co('trailAnkle', L('weight on the lower foot', 'Gewicht auf dem tieferen Fuß'), [0.8, 1.0]),
+    co('leadAnkle', L('weight on the lead foot – always in the bunker', 'Gewicht auf dem vorderen Fuß – im Bunker immer'), [3.4, 1.5]),
   ], L('Uphill the ball flies high and short – swing harder. Downhill: shoulders with the slope too, the ball comes out low.', 'Bergauf fliegt der Ball hoch und kurz – kräftiger schwingen. Bergab: Schultern ebenfalls mit dem Hang, der Ball kommt flach.')),
   'fairway-bunker': S(5, 2.6, [
     ground(5, true),

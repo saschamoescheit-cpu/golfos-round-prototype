@@ -40,7 +40,7 @@ const CHIP_SHOTS: TopicShot[] = [
       section: 'The set-up',
       rows: [
         { k: 'ball', v: L('Middle or slightly back (towards the trail foot)', 'Mitte oder leicht zurück (Richtung hinterer Fuß)') },
-        { k: 'stance', v: L('Narrow (a hand width), slightly open, close to the ball', 'Schmal (eine Handbreite), leicht offen, nah am Ball') },
+        { k: 'stance', v: L('Narrow – about one foot width between the feet, slightly open, close to the ball', 'Schmal – etwa eine Fußbreite zwischen den Füßen, leicht offen, nah am Ball') },
         { k: 'weight', v: L('60–70 % on the lead foot – and it stays there', '60–70 % auf dem vorderen Fuß – und es bleibt dort') },
         { k: 'grip', v: L('A little down the grip, hands slightly ahead of the ball', 'Etwas kürzer greifen, Hände leicht vor dem Ball') },
         { k: 'club', v: L('By carry : roll – SW 1:1, PW 1:2, 9-iron 1:3, 7-iron 1:5', 'Nach Flug : Rollen – SW 1:1, PW 1:2, Eisen 9 1:3, Eisen 7 1:5') },
@@ -73,16 +73,16 @@ const CHIP_SHOTS: TopicShot[] = [
     setup: {
       rows: [
         { k: 'stance', v: L('Shoulders parallel to the slope, stance a little wider', 'Schultern parallel zum Hang, Stand etwas breiter') },
-        { k: 'weight', v: L('More on the lower trail foot – go with the slope', 'Mehr auf dem tieferen hinteren Fuß – mit dem Hang') },
+        { k: 'weight', v: L('On the lead foot – in a chip the weight is always forward, uphill too', 'Auf dem vorderen Fuß – beim Chip ist das Gewicht immer vorn, auch bergauf') },
         { k: 'ball', v: L('Middle to slightly forward', 'Mitte bis leicht vorn') },
         { k: 'club', v: L('Less loft (e.g. 9-iron instead of PW) – the slope adds loft', 'Weniger Loft (z. B. Eisen 9 statt PW) – der Hang gibt Loft dazu') },
       ],
       sketch: S(4, 2.9, [
         up.item,
-        fig(1.9, 'chip', { tilt: up.deg, y: up.at(1.9), shift: -0.05 }),
+        fig(1.9, 'chip', { tilt: up.deg, y: up.at(1.9), shift: 0.03 }),
         ball(1.88, up.at(1.88)),
         co('leadShoulder', L('shoulders parallel to the slope', 'Schultern parallel zum Hang'), [3.1, 2.25]),
-        co('trailAnkle', L('weight more on the lower foot', 'Gewicht mehr auf dem tieferen Fuß'), [0.75, 1.0]),
+        co('leadAnkle', L('weight on the lead foot – as in every chip', 'Gewicht auf dem vorderen Fuß – wie bei jedem Chip'), [3.2, 1.6]),
         co('clubHead', L('one club less loft', 'einen Schläger weniger Loft'), [3.2, 0.95]),
       ], L('Face-on, target to the right: the ground rises to the green.', 'Von vorn, Ziel rechts: Der Boden steigt zum Grün an.')),
     },
@@ -95,7 +95,7 @@ const CHIP_SHOTS: TopicShot[] = [
       ],
       sketch: S(5, 3.0, [
         hill(5, 0.2, 1.08).item,
-        fig(1.4, 'chip', { tilt: hill(5, 0.2, 1.08).deg, y: hill(5, 0.2, 1.08).at(1.4), shift: -0.05 }),
+        fig(1.4, 'chip', { tilt: hill(5, 0.2, 1.08).deg, y: hill(5, 0.2, 1.08).at(1.4), shift: 0.03 }),
         fig(3.6, 'chipFinish', { tilt: hill(5, 0.2, 1.08).deg, y: hill(5, 0.2, 1.08).at(3.6) }),
         co('clubHead', L('back: low along the slope', 'zurück: flach am Hang'), [0.4, 1.2], 0),
         co('hands', L('through: up the hill, hold the finish', 'durch: den Hang hinauf, Finish halten'), [4.4, 2.3], 1),
@@ -104,7 +104,7 @@ const CHIP_SHOTS: TopicShot[] = [
     watch: {
       points: [
         L('The ball flies higher and shorter and rolls less – land it further, closer to the hole.', 'Der Ball fliegt höher und kürzer und rollt weniger – weiter landen, näher zur Fahne.'),
-        L('Do not force the weight forward against the slope – you fall into the hill and hit it fat.', 'Das Gewicht nicht gegen den Hang nach vorn zwingen – du fällst in den Hang und triffst fett.'),
+        L('The weight stays on the lead foot even uphill – hanging back on the lower foot makes you scoop.', 'Das Gewicht bleibt auch bergauf auf dem vorderen Fuß – wer auf dem tieferen Fuß hängen bleibt, schaufelt.'),
         L('Make the stroke a little longer than on the flat.', 'Die Bewegung etwas länger machen als in der Ebene.'),
       ],
       sketch: S(6, 2.2, [hill(6, 0.2, 0.62).item, ...landRoll(6, 0.6, 3.4, 4.6, 0.95, hill(6, 0.2, 0.62).at, [L('higher, shorter', 'höher, kürzer'), L('little roll', 'wenig Rollen')])], L('Uphill: land it closer to the hole.', 'Bergauf: näher zur Fahne landen.')),
@@ -163,7 +163,7 @@ const CHIP_SHOTS: TopicShot[] = [
     setup: {
       rows: [
         { k: 'grip', v: L('2–4 cm down the grip – the steeper, the shorter', '2–4 cm kürzer greifen – je steiler, desto kürzer') },
-        { k: 'stance', v: L('Stand more upright, weight towards the toes', 'Aufrechter stehen, Gewicht Richtung Fußballen') },
+        { k: 'stance', v: L('A stable, balanced stance – a little more upright, the weight evenly over the whole foot', 'Ein stabiler, ausbalancierter Stand – etwas aufrechter, das Gewicht gleichmäßig über den ganzen Fuß') },
         { k: 'aim', v: L('Aim right of the target – the ball starts left', 'Rechts vom Ziel zielen – der Ball startet nach links') },
         { k: 'ball', v: L('Middle', 'Mitte') },
         { k: 'club', v: L('The more loft, the more it goes left – aim further right with a wedge', 'Je mehr Loft, desto mehr links – mit dem Wedge weiter rechts zielen') },
@@ -174,7 +174,7 @@ const CHIP_SHOTS: TopicShot[] = [
         ball(2.3, aboveFeet.at(2.3)),
         co('hands', L('grip down', 'kürzer greifen'), [3.1, 1.55]),
         co('head', L('stand taller', 'aufrechter stehen'), [3.0, 2.35]),
-        co('leadToe', L('weight towards the toes – you would fall back', 'Gewicht zu den Ballen – sonst fällst du nach hinten'), [3.4, 0.25]),
+        co('leadToe', L('stable and balanced – do not fall back', 'stabil und ausbalanciert – nicht nach hinten fallen'), [3.4, 0.25]),
       ], L('From the side: the ground rises to the ball.', 'Von der Seite: Der Boden steigt zum Ball an.')),
     },
     move: {
@@ -208,8 +208,8 @@ const CHIP_SHOTS: TopicShot[] = [
     short: L('The ball lies lower than your feet – it goes right.', 'Der Ball liegt tiefer als deine Füße – er geht nach rechts.'),
     setup: {
       rows: [
-        { k: 'stance', v: L('Wider, more knee flex – like sitting on a high stool', 'Breiter, mehr Kniebeuge – wie auf einem hohen Hocker') },
-        { k: 'weight', v: L('Towards the heels, so you do not fall to the ball', 'Richtung Fersen, damit du nicht zum Ball fällst') },
+        { k: 'stance', v: L('A stable stance here too: wider, more knee flex – like sitting on a high stool', 'Auch hier ein stabiler Stand: breiter, mehr Kniebeuge – wie auf einem hohen Hocker') },
+        { k: 'weight', v: L('Balanced over the whole foot, so you do not fall to the ball', 'Ausbalanciert über den ganzen Fuß, damit du nicht zum Ball fällst') },
         { k: 'grip', v: L('Full length of the grip', 'Volle Länge greifen') },
         { k: 'aim', v: L('Aim left of the target – the ball goes right', 'Links vom Ziel zielen – der Ball geht nach rechts') },
         { k: 'ball', v: L('Middle', 'Mitte') },

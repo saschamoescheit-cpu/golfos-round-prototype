@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { at, blend, frameJoints, timeline } from './motion';
-import { CATEGORIES, DRILLS, sectionOf } from './content';
+import { CATEGORIES, DRILLS, anyDrillById, sectionOf } from './content';
 import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS } from './content/motions';
 
 // The animated figure (Sascha 17.10.2026): every movement belongs to a picture with a golfer, limbs keep their length
@@ -11,7 +11,7 @@ const dist = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0
 describe('animated pictures', () => {
   it('every movement has its picture with a golfer', () => {
     for (const id of Object.keys(DRILL_MOTIONS)) {
-      const d = DRILLS.find((x) => x.id === id);
+      const d = anyDrillById(id); // a movement may belong to a drill our pro took out
       expect(d, id).toBeTruthy();
       // a 3D video alone (no drawn movement) also goes with a top view
       if (!DRILL_MOTIONS[id].frames.length) expect((d!.sketch?.view === 'side' || d!.sketch?.view === 'top') && !!d!.sketch.motion?.video, id).toBe(true);

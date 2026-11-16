@@ -81,7 +81,7 @@ describe('shots', () => {
     expect(ids('slopes')).toEqual(['slope-uphill', 'slope-downhill', 'slope-above', 'slope-below']);
     expect(ids('trouble')).toEqual(['trouble-punch', 'trouble-rough', 'trouble-divot', 'trouble-bare-wet', 'trouble-wind']);
     expect(ids('lob')).toEqual(['lob-shot', 'flop-shot']);
-    expect(ids('spin')).toEqual(['spin-low', 'spin-less', 'spin-factors']);
+    expect(ids('spin')).toEqual(['spin-less', 'spin-factors']); // spin-low: out (Chris 15.11.2026)
     expect(ids('highlow')).toEqual(['shot-high', 'shot-low']);
     expect(ids('lowpoint')).toEqual(['lowpoint-iron', 'lowpoint-chip', 'lowpoint-bunker', 'lowpoint-driver']);
     // night run 15./16.11.2026: putting, irons, woods and driver as shots too

@@ -25,7 +25,7 @@ export const PITCH_SHOTS: TopicShot[] = [
         { k: 'stance', v: L('A little narrower than a full swing, slightly open', 'Etwas schmaler als beim vollen Schwung, leicht offen') },
         { k: 'weight', v: L('55–60 % on the lead foot', '55–60 % auf dem vorderen Fuß') },
         { k: 'grip', v: L('2–3 cm down the grip, the arms hang', '2–3 cm kürzer greifen, die Arme hängen') },
-        { k: 'club', v: L('PW, GW or SW – by your wedge chart', 'PW, GW oder SW – nach deiner Wedge-Tabelle') },
+        { k: 'club', v: L('PW, GW, SW or LW – by your wedge chart', 'PW, GW, SW oder LW – nach deiner Wedge-Tabelle') },
       ],
     },
     move: {
@@ -383,8 +383,8 @@ export const BUNKER_SHOTS: TopicShot[] = [
       rows: [
         { k: 'stance', v: L('Open, feet dug in a little, wider than a chip', 'Offen, Füße leicht eingegraben, breiter als beim Chip') },
         { k: 'ball', v: L('Forward of centre, at the lead heel', 'Vor der Mitte, an der vorderen Ferse') },
-        { k: 'face', v: L('Open – first open, then grip', 'Offen – erst öffnen, dann greifen') },
-        { k: 'weight', v: L('About 60 % on the lead foot', 'Etwa 60 % auf dem vorderen Fuß') },
+        { k: 'face', v: L('Square or open – it does not have to be open. If you open it: first open, then grip', 'Square oder offen – sie muss nicht zwingend offen sein. Wenn offen: erst öffnen, dann greifen') },
+        { k: 'weight', v: L('About 70 % on the lead foot – through the whole swing; after impact even more', 'Etwa 70 % auf dem vorderen Fuß – während des ganzen Schwungs; nach dem Treffen noch mehr') },
         { k: 'entry', v: L('3–5 cm behind the ball', '3–5 cm hinter dem Ball') },
       ],
       sketch: S(4, 2.6, [
@@ -392,16 +392,16 @@ export const BUNKER_SHOTS: TopicShot[] = [
         fig(1.9, 'front', { club: 'wedge', stance: 'wide', shift: 0.04 }),
         ball(2.06),
         co('trailAnkle', L('feet dug in, stance open', 'Füße eingegraben, Stand offen'), [0.7, 0.8]),
-        co('clubHead', L('face open, ball forward', 'Fläche offen, Ball vorn'), [3.2, 0.7]),
-        co('pelvis', L('weight forward', 'Gewicht vorn'), [3.2, 1.5]),
+        co('clubHead', L('ball forward', 'Ball vorn'), [3.2, 0.7]),
+        co('pelvis', L('70 % forward – the whole swing', '70 % vorn – den ganzen Schwung'), [3.2, 1.5]),
       ], L('Face-on, target to the right.', 'Von vorn, Ziel rechts.')),
     },
     move: {
       section: 'The swing',
       text: [
         L(
-          'A full, unhurried swing along the line of your feet. The club enters the sand behind the ball and slides under it – the ball is never touched. Swing through to a full finish; the sand needs speed.',
-          'Ein voller, ruhiger Schwung entlang der Fußlinie. Der Schläger geht hinter dem Ball in den Sand und gleitet darunter durch – der Ball wird nie berührt. Bis ins volle Finish schwingen; der Sand braucht Tempo.',
+          'A full, unhurried swing along the line of your feet. The weight stays about 70 % on the lead foot the whole time and moves even further forward after impact. The club enters the sand behind the ball and slides under it – the ball is never touched. Swing through to a full finish; the sand needs speed.',
+          'Ein voller, ruhiger Schwung entlang der Fußlinie. Das Gewicht bleibt die ganze Zeit etwa 70 % vorn und geht nach dem Treffen noch weiter nach vorn. Der Schläger geht hinter dem Ball in den Sand und gleitet darunter durch – der Ball wird nie berührt. Bis ins volle Finish schwingen; der Sand braucht Tempo.',
         ),
       ],
     },
@@ -505,7 +505,7 @@ export const BUNKER_SHOTS: TopicShot[] = [
       sketch: FIGURE_SKETCHES['bunker-slopes'],
       rows: [
         { k: 'stance', v: L('Shoulders parallel to the slope', 'Schultern parallel zum Hang') },
-        { k: 'weight', v: L('On the lower foot', 'Auf dem tieferen Fuß') },
+        { k: 'weight', v: L('Always on the lead foot – in the bunker uphill and downhill too', 'Immer auf dem vorderen Fuß – im Bunker auch bergauf und bergab') },
         { k: 'ball', v: L('Uphill middle, downhill back of centre', 'Bergauf Mitte, bergab hinter der Mitte') },
         { k: 'face', v: L('Uphill less open, downhill more open', 'Bergauf weniger offen, bergab weiter offen') },
       ],
@@ -611,7 +611,7 @@ export const SLOPE_SHOTS: TopicShot[] = [
       section: 'Uphill lie',
       rows: [
         { k: 'stance', v: L('Shoulders parallel to the slope', 'Schultern parallel zum Hang') },
-        { k: 'weight', v: L('More on the lower trail foot', 'Mehr auf dem tieferen hinteren Fuß') },
+        { k: 'weight', v: L('More on the lower trail foot – and at impact it stays rather on the trail leg', 'Mehr auf dem tieferen hinteren Fuß – und im Treffpunkt bleibt es eher auf dem hinteren Bein') },
         { k: 'ball', v: L('A little forward of normal', 'Etwas weiter vorn als sonst') },
         { k: 'club', v: L('One or two clubs more – the slope adds loft', 'Ein bis zwei Schläger mehr – der Hang gibt Loft dazu') },
         { k: 'aim', v: L('A little right – the ball tends to go left', 'Etwas rechts – der Ball neigt nach links') },
@@ -620,8 +620,8 @@ export const SLOPE_SHOTS: TopicShot[] = [
     move: {
       text: [
         L(
-          'Swing along the slope and up it. The weight cannot move forward fully – the arms swing more, the body less. A three-quarter swing and a held finish keep the balance.',
-          'Am Hang entlang und den Hang hinauf schwingen. Das Gewicht kann nicht ganz nach vorn – die Arme schwingen mehr, der Körper weniger. Ein Dreiviertelschwung und ein gehaltenes Finish halten das Gleichgewicht.',
+          'Swing along the slope and up it. At impact the weight stays rather on the trail leg – do not push it forward into the hill; the arms swing more, the body less. A three-quarter swing and a held finish keep the balance.',
+          'Am Hang entlang und den Hang hinauf schwingen. Im Treffpunkt bleibt das Gewicht eher auf dem hinteren Bein – nicht nach vorn in den Hang schieben; die Arme schwingen mehr, der Körper weniger. Ein Dreiviertelschwung und ein gehaltenes Finish halten das Gleichgewicht.',
         ),
       ],
       sketch: FIGURE_SKETCHES['slope-ball-position'],
@@ -677,7 +677,7 @@ export const SLOPE_SHOTS: TopicShot[] = [
       section: 'Ball above the feet',
       rows: [
         { k: 'grip', v: L('2–4 cm down the grip', '2–4 cm kürzer greifen') },
-        { k: 'stance', v: L('More upright, weight towards the toes', 'Aufrechter, Gewicht zu den Fußballen') },
+        { k: 'stance', v: L('More upright, the weight balanced over the whole foot', 'Aufrechter, das Gewicht ausbalanciert über den ganzen Fuß') },
         { k: 'aim', v: L('Right of the target', 'Rechts vom Ziel') },
         { k: 'club', v: L('Often one club more because of the shorter grip', 'Wegen des kürzeren Griffs oft ein Schläger mehr') },
       ],
@@ -713,7 +713,7 @@ export const SLOPE_SHOTS: TopicShot[] = [
     setup: {
       section: 'Ball below the feet',
       rows: [
-        { k: 'stance', v: L('Wider, more knee flex', 'Breiter, mehr Kniebeuge') },
+        { k: 'stance', v: L('Wider, more knee flex – and hold the knee angle through impact', 'Breiter, mehr Kniebeuge – und den Kniewinkel bis in den Treffpunkt halten') },
         { k: 'weight', v: L('Towards the heels', 'Richtung Fersen') },
         { k: 'grip', v: L('Full length of the grip', 'Volle Länge greifen') },
         { k: 'aim', v: L('Left of the target', 'Links vom Ziel') },
@@ -722,8 +722,8 @@ export const SLOPE_SHOTS: TopicShot[] = [
     move: {
       text: [
         L(
-          'A steeper, shorter swing with the arms; the legs stay flexed until the ball is gone. Coming up out of the shot is the typical miss: thin and right.',
-          'Ein steilerer, kürzerer Schwung mit den Armen; die Beine bleiben gebeugt, bis der Ball weg ist. Aus dem Schlag hochzukommen ist der typische Fehler: dünn und rechts.',
+          'A steeper, shorter swing with the arms. Hold the knee angle at impact – the legs stay flexed until the ball is gone. Coming up out of the shot is the typical miss: thin and right.',
+          'Ein steilerer, kürzerer Schwung mit den Armen. Im Treffpunkt den Kniewinkel halten – die Beine bleiben gebeugt, bis der Ball weg ist. Aus dem Schlag hochzukommen ist der typische Fehler: dünn und rechts.',
         ),
       ],
       sketch: FIGURE_SKETCHES['below-feet-stay'],

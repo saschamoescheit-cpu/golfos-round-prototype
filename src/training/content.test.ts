@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById, drillsOf, sectionOf } from './content';
+// drillById here: any known drill, also one our pro took out (the references stay valid); activeDrillById: the library
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, anyDrillById as drillById, drillById as activeDrillById, drillsOf, sectionOf } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -164,7 +165,7 @@ describe('training content', () => {
 
   it('every Coach fault points to existing drills', () => {
     expect(Object.keys(COACH_FAULT_DRILLS).length).toBe(32);
-    for (const [fault, ids] of Object.entries(COACH_FAULT_DRILLS)) for (const id of ids) expect(drillById(id), `${fault} → ${id}`).toBeTruthy();
+    for (const [fault, ids] of Object.entries(COACH_FAULT_DRILLS)) for (const id of ids) expect(activeDrillById(id), `${fault} → ${id}`).toBeTruthy();
   });
 
   it('every golfer sketch belongs to a drill or section, and every numbered detail sits on a joint of a figure', () => {

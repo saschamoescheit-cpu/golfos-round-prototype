@@ -34,9 +34,9 @@ export const COACH_FAULT_DRILLS: Record<string, string[]> = {
   chip_backswing_long: ['hold-finish-chip', 'landing-ring'],
   pitch_backswing_long: ['nine-to-three', 'clock-matrix'],
   short_game_tempo: ['nine-to-three', 'feet-together-pitch', 'hold-finish-chip'],
-  bunker_short_backswing: ['bunker-ladder', 'splash-no-ball', 'line-in-sand'],
+  bunker_short_backswing: ['bunker-ladder', 'line-in-sand', 'dollar-bill'], // splash-no-ball: out (Chris 15.11.2026)
   putt_head_movement: ['mirror-setup', 'eyes-closed', 'one-hand'],
   putt_body_movement: ['mirror-setup', 'tiger-gate', 'metronome'],
-  putt_wrist_break: ['one-hand', 'tiger-gate', 'sweetspot-gate'],
+  putt_wrist_break: ['one-hand', 'tiger-gate', 'mirror-setup'], // sweetspot-gate: out (Chris 15.11.2026)
   putt_tempo: ['metronome', 'ladder', 'eyes-closed'],
 };

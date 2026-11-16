@@ -30,6 +30,7 @@ import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
 import { FIGURE_SKETCHES, SECTION_DRILL_PICTURES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
 import { FAULT_SKETCHES } from './sketches-faults';
 import { SHOTS } from './shots';
+import { RETIRED_DRILLS, RETIRED_SHOTS } from './retired';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
@@ -108,7 +109,8 @@ export const CATEGORIES: Category[] = BUILT
     const absorbs = sh.absorbs ?? [];
     return {
       ...c,
-      shots: sh.shots.map((s) => ({ ...s, setup: pic(s.setup), move: pic(s.move), watch: pic(s.watch) })),
+      // what our pro took out does not show (content/retired.ts)
+      shots: sh.shots.filter((s) => !RETIRED_SHOTS.includes(s.id)).map((s) => ({ ...s, drills: s.drills?.filter((d) => !RETIRED_DRILLS.includes(d)), setup: pic(s.setup), move: pic(s.move), watch: pic(s.watch) })),
       lieChart: sh.lie,
       sections: c.sections.filter((s) => !absorbs.includes(s.title.en)),
       absorbed: c.sections.filter((s) => absorbs.includes(s.title.en)),
@@ -146,7 +148,7 @@ export const videoById = (id: string): Video | undefined => TOPIC_VIDEOS.get(id)
 const SHOT_TOPICS = new Map<string, CategoryId[]>();
 for (const c of CATEGORIES) for (const s of c.shots ?? []) for (const d of s.drills ?? []) SHOT_TOPICS.set(d, [...new Set([...(SHOT_TOPICS.get(d) ?? []), c.id])]);
 
-export const DRILLS: Drill[] = RAW_DRILLS
+const ALL_DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
   // the sketches with a golfer, drawn again to show what the text describes (16./17.10.2026)
   .map((d) => (FIGURE_SKETCHES[d.id] ? { ...d, sketch: FIGURE_SKETCHES[d.id] } : d))
@@ -168,7 +170,12 @@ export const DRILLS: Drill[] = RAW_DRILLS
     return { ...d, videos: [...own, ...extra.filter((v) => !own.some((o) => o.id === v.id))] };
   });
 
+/** The drills of the library – without the ones our pro took out (content/retired.ts). */
+export const DRILLS: Drill[] = ALL_DRILLS.filter((d) => !RETIRED_DRILLS.includes(d.id));
+
 export const catById = (id: CategoryId): Category | undefined => CATEGORIES.find((c) => c.id === id);
 export const drillById = (id: string): Drill | undefined => DRILLS.find((d) => d.id === id);
+/** also a drill our pro took out – for what the player already logged, a started session or an old link */
+export const anyDrillById = (id: string): Drill | undefined => ALL_DRILLS.find((d) => d.id === id);
 /** Drills of a category: its own first, then those that also fit. */
 export const drillsOf = (id: CategoryId): Drill[] => [...DRILLS.filter((d) => d.cat === id), ...DRILLS.filter((d) => d.cat !== id && d.also?.includes(id))];

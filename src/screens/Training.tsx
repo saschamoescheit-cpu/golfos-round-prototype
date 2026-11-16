@@ -11,7 +11,7 @@ import { Stepper, TopBar } from '../components/ui';
 import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
-import { CATEGORIES, DRILLS, catById, drillById, drillsOf, shotById, shotsForDrills, shotsOfDrill, videoById } from '../training/content';
+import { CATEGORIES, DRILLS, anyDrillById, catById, drillById, drillsOf, shotById, shotsForDrills, shotsOfDrill, videoById } from '../training/content';
 import { ShotGraphic } from '../training/ShotGraphics';
 import { LieChartView } from '../training/LieChart';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
@@ -944,15 +944,15 @@ function LogTab(props: { nav: Nav }) {
   const band = bandOf(playerHcp());
   const month = new Date().toISOString().slice(0, 7);
   const drillsMonth = log.filter((e) => e.at.startsWith(month)).length;
-  const drillIds = [...new Set(log.map((e) => e.drill))].filter((id) => drillById(id));
+  const drillIds = [...new Set(log.map((e) => e.drill))].filter((id) => anyDrillById(id)); // also drills our pro took out later
   // the goals of the player's handicap band: how many of the drills with a goal are reached (16.10.2026)
-  const withGoal = drillIds.filter((id) => drillById(id)!.targets && log.some((e) => e.drill === id && e.value != null));
+  const withGoal = drillIds.filter((id) => anyDrillById(id)!.targets && log.some((e) => e.drill === id && e.value != null));
   const reached = withGoal.filter((id) => {
     const d = drillById(id)!;
     return meets(d.scoring, d.targets, bestOf(d.scoring, log.filter((e) => e.drill === id && e.value != null).map((e) => e.value!)), band);
   }).length;
   // where the practice goes: results per topic
-  const perTopic = CATEGORIES.map((c) => ({ c, n: log.filter((e) => drillById(e.drill)?.cat === c.id).length }))
+  const perTopic = CATEGORIES.map((c) => ({ c, n: log.filter((e) => anyDrillById(e.drill)?.cat === c.id).length }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n)
     .slice(0, 6);
@@ -1037,7 +1037,7 @@ function LogTab(props: { nav: Nav }) {
           <Eyebrow>{tr('Your drills', 'Deine Übungen')}</Eyebrow>
           <ul className="list">
             {drillIds.map((id) => {
-              const d = drillById(id)!;
+              const d = anyDrillById(id)!;
               // oldest first for the trend
               const vals = log.filter((e) => e.drill === id && e.value != null).map((e) => e.value!).reverse();
               const st = resultStats(d.scoring, vals);
@@ -1110,7 +1110,7 @@ function LogTab(props: { nav: Nav }) {
 function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
   const [all, setAll] = useState(false);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
-  const list = (all ? props.log : props.log.slice(0, 8)).filter((e) => drillById(e.drill));
+  const list = (all ? props.log : props.log.slice(0, 8)).filter((e) => anyDrillById(e.drill));
   const dayKey = (iso: string) => iso.slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
@@ -1127,7 +1127,7 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
             {list
               .filter((e) => dayKey(e.at) === k)
               .map((e) => {
-                const d = drillById(e.drill)!;
+                const d = anyDrillById(e.drill)!;
                 const scored = d.scoring && d.scoring.kind !== 'none';
                 const ok = scored ? meets(d.scoring, d.targets, e.value, props.band) : null;
                 return (
@@ -1165,7 +1165,8 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
 // (with a link to that drill), and a video in the player's language when one explains it.
 function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   const d = props.s.drill ? drillById(props.s.drill) : undefined;
-  const sketch = props.s.sketch ?? d?.sketch;
+  // the picture stays; the link only while the drill is in the library
+  const sketch = props.s.sketch ?? (props.s.drill ? anyDrillById(props.s.drill)?.sketch : undefined);
   const vids = TOPIC_VIDEOS_SHOWN ? (props.s.videos ?? []).map((id) => props.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v) : [];
   const video = vids.find((v) => v.lang === getLang()) ?? vids[0];
   return (
@@ -1553,7 +1554,7 @@ const DRILL_TAB = new Map<string, DrillTab>();
 
 function DrillView(props: { id: string; nav: Nav }) {
   useTrainingTick();
-  const d = drillById(props.id);
+  const d = anyDrillById(props.id); // opens from the log or an old link too
   // the entry starts at the last result – usually only a step or two away (like par on the score sheet)
   const [value, setValue] = useState<number | null>(() => logFor(props.id).find((e) => e.value != null)?.value ?? null);
   const [saved, setSaved] = useState(false);
@@ -2228,7 +2229,7 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
       {p.items.length > 0 && (
         <ol className="tr-own-list">
           {p.items.map((i, k) => {
-            const dk = drillById(i.drill);
+            const dk = anyDrillById(i.drill);
             return (
               <li key={i.drill}>
                 <SwipeRow
@@ -2314,7 +2315,7 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
         <div className="undo-toast" role="status">
           <span>
             {tr('Drill removed', 'Übung entfernt')}
-            <span className="muted"> · {t(drillById(out.item.drill)?.name)}</span>
+            <span className="muted"> · {t(anyDrillById(out.item.drill)?.name)}</span>
           </span>
           <button
             type="button"
@@ -2731,7 +2732,7 @@ function sessionGoals(s: Session, band: Band): { reached: number; of: number } {
   let reached = 0;
   let of = 0;
   for (const i of s.items) {
-    const d = drillById(i.drill);
+    const d = anyDrillById(i.drill);
     const ok = d && i.done ? meets(d.scoring, d.targets, i.value ?? null, band) : null;
     if (ok == null) continue;
     of++;
@@ -2777,7 +2778,7 @@ function SessionResult(props: { id: string; nav: Nav }) {
       </div>
       <ul className="list">
         {s.items.map((i, k) => {
-          const d = drillById(i.drill);
+          const d = anyDrillById(i.drill);
           if (!d) return null;
           const ok = meets(d.scoring, d.targets, i.value ?? null, band);
           return (

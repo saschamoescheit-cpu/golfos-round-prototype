@@ -130,7 +130,7 @@ await p.waitForTimeout(300);
 const TOPICS = [
   ['Pitchen', 4],
   ['Lob Shot', 2],
-  ['Spinkontrolle', 3],
+  ['Spinkontrolle', 2], // the low spinner is out (Chris 15.11.2026)
   ['Bunker', 6],
   ['Hanglagen', 4],
   ['Schwierige Lagen', 5],

@@ -143,7 +143,13 @@ await back();
 ok((await viewNow()) === 'Fehler', 'back returns to the same part');
 await view('Übungen');
 // (Landering plays its 3D video since 18.10.2026 – the moving top view is checked on a drill that keeps it)
-await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Chips in einen Korb' }).click();
+// Chips in einen Korb (chip-towel-home) is out (Chris 15.11.2026) – the moving top view is checked on the towel drill of Pitchen
+const topics = async () => { for (let i = 0; i < 6 && !(await p.locator('.tr-cat').first().isVisible()); i++) { await back(); await p.waitForTimeout(300); } };
+await topics();
+await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Pitchen &/ }) }).first().click();
+await p.waitForTimeout(300);
+await view('Übungen');
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Handtuch als Landezone' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
 // the ball moves on the top view: it flies onto the ring and rolls to the hole
@@ -156,7 +162,10 @@ await topFig.locator('.tr-motion-btn').click();
 ok((await topFig.locator('svg[role="img"]').innerHTML()) === topStill, 'Stopp brings back the still top view');
 ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
 // Landering: its 3D video with the ring and the hole (18.10.2026); the checks below go on with it
-await back();
+await topics();
+await p.locator('.tr-cat').filter({ hasText: 'Chippen' }).first().click();
+await p.waitForTimeout(300);
+await view('Übungen');
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('figure.tr-sketch').first().locator('.tr-motion-btn').getAttribute('aria-label')) === '3D-Video abspielen', 'Landering plays a 3D video');
@@ -246,7 +255,8 @@ await tab('Üben');
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-block .list-item').count()) >= 10, 'ready-made plans listed');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
-ok((await p.locator('.tr-plan-row .tr-thumb > svg').count()) === 4, 'every drill of the plan has a small picture (Sascha 16.10.2026)');
+// the plan's sweetspot gate is out (Chris 15.11.2026): three drills left – tiger gate, start line gate, clock
+ok((await p.locator('.tr-plan-row .tr-thumb > svg').count()) === 3, 'every drill of the plan has a small picture (Sascha 16.10.2026)');
 await p.getByRole('button', { name: 'Einheit starten' }).click();
 await p.waitForTimeout(2300);
 ok(await p.locator('.tr-now').isVisible(), 'session runs');
@@ -254,7 +264,7 @@ ok((await p.locator('.tr-timer, .tr-timer-time').count()) === 0, 'no timer in th
 await shot('session');
 for (let i = 0; i < 14; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Fertig – nächste Übung' }).click();
-ok((await p.locator('.tr-now-name').innerText()).includes('Tiger'), 'next drill after done');
+ok((await p.locator('.tr-now-name').innerText()).includes('Startlinien-Tor'), 'next drill after done');
 // the arrow without a result opens the result sheet – like the score sheet on a hole
 await p.locator('.hole-bar-arrow').last().click();
 ok(await p.getByRole('dialog', { name: 'Dein Ergebnis' }).isVisible(), 'drill bar: the arrow without a result opens the result sheet');
@@ -262,7 +272,7 @@ await p.getByRole('button', { name: 'Überspringen – nächste Übung' }).click
 ok((await p.locator('.map-hole-no').innerText()) === '3', 'result sheet: skip goes on to the next drill');
 // pause through the overview
 await p.locator('.hole-bar .map-score').click();
-ok((await p.locator('.drawer-row').count()) === 4, 'overview lists the 4 drills');
+ok((await p.locator('.drawer-row').count()) === 3, 'overview lists the 3 drills');
 await p.locator('.drawer-action').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.list-item').filter({ has: p.locator('.paused-mark') }).first().isVisible(), 'paused session: a row with the pause mark (like a paused round)');
@@ -274,10 +284,11 @@ await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.waitForTimeout(400);
 ok(await p.locator('.tr-now').isVisible(), 'opening Training again continues the session');
 await back();
-await p.getByRole('button', { name: 'Einheit beenden' }).click();
+// on the last drill its arrow is called the same – the button of the sheet
+await p.locator('button.btn-primary').filter({ hasText: /^Einheit beenden$/ }).click();
 await p.getByRole('button', { name: 'Speichern & beenden' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result page: 1 of 4 drills done');
+ok((await p.locator('.tile-num').first().innerText()).startsWith('1/3'), 'result page: 1 of 3 drills done');
 await shot('result');
 await back();
 await p.waitForTimeout(200);
