@@ -1448,32 +1448,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     ? shownPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
                     : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
-                {/* how the first putt missed (Sascha 22.10.2026) – placed putts tell it by themselves; in the row, small */}
-                {(e.putts ?? 0) >= 2 && !placedPutts?.length && (
-                  <span className="putt-miss-chips" role="group" aria-label={tr('First putt missed', 'Erster Putt verfehlt')}>
-                    {(
-                      [
-                        ['length', 'short', tr('short', 'zu kurz')],
-                        ['length', 'long', tr('long', 'zu lang')],
-                        ['line', 'left', tr('left', 'links')],
-                        ['line', 'right', tr('right', 'rechts')],
-                      ] as const
-                    ).map(([key, v, label]) => {
-                      const on = e.firstPuttMiss?.[key] === v;
-                      return (
-                        <button
-                          key={v}
-                          type="button"
-                          className={`chip small-chip${on ? ' on' : ''}`}
-                          aria-pressed={on}
-                          onClick={() => save(k, { firstPuttMiss: { length: e.firstPuttMiss?.length ?? null, line: e.firstPuttMiss?.line ?? null, [key]: on ? null : v } })}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </span>
-                )}
+                {/* how the first putt missed – the chips (zu kurz, zu lang, links, rechts) taken out (Sascha 16.11.2026: "wird nicht
+                    benötigt"); what was noted stays in the round */}
               </span>
               {/* the putts on the green: the pencil here, where the other shots are edited (Sascha 20.10.2026) */}
               {data ? (
