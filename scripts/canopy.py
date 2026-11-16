@@ -130,20 +130,48 @@ def run(path):
     mask[area == 0] = 0
 
     min_px = 7 / (M_PER_PX * M_PER_PX)  # from about one small tree (7 m²)
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     canopy = []
-    for c in contours:
+
+    def emit(c, ox, oy):
         if cv2.contourArea(c) < min_px:
-            continue
+            return
         c = cv2.approxPolyDP(c, 0.45 / M_PER_PX, True)  # crown outlines within half a metre
         if len(c) < 3:
-            continue
+            return
         ring = []
-        for (px, py) in c[:, 0, :]:
-            lon, lat = unmerc(x0 + px * step, y1 - py * step)
+        for (qx, qy) in c[:, 0, :]:
+            lon, lat = unmerc(x0 + (qx + ox) * step, y1 - (qy + oy) * step)
             ring.append([round(lon, 6), round(lat, 6)])
         ring.append(ring[0])
         canopy.append(ring)
+
+    # A wood round a clearing (night 15./16.11.2026, Orange Lake Legends 16: one outline of 15 ha round two fairways –
+    # filled, the app drew trees all over them and the caddie took the fairway for woods): an outline is a ring
+    # without holes, so a piece of canopy with a clearing in it (20 m² and more) is cut in halves until none is left.
+    hole_px = 20 / (M_PER_PX * M_PER_PX)
+
+    def pieces(m, ox, oy):
+        cs, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        if not cs:
+            return
+        holed = any(hier[0][i][3] >= 0 and cv2.contourArea(cs[i]) >= hole_px for i in range(len(cs)))
+        h_, w_ = m.shape
+        if holed and max(h_, w_) > 8:
+            if w_ >= h_:
+                pieces(np.ascontiguousarray(m[:, : w_ // 2]), ox, oy); pieces(np.ascontiguousarray(m[:, w_ // 2:]), ox + w_ // 2, oy)
+            else:
+                pieces(np.ascontiguousarray(m[: h_ // 2]), ox, oy); pieces(np.ascontiguousarray(m[h_ // 2:]), ox, oy + h_ // 2)
+            return
+        for i in range(len(cs)):
+            if hier[0][i][3] < 0:
+                emit(cs[i], ox, oy)
+
+    n_cc, lbl, st, _ = cv2.connectedComponentsWithStats(mask)
+    for k in range(1, n_cc):
+        if st[k, cv2.CC_STAT_AREA] < min_px:
+            continue
+        bx, by, bw, bh = st[k, 0], st[k, 1], st[k, 2], st[k, 3]
+        pieces(((lbl[by:by + bh, bx:bx + bw] == k) * 255).astype(np.uint8), bx, by)
     geo['canopy'] = canopy
     json.dump(geo, open(path, 'w', encoding='utf-8'), separators=(',', ':'))
     cv2.imwrite(os.path.join(os.environ.get('CANOPY_DEBUG', '.'), os.path.basename(path) + '.jpg'),

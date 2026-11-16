@@ -1,12 +1,13 @@
 // Adds the details of the drawn hole (2D view) to the bundled courses: single trees, tree rows and hedges, paths
 // and rough from OpenStreetMap (© OpenStreetMap contributors, ODbL). The curated golf geometry stays as it is.
-// Usage: npx tsx scripts/plandetails.ts
+// Usage: npx tsx scripts/plandetails.ts [course.json …]   (no names: every bundled course)
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { parseOsmXml, planDetails } from '../src/lib/courses';
 import type { CourseGeometry } from '../src/types';
 
 const dir = new URL('../src/data/courses/', import.meta.url);
-for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+const only = process.argv.slice(2).map((f) => f.replace(/^.*[\\/]/, ''));
+for (const file of readdirSync(dir).filter((f) => f.endsWith('.json') && (!only.length || only.includes(f)))) {
   const path = new URL(file, dir);
   const geo = JSON.parse(readFileSync(path, 'utf-8')) as CourseGeometry;
   const pts = [...geo.holes.flatMap((h) => h.line), ...(geo.boundary ?? []).flat()];

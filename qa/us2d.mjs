@@ -1,7 +1,7 @@
 // QA (night 14./15.11.2026, Sascha: "Die ganzen USA Plätze haben richtig schlechte 2D Ansichten … das maximal mögliche
 // an Details"): the drawn hole (2D) on the Florida courses of the trip – a fairway, tree crowns, a green and its tee on
 // every hole looked at (aerial fairways, crowns and greens since tonight, tee boxes where OSM had none). Counted in the
-// screenshot's colours as qa/plan2d.mjs.  Usage: node qa/us2d.mjs [url]   (SHOTS=dir for the screenshots)
+// screenshot's colours as qa/plan2d.mjs. Since 16.11.: Cypress's bunkers (sandtraps.py).  Usage: node qa/us2d.mjs [url]   (SHOTS=dir for the screenshots)
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
@@ -24,8 +24,8 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-const shares = async (colours) => {
-  const png = (await p.screenshot({ clip: { x: 0, y: 160, width: 390, height: 420 } })).toString('base64');
+const shares = async (colours, clip = { x: 0, y: 160, width: 390, height: 420 }) => {
+  const png = (await p.screenshot({ clip })).toString('base64');
   return p.evaluate(
     async ([b64, cols]) => {
       const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
@@ -41,12 +41,14 @@ const shares = async (colours) => {
       for (let i = 0; i < d.length; i += 4)
         for (const [k, c] of Object.entries(want)) if (Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]) < 30) n[k]++;
       const all = d.length / 4;
-      return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, Math.round((v / all) * 1000) / 10]));
+      return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, Math.round((v / all) * 10000) / 100]));
     },
     [png, colours],
   );
 };
-const COLOURS = { ground: '#e3eed6', rough: '#23803d', fairway: '#3fb54d', crownDark: '#1d5a24' };
+const COLOURS = { ground: '#e3eed6', rough: '#23803d', fairway: '#3fb54d', crownDark: '#1d5a24', sand: '#f2e3b8', teeEdge: '#a8e39a' };
+// details that were missing (night 15./16.11.2026): Cypress had no bunker at all (the Legends' tee boxes: src/data/usdetails.test.ts)
+const MUST = { 'StoneGate Golf Club – Cypress': { 1: 'sand' } };
 await p.goto(url);
 await p.waitForTimeout(1200);
 for (const [name, holes] of COURSES) {
@@ -82,6 +84,12 @@ for (const [name, holes] of COURSES) {
     const s = await shares(COLOURS);
     // narrow holes (Hawks 4 between the lakes, Cypress 1 in the woods) fill little of the screen: the drawn hole counts
     ok(s.fairway > 1 && s.fairway + s.rough + s.crownDark > 4,`${name} ${h}: fairway ${s.fairway} %, rough ${s.rough} %, crowns ${s.crownDark} %`);
+    const must = MUST[name]?.[h];
+    if (must) {
+      // the whole drawn hole, tee to green (a greenside bunker or the tee lies outside the band counted above)
+      const all = await shares(COLOURS, { x: 0, y: 60, width: 330, height: 560 });
+      ok(all[must] > 0.01, `${name} ${h}: ${must} drawn (${all[must]} %)`);
+    }
     if (shots) await p.screenshot({ path: `${shots}/us2d-${name.replace(/\W+/g, '')}-${h}.png` });
   }
   await p.goto(url);
