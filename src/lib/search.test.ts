@@ -8,6 +8,16 @@ describe('bundled courses are found without the course database', () => {
     expect(searchBundled('ALCANADA')[0].name).toBe('Club de Golf Alcanada');
     expect(searchBundled('xyz')).toEqual([]);
   });
+  // Sascha 16.11.2026 (Orlando): "Legends Golf Clermont" – as Google names it – found nothing
+  it('found by the town too: "Legends Golf Clermont" is Legends G&CC, not Orange Lake', () => {
+    const r = searchBundled('Legends Golf Clermont');
+    expect(r.map((c) => c.id)).toEqual(['osm:relation/4040123']);
+    expect(r[0].place).toBe('Clermont, FL, USA');
+    expect(searchBundled('legends clermont').map((c) => c.id)).toEqual(['osm:relation/4040123']);
+    expect(searchBundled('Legends Golf & Country Club').map((c) => c.id)).toEqual(['osm:relation/4040123']);
+    expect(searchBundled('legends').map((c) => c.place).sort()).toEqual(['Clermont, FL, USA', 'Kissimmee, FL, USA']);
+    expect(searchBundled('kissimmee').length).toBeGreaterThan(3);
+  });
   it('a course mapped twice in OSM is listed once', () => {
     expect(bundledCourses().filter((c) => c.name === 'Golf de Son Antem West')).toHaveLength(1);
   });
