@@ -37,3 +37,6 @@ Night 14./15.11.2026 (Sascha: "Die ganzen USA Plätze haben richtig schlechte 2D
   - StoneGate Cypress, StoneGate Oaks and The Reserve have no OSM fairway to learn from; they learnt from Celebration, Kissimmee Bay and the Legends.
 - Tee boxes (scripts/teeboxes.py) where no mapped tee lies within 25 m of a hole's start: 10 × 24 m along the line's first stretch.
 - Green charts (USGS 3DEP 1 m, lidar/us_install.py) for Celebration, Hawks Landing, The Reserve and StoneGate Cypress.
+Night 15./16.11.2026 (the Legends next, Sascha: "das maximal mögliche an Details"):
+- Tee boxes: every raised, flat, mown pad on the first part of a hole from the USGS 3DEP lidar (1 m) and the aerial – scripts/teepads.py (OSM maps one tee per hole at the Legends; the aerial shows four or five). Orange Lake Legends: 18 → 70 tees.
+- Tree crowns round a clearing: scripts/canopy.py cut a wood with a fairway inside it as one outline (Legends 16: 15 ha, filled over two fairways; Legends 15: over the lake) – a piece of canopy with a clearing is now cut in halves until it has none. Legends canopy read anew (Osceola 2026).
