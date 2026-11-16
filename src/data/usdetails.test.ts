@@ -20,6 +20,10 @@ describe('USA courses: the details of the 2D view', () => {
     expect(many, g.holes.map((h) => h.ref + ':' + (holeMapData(g, 'Main', Number(h.ref))?.tees.length ?? 0)).join(' ')).toBeGreaterThanOrEqual(15);
   });
 
+  it('StoneGate Cypress: bunkers on the course (none in OSM)', () => {
+    expect(geo(CYPRESS).bunker.length).toBeGreaterThanOrEqual(25);
+  });
+
   for (const id of [LEGENDS, CYPRESS]) {
     it(`${SEED_COURSES[id]?.name ?? id}: no tree crowns over a fairway, a green or a lake`, () => {
       const g = geo(id);
