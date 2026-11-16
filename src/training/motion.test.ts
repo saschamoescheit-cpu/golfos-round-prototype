@@ -13,18 +13,16 @@ describe('animated pictures', () => {
     for (const id of Object.keys(DRILL_MOTIONS)) {
       const d = anyDrillById(id); // a movement may belong to a drill our pro took out
       expect(d, id).toBeTruthy();
-      // a 3D video alone (no drawn movement) also goes with a top view
-      if (!DRILL_MOTIONS[id].frames.length) expect((d!.sketch?.view === 'side' || d!.sketch?.view === 'top') && !!d!.sketch.motion?.video, id).toBe(true);
-      else expect(d!.sketch?.view === 'side' && d!.sketch.motion && d!.sketch.items.some((x) => x.k === 'figure'), id).toBe(true);
+      // no 3D in Training (Sascha 17.11.2026): every movement is drawn
+      expect(DRILL_MOTIONS[id].frames.length, id).toBeGreaterThan(0);
+      expect(d!.sketch?.view === 'side' && d!.sketch.motion && d!.sketch.items.some((x) => x.k === 'figure'), id).toBe(true);
     }
     for (const [cat, list] of Object.entries(SECTION_MOTIONS)) {
       for (const title of Object.keys(list!)) {
         const c = CATEGORIES.find((x) => x.id === cat);
         const s = c && sectionOf(c, title);
-        // a 3D video alone also goes with a top view
-        const m = list![title];
-        if (!m.frames.length) expect((s?.sketch?.view === 'side' || s?.sketch?.view === 'top') && !!s.sketch.motion?.video, `${cat} › ${title}`).toBe(true);
-        else expect(s?.sketch?.view === 'side' && !!s.sketch.motion, `${cat} › ${title}`).toBe(true);
+        expect(list![title].frames.length, `${cat} › ${title}`).toBeGreaterThan(0);
+        expect(s?.sketch?.view === 'side' && !!s.sketch.motion, `${cat} › ${title}`).toBe(true);
       }
     }
   });
@@ -33,11 +31,7 @@ describe('animated pictures', () => {
     for (const [cat, list] of Object.entries(FAULT_MOTIONS)) {
       for (const [name, m] of Object.entries(list!)) {
         const f = CATEGORIES.find((c) => c.id === cat)?.faults?.find((x) => x.name.en === name);
-        // only a 3D video (no drawn movement): any picture can carry it
-        if (!m.frames.length) {
-          expect(!!m.video && (f?.sketch?.view === 'top' || f?.sketch?.view === 'side' || f?.sketch?.view === 'face') && !!f.sketch.motion, `${cat} › ${name}`).toBe(true);
-          continue;
-        }
+        expect(m.frames.length, `${cat} › ${name}`).toBeGreaterThan(0);
         const figs = f?.sketch?.view === 'side' ? f.sketch.items.filter((x) => x.k === 'figure').length : 0;
         expect(f?.sketch?.view === 'side' && !!f.sketch.motion, `${cat} › ${name}`).toBe(true);
         expect(figs, `${cat} › ${name}`).toBeGreaterThan(Math.max(m.fig ?? 0, ...(m.with ?? []).map((w) => w.fig)));
@@ -80,12 +74,11 @@ describe('animated pictures', () => {
   });
 });
 
-describe('3D videos', () => {
-  it('every 3D video named by a picture exists; its keys run forward in time; the club meets the ball', async () => {
-    const { SWINGS, PAIRS } = await import('./anim3d/swings');
-    const named = [...DRILLS.map((d) => d.sketch), ...CATEGORIES.flatMap((c) => c.sections.map((s) => s.sketch))].flatMap((s) => (s?.view === 'side' && s.motion?.video ? [s.motion.video] : []));
-    expect(named.length).toBeGreaterThan(20);
-    for (const v of named) expect(v in SWINGS || v in PAIRS, v).toBe(true);
+describe('3D swings (only the range warm-up of Agility uses them since 17.11.2026)', () => {
+  it('no picture of Training plays 3D; the keys of each swing run forward in time; the club meets the ball', async () => {
+    const { SWINGS } = await import('./anim3d/swings');
+    const all = [...DRILLS.map((d) => d.sketch), ...CATEGORIES.flatMap((c) => [...c.sections, ...(c.absorbed ?? [])].map((s) => s.sketch)), ...CATEGORIES.flatMap((c) => (c.faults ?? []).map((x) => x.sketch))];
+    for (const s of all) if (s && 'motion' in s && s.motion) expect(s.motion.frames.length).toBeGreaterThan(0);
     for (const [id, sw] of Object.entries(SWINGS)) {
       sw.keys.forEach((k, i) => i && expect(k.t, `${id} key ${i}`).toBeGreaterThan(sw.keys[i - 1].t));
       // a stance without a stroke (standing on the line to feel the slope) has no ball at the club

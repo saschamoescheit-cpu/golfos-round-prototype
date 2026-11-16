@@ -1,13 +1,12 @@
 import { L, type CategoryId, type Motion, type MotionFrame, type Shot } from '../types';
 
-// The movements of the animated figure (Sascha 17.10.2026: "animated videos would be better than the still
+// The movements of the drawn figure (Sascha 17.10.2026: "animated videos would be better than the still
 // pictures"). The still picture with its numbers stays; the play button on it shows the movement. Times are seconds as
-// shown – slowed down so the eye can follow, the proportions kept (full swing 3:1, putting stroke 2:1).
+// shown – slowed down so the eye can follow, the proportions kept (full swing 3:1, putting stroke 2:1). No 3D in Training
+// (Sascha 17.11.2026: "the 3D animations are not good") – the phases of a movement are drawn as pictures side by side.
 
 /** the full swing, face-on: back in three counts, down in one (Tour Tempo 3:1), the finish held */
 const fullSwing = (opts?: MotionFrame['opts'], top = 0.3, shot: Shot = 'full'): Motion => ({
-  // the 3D video where the player swings as usual (no drill aid in the picture)
-  video: !opts || (Object.keys(opts).length === 1 && opts.club === 'iron') ? 'full' : opts.club === 'driver' && !opts.heelUp ? 'driver' : undefined,
   frames: [
     { pose: 'front', opts, t: 0, hold: 0.5 },
     { pose: 'takeaway', opts, t: 0.5, label: L('back in one piece – one', 'aus einem Guss zurück – eins') },
@@ -22,7 +21,6 @@ const fullSwing = (opts?: MotionFrame['opts'], top = 0.3, shot: Shot = 'full'): 
 
 /** the half swing from 9 to 3 o'clock (L to L, pitch, chip-and-run of the bunker without the full finish) */
 const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
-  video: !opts || (Object.keys(opts).length === 1 && opts.club === 'iron') ? 'half' : undefined,
   frames: [
     { pose: 'front', opts: { club: 'wedge', ...opts }, t: 0, hold: 0.5 },
     { pose: 'takeaway', opts: { club: 'wedge', ...opts }, t: 0.5, label: L('the body turns back', 'der Körper dreht zurück') },
@@ -35,7 +33,6 @@ const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
 
 /** the putting stroke: a pendulum from the shoulders, back twice as long as through (Grober) */
 const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
-  video: opts ? undefined : 'putt',
   frames: [
     { pose: 'putt', opts, t: 0, hold: 0.6 },
     { pose: 'putt', opts, rock: -arc, t: 0.7, label: L('the shoulders rock back – tick', 'die Schultern schaukeln zurück – Tick') },
@@ -48,7 +45,6 @@ const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
 
 /** the chip: the same pendulum with a lofted club, the grip leads, the short finish held */
 const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
-  video: opts ? undefined : 'chip',
   frames: [
     { pose: 'chip', opts, t: 0, hold: 0.6 },
     { pose: 'chip', opts, rock: -15, t: 0.6, label: L('the shoulders rock, the wrists stay firm', 'die Schultern schaukeln, die Handgelenke bleiben fest') },
@@ -274,140 +270,3 @@ export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> 
     },
   },
 };
-
-// 3D where the video shows what the picture shows: no slope, no drill aid the 3D player does not have; the bunker from
-// the sand, the fairway wood without a tee
-const set3d = (m: Motion | undefined, v: Motion['video']) => m && (m.video = v);
-for (const id of ['hip-stick', 'sand-on-face', 'brush-find', 'hold-finish-slope']) set3d(DRILL_MOTIONS[id], undefined);
-set3d(DRILL_MOTIONS['fairway-bunker'], 'sand');
-set3d(DRILL_MOTIONS['feet-together-swing'], 'feet');
-set3d(DRILL_MOTIONS['feet-together-pitch'], 'feetHalf');
-set3d(DRILL_MOTIONS['pause-top'], 'pause');
-set3d(DRILL_MOTIONS['one-hand'], 'puttOne');
-set3d(DRILL_MOTIONS['lead-hand-chip'], 'chipOne');
-set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
-set3d(SECTION_MOTIONS.bunker?.['The swing'], 'bunker');
-set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
-// the slopes in 3D (18.10.2026): the ground tilts under the player
-set3d(SECTION_MOTIONS.slopes?.['Uphill lie'], 'slopeUp');
-// the drills behind the faults in 3D, with their aids in the picture (18.10.2026)
-// the ball flight laws in 3D: path and face as arrows at the ball, the curve that follows
-SECTION_MOTIONS.ballflight = {
-  ...SECTION_MOTIONS.ballflight,
-  'The nine ball flights': { frames: [], video: 'nineFlights' },
-  'The slice': { frames: [], video: 'sliceLaws' },
-  'The hook': { frames: [], video: 'hookLaws' },
-  'Shape on purpose': { frames: [], video: 'drawFadePair' },
-};
-set3d(DRILL_MOTIONS['step-drill'], 'stepDrill');
-set3d(DRILL_MOTIONS['pump-drill'], 'pumpDrill');
-set3d(DRILL_MOTIONS['impact-bag'], 'impactBag');
-set3d(DRILL_MOTIONS['hold-finish-slope'], 'slopeBelow');
-for (const [id, video] of [
-  ['tiger-gate', 'tigerGate'],
-  ['ball-gate', 'startGate'],
-  ['line-drill-irons', 'lineDrill'],
-  ['tee-after-ball', 'teeAfter'],
-  ['slice-gate', 'insideGate'],
-  ['headcover-outside', 'headcover'],
-  ['woods-sweep', 'sweepTee'],
-  ['hit-up-tee', 'secondTee'],
-  ['below-feet-stay', 'slopeBelow'],
-  ['aim-for-slope', 'slopeAbove'],
-] as const)
-  DRILL_MOTIONS[id] ??= { frames: [], video };
-set3d(SECTION_MOTIONS.slopes?.['Downhill lie'], 'slopeDown');
-
-// the set-up sections: the address in 3D, still – the views show it from the front, from behind, at an angle
-const still3d = (video: Motion['video']): Motion => ({ frames: [], video });
-SECTION_MOTIONS.basics = { ...SECTION_MOTIONS.basics, Posture: still3d('setupIron') };
-SECTION_MOTIONS.irons = { ...SECTION_MOTIONS.irons, 'Set-up for irons': still3d('setupIron') };
-SECTION_MOTIONS.driver = { ...SECTION_MOTIONS.driver, 'Set-up for the driver': still3d('setupDriver') };
-SECTION_MOTIONS.chipping = { ...SECTION_MOTIONS.chipping, 'The set-up': still3d('setupChip') };
-SECTION_MOTIONS.putting = { ...SECTION_MOTIONS.putting, 'Set-up': still3d('setupPutt') };
-SECTION_MOTIONS.slopes = { ...SECTION_MOTIONS.slopes, 'Ball above the feet': still3d('slopeAbove'), 'Ball below the feet': still3d('slopeBelow') };
-
-// fault pictures in 3D: the fault and the right way side by side (the drawing stays for the others)
-set3d(FAULT_MOTIONS.irons?.['Fat shots'], 'fatPair');
-set3d(FAULT_MOTIONS.irons?.['Thin shots'], 'thinPair');
-set3d(FAULT_MOTIONS.ballflight?.['Topped shots'], 'thinPair');
-set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
-// the slice faults had only the top view of the flight: now the swing from behind, with the clubhead's path
-FAULT_MOTIONS.swing = { ...FAULT_MOTIONS.swing, 'Over the top': still3d('slicePair'), 'Rushing the swing': still3d('rushPair') };
-FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('driverSlicePair'), 'Sky ball (pop-up)': still3d('skyPair') };
-set3d(FAULT_MOTIONS.bunker?.['Ball stays in the bunker'], 'bunkerStuckPair');
-set3d(FAULT_MOTIONS.pitching?.['Slowing down at the ball'], 'pitchSlowPair');
-set3d(FAULT_MOTIONS.bunker?.['Thin over the green'], 'bunkerThinPair');
-FAULT_MOTIONS.ballflight = { ...FAULT_MOTIONS.ballflight, Slice: still3d('sliceLaws'), Hook: still3d('hookLaws'), Shank: still3d('shankPair') };
-FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Toe or heel hits': still3d('toePair') };
-// length control: the landing ring and the hole, the clock of the wedges
-FAULT_MOTIONS.chipping = { ...FAULT_MOTIONS.chipping, 'Wrong length': still3d('chipLengthPair') };
-FAULT_MOTIONS.pitching = { ...FAULT_MOTIONS.pitching, 'Every pitch a different length': still3d('clockTrio') };
-DRILL_MOTIONS['landing-ring'] ??= { frames: [], video: 'chipLand' };
-// the bunker drills in 3D: the line in the sand, splashing without a ball, the banknote frame
-DRILL_MOTIONS['line-in-sand'] ??= { frames: [], video: 'sandLine' };
-set3d(DRILL_MOTIONS['splash-no-ball'], 'sandSplash');
-DRILL_MOTIONS['dollar-bill'] ??= { frames: [], video: 'sandFrame' };
-// the punch under the branches in 3D: two trees and a branch, the fault goes up into them
-set3d(DRILL_MOTIONS['punch-gap'], 'punch');
-set3d(SECTION_MOTIONS.trouble?.['The punch shot under trees'], 'punch');
-set3d(FAULT_MOTIONS.trouble?.['Punch shot goes up into the branches'], 'punchPair');
-// the last drawings in 3D: fried egg, trail foot back, divot lie, hybrid chip, lob, lead arm only, the armsy backswing
-set3d(DRILL_MOTIONS['fried-egg'], 'friedEgg');
-set3d(DRILL_MOTIONS['one-foot-bunker'], 'sandTrailToe');
-set3d(DRILL_MOTIONS['divot-lie'], 'divotLie');
-set3d(DRILL_MOTIONS['hybrid-chip'], 'hybridChip');
-set3d(DRILL_MOTIONS['lead-arm-only'], 'leadArm');
-set3d(SECTION_MOTIONS.pitching?.['Lob and flop'], 'lob');
-set3d(FAULT_MOTIONS.fitness?.['Short, armsy backswing'], 'armsyPair');
-set3d(DRILL_MOTIONS['sand-on-face'], 'sandOnFace');
-set3d(DRILL_MOTIONS['brush-find'], 'brushFind');
-set3d(DRILL_MOTIONS['l-to-l'], 'lToL');
-// the clock system in the basics: the three golfers at 8, 9 and 10 o'clock
-set3d(SECTION_MOTIONS.pitching?.['The clock system'], 'clockTrio');
-// the swing basics: each phase with the steps of its own text
-set3d(SECTION_MOTIONS.swing?.['Takeaway and backswing'], 'phaseBack');
-set3d(SECTION_MOTIONS.swing?.['Transition and downswing'], 'phaseDown');
-set3d(SECTION_MOTIONS.swing?.['Impact and finish'], 'phaseImpact');
-set3d(SECTION_MOTIONS.driver?.['Hit up and hit the centre'], 'driverUp');
-set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'woodSweep');
-set3d(SECTION_MOTIONS.putting?.['Short putts (under 2 m)'], 'puttShortFirm');
-set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sandFairway');
-// feeling the slope with the feet: standing on the line, facing the hole
-if (DRILL_MOTIONS['feet-feel']) set3d(DRILL_MOTIONS['feet-feel'], 'feetFeel');
-else DRILL_MOTIONS['feet-feel'] = { frames: [], video: 'feetFeel' };
-FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Not seeing the slope': still3d('feetFeel') };
-// drills with the steps of their own text
-set3d(DRILL_MOTIONS['split-grip'], 'splitGrip');
-set3d(DRILL_MOTIONS['slow-motion'], 'sixPositions');
-set3d(DRILL_MOTIONS['fairway-bunker'], 'sandFairway');
-set3d(DRILL_MOTIONS['brush-five'], 'woodSweep');
-set3d(DRILL_MOTIONS['hold-finish'], 'phaseImpact');
-set3d(DRILL_MOTIONS['driver-wide-stance'], 'driverWide');
-if (DRILL_MOTIONS['alignment-station']) set3d(DRILL_MOTIONS['alignment-station'], 'alignStation');
-else DRILL_MOTIONS['alignment-station'] = { frames: [], video: 'alignStation' };
-// putting faults as 3D pairs from behind: short, the short one missed, the three-putt, missing low
-FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Always short': still3d('puttShortPair'), 'Missing the short ones': still3d('puttPeekPair'), 'Three-putts from distance': still3d('puttLongPair') };
-set3d(FAULT_MOTIONS.trouble?.['Flyer over the green'], 'flyerPair');
-FAULT_MOTIONS.trouble = { ...FAULT_MOTIONS.trouble, ...(FAULT_MOTIONS.trouble?.['Flyer over the green'] ? {} : { 'Flyer over the green': still3d('flyerPair') }) };
-// the bunker ladder: three swing lengths from the sand, three landing rings
-FAULT_MOTIONS.bunker = { ...FAULT_MOTIONS.bunker, 'Never the right length': still3d('sandTrio') };
-if (DRILL_MOTIONS['bunker-ladder']) set3d(DRILL_MOTIONS['bunker-ladder'], 'sandTrio');
-else DRILL_MOTIONS['bunker-ladder'] = { frames: [], video: 'sandTrio' };
-FAULT_MOTIONS.basics = { ...FAULT_MOTIONS.basics, 'Aiming right without knowing it': still3d('aimPair') };
-FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Missing low (amateur side)': still3d('puttLowPair') };
-DRILL_MOTIONS['clock-matrix'] ??= { frames: [], video: 'clockTrio' };
-FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };
-FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };
-set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
-set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');
-set3d(FAULT_MOTIONS.chipping?.['Thin or bladed chip'], 'chipThinPair');
-set3d(FAULT_MOTIONS.chipping?.['Slowing down'], 'chipSlowPair');
-set3d(FAULT_MOTIONS.woods?.Topping, 'woodTopPair');
-set3d(FAULT_MOTIONS.woods?.['Fat (chunked) woods'], 'woodFatPair');
-set3d(FAULT_MOTIONS.pitching?.['Fat or thin pitches'], 'pitchFatPair');
-// drill aids in 3D: the stick at the hip, the towel, the stick with the grip, the trail heel up
-set3d(DRILL_MOTIONS['hip-stick'], 'hipStick');
-set3d(DRILL_MOTIONS['towel-arms'], 'towelHalf');
-set3d(DRILL_MOTIONS['stick-lead-arm'], 'chipStick');
-set3d(DRILL_MOTIONS['trail-toe'], 'chipToe');

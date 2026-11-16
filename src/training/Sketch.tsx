@@ -1,8 +1,8 @@
-import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react';
 import { getLang, tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { sided } from './sides';
-import type { L, P, SideItem, Sketch, SketchItem } from './types';
+import { L, type P, type SideItem, type Sketch, type SketchItem } from './types';
 import { Golfer, golferJoints, type GolferOptions } from './Golfer';
 import { at, ballFlight, hitAt, timeline, type Frame } from './motion';
 import { ballsAt, rollPlan } from './roll';
@@ -65,29 +65,81 @@ function motionFig(s: Extract<Sketch, { view: 'side' }>, m: NonNullable<Extract<
   return best;
 }
 
-// the 3D video of a movement: three.js only loads when it is played
-const Swing3D = lazy(() => import('./anim3d/Swing3D'));
-
 /** a figure's options that stay the same through a movement */
 const KEEP: (keyof GolferOptions)[] = ['club', 'stance', 'flip', 'oneHand', 'gripStick', 'towel', 'spineClub', 'crossClub'];
+
+/** one timeline per moving figure of a side sketch; the first one names the phases */
+function timelinesOf(s: Sketch) {
+  const motion = s.view === 'side' ? s.motion : undefined;
+  if (!motion || s.view !== 'side' || !motion.frames.length) return null;
+  const figs = s.items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
+  const parts = [{ fig: motionFig(s, motion), frames: motion.frames }, ...(motion.with ?? [])];
+  const out = parts.flatMap((p) => {
+    const fig = figs[p.fig];
+    if (!fig) return [];
+    const base: Omit<GolferOptions, 'pose'> = {};
+    for (const k of KEEP) if (fig[k] !== undefined) (base as Record<string, unknown>)[k] = fig[k];
+    return [{ fig: p.fig, tl: timeline(base, { frames: p.frames }) }];
+  });
+  return out.length ? out : null;
+}
+
+/**
+ * The phases of a movement as pictures side by side (Sascha 17.11.2026: the 3D videos are gone – "alles mit Bildern",
+ * as phase pictures): the start, the top (the longest pause before the ball), impact and the end – each a still
+ * drawing of the same sketch with the words of its phase. Fewer positions: each one.
+ */
+export function phasesOf(s: Sketch): { moving: Map<number, Frame>; label: L | string }[] {
+  const tls = timelinesOf(s);
+  if (!tls) return [];
+  const keys = tls[0].tl.keys;
+  let picks = keys.map((_, i) => i);
+  if (keys.length > 4) {
+    const hit = keys.findIndex((k) => k.hit);
+    const last = keys.length - 1;
+    let top = -1;
+    for (let i = 1; i < (hit > 0 ? hit : last); i++) if (top < 0 || keys[i].hold >= keys[top].hold) top = i;
+    // the end: the position held longest after the ball (the finish) – a stroke may swing back to the set-up after it
+    let end = last;
+    let held = -1;
+    if (hit > 0) for (let i = hit + 1; i <= last; i++) if (keys[i].hold > held) [held, end] = [keys[i].hold, i];
+    // without a hit (a turn, a stance): the start, a third, two thirds, the end
+    picks = hit > 0 ? [0, top, hit, end] : [0, Math.round(last / 3), Math.round((2 * last) / 3), last];
+    picks = [...new Set(picks.filter((i) => i >= 0))].sort((a, b) => a - b);
+  }
+  return picks.map((i, n) => {
+    const k = keys[i];
+    // the end of the position's pause (impact: the moment itself – the ball still lies there)
+    const t = k.hit ? k.at : k.at + k.hold;
+    const moving = new Map(tls.map((x) => [x.fig, at(x.tl, Math.min(t, x.tl.total)).j]));
+    const label = k.label ?? (n === 0 ? L('Set-up', 'Ansprache') : n === picks.length - 1 ? L('The end', 'Ende') : '');
+    return { moving, label };
+  });
+}
+
+/** The phase pictures under a drawn movement: two to a row on a phone, numbered in their order. */
+function PhaseStrip(props: { sketch: Extract<Sketch, { view: 'side' }> }) {
+  const phases = useMemo(() => phasesOf(props.sketch), [props.sketch]);
+  if (phases.length < 2) return null;
+  return (
+    <ol className="tr-phases" aria-label={tr('The movement in pictures', 'Die Bewegung in Bildern')}>
+      {phases.map((p, i) => (
+        <li key={i} className="tr-phase">
+          <span className="tr-phase-pic" aria-hidden="true">
+            <Side sketch={props.sketch} thumb phase moving={p.moving} />
+            <span className="tr-phase-no">{i + 1}</span>
+          </span>
+          {p.label ? <span className="tr-phase-text">{txt(p.label)}</span> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 /** Plays the movement of a side sketch: three runs, then the still picture again (a tap stops it earlier). */
 function useMotion(s: Sketch) {
   const motion = s.view === 'side' ? s.motion : undefined;
-  // one timeline per moving figure; the first one names the phases
-  const tls = useMemo(() => {
-    if (!motion || s.view !== 'side' || !motion.frames.length) return null;
-    const figs = s.items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
-    const parts = [{ fig: motionFig(s, motion), frames: motion.frames }, ...(motion.with ?? [])];
-    const out = parts.flatMap((p) => {
-      const fig = figs[p.fig];
-      if (!fig) return [];
-      const base: Omit<GolferOptions, 'pose'> = {};
-      for (const k of KEEP) if (fig[k] !== undefined) (base as Record<string, unknown>)[k] = fig[k];
-      return [{ fig: p.fig, tl: timeline(base, { frames: p.frames }) }];
-    });
-    return out.length ? out : null;
-  }, [s, motion]);
+  const tls = useMemo(() => timelinesOf(s), [s]);
   const total = tls ? Math.max(...tls.map((x) => x.tl.total)) : 0;
   const [time, setTime] = useState<number | null>(null);
   const playing = time !== null;
@@ -147,29 +199,20 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
   const motion = useMotion(s);
-  const video = s.view === 'side' || s.view === 'top' || s.view === 'face' ? s.motion?.video : undefined;
   const roll = useRoll(s);
-  const [show3d, setShow3d] = useState(false);
-  const player = video
-    ? { on: show3d, close: show3d, toggle: () => setShow3d(!show3d), label: show3d ? tr('Back to the picture', 'Zurück zum Bild') : tr('Play the 3D video', '3D-Video abspielen') }
-    : roll && !motion
-      ? { on: roll.playing, close: false, toggle: roll.toggle, label: roll.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
-      : motion
-        ? { on: motion.playing, close: false, toggle: motion.toggle, label: motion.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
-        : null;
+  const player = roll && !motion
+    ? { on: roll.playing, toggle: roll.toggle, label: roll.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
+    : motion
+      ? { on: motion.playing, toggle: motion.toggle, label: motion.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
+      : null;
   const callouts: (L | string)[] =
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
       {/* the picture, and in its corner the play symbol (Sascha 17.10.2026: no separate button, a symbol in the
-          picture, bottom right); green while it plays; a 3D video closes with its symbol at the top right */}
+          picture, bottom right); green while it plays */}
       <div className="tr-sketch-pic">
-        {video && show3d ? (
-          // while three.js loads, the still picture of the sketch's own view (a face or top view has no side figures)
-          <Suspense fallback={s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'face' ? <Face marks={s.marks} label={props.label} /> : null}>
-            <Swing3D swing={video} onFail={() => setShow3d(false)} />
-          </Suspense>
-        ) : s.view === 'top' ? (
+        {s.view === 'top' ? (
           <Top sketch={s} label={props.label} rolling={roll?.rolling} />
         ) : s.view === 'side' ? (
           <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} flying={motion?.playing ? motion.balls : undefined} />
@@ -181,12 +224,8 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
           <Face marks={s.marks} label={props.label} />
         )}
         {player && (
-          <button type="button" className={`tr-motion-btn${player.on ? ' on' : ''}${player.close ? ' close' : ''}`} onClick={player.toggle} aria-pressed={player.on} aria-label={player.label} title={player.label}>
-            {player.close ? (
-              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-            ) : player.on ? (
+          <button type="button" className={`tr-motion-btn${player.on ? ' on' : ''}`} onClick={player.toggle} aria-pressed={player.on} aria-label={player.label} title={player.label}>
+            {player.on ? (
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                 <rect x="3" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
                 <rect x="9.4" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
@@ -213,6 +252,8 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
         </ol>
       )}
       {caption && <figcaption className="muted small">{caption}</figcaption>}
+      {/* the movement as phase pictures (17.11.2026: no 3D) */}
+      {s.view === 'side' && s.motion && <PhaseStrip sketch={s} />}
     </figure>
   );
 }
@@ -225,7 +266,7 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
     <span className="tr-thumb" aria-hidden="true">
       {s.view === 'top' ? <Top sketch={s} thumb /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : s.view === 'palm' ? <Palm thumb /> : <Face marks={s.marks} />}
       {/* the picture moves: a small play mark, so the moving pictures can be found in the lists */}
-      {(((s.view === 'side' || s.view === 'top' || s.view === 'face') && s.motion) || rollPlan(s)) && (
+      {((s.view === 'side' && s.motion) || rollPlan(s)) && (
         <span className="tr-thumb-play">
           <svg viewBox="0 0 16 16" width="8" height="8">
             <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
@@ -490,7 +531,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
   );
 }
 
-function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: Map<number, Frame>; flying?: Map<number, [number, number]> }) {
+function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; phase?: boolean; moving?: Map<number, Frame>; flying?: Map<number, [number, number]> }) {
   const { w, h, items } = props.sketch;
   const W = 340;
   const k = W / w;
@@ -574,7 +615,19 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
   };
   // as a thumbnail: a square around the figures (or everything else when there is no figure)
   let view = `0 0 ${W} ${H}`;
-  if (props.thumb) {
+  if (props.phase && props.moving) {
+    // a phase picture: around the figures that move, with room for the club above the head and the ball beside
+    const moving = figs.filter((_, n) => props.moving!.has(n));
+    const pts: [number, number][] = moving.flatMap((f) => [[f.at[0] - 1.15, f.at[1] - 0.05], [f.at[0] + 1.15, f.at[1] + 2.25]] as [number, number][]);
+    if (pts.length) {
+      const x0 = Math.max(0, Math.min(...pts.map((p) => X(p[0]))));
+      const x1 = Math.min(W, Math.max(...pts.map((p) => X(p[0]))));
+      const y0 = Math.max(0, Math.min(...pts.map((p) => Y(p[1]))));
+      const y1 = Math.min(H, Math.max(...pts.map((p) => Y(p[1]))) + 6);
+      const vx = isLeftHanded() ? W - x1 : x0;
+      view = `${vx.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
+    }
+  } else if (props.thumb) {
     const figs = items.filter((it): it is Extract<SideItem, { k: 'figure' }> => it.k === 'figure');
     const pts: [number, number][] = figs.length
       ? figs.flatMap((f) => [[f.at[0] - 1.1, f.at[1]], [f.at[0] + 1.1, f.at[1] + 1.9]] as [number, number][])

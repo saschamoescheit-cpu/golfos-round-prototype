@@ -102,47 +102,38 @@ ok((await p.locator('.tr-intro-text').count()) === 0 && (await p.locator('.tr-co
 const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
 ok((await p.locator('.tr-video-thumb, .tr-video-cover, iframe').count()) === 0, 'no videos in the basics (Sascha 16.11.2026: "alle Videos raus")');
-// moving pictures (Sascha 17.10.2026): the chip stroke as a 3D video (the golfer of Agility), the still picture stays –
-// since 15.11.2026 in the shot "Der Standard-Chip" › Bewegung
+// moving pictures: the chip stroke drawn (Sascha 17.10.2026) – no 3D since 17.11.2026 ("die 3D-Animationen sind nicht
+// gut", "alles mit Bildern"): the movement as phase pictures under the picture; the drawn movement still plays
 await view('Schläge');
 await p.locator('.tr-shots .list-item').filter({ hasText: 'Der Standard-Chip' }).click();
 await p.waitForTimeout(300);
 await view('Bewegung');
 const stroke = p.locator('main figure.tr-sketch').first();
-const btn3d = stroke.locator('.tr-motion-btn');
-ok((await btn3d.getAttribute('aria-label')) === '3D-Video abspielen' && (await btn3d.innerText()).trim() === '', 'the chip stroke has a 3D video – a symbol in the picture, no text button (Sascha 17.10.2026)');
+const btnPlay = stroke.locator('.tr-motion-btn');
+ok((await btnPlay.getAttribute('aria-label')) === 'Bewegung abspielen' && (await btnPlay.innerText()).trim() === '', 'the chip stroke plays its drawn movement – a symbol in the picture, no text button (Sascha 17.10.2026)');
 const pic = await stroke.locator('.tr-sketch-pic').boundingBox();
-const bb = await btn3d.boundingBox();
+const bb = await btnPlay.boundingBox();
 ok(pic && bb && bb.x + bb.width > pic.x + pic.width - 20 && bb.y + bb.height > pic.y + pic.height - 20, 'the play symbol sits in the bottom right corner of the picture');
-const box = await btn3d.boundingBox();
-ok(box && box.height >= 44, 'the 3D button is big enough to tap');
-await btn3d.click();
-await stroke.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
-await p.waitForTimeout(1500);
-ok((await stroke.locator('.tr-3d canvas').count()) === 1 && (await stroke.locator('.tr-3d-step').innerText()).length > 3, '3D video plays and names the step');
-ok((await stroke.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Hinten|Schräg|Oben', 'views: Vorne · Hinten · Schräg · Oben');
-await btn3d.click();
-ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch-pic > svg').count()) === 1, 'the close symbol brings back the still picture');
+ok(bb && bb.height >= 44, 'the play symbol is big enough to tap');
+const phaseTexts = (await stroke.locator('.tr-phases .tr-phase-text').allInnerTexts()).map((t) => t.trim());
+ok((await stroke.locator('.tr-phases .tr-phase').count()) === 4 && (await stroke.locator('.tr-phases .tr-phase svg').count()) === 4 && phaseTexts[0] === 'Ansprache' && /Finish/.test(phaseTexts[3]), `the movement as 4 phase pictures, numbered: ${phaseTexts.join(' · ')} (17.11.2026)`);
+const still = await stroke.locator('.tr-sketch-pic > svg').innerHTML();
+await btnPlay.click();
+await p.waitForTimeout(700);
+ok((await stroke.locator('.tr-sketch-pic > svg').innerHTML()) !== still && (await stroke.locator('.tr-3d, canvas').count()) === 0, 'the drawn movement plays – no 3D');
+await btnPlay.click();
 await back();
 await p.waitForTimeout(300);
 await view('Fehler');
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
-// the fault picture as a 3D video: the fault and the right way side by side
+// the fault picture: the fault and the right way side by side, drawn – no 3D video any more (17.11.2026)
 const faultFig = p.locator('figure.tr-sketch').first();
-const faultBtn = faultFig.locator('.tr-motion-btn');
-ok((await faultBtn.getAttribute('aria-label')) === '3D-Video abspielen', 'the fault picture has a 3D video');
-await faultBtn.click();
-await faultFig.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
-await p.waitForTimeout(1200);
-ok((await faultFig.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Schräg|Oben', 'the fault pair: views Vorne · Schräg · Oben');
-await faultBtn.click();
-ok((await faultFig.locator('.tr-3d').count()) === 0, 'back to the fault picture');
+ok((await faultFig.locator('.tr-sketch-pic svg').count()) >= 1 && (await p.locator('[aria-label="3D-Video abspielen"], .tr-3d').count()) === 0, 'the fault picture is drawn, without a 3D video');
 ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 1, 'a fault leads to cause, cure and drills');
 await back();
 ok((await viewNow()) === 'Fehler', 'back returns to the same part');
 await view('Übungen');
-// (Landering plays its 3D video since 18.10.2026 – the moving top view is checked on a drill that keeps it)
 // Chips in einen Korb (chip-towel-home) is out (Chris 15.11.2026) – the moving top view is checked on the towel drill of Pitchen
 const topics = async () => { for (let i = 0; i < 6 && !(await p.locator('.tr-cat').first().isVisible()); i++) { await back(); await p.waitForTimeout(300); } };
 await topics();
@@ -161,14 +152,14 @@ ok((await topFig.locator('svg[role="img"]').innerHTML()) !== topStill, 'the ball
 await topFig.locator('.tr-motion-btn').click();
 ok((await topFig.locator('svg[role="img"]').innerHTML()) === topStill, 'Stopp brings back the still top view');
 ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
-// Landering: its 3D video with the ring and the hole (18.10.2026); the checks below go on with it
+// Landering: its drawing with the ring and the hole; the checks below go on with it
 await topics();
 await p.locator('.tr-cat').filter({ hasText: 'Chippen' }).first().click();
 await p.waitForTimeout(300);
 await view('Übungen');
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('figure.tr-sketch').first().locator('.tr-motion-btn').getAttribute('aria-label')) === '3D-Video abspielen', 'Landering plays a 3D video');
+ok((await p.locator('figure.tr-sketch').first().locator('svg').count()) >= 1 && (await p.locator('[aria-label="3D-Video abspielen"], .tr-3d').count()) === 0, 'Landering shows its drawing – no 3D video (17.11.2026)');
 // the drill page in tabs (Sascha 17.10.2026: no one-pager)
 // Sascha 15.11.2026: no videos at the drills for now (the topics keep theirs – qa/shots.mjs plays one)
 ok((await viewNames()).join('|') === 'Anleitung|Ergebnis|Zubehör', 'drill page parts: Anleitung · Ergebnis · Zubehör (no videos for now)');

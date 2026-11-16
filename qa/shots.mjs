@@ -89,7 +89,7 @@ await back();
 await p.waitForTimeout(300);
 ok((await viewNow()) === 'Üben', 'back from a drill: the same tab of the shot');
 
-// the standard chip shows the 3D still of the set-up and the moving stroke (from the basics it replaced)
+// the standard chip shows the set-up picture and the moving stroke with its phase pictures (no 3D since 17.11.2026)
 await back();
 await p.waitForTimeout(300);
 await p.locator('.tr-shots .list-item').filter({ hasText: 'Der Standard-Chip' }).click();
