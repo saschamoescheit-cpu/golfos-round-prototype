@@ -136,5 +136,7 @@
  "Someone plays only a few rounds of a series – how do I add them?": "Nogen spiller kun nogle runder af en serie – hvordan tilføjer jeg dem?",
  "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Tilføj dem kun i de runder: åbn runden i serien, „Ændr turneringen“, „Tilføj spiller“. I hver af deres runder tæller de fuldt – leaderboard og dagspræmier. Den, der er med i færre end halvdelen af runderne, er gæst: i den samlede stilling under en grå linje, „Gæst“, uden placering, uden seriens præmier og dens startgebyr.",
  "Guest": "Gæst",
- "Guests below the line: counted in their own rounds only, not in the total.": "Gæster under linjen: tæller kun i deres egne runder, ikke i den samlede stilling."
+ "Guests below the line: counted in their own rounds only, not in the total.": "Gæster under linjen: tæller kun i deres egne runder, ikke i den samlede stilling.",
+ "{0}'s card is empty": "{0}s kort er tomt",
+ "{0} · enter the scores": "{0} · indtast scorerne"
 }

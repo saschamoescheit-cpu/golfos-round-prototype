@@ -383,6 +383,8 @@
  "You won {0}": "Du hast {0} gewonnen",
  "Pay {0} to {1}": "{0} an {1} zahlen",
  "{0} · prizes and entry fee": "{0} · Preise und Startgeld",
+ "{0}'s card is empty": "Karte von {0} ist leer",
+ "{0} · enter the scores": "{0} · Scores nachtragen",
  "{0} · prizes and entry fees": "{0} · Preise und Startgelder",
  "{0} asks to correct {1}'s card": "{0} möchte die Karte von {1} korrigieren",
  "{0} – its signatures go back, it is corrected and signed anew": "{0} – die Unterschriften gehen zurück, dann wird korrigiert und neu unterschrieben",

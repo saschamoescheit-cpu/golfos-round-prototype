@@ -136,5 +136,7 @@
  "Someone plays only a few rounds of a series – how do I add them?": "Alguém joga só algumas voltas de uma série – como o adiciono?",
  "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Adiciona-o só nessas voltas: abre a volta na série, «Alterar o torneio», «Adicionar jogador». Em cada uma das suas voltas conta por inteiro – leaderboard e prémios do dia. Quem está em menos de metade das voltas é convidado: na classificação total abaixo de uma linha cinzenta, «Convidado», sem lugar, sem os prémios da série e a sua inscrição.",
  "Guest": "Convidado",
- "Guests below the line: counted in their own rounds only, not in the total.": "Convidados abaixo da linha: contam só nas suas próprias voltas, não na classificação total."
+ "Guests below the line: counted in their own rounds only, not in the total.": "Convidados abaixo da linha: contam só nas suas próprias voltas, não na classificação total.",
+ "{0}'s card is empty": "O cartão de {0} está vazio",
+ "{0} · enter the scores": "{0} · introduzir os resultados"
 }

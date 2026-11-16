@@ -136,5 +136,7 @@
  "Someone plays only a few rounds of a series – how do I add them?": "Joku pelaa vain muutaman sarjan kierroksen – miten lisään hänet?",
  "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Lisää hänet vain niille kierroksille: avaa kierros sarjassa, ”Muuta turnausta”, ”Lisää pelaaja”. Jokaisella omalla kierroksellaan hän lasketaan täysin – tulostaulu ja päivän palkinnot. Joka on mukana alle puolella kierroksista, on vieras: kokonaistilanteessa harmaan viivan alla, ”Vieras”, ilman sijaa, ilman sarjan palkintoja ja osallistumismaksua.",
  "Guest": "Vieras",
- "Guests below the line: counted in their own rounds only, not in the total.": "Vieraat viivan alla: lasketaan vain omilla kierroksillaan, ei kokonaistilanteessa."
+ "Guests below the line: counted in their own rounds only, not in the total.": "Vieraat viivan alla: lasketaan vain omilla kierroksillaan, ei kokonaistilanteessa.",
+ "{0}'s card is empty": "Pelaajan {0} kortti on tyhjä",
+ "{0} · enter the scores": "{0} · syötä tulokset"
 }
