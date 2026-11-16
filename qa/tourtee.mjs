@@ -16,7 +16,7 @@ const ok = (c, m) => {
 const sim = sharedServer(b, url);
 const host = await sim.phone('Sascha');
 const H = host.p;
-const code = await sim.plan(H, { name: 'Kurzplatz-Cup', option: 'Kurzplatz', format: { mode: 'single', scoring: 'stroke' }, flights: [{ players: [{ name: 'Sascha', playingHandicap: 5, tee: 'Yellow' }, { name: 'Cedric', playingHandicap: 10, tee: 'Yellow' }], scorer: 'p1' }] });
+const code = await sim.plan(H, { name: 'Kurzplatz-Cup', option: 'Kurzplatz', format: { mode: 'single', scoring: 'stroke' }, flights: [{ players: [{ name: 'Sascha', playingHandicap: 5, tee: 'Yellow' }, { name: 'Cedric', playingHandicap: 10, hcpIndex: 12, tee: 'Yellow' }], scorer: 'p1' }] });
 await sim.joinPlanned(H, code);
 const guest = await sim.phone('Cedric');
 const G = guest.p;
@@ -69,6 +69,24 @@ await H.waitForTimeout(2500);
   ok(sa?.tee === 'Red', `the tournament: Sascha's tee red (${sa?.tee}, playing handicap ${sa?.playingHandicap})`);
   ok(r?.tee === 'Red' && r.players.find((p) => p.isMe)?.tee === 'Red', `his round: red (${r?.tee})`);
   ok(/Rot/.test(await H.getByRole('button', { name: /^Abschlag .* – ändern$/ }).innerText()), 'the scorecard says red');
+}
+// another player of his flight on another tee (Sascha 16.11.2026: "theoretisch können Spieler eines Flights von
+// unterschiedlichen Tees spielen"): on Cedric's tab the host sets Cedric's tee – round and tournament, Cedric's playing
+// handicap from his index; Sascha's own stays red
+{
+  await H.getByRole('tab', { name: 'Cedric' }).click();
+  await H.waitForTimeout(500);
+  const t2 = H.getByRole('button', { name: /^Abschlag .* – ändern$/ });
+  ok((await t2.count()) === 1 && /Gelb/.test(await t2.innerText()), `Cedric's tab: his tee to tap (${await t2.innerText().catch(() => '–')})`);
+  await t2.click();
+  await H.getByRole('dialog', { name: 'Tee' }).locator('.pick-option').filter({ hasText: 'Rot' }).first().click();
+  await H.waitForTimeout(2500);
+  const f = Object.values(sim.event().flights)[0];
+  const ce = f.players.find((p) => p.name === 'Cedric');
+  const sa = f.players.find((p) => p.name === 'Sascha');
+  const r = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((x) => x.shared));
+  ok(ce?.tee === 'Red' && ce?.playingHandicap != null && ce.playingHandicap !== 10, `the tournament: Cedric red, his playing handicap from index 12 (${ce?.tee}, ${ce?.playingHandicap})`);
+  ok(r.players.find((p) => p.name === 'Cedric')?.tee === 'Red' && sa?.tee === 'Red' && r.tee === 'Red', 'the round: Cedric red, Sascha still red');
 }
 // Cedric, not the host: no tee to tap in the tournament
 await finishAndOpen(G);
