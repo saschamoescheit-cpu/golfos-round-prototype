@@ -582,7 +582,7 @@ const SHOT_TAB = new Map<string, 'setup' | 'move' | 'watch' | 'practise'>();
 function ShotText(props: { p: ShotPart; label: string }) {
   return (
     <>
-      {props.p.sketch && <SketchView sketch={props.p.sketch} label={props.label} />}
+      {props.p.sketch && <SketchView sketch={props.p.sketch} label={props.label} text={[...(props.p.text ?? []), ...(props.p.points ?? [])].map(t).join(' ')} />}
       {props.p.graphic && <ShotGraphic kind={props.p.graphic} />}
       {(props.p.text?.length || props.p.points?.length) && (
         <section className="card tr-section">
@@ -1187,6 +1187,7 @@ function RecentResults(props: { log: LogEntry[]; nav: Nav; band: Band }) {
 // A picture with every text (Sascha 16.10.2026): the section's own sketch or the sketch of the drill that shows it
 // (with a link to that drill), and a video in the player's language when one explains it.
 function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
+  const text = [...(props.s.text ?? []), ...(props.s.points ?? [])].map(t).join(' ');
   const d = props.s.drill ? drillById(props.s.drill) : undefined;
   // the picture stays; the link only while the drill is in the library
   const sketch = props.s.sketch ?? (props.s.drill ? anyDrillById(props.s.drill)?.sketch : undefined);
@@ -1194,7 +1195,7 @@ function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   const video = vids.find((v) => v.lang === getLang()) ?? vids[0];
   return (
     <>
-      {sketch && <SketchView sketch={sketch} label={t(props.s.title)} />}
+      {sketch && <SketchView sketch={sketch} label={t(props.s.title)} text={text} />}
       {props.s.metronome && <Metronome mode={props.s.metronome} />}
       {d && (
         <button type="button" className="list-item tr-section-drill" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>

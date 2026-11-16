@@ -38,3 +38,12 @@ describe('phase pictures', () => {
     for (const { where, s } of sketches) expect(JSON.stringify(s), where).not.toMatch(/"video":/);
   });
 });
+
+describe('captions', () => {
+  it('a caption that only repeats the text under the picture is left out (17.11.2026)', async () => {
+    const { saysAgain } = await import('./Sketch');
+    expect(saysAgain('Eine Puttbewegung mit Loft: die Schultern schaukeln, zurück und durch etwa gleich lang.', 'Eine Puttbewegung mit einem Schläger mit Loft: Die Schultern schaukeln, Arme und Schläger bewegen sich zusammen. Zurück und durch etwa gleich lang, sanft beschleunigen.')).toBe(true);
+    expect(saysAgain('Von vorn, Ziel rechts.', 'Ballposition, Stand, Gewicht')).toBe(false);
+    expect(saysAgain('Bergab: kurz landen.', 'Der Ball kommt flacher und rollt weit – kurz landen.')).toBe(false); // too short to judge
+  });
+});

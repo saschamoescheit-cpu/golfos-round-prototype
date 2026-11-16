@@ -195,9 +195,22 @@ function useRoll(s: Sketch) {
   };
 }
 
-export function SketchView(props: { sketch: Sketch; label?: string }) {
+/** True when a picture's caption only says again what the text under it says (17.11.2026: 24 captions repeated their
+ *  text word for word) – three quarters of its words in the text. */
+export function saysAgain(caption: string, text: string): boolean {
+  const words = (x: string) => new Set(x.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter((w) => w.length > 3));
+  const a = words(caption);
+  const b = words(text);
+  if (a.size < 3) return false;
+  let n = 0;
+  for (const w of a) if (b.has(w)) n++;
+  return n / a.size >= 0.75;
+}
+
+export function SketchView(props: { sketch: Sketch; label?: string; text?: string }) {
   const s = props.sketch;
-  const caption = s.caption ? txt(s.caption) : null;
+  // the caption, unless the text under the picture says the same
+  const caption = s.caption && !(props.text && saysAgain(txt(s.caption), props.text)) ? txt(s.caption) : null;
   const motion = useMotion(s);
   const roll = useRoll(s);
   const player = roll && !motion
