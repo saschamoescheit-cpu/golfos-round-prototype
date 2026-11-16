@@ -25,6 +25,27 @@ struct WatchHole: Codable {
     let green: [[Double]]?
     /// the hole drawn (Sascha 08.11.2026) – absent from an older iPhone app
     let map: WatchMap?
+    /// the green's slope (16.11.2026) – only where the iPhone has the green's heights
+    let slope: WatchSlope?
+}
+
+/// the green's slope (src/lib/watch.ts watchSlope, Sascha 16.11.2026: "the green slopes when the player is on the
+/// green"): every `s` metres a fall line [right, forward, downhill in degrees – 0 up the picture, clockwise – and the
+/// slope in tenths of a percent], the green's main slope and the pin – in the hole's picture (WatchMap)
+struct WatchSlope: Codable {
+    let s: Double
+    let a: [[Double]]
+    let pct: Double
+    let down: Double
+    let pin: [Double]
+}
+
+/// the wind as the iPhone had it (16.11.2026): km/h, where it comes from (degrees from north), when it was sent (ms)
+struct WatchWind: Codable {
+    let kmh: Double
+    let gust: Double
+    let from: Double
+    let t: Double
 }
 
 /// the hole as a picture (src/lib/watch.ts watchMap): metres from the tee, [right, forward], the green straight up;
@@ -45,6 +66,8 @@ struct WatchRound: Codable {
     let lang: String // "de" or "en"
     let start: Int // the first hole played (index)
     let holes: [WatchHole?] // null: a hole without a map
+    /// the wind of the moment (16.11.2026) – absent from an older iPhone app
+    let wind: WatchWind?
 }
 
 /// a swing felt (or a shot noted on the watch by hand) – sent to the iPhone as it is
@@ -215,6 +238,64 @@ final class RoundModel: NSObject, ObservableObject {
             return (front: fb.front, center: center, back: fb.back)
         }
         return (front: nil, center: center, back: nil)
+    }
+
+    /// on the green or its fringe (3 m): the green's slope instead of the distances (Sascha 16.11.2026)
+    var onGreen: Bool {
+        guard let m = currentHole?.map, let g = m.green, g.count >= 3, let p = spotInMap else { return false }
+        return Geo.inside(p, g) || Geo.edge(p, g) <= 3
+    }
+
+    /// the wind on this hole (Sascha 16.11.2026: "the wind on the watch"): the arrow where it blows to (degrees, 0 = to
+    /// the green, clockwise), km/h, gusts, how it plays (as the phone's windOnHole) – towards the pin from where the
+    /// player stands; nil without wind or when the phone's is older than 45 minutes
+    /// `inMap`: the same arrow in the hole's picture (turned tee → green)
+    var windHere: (arrow: Double, inMap: Double, kmh: Int, gust: Int, label: String)? {
+        guard let w = round?.wind, Date().timeIntervalSince1970 * 1000 - w.t < 45 * 60 * 1000 else { return nil }
+        var b = 0.0
+        if let m = currentHole?.map {
+            b = m.b
+            // from the player's spot to the flag, when not at the tee
+            if let s = spotInMap, let end = m.line.last, end.count > 1, s.count > 1 {
+                let dx = end[0] - s[0]
+                let dy = end[1] - s[1]
+                if (dx * dx + dy * dy).squareRoot() > 20 { b += atan2(dx, dy) * 180 / Double.pi }
+            }
+        } else if let h = currentHole, h.tee.count > 1, h.center.count > 1 {
+            let k = cos(h.tee[1] * Double.pi / 180)
+            b = atan2((h.center[0] - h.tee[0]) * k, h.center[1] - h.tee[1]) * 180 / Double.pi
+        }
+        let a = (w.from - b) * Double.pi / 180
+        let head = w.kmh * cos(a)
+        let cross = w.kmh * sin(a)
+        let label: String
+        if w.kmh.rounded() < 5 {
+            label = t("Calm", "Windstill")
+        } else if abs(head) >= abs(cross) {
+            label = head > 0 ? t("Into the wind", "Gegenwind") : t("Downwind", "Rückenwind")
+        } else {
+            label = cross > 0 ? t("From the right", "Von rechts") : t("From the left", "Von links")
+        }
+        func deg(_ x: Double) -> Double { (x.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) }
+        return (deg(w.from + 180 - b), deg(w.from + 180 - (currentHole?.map?.b ?? b)), Int(w.kmh.rounded()), Int(w.gust.rounded()), label)
+    }
+
+    /// where the green falls, in words – in the hole's picture (0 = to the back, away from the fairway)
+    func slopeWords(_ deg: Double) -> String {
+        let names = [
+            t("falls to the back", "fällt nach hinten"), t("falls back right", "fällt nach hinten rechts"),
+            t("falls to the right", "fällt nach rechts"), t("falls front right", "fällt nach vorne rechts"),
+            t("falls to the front", "fällt nach vorne"), t("falls front left", "fällt nach vorne links"),
+            t("falls to the left", "fällt nach links"), t("falls back left", "fällt nach hinten links"),
+        ]
+        let d = (deg.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        return names[Int((d + 22.5) / 45) % 8]
+    }
+
+    /// a percent as the round's language writes it: "2,1 %" / "2.1 %"
+    func percent(_ v: Double) -> String {
+        let s = String(format: "%.1f", v)
+        return (round?.lang == "en" ? s : s.replacingOccurrences(of: ".", with: ",")) + " %"
     }
 
     /// metres in the round's unit, whole
@@ -823,5 +904,41 @@ enum Geo {
             far = max(far, d)
         }
         return (front: near, back: far)
+    }
+
+    /// a point in a ring – both in the hole's picture (metres)
+    static func inside(_ p: [Double], _ ring: [[Double]]) -> Bool {
+        guard p.count > 1 else { return false }
+        var c = false
+        var j = ring.count - 1
+        for i in 0..<ring.count {
+            let a = ring[i]
+            let b = ring[j]
+            if a.count > 1, b.count > 1, (a[1] > p[1]) != (b[1] > p[1]),
+               p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0] {
+                c.toggle()
+            }
+            j = i
+        }
+        return c
+    }
+
+    /// how far a point is from a ring's edge (metres, in the hole's picture)
+    static func edge(_ p: [Double], _ ring: [[Double]]) -> Double {
+        guard p.count > 1 else { return .infinity }
+        var best = Double.infinity
+        for i in 0..<ring.count {
+            let a = ring[i]
+            let b = ring[(i + 1) % ring.count]
+            guard a.count > 1, b.count > 1 else { continue }
+            let dx = b[0] - a[0]
+            let dy = b[1] - a[1]
+            let l2 = dx * dx + dy * dy
+            let t = l2 > 0 ? max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0
+            let ex = p[0] - a[0] - t * dx
+            let ey = p[1] - a[1] - t * dy
+            best = min(best, (ex * ex + ey * ey).squareRoot())
+        }
+        return best
     }
 }
