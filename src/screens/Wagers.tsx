@@ -21,6 +21,7 @@ import { sumSoFar, dayPlayers, roundPayers, decidedOf, isVoided, duelWaits, flip
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
+import { SideBetsList, sideBetsOf } from '../components/SideBets';
 import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
@@ -263,6 +264,10 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
           ))}
         </ul>
       )}
+      {/* the side bets – every 5+5+10 and every side game of a round, with their details (Sascha 16.11.2026: "Alle in
+          ‚Wetten'", "im Nachgang die Details je Bet … auch mit Verrechnung") */}
+      {filter == null && <SideBetsList pools={pools} onOpenPool={props.onOpen} />}
+      {filter == null && shown.length > 0 && sideBetsOf(pools).length > 0 && <span className="eyebrow">{tr('Pools', 'Pools')}</span>}
       {filter !== 'bin' && filter !== 'made' &&
         (shown.length ? (
           <ul className="list">

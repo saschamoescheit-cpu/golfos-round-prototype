@@ -671,6 +671,17 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'wagers',
       },
+      // Sascha 16.11.2026: "Diese Sidebet sollte auch unter Games sein" → "Alle in ‚Wetten‘"; "im Nachgang die Details je
+      // Bet – wer Front, wer Back und wer total gemacht hat, auch mit Verrechnung"; Daniel not in the pool → "ohne Pool"
+      {
+        q: () => tr('Where do I find my side bets?', 'Wo finde ich meine Side-Bets?'),
+        a: () =>
+          tr(
+            'Games & Bets → "Bets" → "Side bets": every 5+5+10 of yours and every side game of a round (Skins, Nassau, match play, Stableford), newest first, with what you won or lost; above them "On the whole" – what is left with each one. Tap one: front nine, back nine and the 18 with both scores, who won each and what it is worth, and who pays whom. A 5+5+10 is settled in its pool – "Open the settlement" shows it netted with every other bet there. Against someone who is not in the pool you chose (not on the trip), the duel goes into the day’s own settlement "5+5+10 · date" – the trip’s pool stays as it is; the setup says so before "Challenge".',
+            'Games & Bets → „Wetten“ → „Side-Bets“: jede 5+5+10 von dir und jedes Side-Spiel einer Runde (Skins, Nassau, Lochspiel, Stableford), die neuesten zuerst, mit deinem Gewinn oder Verlust; darüber „Unterm Strich“ – was mit jedem übrig bleibt. Antippen: Vorne (9), Hinten (9) und Gesamt (18) mit beiden Ergebnissen, wer jeweils gewonnen hat und was es wert ist, und wer wem zahlt. Eine 5+5+10 wird in ihrem Pool abgerechnet – „Abrechnung öffnen“ zeigt sie dort mit allen anderen Wetten verrechnet. Gegen jemanden, der nicht im gewählten Pool ist (nicht auf der Reise), geht das Duell in die eigene Tagesabrechnung „5+5+10 · Datum“ – der Pool der Reise bleibt, wie er ist; das Setup sagt es vor „Herausfordern“.',
+          ),
+        video: 'wagers',
+      },
       {
         // Sascha 01.11.2026: tournaments planned in Games, played in Rounds
         q: () => tr('Can I plan a tournament ahead – flights, markers, tee times?', 'Kann ich ein Turnier vorab planen – Flights, Zähler, Startzeiten?'),

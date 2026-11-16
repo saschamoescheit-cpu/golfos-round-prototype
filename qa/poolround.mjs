@@ -41,7 +41,7 @@ await H.evaluate(() => {
 await H.reload();
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-await H.locator('.list-item').filter({ hasText: 'Heute' }).first().click();
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Heute' }).first().click();
 await H.getByRole('button', { name: 'Runde starten' }).click();
 ok(await H.getByRole('heading', { name: 'Runde starten' }).isVisible(), 'the pool: "Runde starten" – right from the bets');
 // a row per player as in Rounds (Sascha 02.11.2026): name (the pool's, not typed), tee, HCP, playing handicap
@@ -121,7 +121,7 @@ await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await H.reload();
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-await H.locator('.list-item').filter({ hasText: 'Grüns' }).first().click();
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Grüns' }).first().click();
 await H.getByRole('button', { name: 'Runde starten' }).click();
 await H.getByRole('button', { name: /Platz wählen|Golfclub/ }).first().click();
 await H.fill('#course-search', 'Hetzenhof');

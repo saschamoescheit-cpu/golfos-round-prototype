@@ -463,8 +463,8 @@ await H.goto(url);
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
 await H.waitForTimeout(800);
-ok((await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'menu "Turniere": the tiles at the top, the tournament in the list');
-await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+ok((await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'menu "Turniere": the tiles at the top, the tournament in the list');
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).click();
 await H.waitForTimeout(2500);
 // the live leaderboard (Sascha 03.11.2026): its name, "LIVE" while played, each player "nach 3"
 const board = H.getByRole('region', { name: 'Live-Leaderboard' });
@@ -525,7 +525,7 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-pa
 shared.get(byTime[1].code).game.flight.finishedAt = new Date().toISOString();
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(600);
-await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).click();
 await H.waitForTimeout(2500);
 {
   const f2 = H.locator('section.tour-flight[aria-label="Flight 2"]');
@@ -542,8 +542,8 @@ const guest = await phone('Chris');
 const G = guest.p;
 await G.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
 await G.waitForTimeout(1500);
-ok((await G.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'Chris: the tournament in his list (from the server, by his account)');
-await G.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+ok((await G.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'Chris: the tournament in his list (from the server, by his account)');
+await G.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).click();
 await G.waitForTimeout(2000);
 ok(
   (await G.getByRole('button', { name: 'Turnier bearbeiten' }).count()) === 0 &&
@@ -596,7 +596,7 @@ await H.getByRole('button', { name: 'Turnier löschen' }).click();
 await H.getByRole('button', { name: 'Turnier löschen' }).click();
 await H.getByRole('button', { name: 'Für alle löschen' }).click();
 await H.waitForTimeout(1500);
-ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
+ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.locator('.bin-item').first().click();
 await H.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
@@ -632,7 +632,7 @@ await H.waitForTimeout(2500);
 const scode = [...shared.entries()].find(([, r]) => r.game.kind === 'tour-series')?.[0];
 const srow = scode && shared.get(scode).game;
 ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() === `${code},TOUR22` && shared.get(code).game.series?.code === scode && shared.get('TOUR22').game.series?.code === scode, `server: the series ${scode} with its two rounds, each pointing to it`);
-ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
+ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 // live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
 // one line a player as the tour's leaderboard (Sascha 12.11.2026): place, name, total, the hole (3), R1
@@ -661,7 +661,7 @@ if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screensho
 }
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(800);
-ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
+ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
 // no list of the courses under it (Sascha 12.11.2026): "Serie · 10.11.–11.11."
 {
   const sub = (await H.locator('.tour-series-row .muted.small.one-line').first().innerText()).trim();

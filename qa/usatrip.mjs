@@ -181,7 +181,7 @@ const openPool = async (n) => {
     await p.goto(url);
   });
   await p.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-  await p.locator('.list-item').filter({ hasText: 'USA 2026' }).first().click();
+  await p.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026' }).first().click();
   await p.locator('.topbar h1', { hasText: 'USA 2026' }).waitFor({ timeout: 15000 });
 };
 const progress = () => sim.shared.get(poolCode).game.progress;

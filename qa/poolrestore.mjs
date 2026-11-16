@@ -48,7 +48,7 @@ await H.goto('about:blank');
 await H.goto(url);
 await H.waitForTimeout(2000);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
 await H.waitForTimeout(2000);
 {
   await H.locator('.pool-standings .step-pick-value, .pool-standings [aria-label="Runden"]').first().click().catch(() => {});

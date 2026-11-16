@@ -78,8 +78,8 @@ ok((await fab('Zahlung eintragen').count()) === 1, 'Bilanz with something open: 
 await fab('Zahlung eintragen').click();
 const pay = p.getByRole('dialog', { name: 'Zahlung eintragen' });
 await pay.waitFor({ timeout: 3000 }).catch(() => {});
-ok((await pay.locator('.list-item').filter({ hasText: 'Chris' }).count()) === 1, 'a tap: who you owe – Chris');
-await pay.locator('.list-item').filter({ hasText: 'Chris' }).click();
+ok((await pay.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Chris' }).count()) === 1, 'a tap: who you owe – Chris');
+await pay.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Chris' }).click();
 await p.waitForTimeout(400);
 ok((await p.getByRole('dialog').filter({ hasText: 'Bezahlt' }).count()) >= 1, 'Chris tapped: his sheet with "Bezahlt"');
 await p.keyboard.press('Escape');

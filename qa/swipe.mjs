@@ -119,7 +119,7 @@ await chris.p.goto(url);
 await chris.p.waitForTimeout(1500);
 await chris.p.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await chris.p.waitForTimeout(500);
-ok((await chris.p.locator('.list-item').filter({ hasText: 'Wischtest' }).count()) === 1 && (await chris.p.locator('.swipe').count()) === 0, "another's pool: listed, but no swipe – only the host deletes");
+ok((await chris.p.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'Wischtest' }).count()) === 1 && (await chris.p.locator('.swipe').count()) === 0, "another's pool: listed, but no swipe – only the host deletes");
 ok(host.errs.length === 0 && chris.errs.length === 0, `no page errors ${[...host.errs, ...chris.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
