@@ -108,7 +108,7 @@ export function bundledCourses(): CourseSummary[] {
     // a card course bundled since (Hawks Landing, 15.11.2026): listed once, as the card course – with its place and box
     if (seen.has(s.name) || CARD_COURSES[id]) return [];
     seen.add(s.name);
-    return [{ id, source: 'osm' as const, name: s.name, place: '', lat: s.lat, lon: s.lon }];
+    return [{ id, source: 'osm' as const, name: s.name, place: s.place ?? '', lat: s.lat, lon: s.lon }];
   });
   const cards = Object.entries(CARD_COURSES).map(([id, s]) => {
     const pts = (LINES[id] ?? []).flat();
@@ -120,11 +120,14 @@ export function bundledCourses(): CourseSummary[] {
   return [...seeds, ...cards];
 }
 
-/** Bundled courses whose name contains every word of the query (accents and case ignored). */
+/** Bundled courses whose name or town contains every word of the query (accents and case ignored) – "Legends Golf
+ *  Clermont", as Google names it, finds "Legends Golf and Country Club" in Clermont (Sascha 16.11.2026: "kann ich nicht
+ *  finden"); "and", "&", "the" may be left out or added. */
 export function searchBundled(text: string): CourseSummary[] {
-  const words = fold(text).split(/\s+/).filter((w) => w.length > 0);
+  const filler = new Set(['and', '&', 'the', 'und']);
+  const words = fold(text).split(/\s+/).filter((w) => w.length > 0 && !filler.has(w));
   if (!words.length) return [];
-  return bundledCourses().filter((c) => words.every((w) => fold(c.name).includes(w)));
+  return bundledCourses().filter((c) => words.every((w) => fold(`${c.name} ${c.place}`).includes(w)));
 }
 
 export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Promise<CourseSummary[]> {

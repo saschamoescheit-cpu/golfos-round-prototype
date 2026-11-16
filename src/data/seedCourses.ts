@@ -2,7 +2,7 @@ import { withAliases } from './seedAliases';
 // Snapshot of OpenStreetMap hole data for the test course (© OpenStreetMap contributors, ODbL),
 // taken 2026-10-10 via Overpass. Bundled so the course works even when the OSM servers are busy.
 /** fixed: the day its holes were corrected – a phone that kept the course before takes the corrected holes once */
-export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[]; fixed?: string }> = {
+export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[]; fixed?: string; place?: string }> = {
   'osm:relation/1326323': {
     name: 'Golfclub Hetzenhof',
     lat: 48.7802,
@@ -389,6 +389,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'southerndunes:fl': {
     name: 'Southern Dunes Golf & Country Club',
+    place: 'Haines City, FL, USA',
     lat: 28.1279,
     lon: -81.6246,
     // Haines City, Florida (USA trip, 17.10.2026). OSM has the north holes only and no course area: the 18 hole
@@ -417,6 +418,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4039062': {
     name: 'StoneGate Golf Club – Cypress',
+    place: 'Kissimmee, FL, USA',
     lat: 28.1330,
     lon: -81.4700,
     // Poinciana, Florida (USA trip, 12.11.2026 – Sascha: "on Cypress we had to set every tee and green by hand"). OSM has
@@ -446,6 +448,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4039063': {
     name: 'StoneGate Golf Club – Oaks',
+    place: 'Kissimmee, FL, USA',
     lat: 28.1277,
     lon: -81.4860,
     // Poinciana, Florida (USA trip, 17.10.2026). OSM has only the course area: no course map is published, so tees and
@@ -474,6 +477,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4039579': {
     name: 'Kissimmee Bay Country Club',
+    place: 'Kissimmee, FL, USA',
     lat: 28.3081,
     lon: -81.328,
     // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026)
@@ -500,6 +504,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:way/311994625': {
     name: 'Falcon\'s Fire Golf Club',
+    place: 'Kissimmee, FL, USA',
     lat: 28.3427,
     lon: -81.5052,
     // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026)
@@ -526,6 +531,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4040123': {
     name: 'Legends Golf and Country Club',
+    place: 'Clermont, FL, USA',
     lat: 28.5064,
     lon: -81.7259,
     // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026); the
@@ -554,6 +560,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4039887': {
     name: 'Orange Lake Resort – The Legends',
+    place: 'Kissimmee, FL, USA',
     lat: 28.3674,
     lon: -81.6071,
     // Florida (USA trip): the OSM snapshot of 17.10.2026 bundled – works offline in the USA (night 17./18.10.2026)
@@ -580,6 +587,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/1231691': {
     name: 'Celebration Golf Club',
+    place: 'Celebration, FL, USA',
     lat: 28.3219,
     lon: -81.5405,
     // Celebration, Florida (USA trip, played 07.11.2026): OSM snapshot of 15.11.2026 (all 18 holes mapped there), bundled for
@@ -634,6 +642,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
   },
   'osm:relation/4039888': {
     name: 'Orange Lake Resort – The Reserve',
+    place: 'Kissimmee, FL, USA',
     lat: 28.3555,
     lon: -81.6210,
     // Kissimmee, Florida (USA trip, played 13.11.2026). OSM has the course area and 18 greens but no holes; OpenGolfAPI no
