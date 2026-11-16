@@ -1334,7 +1334,7 @@ export function HoleScreen(props: {
       } catch {
         /* asked again – harmless */
       }
-      const json = watchRound(round, allMaps, unit === 'yd' ? 'yd' : 'm', getLang());
+      const json = watchRound(round, allMaps, unit === 'yd' ? 'yd' : 'm', getLang(), [], { grids, wind: weather });
       void sendRound(json, holeRef.current, !started).then((ok) => {
         if (!ok || started) return;
         setTestMsg(tr('Apple Watch connected – it counts your shots', 'Apple Watch verbunden – sie zählt deine Schläge'));
@@ -1407,6 +1407,16 @@ export function HoleScreen(props: {
       stop();
     };
   }, [round.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the green's slopes and the wind to the watch as they come (Sascha 16.11.2026: "die Grün-Slopes, wenn der Spieler auf
+  // dem Grün ist" – "die Anzeige vom Wind"): the heights load after the round opened, the wind every 10 minutes – the
+  // round again (the same id: the watch keeps its hole and shots)
+  const watchExtraKey = `${grids ? Object.keys(grids).length : 0}|${weather ? `${Math.round(weather.windKmh)}/${Math.round(weather.gustKmh)}/${Math.round(weather.windFromDeg)}/${weather.at}` : ''}`;
+  const watchExtraSent = useRef('');
+  useEffect(() => {
+    if (!watchOn || watchExtraKey === '0|' || watchExtraSent.current === watchExtraKey) return;
+    watchExtraSent.current = watchExtraKey;
+    void sendRound(watchRound(latestRound.current, allMapsNow.current, unit === 'yd' ? 'yd' : 'm', getLang(), [], { grids, wind: weather }), holeRef.current, false);
+  }, [watchOn, watchExtraKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // the hole on the screen to the watch
   useEffect(() => {
     if (watchOn) sendHole(i);

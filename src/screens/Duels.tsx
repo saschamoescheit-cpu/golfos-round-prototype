@@ -77,15 +77,35 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
     flip(p ? `p:${p.id}` : `n:${named.find((x) => sameName(x.name, name))?.name ?? name}`, true);
     setTyped('');
   };
+  // a player not in the chosen pool (Sascha 16.11.2026: "Daniel nimmt nicht an den USA-Wetten teil und ist auch nicht im
+  // Pool" → "automatisch ohne Pool"): his duel goes into the day's own settlement ("5+5+10 · 16.11."), the pool untouched
+  const outside = entry ? chosen.filter((k) => !k.startsWith('p:')) : [];
+  const outsideNames = outside.map(nameOf).filter(Boolean);
   const go = async () => {
     setBusy(true);
     setMsg(null);
-    const e = entry ?? (await poolForDuel(day, { me: meName, currency, own: own || !pools.length }));
-    if (!e) {
+    const inPool = entry ? chosen.filter((k) => k.startsWith('p:')) : chosen;
+    const e = inPool.length ? (entry ?? (await poolForDuel(day, { me: meName, currency, own: own || !pools.length }))) : null;
+    const o = outside.length ? await poolForDuel(day, { me: meName, currency: entry?.pool.currency ?? currency, own: true }) : null;
+    if ((inPool.length && !e) || (outside.length && !o)) {
       setBusy(false);
       return setMsg(NO_NET());
     }
-    const opps: (string | NewOpponent)[] = chosen.map((k) => {
+    const done: string[] = [];
+    for (const [pe, keys] of [[e, inPool], [o, outside]] as const) {
+      if (!pe || !keys.length) continue;
+      const code = await challengeIn(pe, keys);
+      if (!code) {
+        setBusy(false);
+        return setMsg(NO_NET());
+      }
+      done.push(code);
+    }
+    setBusy(false);
+    props.onDone(done[0]);
+  };
+  const challengeIn = async (e: PoolEntry, keys: string[]): Promise<string | null> => {
+    const opps: (string | NewOpponent)[] = keys.map((k) => {
       if (k.startsWith('p:')) return k.slice(2);
       if (k.startsWith('n:')) {
         const x = named.find((y) => `n:${y.name}` === k)!;
@@ -103,11 +123,10 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
       ...(on ? { on: { code: on.code, name: on.ev.name, course: on.ev.course.name } } : {}),
       by: meName,
     });
-    setBusy(false);
-    if (!r) return setMsg(NO_NET());
+    if (!r) return null;
     if (r.ids.length) pushWagers(e.code, r.ids); // the one challenged hears of it
     for (const f of r.invite) void inviteFriend(e.code, f.uid, f.name, meName); // a friend brought in: let in, told
-    props.onDone(e.code);
+    return e.code;
   };
   return (
     <>
@@ -124,6 +143,17 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
               { value: 'net', name: tr('Net', 'Netto'), text: tr('Minus the strokes received on each hole – from the playing handicap of each one’s round.', 'Abzüglich der Vorgabeschläge je Loch – aus der Spielvorgabe der eigenen Runde.') },
             ]}
           />
+          {/* with how much of the handicap, right under "Netto" (Sascha 16.11.2026, as Rounds since 15.11.: the allowance
+              under the scoring) – no "Einstellungen" at the end any more */}
+          {net && (
+            <ChoiceRow<number>
+              label={tr('Handicap share', 'Vorgabe')}
+              title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
+              value={share}
+              onChange={setShare}
+              options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
+            />
+          )}
         </SettingsList>
       </section>
       {/* Wo – the pool of bets the duel goes into; without one a new one of the day */}
@@ -184,6 +214,15 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
             ]}
           />
         </SettingsList>
+        {/* who is not in the pool: said before "Herausfordern" – settled on its own */}
+        {pool && outsideNames.length > 0 && (
+          <span className="small muted duel-outside">
+            {tr(
+              `Not in "${pool.name}": ${outsideNames.join(', ')} – settled on its own ("5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.").`,
+              `Nicht im Pool „${pool.name}“: ${outsideNames.join(', ')} – eigene Abrechnung („5+5+10 · ${day.slice(8, 10)}.${day.slice(5, 7)}.“).`,
+            )}
+          </span>
+        )}
       </section>
       {/* Worum – the stakes (Facelift 11.11.2026, g2) */}
       <section className="setup-part">
@@ -194,21 +233,6 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
           <StakeRow label={tr('All 18', 'Gesamt (18)')} value={parts.total} sym={sym} stakes={stakes} onChange={(total) => setParts({ ...parts, total })} />
         </SettingsList>
       </section>
-      {/* Einstellungen – with how much of the handicap, when net */}
-      {net && (
-        <section className="setup-part">
-          <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
-          <SettingsList>
-            <ChoiceRow<number>
-              label={tr('Handicap share', 'Vorgabe')}
-              title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
-              value={share}
-              onChange={setShare}
-              options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
-            />
-          </SettingsList>
-        </section>
-      )}
       {/* no connection: a green notice – nothing done wrong (Facelift 11.11.2026, o4) */}
       {msg && (
         <p className="notice" role="alert">

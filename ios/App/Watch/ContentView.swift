@@ -64,8 +64,14 @@ private struct HolePage: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(model.t("Next hole", "Nächstes Loch"))
             }
-            Distances()
-            Spacer(minLength: 0)
+            // on the green: its slope instead of the distances (Sascha 16.11.2026)
+            if model.onGreen, let m = model.currentHole?.map, let s = model.currentHole?.slope {
+                GreenSlopes(map: m, slope: s)
+            } else {
+                Distances()
+                WindRow()
+                Spacer(minLength: 0)
+            }
             ShotBar()
         }
         .padding(.horizontal, 6)
@@ -103,6 +109,160 @@ private struct Distances: View {
             }
             .frame(maxHeight: .infinity)
         }
+    }
+}
+
+/// the wind on this hole (Sascha 16.11.2026: "the wind on the watch would help"): the arrow where it blows – up is
+/// towards the flag –, km/h, how it plays, the gusts when they are stronger
+private struct WindRow: View {
+    @EnvironmentObject var model: RoundModel
+
+    var body: some View {
+        if let w = model.windHere {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 13, weight: .bold))
+                    .rotationEffect(.degrees(w.arrow))
+                    .foregroundStyle(brandText)
+                Text("\(w.kmh)").font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit()
+                Text("km/h").font(.caption2).foregroundStyle(.secondary)
+                Text(w.label).font(.caption2).foregroundStyle(.secondary)
+                if w.gust >= w.kmh + 5 {
+                    Text(model.t("gusts \(w.gust)", "Böen \(w.gust)")).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(model.t("Wind", "Wind") + " \(w.kmh) km/h, " + w.label)
+        }
+    }
+}
+
+/// the slope classes of the phone's green charts (greenmaker.ts, greenoverlay.py): light blue < 1 %, blue < 2, green < 3,
+/// dark green < 4, red < 5, purple
+private func slopeColour(_ pct: Double) -> Color {
+    switch pct {
+    case ..<1: return Color(red: 90 / 255.0, green: 190 / 255.0, blue: 235 / 255.0)
+    case ..<2: return Color(red: 40 / 255.0, green: 120 / 255.0, blue: 230 / 255.0)
+    case ..<3: return Color(red: 70 / 255.0, green: 200 / 255.0, blue: 70 / 255.0)
+    case ..<4: return Color(red: 30 / 255.0, green: 140 / 255.0, blue: 30 / 255.0)
+    case ..<5: return Color(red: 235 / 255.0, green: 70 / 255.0, blue: 40 / 255.0)
+    default: return Color(red: 230 / 255.0, green: 60 / 255.0, blue: 170 / 255.0)
+    }
+}
+
+/// on the green (Sascha 16.11.2026: "the green slopes when the player is on the green"): the green large, its slope in
+/// the colours of the phone's charts, where the ball runs, the flag and the player; the green's main slope below
+private struct GreenSlopes: View {
+    @EnvironmentObject var model: RoundModel
+    let map: WatchMap
+    let slope: WatchSlope
+
+    var body: some View {
+        VStack(spacing: 2) {
+            GreenSlopeDrawing(green: map.green ?? [], slope: slope, spot: model.spotInMap)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Text(model.percent(slope.pct) + " · " + model.slopeWords(slope.down))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+    }
+}
+
+private struct GreenSlopeDrawing: View {
+    let green: [[Double]]
+    let slope: WatchSlope
+    let spot: [Double]?
+
+    private static let rough = Color(red: 0.12, green: 0.22, blue: 0.10)
+    private static let flagRed = Color(red: 0.86, green: 0.27, blue: 0.24)
+
+    var body: some View {
+        Canvas { ctx, size in
+            // the frame: the green, the pin and the player when near
+            var pts = green
+            pts.append(slope.pin)
+            if let p = spot, p.count > 1, Geo.inside(p, green) || Geo.edge(p, green) < 15 { pts.append(p) }
+            var xs: [Double] = []
+            var ys: [Double] = []
+            for p in pts where p.count > 1 {
+                xs.append(p[0])
+                ys.append(p[1])
+            }
+            guard let minX = xs.min(), let maxX = xs.max(), let minY = ys.min(), let maxY = ys.max() else { return }
+            let pad = 8.0
+            let w = Double(size.width)
+            let h = Double(size.height)
+            let k = min((w - pad * 2) / max(maxX - minX, 10), (h - pad * 2) / max(maxY - minY, 10))
+            let mx = (minX + maxX) / 2
+            let my = (minY + maxY) / 2
+            func screen(_ p: [Double]) -> CGPoint {
+                guard p.count > 1 else { return .zero }
+                return CGPoint(x: w / 2 + (p[0] - mx) * k, y: h / 2 - (p[1] - my) * k)
+            }
+            var ring = Path()
+            for (i, p) in green.enumerated() where p.count > 1 {
+                if i == 0 { ring.move(to: screen(p)) } else { ring.addLine(to: screen(p)) }
+            }
+            ring.closeSubpath()
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Self.rough))
+            // the slope in colours, inside the green only
+            var inside = ctx
+            inside.clip(to: ring)
+            let r = slope.s * k * 0.75
+            for a in slope.a where a.count >= 4 {
+                let c = screen(a)
+                inside.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(slopeColour(a[3] / 10)))
+            }
+            ctx.stroke(ring, with: .color(.white.opacity(0.8)), lineWidth: 1.5)
+            // where the ball runs: an arrow downhill where the green falls half a percent or more
+            let len = slope.s * k * 0.62
+            let head = max(3, len * 0.35)
+            for a in slope.a where a.count >= 4 && a[3] >= 5 {
+                let c = screen(a)
+                let d = a[2] * Double.pi / 180
+                let ux = sin(d)
+                let uy = -cos(d)
+                let tip = CGPoint(x: c.x + ux * len / 2, y: c.y + uy * len / 2)
+                var arrow = Path()
+                arrow.move(to: CGPoint(x: c.x - ux * len / 2, y: c.y - uy * len / 2))
+                arrow.addLine(to: tip)
+                for side in [-0.5, 0.5] {
+                    let back = d + Double.pi + side
+                    arrow.move(to: tip)
+                    arrow.addLine(to: CGPoint(x: tip.x + sin(back) * head, y: tip.y - cos(back) * head))
+                }
+                ctx.stroke(arrow, with: .color(.white.opacity(0.9)), lineWidth: 1.2)
+            }
+            // the flag
+            let e = screen(slope.pin)
+            var pole = Path()
+            pole.move(to: e)
+            pole.addLine(to: CGPoint(x: e.x, y: e.y - 14))
+            ctx.stroke(pole, with: .color(.white), lineWidth: 1.5)
+            var flag = Path()
+            flag.move(to: CGPoint(x: e.x, y: e.y - 14))
+            flag.addLine(to: CGPoint(x: e.x + 8, y: e.y - 11))
+            flag.addLine(to: CGPoint(x: e.x, y: e.y - 8))
+            flag.closeSubpath()
+            ctx.fill(flag, with: .color(Self.flagRed))
+            ctx.fill(Path(ellipseIn: CGRect(x: e.x - 2, y: e.y - 2, width: 4, height: 4)), with: .color(.white))
+            // the player
+            if let p = spot, p.count > 1 {
+                let q = screen(p)
+                if q.x >= 0 && q.x <= size.width && q.y >= 0 && q.y <= size.height {
+                    let dot = Path(ellipseIn: CGRect(x: q.x - 5, y: q.y - 5, width: 10, height: 10))
+                    ctx.fill(dot, with: .color(.white))
+                    ctx.stroke(dot, with: .color(brand), lineWidth: 2.5)
+                }
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Green")
     }
 }
 
@@ -194,6 +354,19 @@ private struct HoleMapPage: View {
                             .background(Capsule().fill(brand))
                             .accessibilityLabel(model.t("\(n) shots on this hole", "\(n) Schläge an diesem Loch"))
                         Spacer()
+                        // the wind in the picture (16.11.2026): where it blows, km/h
+                        if let w = model.windHere {
+                            HStack(spacing: 2) {
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .rotationEffect(.degrees(w.inMap))
+                                Text("\(w.kmh)").font(.system(size: 13, weight: .semibold, design: .rounded)).monospacedDigit()
+                                Text("km/h").font(.system(size: 9))
+                            }
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 2)
+                            .accessibilityElement(children: .combine)
+                        }
                     }
                 }
                 .padding(.horizontal, 4)

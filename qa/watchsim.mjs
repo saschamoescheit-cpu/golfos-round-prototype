@@ -7,7 +7,7 @@
 // 5 · the hole changed on the watch: the phone goes along, and tells the watch its hole
 // Usage: node qa/watchsim.mjs [dev url]
 const { chromium, devices } = await import('playwright');
-const { mockNet } = await import('./netmock.mjs');
+const { mockNet, WEATHER } = await import('./netmock.mjs');
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 let bad = 0;
@@ -75,6 +75,20 @@ const sent = w.rounds.at(-1);
 ok(!!sent && sent.holes.length === 9 && !!sent.holes[0]?.tee && !!sent.holes[0]?.center, `the round to the watch: 9 holes with tee and green (${sent?.holes.length})`);
 ok(w.started === 1, `its workout started once (${w.started})`);
 ok((await p.getByText(/Apple Watch verbunden/).count()) > 0, '"Apple Watch verbunden" on the screen');
+// 1b · the wind and the greens' slopes follow (Sascha 16.11.2026: "die Anzeige vom Wind", "die Grün-Slopes, wenn der
+// Spieler auf dem Grün ist"): the same round again, with them – the workout not started a second time
+{
+  let last = null;
+  for (let k = 0; k < 20; k++) {
+    last = (await p.evaluate(() => window.__watch.rounds)).filter((r) => r.id === sent?.id && r.wind && r.holes.some((h) => h?.slope)).at(-1) ?? null;
+    if (last) break;
+    await p.waitForTimeout(500);
+  }
+  ok(!!last && last.wind.kmh === WEATHER.windKmh && last.wind.gust === WEATHER.gustKmh && last.wind.from === WEATHER.windFromDeg, `the wind to the watch (${JSON.stringify(last?.wind)})`);
+  const sl = last?.holes.filter((h) => h?.slope) ?? [];
+  ok(sl.length >= 7 && sl.every((h) => h.slope.a.length >= 3 && h.slope.pin.length === 2), `the greens' slopes to the watch: ${sl.length} of 9 holes (${sl[0]?.slope.a.length} fall lines on the first, ${sl[0]?.slope.pct} %)`);
+  ok((await p.evaluate(() => window.__watch.started)) === 1, 'sent again without starting the workout again');
+}
 const roundId = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].id);
 const tee = sent.holes[0].tee;
 const green = sent.holes[0].center;

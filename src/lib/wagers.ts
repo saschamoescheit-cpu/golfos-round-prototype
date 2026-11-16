@@ -986,26 +986,10 @@ export function withShare(c: DuelCard, share: number | undefined): DuelCard {
 export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>, now = ''): Progress {
   // without its stakes (a watcher without the money – golfos-live.sql): who is ahead, the 18 counting twice
   const parts = w.parts ?? { front: 1, back: 1, total: 2 };
-  // a player's own card before one another phone kept for him – but the challenger's, when he keeps the score of both
-  // (Sascha 10.11.2026)
-  const keeper = w.scorer === 'by' ? w.player : null;
-  const rank = (c: DuelCard) => (keeper && c.rec === keeper ? 0 : !c.by && !c.rec ? 1 : 2);
-  // a full card before one kept for only some holes (audit 13.11.2026: Chris kept Moritz's 8 holes, Moritz's own card had
-  // all 18 – the duel was not judged); among cards alike the keeper's first
-  const full = (c: DuelCard) => (c.strokes.filter((x) => x != null).length >= 18 ? 0 : 1);
-  const ordered = (cs: DuelCard[]) => [...cs].sort((a, b) => full(a) - full(b) || rank(a) - rank(b));
-  // the round it is played in: the tournament's (by its code – a card from before without one by its course)
-  const inRound = (c: DuelCard) => !w.on || c.tour === w.on.code || (!c.tour && c.course === w.on.course);
-  const mine = ordered(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day) && inRound(c) && !c.rec);
-  const theirs = ordered(pool.cards?.[w.opponent ?? ''] ?? []).filter((c) => inRound(c) && (!c.rec || c.rec === keeper)).map((c) => (w.net ? withShare(c, w.allowance) : c));
   const net = !!w.net;
   let amount = 0;
   const duels: NonNullable<Progress['duels']> = [];
-  for (const own of mine) {
-    const a = w.net ? withShare(own, w.allowance) : own;
-    if (duels.some((d) => d.day === a.day)) continue; // one duel a day: its first round
-    const b = theirs.find((x) => x.day === a.day && x.course === a.course) ?? theirs.find((x) => x.day === a.day);
-    if (!b) continue;
+  for (const { a, b } of duelPairs(w, pool)) {
     const d = {
       day: a.day,
       course: a.course,
@@ -1033,6 +1017,64 @@ export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | '
   }
   duels.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
   return { best: null, done: false, rounds: duels.length, amount, duels, at: now };
+}
+
+/** A side bet's details afterwards (Sascha 16.11.2026: "im Nachgang die Details je Bet – wer Front, wer Back und wer
+ *  total gemacht hat, auch mit Verrechnung"): per round the two scores of the front nine, the back nine and the 18 (net
+ *  with the strokes received), who won each and what it is worth – from the player's side; the same cards as the duel's
+ *  judgement. */
+export interface DuelPart {
+  part: 'front' | 'back' | 'total';
+  mine: number | null;
+  theirs: number | null;
+  /** 1 the player, −1 the opponent, 0 halved, null not complete */
+  win: number | null;
+  /** what it is worth to the player (+ won, − lost) */
+  amount: number;
+}
+export function duelDetails(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>): { day: string; course: string; parts: DuelPart[]; amount: number }[] {
+  const stakes = w.parts ?? { front: 1, back: 1, total: 2 };
+  const net = !!w.net;
+  const span: Record<DuelPart['part'], [number, number]> = { front: [0, 9], back: [9, 18], total: [0, 18] };
+  const out = duelPairs(w, pool).map(({ a, b }) => {
+    const parts = (['front', 'back', 'total'] as const).map((part) => {
+      const mine = cardPart(a, span[part][0], span[part][1], net);
+      const theirs = cardPart(b, span[part][0], span[part][1], net);
+      const win = beats(mine, theirs);
+      return { part, mine, theirs, win, amount: (win ?? 0) * stakes[part] };
+    });
+    return { day: a.day, course: a.course, parts, amount: parts.reduce((s, p) => s + p.amount, 0) };
+  });
+  return out.sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : 0));
+}
+/** The same from the opponent's side. */
+export const flipDetails = (ds: ReturnType<typeof duelDetails>): ReturnType<typeof duelDetails> =>
+  ds.map((d) => ({ ...d, amount: -d.amount || 0, parts: d.parts.map((p) => ({ ...p, mine: p.theirs, theirs: p.mine, win: p.win == null ? null : -p.win || 0, amount: -p.amount || 0 })) }));
+
+/** The two cards a duel compares, each round of it: the player's own (with its share of the handicap when net) and the
+ *  opponent's of the same round – one duel a day, its first round. */
+function duelPairs(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | 'cards'>): { a: DuelCard; b: DuelCard }[] {
+  // a player's own card before one another phone kept for him – but the challenger's, when he keeps the score of both
+  // (Sascha 10.11.2026)
+  const keeper = w.scorer === 'by' ? w.player : null;
+  const rank = (c: DuelCard) => (keeper && c.rec === keeper ? 0 : !c.by && !c.rec ? 1 : 2);
+  // a full card before one kept for only some holes (audit 13.11.2026: Chris kept Moritz's 8 holes, Moritz's own card had
+  // all 18 – the duel was not judged); among cards alike the keeper's first
+  const full = (c: DuelCard) => (c.strokes.filter((x) => x != null).length >= 18 ? 0 : 1);
+  const ordered = (cs: DuelCard[]) => [...cs].sort((a, b) => full(a) - full(b) || rank(a) - rank(b));
+  // the round it is played in: the tournament's (by its code – a card from before without one by its course)
+  const inRound = (c: DuelCard) => !w.on || c.tour === w.on.code || (!c.tour && c.course === w.on.course);
+  const mine = ordered(pool.cards?.[w.player] ?? []).filter((c) => c.day >= pool.from && c.day <= pool.to && (w.attempts !== 'day' || !w.day || c.day === w.day) && inRound(c) && !c.rec);
+  const theirs = ordered(pool.cards?.[w.opponent ?? ''] ?? []).filter((c) => inRound(c) && (!c.rec || c.rec === keeper)).map((c) => (w.net ? withShare(c, w.allowance) : c));
+  const pairs: { a: DuelCard; b: DuelCard }[] = [];
+  for (const own of mine) {
+    const a = w.net ? withShare(own, w.allowance) : own;
+    if (pairs.some((p) => p.a.day === a.day)) continue; // one duel a day: its first round
+    const b = theirs.find((x) => x.day === a.day && x.course === a.course) ?? theirs.find((x) => x.day === a.day);
+    if (!b) continue;
+    pairs.push({ a, b });
+  }
+  return pairs;
 }
 
 type DuelDay = NonNullable<Progress['duels']>[number];

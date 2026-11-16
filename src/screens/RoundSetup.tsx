@@ -6,7 +6,8 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { FriendChips, roughPlaying } from './Home';
 import { ROUND_KINDS, kindName, type RoundKind } from '../lib/roundkind';
 import { emptyEntry } from '../lib/scoring';
-import { loadCarryBag, loadGeometry, newId } from '../lib/storage';
+import { loadCarryBag, loadGeometry, loadUnit, newId } from '../lib/storage';
+import { lengthText } from '../lib/geo';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
@@ -453,10 +454,15 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
           <p className="small good-text" style={{ margin: 0 }}>
-            {tr(
-              'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries in your profile under “My bag”.',
-              'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du im Profil unter „Mein Bag“ ein.',
-            )}
+            {loadUnit() === 'yd'
+              ? tr(
+                  'The caddie uses standard distances (driver 219 yd … PW 126 yd) – enter your own carries in your profile under “My bag”.',
+                  'Der Caddie rechnet mit Standard-Weiten (Driver 219 yd … PW 126 yd) – deine eigenen Carry-Weiten trägst du im Profil unter „Mein Bag“ ein.',
+                )
+              : tr(
+                  'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries in your profile under “My bag”.',
+                  'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du im Profil unter „Mein Bag“ ein.',
+                )}
           </p>
         )}
       </section>
@@ -782,7 +788,7 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
                   <span className="grow">
                     <strong>{t.name}</strong>
                     <span className="muted small">
-                      {[t.total > 0 ? `${t.total} m` : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}
+                      {[t.total > 0 ? lengthText(t.total, loadUnit()) : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {t.id === player.tee && <span className="pick-check" aria-hidden="true">✓</span>}

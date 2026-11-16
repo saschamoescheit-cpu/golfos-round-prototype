@@ -193,7 +193,9 @@ await P.waitForTimeout(400);
   await P.locator('.settings-row').filter({ hasText: /^Wertung/ }).click();
   await P.getByRole('dialog', { name: 'Wertung' }).locator('.pick-option').filter({ hasText: /^Netto/ }).first().click();
   const h2 = await heads();
-  ok(h2[h2.length - 1] === 'EINSTELLUNGEN' && /^Vorgabe 100 %$/.test((await rowsOf('Einstellungen'))[0] ?? ''), `g2: net – "Vorgabe" under "Einstellungen" (${h2.join(' · ')})`);
+  // Sascha 16.11.2026: "Vorgabe muss unter Netto stehen" – in "Wertung", no "Einstellungen" at the end
+  const w2 = await rowsOf('Wertung');
+  ok(h2.join('|') === 'SPIELFORM|WERTUNG|WETTEN|TAG|GEGEN WEN|WORUM' && w2[0] === 'Wertung Netto' && w2[1] === 'Vorgabe 100 %', `g2: net – "Vorgabe" right under "Netto" (${w2.join(' | ')} · ${h2.join(' · ')})`);
   ok(await P.getByRole('button', { name: 'Herausfordern' }).isVisible(), 'g2: "Herausfordern" at the end');
   await shot('duel');
   await P.locator('.settings-row').filter({ hasText: /^Gegner/ }).click();

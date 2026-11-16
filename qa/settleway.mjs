@@ -66,7 +66,7 @@ const openPool = async () => {
   await H.goto(url);
   await H.waitForTimeout(1500);
   await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-  await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+  await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
   await H.waitForTimeout(1200);
 };
 await openPool();
@@ -153,7 +153,7 @@ ok(!!w1?.from && !!w1?.until && !w1.picks, `"Von – bis": from and up to the po
   await C.goto(url);
   await C.waitForTimeout(1500);
   await C.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-  await C.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+  await C.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
   await C.waitForTimeout(1500);
   ok((await C.locator('div.pool-wager').filter({ hasText: '9 Pars' }).count()) === 1, 'Chris: his other bet only to see');
   await C.locator('button.pool-wager').filter({ hasText: '5+5+10' }).first().click();

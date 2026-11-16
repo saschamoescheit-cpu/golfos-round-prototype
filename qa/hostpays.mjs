@@ -47,7 +47,7 @@ await H.goto('about:blank');
 await H.goto(url);
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
 await H.waitForTimeout(1500);
 const row = H.locator('.pool-pays li').filter({ hasText: 'Sascha zahlt an Erik' });
 const mark = row.locator('.paid-mark');

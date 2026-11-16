@@ -47,7 +47,7 @@ const openPool = async () => {
   await H.goto(url);
   await H.waitForTimeout(1500);
   await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
-  await H.locator('.list-item').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
+  await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA-Wetten' }).first().click({ timeout: 15000 });
   await H.waitForTimeout(2000);
 };
 await openPool();

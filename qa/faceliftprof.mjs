@@ -38,7 +38,7 @@ await p.waitForTimeout(1200);
 const openRound = async (name) => {
   await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
   await p.waitForTimeout(500);
-  await p.locator('.list-item').filter({ hasText: name }).first().click();
+  await p.locator('.list-item:not(.side-bet-row)').filter({ hasText: name }).first().click();
   await p.waitForTimeout(900);
 };
 await openRound('QA Rated');

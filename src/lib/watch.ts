@@ -1,5 +1,6 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
-import { distanceM, type HoleMapData } from './geo';
+import { distanceM, pointInRing, type HoleMapData } from './geo';
+import { heightAt, type GreenGrid } from './greenread';
 import { isNative } from './native';
 import type { LngLat, Round } from '../types';
 
@@ -101,18 +102,26 @@ export interface WatchMap {
   water: [number, number][][];
   tees: [number, number][][];
 }
-export function watchMap(m: HoleMapData, center: LngLat): WatchMap {
-  const [lon0, lat0] = m.tee;
+/** the hole's picture frame: metres from the tee, [right, forward], the green (or pin) straight up; `b` in radians */
+function mapFrame(tee: LngLat, center: LngLat) {
+  const [lon0, lat0] = tee;
   const kx = 111320 * Math.cos((lat0 * Math.PI) / 180);
   const ky = 110540;
   const en = (p: LngLat): [number, number] => [(p[0] - lon0) * kx, (p[1] - lat0) * ky];
   const [ce, cn] = en(center);
   const b = Math.atan2(ce, cn); // from north, clockwise
   const [sb, cb] = [Math.sin(b), Math.cos(b)];
+  /** a vector east/north (metres) turned into the picture */
+  const turn = (e: number, n: number): [number, number] => [e * cb - n * sb, e * sb + n * cb];
   const local = (p: LngLat): [number, number] => {
-    const [e, n] = en(p);
-    return [Math.round(e * cb - n * sb), Math.round(e * sb + n * cb)];
+    const [x, y] = turn(...en(p));
+    return [Math.round(x), Math.round(y)];
   };
+  return { b, kx, ky, turn, local };
+}
+
+export function watchMap(m: HoleMapData, center: LngLat): WatchMap {
+  const { b, local } = mapFrame(m.tee, center);
   const ring = (r: LngLat[], n: number) => thin(r, n).map(local);
   // the shapes nearest the playing line first – the watch gets the few that matter
   const near = (rs: LngLat[][], most: number, n: number) =>
@@ -132,23 +141,101 @@ export function watchMap(m: HoleMapData, center: LngLat): WatchMap {
   };
 }
 
-/** What the watch gets of a round: per hole its label, par, tee, the middle of the green (or the pin) and its outline. */
-export function watchRound(round: Round, maps: (HoleMapData | null)[], unit: 'm' | 'yd', lang: string, pins: (LngLat | null)[] = []) {
+/** The green's slope on the watch (Sascha 16.11.2026: "Auf der Apple Watch wäre es gut, wenn die Grün-Slopes kommen,
+ *  wenn der Spieler auf dem Grün ist"): from the green's heights (the same as the phone's charts), every 4 m inside the
+ *  green a fall line – [right, forward, downhill direction in degrees (0 = straight up the picture, clockwise), slope in
+ *  tenths of a percent] in the hole's picture frame –, the green's main slope and the pin. Small: about 40 points a green. */
+export interface WatchSlope {
+  s: number;
+  a: [number, number, number, number][];
+  pct: number;
+  down: number;
+  pin: [number, number];
+}
+export const SLOPE_STEP_M = 4;
+export function watchSlope(m: HoleMapData, grid: GreenGrid, pin: LngLat): WatchSlope | null {
+  if (!m.green || m.green.length < 4) return null;
+  const { turn, local, kx, ky } = mapFrame(m.tee, pin);
+  const ring = m.green;
+  const lons = ring.map((p) => p[0]);
+  const lats = ring.map((p) => p[1]);
+  const [w, e, s, n] = [Math.min(...lons), Math.max(...lons), Math.min(...lats), Math.max(...lats)];
+  const dLon = SLOPE_STEP_M / kx;
+  const dLat = SLOPE_STEP_M / ky;
+  const h1 = 1; // metres either side for the gradient
+  const a: WatchSlope['a'] = [];
+  let sx = 0;
+  let sy = 0;
+  // the samples on a 4 m grid, half a step in from the box's corner
+  for (let lat = s + dLat / 2; lat < n; lat += dLat) {
+    for (let lon = w + dLon / 2; lon < e; lon += dLon) {
+      const p: LngLat = [lon, lat];
+      if (!pointInRing(p, ring)) continue;
+      const hE = heightAt(grid, [lon + h1 / kx, lat]);
+      const hW = heightAt(grid, [lon - h1 / kx, lat]);
+      const hN = heightAt(grid, [lon, lat + h1 / ky]);
+      const hS = heightAt(grid, [lon, lat - h1 / ky]);
+      if (hE == null || hW == null || hN == null || hS == null) continue;
+      const ge = (hE - hW) / (2 * h1);
+      const gn = (hN - hS) / (2 * h1);
+      sx += ge;
+      sy += gn;
+      const [dx, dy] = turn(-ge, -gn); // downhill, in the picture
+      const [x, y] = local(p);
+      a.push([x, y, Math.round(((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360), Math.round(Math.hypot(ge, gn) * 1000)]);
+    }
+  }
+  if (a.length < 3) return null;
+  const [mx, my] = turn(-sx / a.length, -sy / a.length);
+  return {
+    s: SLOPE_STEP_M,
+    a,
+    pct: Math.round(Math.hypot(sx / a.length, sy / a.length) * 1000) / 10,
+    down: Math.round(((Math.atan2(mx, my) * 180) / Math.PI + 360) % 360),
+    pin: local(pin),
+  };
+}
+
+/** The wind on the watch (Sascha 16.11.2026: "Auf der Apple Watch wäre auch die Anzeige vom Wind hilfreich"): as on the
+ *  phone, km/h, where it comes from (degrees from north) and when the phone sent it – the watch turns it to each hole. */
+export interface WatchWind {
+  kmh: number;
+  gust: number;
+  from: number;
+  t: number;
+}
+
+/** What the watch gets of a round: per hole its label, par, tee, the middle of the green (or the pin) and its outline;
+ *  the green's slope where the phone has its heights; the wind of the moment. */
+export function watchRound(
+  round: Round,
+  maps: (HoleMapData | null)[],
+  unit: 'm' | 'yd',
+  lang: string,
+  pins: (LngLat | null)[] = [],
+  extra: { grids?: Record<string, GreenGrid> | null; wind?: { windKmh: number; gustKmh: number; windFromDeg: number } | null; now?: number } = {},
+) {
+  const w = extra.wind;
   return {
     id: round.id,
     unit,
     lang: lang === 'en' ? 'en' : 'de',
     start: round.startHole ?? 0,
+    ...(w ? { wind: { kmh: Math.round(w.windKmh), gust: Math.round(w.gustKmh), from: Math.round(w.windFromDeg), t: extra.now ?? Date.now() } satisfies WatchWind } : {}),
     holes: round.holes.map((h, k) => {
       const m = maps[k];
       if (!m) return null;
+      const label = String(h.label ?? k + 1);
+      const grid = extra.grids?.[label];
+      const slope = grid ? watchSlope(m, grid, pins[k] ?? m.greenCenter) : null;
       return {
-        label: String(h.label ?? k + 1),
+        label,
         par: h.par || 4,
         tee: r6(m.tee),
         center: r6(pins[k] ?? m.greenCenter),
         green: m.green ? thin(m.green, 24).map(r6) : null,
         map: watchMap(m, pins[k] ?? m.greenCenter),
+        ...(slope ? { slope } : {}),
       };
     }),
   };

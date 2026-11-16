@@ -2887,3 +2887,11 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-aim-box { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); margin-bottom: 8px; }
 .shot-aim-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .shot-aim-box .chip { white-space: nowrap; flex: none; }
+/* the side bets under "Wetten" (16.11.2026) */
+.side-bets { display: flex; flex-direction: column; gap: 8px; }
+.side-bets-total { display: flex; flex-direction: column; gap: 4px; }
+.side-bets-people { display: flex; flex-wrap: wrap; gap: 4px 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.side-bet-amount { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.side-bet-table .num { text-align: right; white-space: nowrap; }
+.side-bet-day { overflow-x: auto; }
+.side-bet-settle { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }

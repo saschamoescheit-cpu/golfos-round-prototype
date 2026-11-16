@@ -128,6 +128,72 @@ describe('the hole drawn on the watch', () => {
   });
 });
 
+// Sascha 16.11.2026: "Auf der Apple Watch wäre es gut, wenn die Grün-Slopes kommen, wenn der Spieler auf dem Grün ist" –
+// "auch die Anzeige vom Wind"
+describe("the green's slope and the wind on the watch", () => {
+  // a green rising 2 cm a metre to the south: the ball runs north – straight up the picture of a hole played north
+  const grid = (cmPerM: number) => {
+    const size = 40;
+    return {
+      corners: [at(-20, 380), at(20, 380), at(20, 340), at(-20, 340)] as [LngLat, LngLat, LngLat, LngLat],
+      size,
+      cell: 1,
+      base: 300,
+      cm: Array.from({ length: size * size }, (_, k) => Math.floor(k / size) * cmPerM),
+    };
+  };
+  it("a fall line every 4 m inside the green, downhill and its percent in the hole's picture", async () => {
+    const { watchSlope } = await import('./watch');
+    const s = watchSlope(hole, grid(2), hole.greenCenter)!;
+    expect(s.s).toBe(4);
+    expect(s.a.length).toBeGreaterThan(30); // 30 × 30 m: about 56
+    expect(s.a.length).toBeLessThan(80);
+    expect(s.a.every(([, , d, p]) => (d < 3 || d > 357) && p === 20)).toBe(true); // up the picture, 2.0 %
+    expect(s.pct).toBe(2);
+    expect(s.down === 0 || s.down === 360).toBe(true);
+    expect(s.pin[0]).toBe(0);
+    expect(Math.abs(s.pin[1] - 360)).toBeLessThanOrEqual(3);
+    // every point inside the green
+    expect(s.a.every(([x, y]) => Math.abs(x) <= 15 && y >= 342 && y <= 375)).toBe(true);
+  });
+  it('the ball running east is to the right in the picture of a hole played north', async () => {
+    const { watchSlope } = await import('./watch');
+    const g = grid(0);
+    const size = g.size;
+    g.cm = Array.from({ length: size * size }, (_, k) => (size - 1 - (k % size)) * 3); // higher in the west
+    const s = watchSlope(hole, g, hole.greenCenter)!;
+    expect(Math.abs(s.down - 90)).toBeLessThanOrEqual(2);
+    expect(s.pct).toBe(3);
+  });
+  it('without heights or a green: no slope, the round as before', async () => {
+    const { watchSlope } = await import('./watch');
+    expect(watchSlope({ ...hole, green: null }, grid(2), hole.greenCenter)).toBeNull();
+    const w = watchRound(round, [hole, null], 'm', 'de');
+    expect(w.holes[0]).not.toHaveProperty('slope');
+    expect(w).not.toHaveProperty('wind');
+  });
+  it('the round with the slope of its hole and the wind of the moment', () => {
+    const w = watchRound(round, [hole, null], 'm', 'de', [], { grids: { '1': grid(2) }, wind: { windKmh: 12.4, gustKmh: 24.6, windFromDeg: 271.2 }, now: 5000 });
+    expect(w.holes[0]?.slope?.pct).toBe(2);
+    expect(w.wind).toEqual({ kmh: 12, gust: 25, from: 271, t: 5000 });
+  });
+  it("18 holes of Hetzenhof with their greens' slopes still small for the watch (under 60 kB)", async () => {
+    const { SEED_LOADERS } = await import('../data/seedLoaders');
+    const { holeMapData } = await import('./geo');
+    const { readFileSync } = await import('node:fs');
+    const grids = JSON.parse(readFileSync('public/greens/hetzenhof/heights.json', 'utf8'));
+    const geo = await SEED_LOADERS['osm:relation/1326323']();
+    const refs = ['A', 'B'].flatMap((loop) => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ loop, n })));
+    const maps = refs.map(({ loop, n }) => holeMapData(geo, loop, n));
+    const r18 = { ...round, holes: refs.map(({ loop, n }) => ({ label: `${n}${loop}`, par: 4 })) } as unknown as Round;
+    const w = watchRound(r18, maps, 'm', 'de', [], { grids, wind: { windKmh: 10, gustKmh: 20, windFromDeg: 250 } });
+    const withSlope = w.holes.filter((x) => x?.slope);
+    expect(withSlope.length).toBeGreaterThan(12);
+    expect(withSlope.every((x) => x!.slope!.a.length >= 3 && x!.slope!.pct < 10)).toBe(true);
+    expect(JSON.stringify(w).length).toBeLessThan(60000);
+  });
+});
+
 // Sascha 08.11.2026: "Erik saves or deletes the round on the phone, on the watch it is still there – opening the app
 // again, he is on the hole the watch still shows"
 describe('the round on the watch and on the phone', () => {

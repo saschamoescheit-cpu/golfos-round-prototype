@@ -362,12 +362,12 @@ ok(chrisBets.length === 4 && madeIds.length === 4 && madeIds.every((id) => chris
 await H.reload();
 await H.waitForTimeout(1500);
 // Sascha 01.11.2026: "following the bets belongs into the menu Bets" – on the start page only the start, the dot on "Wetten"
-ok((await H.locator('.list-item').filter({ hasText: /Wett-Pool läuft|USA 2026/ }).count()) === 0 && (await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).locator('.tabbar-dot').count()) === 1, 'start page: no pool, no "follow" row – the dot on "Wetten"');
+ok((await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: /Wett-Pool läuft|USA 2026/ }).count()) === 0 && (await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).locator('.tabbar-dot').count()) === 1, 'start page: no pool, no "follow" row – the dot on "Wetten"');
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.waitForTimeout(500);
 ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.getByRole('button', { name: 'Wette beitreten' }).count()) === 0, 'menu "Wetten": the tiles at the top as on Rounds and Games, then the pools (new and join on "Spielen")');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab.png' });
-await H.locator('.list-item').filter({ hasText: 'USA 2026' }).click();
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026' }).click();
 await H.waitForTimeout(2000);
 const hChris = H.locator('.pool-player').filter({ has: H.locator('.pool-player-name', { hasText: /^Chris$/ }) });
 ok((await hChris.locator('.badge').allInnerTexts()).filter((x) => /^(1× g|G)eschafft$/.test(x)).length === 4, "Sascha sees Chris's 4 bets made");
@@ -393,7 +393,7 @@ await H.reload();
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.waitForTimeout(1500);
-ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 1, 'storage emptied: the pool comes back from the server');
+ok((await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026' }).count()) === 1, 'storage emptied: the pool comes back from the server');
 const back = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1') ?? '[]'));
 ok(back.length === 1 && back[0].me === shared.get(code).game.players.find((p) => p.name === 'Sascha').id && back[0].pool.wagers.length === 7, 'storage emptied: Sascha found again by his account, all 7 bets there');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab-tiles.png' });
@@ -503,7 +503,7 @@ await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { n
 }
 await H.getByRole('button', { name: 'Für alle löschen' }).click();
 await H.waitForTimeout(1200);
-ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'delete: marked deleted for everyone, gone from the menu');
+ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026' }).count()) === 0, 'delete: marked deleted for everyone, gone from the menu');
 await G.goto('about:blank');
 await G.goto(url + '#pool=' + code);
 await G.waitForTimeout(3000);
@@ -515,7 +515,7 @@ await H.getByRole('button', { name: 'Wiederherstellen', exact: true }).click();
 await H.waitForTimeout(1500);
 ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 6, 'restored from the bin: back for everyone, all 6 bets (Erik removed before)');
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();
-ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
+ok((await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 
 // one for all (Sascha 02.11.2026: "a person, e.g. Chris, enters the score for all players"): a round with a scorer
 // counts "with marker" – the scorer's figures, as he entered them, signed by player and scorer
@@ -536,7 +536,7 @@ await H.evaluate(({ round }) => {
   const r = { ...round, id: 'r-one-phone', shared: undefined, players: [{ id: 'me', name: 'Sascha', playingHandicap: 4, isMe: true }, { id: 'c', name: 'Cedric', playingHandicap: 8, isMe: false }], entries: { me: round.entries.p2, c: round.entries.me } };
   localStorage.setItem('golfos.rounds.v1', JSON.stringify([r]));
 }, { round: chrisRound });
-await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).click();
+await H.locator('.list-item:not(.side-bet-row)').filter({ hasText: 'USA 2026 Florida' }).click();
 await H.waitForTimeout(4000);
 const cp = shared.get(code).game.progress[cedricBet.id];
 ok(cp?.pending === -2 && cp.done === false, `one phone for all: the host's phone judged Cedric's −5 from his card – −2, provisional (${JSON.stringify(cp)})`);
