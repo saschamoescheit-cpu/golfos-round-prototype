@@ -751,6 +751,8 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .tabbar button {
   display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 54px; justify-content: center;
   border: 0; border-radius: 20px; background: transparent; color: var(--muted); font: 600 11px var(--body);
+  /* not the browser's 6px a side: long words ("Bibliothèque · Entraînement", "Geschiedenis") fit an iPhone SE (17.11.2026) */
+  padding-inline: 2px; white-space: nowrap;
 }
 .tabbar button[aria-current='page'] { background: var(--brand-soft); color: var(--brand-text); }
 .tabbar-icon { position: relative; display: flex; }
