@@ -1,7 +1,7 @@
 import { tr } from '../lib/i18n';
 import { prizeAmount, prizeName, type Prize } from '../lib/prize';
 import { eventStandings, liveFlights, type RoundEvent } from '../lib/sharedround';
-import { seriesStandings } from '../lib/seriesstandings';
+import { seriesGuests, seriesStandings } from '../lib/seriesstandings';
 import { addBalances, hasPrizes, prizeAwards, prizeSettle, prizeSum, rankKind, settleBalances, type Award, type RankRow, type TourPrizes } from '../lib/tourprizes';
 import type { TourSeries } from '../lib/tourstore';
 import { tourPrizeResult } from './TourPrizeBoard';
@@ -28,16 +28,19 @@ const isDone = (e: RoundEvent) => {
   const rows = eventStandings(e, { gross: true }).rows;
   return rows.length > 0 && rows.every((r) => r.finished);
 };
-const rank = (rows: { name: string; pos: string; sum: number; noReturn: boolean }[]): RankRow[] => rows.map((r) => ({ name: r.name, pos: r.noReturn ? '–' : r.pos, sort: r.noReturn ? null : r.sum }));
+// a guest (Sascha 16.11.2026: "Nur Tageswertung") wins nothing of the series' own – as a No Return
+const rank = (rows: { name: string; pos: string; sum: number; noReturn: boolean; guest: boolean }[]): RankRow[] => rows.map((r) => ({ name: r.name, pos: r.noReturn || r.guest ? '–' : r.pos, sort: r.noReturn || r.guest ? null : r.sum }));
 
 /** The series' prizes: its own on the total (gross, net), the day prizes of its tournaments, and the one settlement over
  *  all of them once the last round is in. `evs`: the rounds in the series' order, each with its tournament's prizes. */
 export function seriesPrizeResult(s: Pick<TourSeries, 'prizes' | 'paid'>, evs: (PrizedEvent | null)[]) {
   const played = evs.filter((e): e is PrizedEvent => !!e && liveFlights(e).length > 0);
-  const players = [...new Map(played.flatMap((e) => liveFlights(e).flatMap((f) => f.players.flatMap((p) => (p.members?.length ? p.members.map((m) => m.name) : [p.name])))).filter((n) => n.trim()).map((n) => [n.trim().toLowerCase(), n])).values()];
+  // the series' players – its guests play for their days' prizes only (Sascha 16.11.2026)
+  const guests = seriesGuests(evs);
+  const players = [...new Map(played.flatMap((e) => liveFlights(e).flatMap((f) => f.players.flatMap((p) => (p.members?.length ? p.members.map((m) => m.name) : [p.name])))).filter((n) => n.trim() && !guests.has(n.trim().toLowerCase())).map((n) => [n.trim().toLowerCase(), n])).values()];
   const tp = hasPrizes(s.prizes) ? s.prizes : null;
   const net = played.some((e) => (e.format?.scoring ?? 'net') !== 'stroke' && (e.format?.allowance ?? 100) > 0);
-  const own: Award[] = tp ? prizeAwards(tp, { gross: rank(seriesStandings(played, { gross: true }).rows), net: net ? rank(seriesStandings(played, { gross: false }).rows) : null }) : [];
+  const own: Award[] = tp ? prizeAwards(tp, { gross: rank(seriesStandings(played, { gross: true, field: evs }).rows), net: net ? rank(seriesStandings(played, { gross: false, field: evs }).rows) : null }) : [];
   const ref = seriesPrizeRef(s, evs.map((e) => e?.prizes));
   const days = evs.flatMap((e, k) => {
     const r = e ? tourPrizeResult(e) : null;

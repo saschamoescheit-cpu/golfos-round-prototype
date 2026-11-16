@@ -15,7 +15,8 @@ export interface SeriesPart {
 }
 /** `gross`: every round gross (true) or with its handicap allowance (false) – the series' prizes (Sascha 15.11.2026); left
  *  out: as each round is scored (stroke play gross, else net) */
-export function seriesStandings(evs: RoundEvent[], o: { gross?: boolean } = {}): { higherBetter: boolean; anyNoReturn: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[]; noReturn: boolean }[] } {
+export function seriesStandings(evs: RoundEvent[], o: { gross?: boolean; /** all rounds of the series, those to come too – who is a guest (seriesGuests); left out: the rounds given */ field?: (RoundEvent | null | undefined)[] } = {}): { higherBetter: boolean; anyNoReturn: boolean; anyGuest: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[]; noReturn: boolean; guest: boolean }[] } {
+  const guests = seriesGuests(o.field ?? evs);
   const by = new Map<string, { name: string; sum: number; rounds: number; parts: SeriesPart[]; noReturn: boolean }>();
   let hb = false;
   evs.forEach((ev, k) => {
@@ -45,6 +46,30 @@ export function seriesStandings(evs: RoundEvent[], o: { gross?: boolean } = {}):
   });
   // one with a "No Return" after those who played every round (on fewer rounds his total is not comparable)
   const same = (a: { sum: number; noReturn: boolean }, b: { sum: number; noReturn: boolean }) => a.sum === b.sum && a.noReturn === b.noReturn;
-  const rows = [...by.values()].sort((a, b) => Number(a.noReturn) - Number(b.noReturn) || (hb ? b.sum - a.sum : a.sum - b.sum));
-  return { higherBetter: hb, anyNoReturn: rows.some((x) => x.noReturn), rows: rows.map((x) => ({ ...x, pos: `${rows.filter((y) => same(x, y)).length > 1 ? 'T' : ''}${rows.findIndex((y) => same(x, y)) + 1}` })) };
+  // a guest below them all, without a place (Sascha 16.11.2026: "Nur Tageswertung")
+  const all = [...by.values()].map((x) => ({ ...x, guest: guests.has(x.name.trim().toLowerCase()) }));
+  const order = (a: { sum: number; noReturn: boolean }, b: { sum: number; noReturn: boolean }) => Number(a.noReturn) - Number(b.noReturn) || (hb ? b.sum - a.sum : a.sum - b.sum);
+  const ranked = all.filter((x) => !x.guest).sort(order);
+  const rows = [
+    ...ranked.map((x) => ({ ...x, pos: `${ranked.filter((y) => same(x, y)).length > 1 ? 'T' : ''}${ranked.findIndex((y) => same(x, y)) + 1}` })),
+    ...all.filter((x) => x.guest).sort(order).map((x) => ({ ...x, pos: '–' })),
+  ];
+  return { higherBetter: hb, anyNoReturn: rows.some((x) => x.noReturn), anyGuest: rows.some((x) => x.guest), rows };
+}
+
+/** Guests of a series (Sascha 16.11.2026, Orlando: "Thomas und Daniel spielen morgen und übermorgen Legends mit" – "Nur
+ *  Tageswertung"): in the flights of fewer than half its rounds – in each of their rounds in full, in the total below
+ *  the line, without a place and without the series' prizes. `evs`: all rounds of the series, those still to come too;
+ *  from three rounds on. Names lower-case. */
+export function seriesGuests(evs: (RoundEvent | null | undefined)[]): Set<string> {
+  const rounds = evs.filter((e): e is RoundEvent => !!e && Object.values(e.flights ?? {}).some((f) => f.players.length > 0));
+  const out = new Set<string>();
+  if (rounds.length < 3) return out;
+  const count = new Map<string, number>();
+  for (const e of rounds) {
+    const names = new Set(Object.values(e.flights).flatMap((f) => f.players.map((p) => p.name.trim().toLowerCase())).filter(Boolean));
+    for (const n of names) count.set(n, (count.get(n) ?? 0) + 1);
+  }
+  for (const [n, c] of count) if (c * 2 < rounds.length) out.add(n);
+  return out;
 }

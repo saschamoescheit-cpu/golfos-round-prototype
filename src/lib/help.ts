@@ -290,6 +290,16 @@ export const FAQ: FaqTopic[] = [
         video: 'score',
       },
       {
+        // Sascha 16.11.2026, Orlando: "Thomas und Daniel spielen morgen und übermorgen Legends mit" – "Nur Tageswertung"
+        q: () => tr('Someone plays only a few rounds of a series – how do I add them?', 'Jemand spielt nur ein paar Runden einer Serie mit – wie füge ich ihn hinzu?'),
+        a: () =>
+          tr(
+            'Add them in those rounds only: open the round in the series, "Change the tournament", "Add player". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, "Guest", without a place, the series\' prizes and its entry fee.',
+            'Nur in diesen Runden hinzufügen: die Runde in der Serie öffnen, „Turnier bearbeiten“, „Spieler hinzufügen“. In jeder seiner Runden zählt er voll – Leaderboard und Tagespreise. Wer in weniger als der Hälfte der Runden dabei ist, ist Gast: in der Gesamtwertung unter einer grauen Linie, „Gast“, ohne Platz, ohne die Preise der Serie und ihr Startgeld.',
+          ),
+        video: 'score',
+      },
+      {
         // Sascha 11.11.2026: "Loch 4 als Loch 5 gesetzt – wie korrigiere ich das?"; Moritz on Cypress
         q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
         a: () =>

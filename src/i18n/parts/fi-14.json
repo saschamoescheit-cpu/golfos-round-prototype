@@ -132,5 +132,9 @@
  "The bets and where they stand – no stakes, no money": "Vedot ja niiden tilanne – ei panoksia, ei rahaa",
  "On – with amounts": "Päällä – summien kanssa",
  "Stakes and who is up": "Panokset ja kuka johtaa",
- "in play now": "käynnissä nyt"
+ "in play now": "käynnissä nyt",
+ "Someone plays only a few rounds of a series – how do I add them?": "Joku pelaa vain muutaman sarjan kierroksen – miten lisään hänet?",
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Lisää hänet vain niille kierroksille: avaa kierros sarjassa, ”Muuta turnausta”, ”Lisää pelaaja”. Jokaisella omalla kierroksellaan hän lasketaan täysin – tulostaulu ja päivän palkinnot. Joka on mukana alle puolella kierroksista, on vieras: kokonaistilanteessa harmaan viivan alla, ”Vieras”, ilman sijaa, ilman sarjan palkintoja ja osallistumismaksua.",
+ "Guest": "Vieras",
+ "Guests below the line: counted in their own rounds only, not in the total.": "Vieraat viivan alla: lasketaan vain omilla kierroksillaan, ei kokonaistilanteessa."
 }

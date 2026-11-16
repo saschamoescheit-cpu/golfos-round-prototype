@@ -132,5 +132,9 @@
  "The bets and where they stand – no stakes, no money": "De weddenschappen en hun stand – geen inzetten, geen geld",
  "On – with amounts": "Aan – met bedragen",
  "Stakes and who is up": "Inzetten en wie er voor staat",
- "in play now": "loopt nu"
+ "in play now": "loopt nu",
+ "Someone plays only a few rounds of a series – how do I add them?": "Iemand speelt maar een paar rondes van een serie mee – hoe voeg ik hem toe?",
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Voeg hem alleen in die rondes toe: open de ronde in de serie, „Het toernooi wijzigen”, „Speler toevoegen”. In elk van zijn rondes telt hij volledig mee – leaderboard en dagprijzen. Wie in minder dan de helft van de rondes meedoet, is gast: in de totaalstand onder een grijze lijn, „Gast”, zonder plaats, zonder de prijzen van de serie en haar inschrijfgeld.",
+ "Guest": "Gast",
+ "Guests below the line: counted in their own rounds only, not in the total.": "Gasten onder de lijn: tellen alleen in hun eigen rondes, niet in de totaalstand."
 }

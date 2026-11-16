@@ -132,5 +132,9 @@
  "The bets and where they stand – no stakes, no money": "Le scommesse e a che punto sono – niente poste, niente soldi",
  "On – with amounts": "Attivo – con importi",
  "Stakes and who is up": "Le poste e chi è avanti",
- "in play now": "in corso"
+ "in play now": "in corso",
+ "Someone plays only a few rounds of a series – how do I add them?": "Qualcuno gioca solo alcuni giri di una serie – come lo aggiungo?",
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Aggiungilo solo in quei giri: apri il giro nella serie, «Modifica il torneo», «Aggiungi giocatore». In ognuno dei suoi giri conta in pieno – classifica e premi del giorno. Chi è in meno della metà dei giri è ospite: nella classifica totale sotto una linea grigia, «Ospite», senza posizione, senza i premi della serie e la sua quota d’iscrizione.",
+ "Guest": "Ospite",
+ "Guests below the line: counted in their own rounds only, not in the total.": "Ospiti sotto la linea: contano solo nei loro giri, non nella classifica totale."
 }

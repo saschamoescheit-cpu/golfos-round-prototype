@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { seriesStandings } from './seriesstandings';
+import { seriesGuests, seriesStandings } from './seriesstandings';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
 import { classOf, eventCard, defaultMarkers, markersOf, saneMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, withEventPars, type RoundEvent } from './sharedround';
@@ -500,6 +500,32 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     expect(e2.rounds).toBe(1);
     expect(e2.parts.some((p) => p.noReturn)).toBe(true);
     expect(nr.rows.indexOf(e2)).toBe(nr.rows.length - 1);
+  });
+  it('a guest of two rounds (Sascha 16.11.2026: Thomas und Daniel spielen Legends mit – "Nur Tageswertung"): below the others, no place, regulars missing a round stay in', () => {
+    let { ev } = host(withScorer());
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    for (const pid of ['me', 'c', 'e']) for (let i = 0; i < 3; i++) chris = set(chris, pid, i, { strokes: pid === 'me' ? 4 : 5 });
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    const stroke = { ...ev, format: { ...(ev.format ?? {}), scoring: 'stroke' } as RoundEvent['format'] };
+    // round 4 and 5: Erik's place played by Thomas (better than all); Chris misses round 5 – in 4 of 5 he is no guest
+    const named = (who: string, without?: string): RoundEvent => {
+      const f = stroke.flights.f1;
+      const players = f.players.filter((p) => p.name !== without).map((p) => (p.id === 'e' ? { ...p, name: who } : p));
+      const scores = who === 'Thomas' ? { ...f.scores, e: f.scores.e.map((c) => ({ ...c, s: 3 })) } : f.scores;
+      return { ...stroke, flights: { f1: { ...f, players, scores } } };
+    };
+    const evs = [named('Erik'), named('Erik'), named('Erik'), named('Thomas'), named('Thomas', 'Chris')];
+    expect([...seriesGuests(evs)]).toEqual(['thomas']);
+    const st = seriesStandings(evs);
+    expect(st.anyGuest).toBe(true);
+    const last = st.rows[st.rows.length - 1];
+    expect(last).toMatchObject({ name: 'Thomas', guest: true, pos: '–', rounds: 2 });
+    expect(st.rows[0]).toMatchObject({ name: 'Sascha', pos: '1', guest: false });
+    expect(st.rows.find((r) => r.name === 'Chris')).toMatchObject({ guest: false, rounds: 4 });
+    // the rounds played so far, judged by all of the series (field): Thomas only in round 4 of 4 played – a guest too
+    expect(seriesStandings(evs.slice(0, 4), { field: evs }).rows.find((r) => r.name === 'Thomas')?.guest).toBe(true);
+    // fewer than three rounds: nobody is a guest
+    expect(seriesGuests(evs.slice(2, 4)).size).toBe(0);
   });
 });
 

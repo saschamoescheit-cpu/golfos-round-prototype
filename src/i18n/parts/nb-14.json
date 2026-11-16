@@ -132,5 +132,9 @@
  "The bets and where they stand – no stakes, no money": "Veddemålene og stillingen – ingen innsatser, ingen penger",
  "On – with amounts": "På – med beløp",
  "Stakes and who is up": "Innsatser og hvem som leder",
- "in play now": "pågår nå"
+ "in play now": "pågår nå",
+ "Someone plays only a few rounds of a series – how do I add them?": "Noen spiller bare noen runder av en serie – hvordan legger jeg dem til?",
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "Legg dem bare til i de rundene: åpne runden i serien, «Endre turneringen», «Legg til spiller». I hver av rundene sine teller de fullt – ledertavle og dagspremier. Den som er med i færre enn halvparten av rundene, er gjest: i totalstillingen under en grå linje, «Gjest», uten plass, uten seriens premier og startavgift.",
+ "Guest": "Gjest",
+ "Guests below the line: counted in their own rounds only, not in the total.": "Gjester under linjen: teller bare i sine egne runder, ikke i totalstillingen."
 }
