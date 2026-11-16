@@ -514,6 +514,11 @@ export type Unit = 'm' | 'yd';
 export function formatDistance(m: number, unit: Unit): string {
   return String(Math.round(unit === 'yd' ? m * 1.09361 : m));
 }
+/** A length with its unit, "6047 yd" / "5530 m" – in the unit of the profile (Sascha 16.11.2026: Thomas saw the tees'
+ *  lengths in metres in the round setup though his profile says yards). */
+export function lengthText(m: number, unit: Unit): string {
+  return `${formatDistance(m, unit)} ${unit}`;
+}
 
 /**
  * The hole from another tee: `delta` metres further forward (> 0) or back (< 0) than where the line starts.

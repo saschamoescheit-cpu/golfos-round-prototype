@@ -3,7 +3,8 @@
 // the lengths, the caddie, the course rating and the player's own playing handicap follow the new tee.
 import type { Round } from '../types';
 import { TEES, TEE_COLOURS, courseTees, teeName } from '../data/tees';
-import { loadGeometry } from '../lib/storage';
+import { loadGeometry, loadUnit } from '../lib/storage';
+import { lengthText } from '../lib/geo';
 import { ogaTees } from '../lib/ogaratings';
 import { playingHandicapFor, ratingFor } from '../lib/handicap';
 import { isLady, loadProfile } from '../lib/profile';
@@ -61,7 +62,7 @@ export function TeeSwitchSheet(props: { round: Round; /** the tee shown as chose
               <span className="tee-dot" style={{ background: t.colour }} />
               <span className="grow">
                 <strong>{t.name}</strong>
-                <span className="muted small">{[t.total > 0 ? `${t.total} m` : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}</span>
+                <span className="muted small">{[t.total > 0 ? lengthText(t.total, loadUnit()) : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}</span>
               </span>
               {t.id === (props.current ?? round.tee) && <span className="pick-check" aria-hidden="true">✓</span>}
             </button>
