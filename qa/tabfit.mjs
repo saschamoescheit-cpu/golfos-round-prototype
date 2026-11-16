@@ -38,8 +38,19 @@ for (const lang of LANGS) {
       };
     });
     if (!r.fits) bad.push(`${mod}: ${r.labels}`);
+    // and no tab of the module scrolls sideways (17.11.2026: Agility's "Komplettes Screening" card ran 14 px past an
+    // iPhone SE, in every language) – in the languages with the longest words
+    if (['de', 'fr', 'fi', 'nl', 'pt'].includes(lang)) {
+      const n = await p.locator('.tabbar button').count();
+      for (let t = 0; t < n; t++) {
+        await p.locator('.tabbar button').nth(t).click();
+        await p.waitForTimeout(400);
+        const w = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        if (w > 1) bad.push(`${mod}, tab ${t + 1}: the page scrolls sideways (${w} px)`);
+      }
+    }
   }
-  ok(bad.length === 0, `${lang}: the menu bar fits in all ${MODULES.length} modules${bad.length ? ` – not in ${bad.join(' | ')}` : ''}`);
+  ok(bad.length === 0, `${lang}: the menu bar fits in all ${MODULES.length} modules, no tab scrolls sideways${bad.length ? ` – not in ${bad.join(' | ')}` : ''}`);
 }
 await b.close();
 process.exit(fails ? 1 : 0);

@@ -9,7 +9,8 @@
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 14px; border-radius: 16px;
   background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; min-height: 150px;
 }
-.tr-cat strong { font: 600 17px var(--display); }
+/* a long word breaks inside the card (17.11.2026: Dutch "Baanmanagement" ran 15 px past an iPhone SE) */
+.tr-cat strong { font: 600 17px var(--display); max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
 .tr-cat .muted { overflow-wrap: break-word; hyphens: auto; }
 .tr-count { margin-top: auto; color: var(--brand-text); font-weight: 600; }
 .tr-cat-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }

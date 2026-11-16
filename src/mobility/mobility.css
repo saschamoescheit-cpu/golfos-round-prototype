@@ -12,14 +12,17 @@
 .mob-grade.none { background: none; border: 2px dashed var(--line-strong); }
 
 .mob-open { border: 1px solid var(--line-strong); }
-.mob-starts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* two equal cards that never push the page sideways: on an iPhone SE the three pictures (3 × 40 px) were wider than a
+   card, "Komplettes Screening" ran 14 px past the screen and the page scrolled sideways (night 16./17.11.2026) – the
+   pictures shrink to fit instead */
+.mob-starts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .mob-start {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; border-radius: 14px; border: 1px solid var(--line);
-  background: var(--surface); color: var(--text); font: inherit; text-align: left; min-height: 44px;
+  background: var(--surface); color: var(--text); font: inherit; text-align: left; min-height: 44px; min-width: 0;
 }
 .mob-start strong { font: 700 17px var(--display); }
-.mob-start-pics { display: flex; gap: 4px; }
-.mob-start-pics .tr-thumb { width: 40px; height: 40px; border-radius: 8px; }
+.mob-start-pics { display: flex; gap: 4px; max-width: 100%; }
+.mob-start-pics .tr-thumb { flex: 0 1 40px; min-width: 0; width: auto; height: auto; aspect-ratio: 1; border-radius: 8px; }
 .mob-test-row.untested { opacity: 0.7; }
 .mob-thumb { background: #cfe6f5; }
 .mob-thumb svg text { display: none; }
