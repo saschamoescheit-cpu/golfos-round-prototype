@@ -509,6 +509,7 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .mark.triple { background: #ff8a7f; border-radius: 3px; color: #fff; }
 .hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--brand-text); }
 .hcp-dot { color: var(--brand-text); }
+.sc .gir-row .gir-hit, .sc-legend .gir-key svg { display: inline-flex; color: var(--brand-text); vertical-align: middle; } /* GIR in the scorecard: the tick in the app's green (Sascha 16.11.2026) */
 .sc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
 .sc-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
