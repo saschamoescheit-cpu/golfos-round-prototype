@@ -3,10 +3,11 @@ Details" – StoneGate Cypress had not one bunker in the 2D view; lidar/us_bunke
 grass round the sand fails on the winter-brown turf of the Esri image). A bunker is bright, unsaturated sand (brighter
 than the turf round it by a clear margin) that lies LOWER than its surroundings in the USGS 3DEP bare-earth lidar (a
 bunker is dug in: 0.15 m and more below its edge, and has turf round it) – a roof, a pool deck, a path or a pale patch of turf is not.
-20–1500 m², compact, within 50 m of a hole line and inside the course outline, not on a green, water, tee or a bunker already mapped.
+20–1500 m², compact, within 50 m of a hole line and inside the course outline, not on a green, a tee, a bunker already mapped, a lake's shore (5 m) or a mapped path (2.5 m).
 
 Florida only (3DEP 1 m lidar; aerial as scripts/canopy.py: Osceola County 2026, else Esri – FL_IMAGERY=esri).
-Usage: python scripts/sandtraps.py [--dry] [--check dir] course.json [holes,comma,separated]
+Usage: python scripts/sandtraps.py [--dry] [--check dir] [--skip lon,lat;lon,lat] course.json [holes,comma,separated]
+  --skip: candidates checked by eye and found false (a sandy strip by the woods, a garden) – left out within 10 m.
 Then: python scripts/packgeo.py course.json"""
 import json, math, os, sys
 
@@ -23,7 +24,7 @@ AREA = (20.0, 1500.0)
 SINK = 0.15  # m below the ring round it
 
 
-def run(path, only=None, dry=False, check=None):
+def run(path, only=None, dry=False, check=None, skip=()):
     geo = unpack(json.load(open(path, encoding='utf-8')))
     pts = [p for h in geo['holes'] for p in h['line']]
     lat_c = sum(p[1] for p in pts) / len(pts)
@@ -56,11 +57,14 @@ def run(path, only=None, dry=False, check=None):
         corr = np.zeros((H, W), np.uint8)
         cv2.polylines(corr, [np.array([px(p) for p in line], np.int32)], False, 1, int(2 * SIDE / PX))
         block = np.zeros((H, W), np.uint8)
-        for key, grow in (('green', 0), ('water', 2), ('tee', 1), ('bunker', 2)):
+        # the sandy shore of a lake and the edge of a cart path are no bunker either
+        for key, grow in (('green', 0), ('water', 5), ('tee', 1), ('bunker', 2)):
             for r in geo.get(key, []):
                 cv2.fillPoly(block, [ring_px(r)], 1)
                 if grow:
                     cv2.polylines(block, [ring_px(r)], True, 1, int(2 * grow / PX))
+        for ln in geo.get('paths', []):
+            cv2.polylines(block, [ring_px(ln)], False, 1, int(2 * 2.5 / PX))
         # inside the course: its OSM outline and 10 m (a verge by the road, a back yard is not a bunker)
         if geo.get('boundary'):
             inside = np.zeros((H, W), np.uint8)
@@ -108,13 +112,16 @@ def run(path, only=None, dry=False, check=None):
             hh = hsv[y0:y1, x0:x1]
             turf = (hh[:, :, 0] >= 15) & (hh[:, :, 0] <= 95) & (hh[:, :, 1] >= 30) & (hh[:, :, 2] < 235)
             grass = float(turf[ring > 0].mean()) if ring.any() else 0.0
-            info = dict(at=(int(cent[c][0]), int(cent[c][1])), m2=round(area), sink=round(sink, 2), round=round(round_, 2), grass=round(grass, 2),
+            info = dict(at=tuple(round(v, 6) for v in unmerc(X0 + cent[c][0] / W * (X1 - X0), Y1 - cent[c][1] / H * (Y1 - Y0))), m2=round(area), sink=round(sink, 2), round=round(round_, 2), grass=round(grass, 2),
                         boxy=round(boxy, 2), v=int(np.median(V[y0:y1, x0:x1][on])), s=int(np.median(S[y0:y1, x0:x1][on])))
             why = ('strip' if round_ < 0.2 else 'box (a roof, a court)' if boxy > 0.9 and area > 60 else
                    'not dug in' if sink < SINK else 'no turf round it' if grass < 0.7 else 'dull' if info['v'] < 170 and (info['s'] > 50 or area < 100) else '')
             if os.environ.get('DEBUG'):
                 print('   ', why or 'BUNKER', info)
             if why:
+                continue
+            if any(math.hypot((info['at'][0] - a) * 111320 * math.cos(math.radians(b)), (info['at'][1] - b) * 110540) < 10 for a, b in skip):
+                print('    left out (checked by eye):', info['at'])
                 continue
             c2 = cv2.approxPolyDP(big, 0.5 / PX, True)[:, 0, :]
             if len(c2) < 4:
@@ -144,5 +151,10 @@ if __name__ == '__main__':
     if '--check' in args:
         check = args[args.index('--check') + 1]
         args = [a for a in args if a != check]
+    skip = []
+    if '--skip' in args:
+        raw = args[args.index('--skip') + 1]
+        args = [a for a in args if a != raw]
+        skip = [tuple(float(v) for v in pt.split(',')) for pt in raw.split(';') if pt]
     args = [a for a in args if not a.startswith('--')]
-    run(args[0], args[1].split(',') if len(args) > 1 else None, dry, check)
+    run(args[0], args[1].split(',') if len(args) > 1 else None, dry, check, skip)
