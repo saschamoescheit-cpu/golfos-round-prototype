@@ -734,8 +734,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How is Training organised?', 'Wie ist das Training aufgebaut?'),
         a: () =>
           tr(
-            'Under "Library" are the topics – from chipping, pitching and bunker to putting, irons and the driver. A topic opens on its shots; the switch at the top ("‹ Shots ›") leads to its drills, the basics and the faults. Above the topics: the drill of the day, what you opened lately and, after your rounds, what they show you should practise.',
-            'Unter „Wissen“ stehen die Themen – von Chippen, Pitchen und Bunker bis Putten, Eisen und Driver. Ein Thema öffnet auf seinen Schlägen; der Umschalter oben („‹ Schläge ›“) führt zu seinen Übungen, den Grundlagen und den Fehlern. Über den Themen: die Übung des Tages, was du zuletzt angesehen hast und, nach deinen Runden, was sie dir zum Üben zeigen.',
+            'At the top of "Library": "For you" – what your rounds show you should practise and the drill of the day – and "What is your problem?". Below, the topics by area: short game, long game, swing and ball flight, on the course, mind and body. A topic opens on its shots; the switch at the top ("‹ Shots ›") leads to its drills, the basics and the faults.',
+            'Oben unter „Wissen“: „Für dich“ – was deine Runden dir zum Üben zeigen, und die Übung des Tages – und „Was ist dein Problem?“. Darunter die Themen nach Bereichen: Kurzes Spiel, Langes Spiel, Schwung & Ballflug, Auf dem Platz, Kopf & Körper. Ein Thema öffnet auf seinen Schlägen; der Umschalter oben („‹ Schläge ›“) führt zu seinen Übungen, den Grundlagen und den Fehlern.',
           ),
         video: 'training',
       },
@@ -743,8 +743,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('What does a shot show me?', 'Was zeigt mir ein Schlag?'),
         a: () =>
           tr(
-            'Each shot – a standard chip, a chip uphill, a ball plugged in the bunker – has four parts, each with its picture: "Set-up" (ball position, stance, weight, club), "Motion" (how the stroke goes), "What to watch" (what matters, the typical faults) and "Practise" (the drills for it). A tap on the play symbol in the picture plays the movement.',
-            'Jeder Schlag – ein Standard-Chip, ein Chip bergauf, ein Spiegelei im Bunker – hat vier Teile, jeder mit seinem Bild: „Ansprache“ (Ballposition, Stand, Gewicht, Schläger), „Bewegung“ (so läuft der Schlag), „Worauf achten“ (was wichtig ist, die typischen Fehler) und „Üben“ (die Übungen dazu). Ein Tipp auf das Abspiel-Symbol im Bild spielt die Bewegung ab.',
+            'Each shot – a standard chip, a chip uphill, a ball plugged in the bunker – has four parts, each with its picture: "Set-up" (ball position, stance, weight, club), "Motion" (how the stroke goes), "What to watch" (what matters, the typical faults) and "Practise" (the drills for it). Under the picture of a movement its phases follow as numbered pictures, from the set-up to the finish; the play symbol in the picture plays the drawn movement.',
+            'Jeder Schlag – ein Standard-Chip, ein Chip bergauf, ein Spiegelei im Bunker – hat vier Teile, jeder mit seinem Bild: „Ansprache“ (Ballposition, Stand, Gewicht, Schläger), „Bewegung“ (so läuft der Schlag), „Worauf achten“ (was wichtig ist, die typischen Fehler) und „Üben“ (die Übungen dazu). Unter dem Bild einer Bewegung folgen ihre Phasen als nummerierte Bilder, von der Ansprache bis zum Finish; das Abspiel-Symbol im Bild spielt die gezeichnete Bewegung ab.',
           ),
         video: 'training',
       },
@@ -761,8 +761,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Is there a plan I can follow?', 'Gibt es einen Plan, dem ich folgen kann?'),
         a: () =>
           tr(
-            'Yes – under "Practise": ready-made plans, goal and weekly plans, a plan from your rounds (it takes what cost you most strokes) and your own session from the drills you choose. "Start session" leads you from drill to drill; a paused session waits on the start page.',
-            'Ja – unter „Üben“: fertige Pläne, Ziel- und Wochenpläne, ein Plan aus deinen Runden (er nimmt, was dich die meisten Schläge kostet) und deine eigene Einheit aus Übungen, die du wählst. „Einheit starten“ führt dich von Übung zu Übung; eine pausierte Einheit wartet auf der Startseite.',
+            'Yes – at the top of "Practise", "For you": a plan from your rounds (it takes what cost you most strokes) and plans for your weak spots and your handicap; below, the ready-made plans by the same areas as in "Library". "Weekly plan" at the top switches to the goal and weekly plans; the green "+" builds your own session from the drills you choose. "Start session" leads you from drill to drill; a paused session waits on the start page.',
+            'Ja – oben unter „Üben“, „Für dich“: ein Plan aus deinen Runden (er nimmt, was dich die meisten Schläge kostet) und Pläne für deine Schwächen und dein Handicap; darunter die fertigen Pläne nach denselben Bereichen wie im „Wissen“. „Wochenplan“ oben schaltet auf die Ziel- und Wochenpläne; das grüne „+“ baut deine eigene Einheit aus Übungen, die du wählst. „Einheit starten“ führt dich von Übung zu Übung; eine pausierte Einheit wartet auf der Startseite.',
           ),
         video: 'training',
       },
