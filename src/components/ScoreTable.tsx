@@ -1,5 +1,5 @@
 import type { Round, RoundHole } from '../types';
-import { grossForHole, handicapStrokes, stablefordPoints } from '../lib/scoring';
+import { greenInRegulation, grossForHole, handicapStrokes, stablefordPoints } from '../lib/scoring';
 import { TEES } from '../data/tees';
 import { tr } from '../lib/i18n';
 
@@ -37,6 +37,17 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
   const gross = (pid: string, h: RoundHole) => grossForHole(round.entries[pid][h.index], h.par, received[pid][h.index]);
   const points = (pid: string, h: RoundHole) => stablefordPoints(round.entries[pid][h.index], h.par, received[pid][h.index]);
   const sum = (xs: (number | null)[]) => (xs.some((x) => x != null) ? xs.reduce<number>((s, x) => s + (x ?? 0), 0) : null);
+  /** green in regulation: true / false, a hole picked up false, null where the putts are not known */
+  const girOf = (pid: string, h: RoundHole): boolean | null => {
+    const e = round.entries[pid]?.[h.index];
+    if (!e) return null;
+    if (e.pickedUp) return false;
+    return greenInRegulation(e, h.par);
+  };
+  const girSum = (pid: string, nine: RoundHole[]): string => {
+    const known = nine.map((h) => girOf(pid, h)).filter((g): g is boolean => g != null);
+    return known.length ? `${known.filter(Boolean).length}/${known.length}` : '';
+  };
 
   return (
     <div className="sc-wrap">
@@ -148,6 +159,33 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                       <td className="sumc">{sum(nine.map((h) => round.entries[p.id]?.[h.index]?.putts ?? null)) ?? (props.full ? '–' : null)}</td>
                     </tr>
                   ),
+                  // green in regulation under the putts, for every player (Sascha 16.11.2026: "GIR immer in allen Scorekarten und
+                  // je Spieler … visuell, wenn erfüllt, sonst ein -"): a green tick, "–" missed or picked up, empty where
+                  // the putts are not known; on the right the greens hit of those known
+                  (hasPutts || (props.full && me && p.id === me.id)) && (
+                    <tr className={`meta gir-row pg pg-${k % 2}`} key={`${p.id}-gir`}>
+                      <td className="lab">GIR</td>
+                      {nine.map((h) => {
+                        const g = girOf(p.id, h);
+                        return (
+                          <td key={h.index}>
+                            {g === true ? (
+                              <span className="gir-hit" role="img" aria-label={tr('Green in regulation', 'Grün in Regulation')}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M5 12l5 5 9-10" />
+                                </svg>
+                              </span>
+                            ) : g === false ? (
+                              '–'
+                            ) : (
+                              ''
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="sumc">{girSum(p.id, nine)}</td>
+                    </tr>
+                  ),
                 ])}
               </tbody>
             </table>
@@ -161,6 +199,14 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
         <span><span className="mark double" aria-hidden="true" /> {tr('Double bogey', 'Double Bogey')}</span>
         <span><span className="mark triple" aria-hidden="true" /> {tr('Triple bogey+', 'Triple-Bogey+')}</span>
         <span><span className="hcp-dot">•</span> {tr('handicap stroke', 'Vorgabeschlag')}</span>
+        {(hasPutts || (props.full && me)) && (
+          <span className="gir-key">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12l5 5 9-10" />
+            </svg>{' '}
+            {tr('green in regulation (GIR)', 'Grün in Regulation (GIR)')}
+          </span>
+        )}
         {round.players.some((p) => round.entries[p.id].some((e) => e.pickedUp)) && <span>* {tr('picked up', 'aufgehoben')}</span>}
       </div>
     </div>

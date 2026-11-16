@@ -6,6 +6,7 @@
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
+import { drawGreen } from './drawgreen.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const exp = JSON.parse(readFileSync(new URL('../../_data/golfos-runde-2026-10-16-golfclub-hetzenhof.json', import.meta.url), 'utf-8'));
@@ -50,7 +51,7 @@ ok((await card.count()) === 1, 'the set-up on the aerial photo');
 const map = await p.locator('.review-setup-layer .hole-map').boundingBox();
 await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.42);
 await p.waitForTimeout(500);
-await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.2);
+await drawGreen(p, map.x + map.width / 2, map.y + map.height * 0.2); // the green drawn round (16.11.2026)
 await p.waitForTimeout(500);
 await p.getByRole('button', { name: 'Loch speichern' }).click();
 await p.waitForTimeout(2000);

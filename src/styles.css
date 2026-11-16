@@ -509,6 +509,7 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .mark.triple { background: #ff8a7f; border-radius: 3px; color: #fff; }
 .hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--brand-text); }
 .hcp-dot { color: var(--brand-text); }
+.sc .gir-row .gir-hit, .sc-legend .gir-key svg { display: inline-flex; color: var(--brand-text); vertical-align: middle; } /* GIR in the scorecard: the tick in the app's green (Sascha 16.11.2026) */
 .sc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
 .sc-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
@@ -2880,3 +2881,9 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .wind-tag.plain svg { color: inherit; }
 /* the wind under "spielte sich wie" in the same look – not bold (Sascha 15.11.2026) */
 .shot-wind, .shot-wind .wind-tag { color: var(--muted); font-weight: 400; }
+/* a shot's aim on the map (Sascha 16.11.2026): the card short, so the shot stays in view; "Ziel entfernen" a quiet link */
+.aim-layer .aim-card { gap: 4px; }
+.aim-layer .aim-clear { align-self: flex-start; padding: 4px 0; min-height: 0; font-size: 14px; color: var(--muted); text-decoration: underline; border: 0; background: none; }
+.shot-aim-box { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); margin-bottom: 8px; }
+.shot-aim-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.shot-aim-box .chip { white-space: nowrap; flex: none; }

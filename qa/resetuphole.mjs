@@ -1,9 +1,10 @@
 // QA (Sascha 16.11.2026, iPad, Hawks Landing: "die Bahnen sind falsch, das Grün ist das davor. Wenn ich aber Abschlag und
 // Grün ändern will, geht es nicht. Das muss gelöst werden"): in "Schläge prüfen", "Loch falsch eingezeichnet?" → tee and
-// green tapped anew → "Loch speichern": the hole runs from the new tee to the new green (kept after a reload), the shots
+// green drawn round anew (16.11.2026; tapped before) → "Loch speichern": the hole runs from the new tee to the new green (kept after a reload), the shots
 // stay. A round on Hawks Landing (the app's own lines). Usage: node qa/resetuphole.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { drawGreen } from './drawgreen.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const CID = 'osm:relation/4053362';
@@ -59,7 +60,7 @@ const tap = async (fx, fy) => {
   await p.waitForTimeout(700);
 };
 await tap(0.5, 0.6);
-await tap(0.55, 0.35);
+await drawGreen(p, map.x + map.width * 0.55, map.y + map.height * 0.35, 12, 8); // the green drawn round (16.11.2026) – small: the overview of the course
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/resetuphole-setup.png` });
 const save = p.getByRole('button', { name: 'Loch speichern' });
 ok((await save.count()) === 1 && (await save.isVisible()), '"Loch speichern" there');
@@ -67,6 +68,7 @@ await save.click();
 await p.waitForTimeout(2500);
 const l = await line();
 ok(Array.isArray(l['Main#2']) || Object.keys(l).some((k) => /2$/.test(k)), `the new line kept for hole 2 (${JSON.stringify(Object.keys(l))})`);
+ok(await p.evaluate((CID) => Object.keys(JSON.parse(localStorage.getItem('golfos.holegreens.v1.' + CID) ?? '{}')).includes('Main#2'), CID), 'the green drawn round kept for hole 2 (16.11.2026)');
 ok((await p.locator('.review-setup-layer').count()) === 0 && (await p.locator('.review-map').count()) === 1, 'back on the map of the hole');
 const f1 = await flagAt();
 ok(!!f0 && !!f1 && Math.hypot(f1.x - f0.x, f1.y - f0.y) > 20, `the flag on the new green (${JSON.stringify(f0)} → ${JSON.stringify(f1)})`);

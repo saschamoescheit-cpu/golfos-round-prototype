@@ -18,7 +18,7 @@ import { SpecialsAtHole } from '../components/Specials';
 import { betLinked } from '../lib/betlinked';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
-import { hasOwnHoleLine, removeAllHoleLines, loadCachedCourse, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, removeHoleLine, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
+import { hasOwnHoleLine, removeAllHoleLines, loadCachedCourse, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, removeHoleLine, saveHoleCorrection, saveHoleGreen, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { ensureCourseMap } from '../lib/courses';
 import { IMAGERY, loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
@@ -1567,12 +1567,13 @@ export function HoleScreen(props: {
               }
             : undefined
         }
-        onSave={(line) => {
+        onSave={(line, green) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
+          saveHoleGreen(round.courseId, hole.loop, hole.number, green); // the green drawn round (16.11.2026)
           // the flight's other phones take it (Sascha 12.11.2026, Cypress: "each of us had to set tees and greens") – and
           // every GolfOS player on this course (courselines)
           if (round.shared) void shareLine(round, hole.loop, hole.number, line);
-          void shareCourseLine(round.courseId, hole.loop, hole.number, line);
+          void shareCourseLine(round.courseId, hole.loop, hole.number, line, green);
           setGeoVersion((v) => v + 1);
           setSetupOpen(false);
           setView('map');

@@ -5,6 +5,7 @@ import { sideOf } from './dispersion';
 import { flightOf, mishit, onLine } from './shotfacts';
 import { plausibleForClub, shotLengths } from './shots';
 import { CLUB_CATALOG } from './clubs';
+import { laidUp } from './aim';
 
 // Per club from the checked shots (Sascha 22.10.2026): the bag's distances from good strikes only, taken back to calm
 // air and 20 °C with the caddie's own rules; how often the club is struck well and how it misses; the corridor in
@@ -50,6 +51,9 @@ export interface ClubShot {
   strike?: Strike;
   flight?: Flight;
   side: number | null; // metres off the target line where the ball ended (+ right), null without a target
+  /** aimed shorter than the club goes – "Vorlegen" or an aim set well short: its side counts for the spread, its length
+   *  not for the club's (Sascha 16.11.2026) */
+  laidUp?: boolean;
 }
 
 /** The target line of a shot: the pin – a tee shot on a par 4/5 the hole's line at the shot's length (the fairway). */
@@ -79,11 +83,13 @@ export function clubShots(rounds: Round[], lineOf?: LineOf): ClubShot[] {
         const end = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
         if (!end) return;
         let side: number | null = null;
-        if (k === 0 && h.par >= 4) {
+        // the aim the player set in the round check (Sascha 16.11.2026) – else the middle of the hole or the flag
+        if (s.aim) side = sideOf(from, s.aim, end);
+        else if (k === 0 && h.par >= 4) {
           const line = lineOf?.(r, i);
           if (line && line.length >= 2) side = sideOf(from, pointAt(line, distanceM(from, end)), end);
         } else if (d.pin && distanceM(from, d.pin) >= 40) side = sideOf(from, d.pin, end);
-        out.push({ club: s.club, len, calm: s.penalty ? len : calmLength(len, from, end, e.weather), strike: s.strike, flight: s.flight, side });
+        out.push({ club: s.club, len, calm: s.penalty ? len : calmLength(len, from, end, e.weather), strike: s.strike, flight: s.flight, side, ...(laidUp(s, std) ? { laidUp: true } : {}) });
       });
     });
   }
@@ -126,7 +132,9 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
   const by = new Map<Club, ClubShot[]>();
   for (const s of clubShots(rounds, lineOf)) by.set(s.club, [...(by.get(s.club) ?? []), s]);
   return [...by.entries()].map(([club, xs]) => {
-    const learn = learnFrom(xs);
+    // a lay-up says nothing about how far the club goes (Sascha 16.11.2026) – only when there is nothing else
+    const full = xs.some((x) => !x.laidUp) ? xs.filter((x) => !x.laidUp) : xs;
+    const learn = learnFrom(full);
     // the contact only: an old "slice"/"hook" strike is a flight, it says nothing about the contact – else "0 % good" stood
     // next to "0× missed" (Sascha 23.10.2026)
     const rated = xs.filter((x) => x.strike && x.strike !== 'slice' && x.strike !== 'hook');
@@ -143,8 +151,8 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
     const sides = xs.map((x) => x.side).filter((v): v is number => v != null);
     const med = median(learn.map((x) => x.calm));
     // the length band from the good strikes once there are 5 of them – unrated topped drives made it -70 m (25.10.2026)
-    const goodOnes = xs.filter((x) => x.strike === 'good');
-    const lens = (goodOnes.length >= 5 ? goodOnes : xs.filter((x) => !mishit(x.strike))).map((x) => x.calm - med);
+    const goodOnes = full.filter((x) => x.strike === 'good');
+    const lens = (goodOnes.length >= 5 ? goodOnes : full.filter((x) => !mishit(x.strike))).map((x) => x.calm - med);
     return {
       club,
       shots: xs.length,

@@ -3,7 +3,7 @@ import type { LngLat } from '../types';
 
 // Gate 13.11.2026 (sharelines): a hole marked anew on another phone of the flight must reach the others also where the
 // course map has the hole (help: "es geht an alle auf dem Platz"); "Platzkarte verwenden" refuses that very line, a newer
-// correction comes through again; the others' lines on the course (golfos_course_lines) only fill holes the map lacks.
+// correction comes through again; since 16.11.2026 the others' lines on the course (golfos_course_lines) too.
 const course = 'osm:relation/1326323'; // Hetzenhof – bundled, every hole mapped
 const L3: LngLat[] = [[8.9481, 48.9612], [8.9502, 48.9631]];
 const L3b: LngLat[] = [[8.9485, 48.9615], [8.9502, 48.9631]];
@@ -51,8 +51,28 @@ describe('the flight\'s lines over the course map', () => {
     keepFlightLines(course, { 'A#3': L3b }); // marked anew
     expect((await hole3())?.line?.[0]).toEqual(L3b[0]);
   });
-  it('the others\' lines on the course never over a mapped hole', async () => {
+  // 16.11.2026 (Sascha, Legends: "bei Chris hat es sich nicht aktualisiert" → "Gilt für alle"): the others' lines on the
+  // course go over a mapped hole too, with its par; "Platzkarte" takes the very line away, a newer one comes through
+  it('the others\' lines on the course over a mapped hole – "Platzkarte" takes it away for oneself', async () => {
+    const S = await import('./storage');
+    const mapTee = (await hole3())?.line?.[0];
+    const par = (await hole3())?.par;
     localStorage.setItem('golfos.communitylines.v1.' + course, JSON.stringify({ 'A#3': L3 }));
-    expect((await hole3())?.line?.[0]).not.toEqual(L3[0]);
+    const h = await hole3();
+    expect(h?.line?.[0]).toEqual(L3[0]);
+    expect(h?.par).toBe(par);
+    expect(S.hasOwnHoleLine(course, 'A', 3)).toBe(true);
+    S.removeHoleLine(course, 'A', 3);
+    expect((await hole3())?.line?.[0]).toEqual(mapTee);
+    localStorage.setItem('golfos.communitylines.v1.' + course, JSON.stringify({ 'A#3': L3b })); // marked anew by someone
+    expect((await hole3())?.line?.[0]).toEqual(L3b[0]);
+  });
+  it('the green another player drew round comes first among the greens', async () => {
+    const S = await import('./storage');
+    const ring: LngLat[] = [[8.9500, 48.9630], [8.9504, 48.9630], [8.9504, 48.9633], [8.9500, 48.9633], [8.9500, 48.9630]];
+    localStorage.setItem('golfos.communitylines.v1.' + course, JSON.stringify({ 'A#3': L3 }));
+    localStorage.setItem('golfos.communitygreens.v1.' + course, JSON.stringify({ 'A#3': ring }));
+    await hole3();
+    expect(S.loadGeometry(course).green[0]).toEqual(ring);
   });
 });

@@ -177,8 +177,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A hole has no map – what now?', 'Ein Loch hat keine Karte – was tun?'),
         a: () =>
           tr(
-            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Map" in the bar at the bottom still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own. Afterwards too: in "Check the shots" a hole without a map offers "Set up the hole".',
-            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Karte“ in der Leiste unten zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben. Auch nachträglich: In „Schläge prüfen“ bietet ein Loch ohne Karte „Loch einrichten“.',
+            'Tap the tee on the aerial photo, then draw once round the green with one finger (two fingers move and zoom the map) and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Map" in the bar at the bottom still draws one in. Playing together on several phones, one is enough: the hole set up goes to the others of the round (a tournament: every flight) – where they have none of their own. Afterwards too: in "Check the shots" a hole without a map offers "Set up the hole".',
+            'Abschlag auf dem Luftbild antippen, dann mit einem Finger einmal um das Grün fahren (zwei Finger verschieben und zoomen die Karte) und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Karte“ in der Leiste unten zeichnet trotzdem eins ein. Spielt ihr auf mehreren Handys zusammen, reicht einer: Das eingerichtete Loch geht an die anderen der Runde (im Turnier an alle Flights) – wo sie kein eigenes haben. Auch nachträglich: In „Schläge prüfen“ bietet ein Loch ohne Karte „Loch einrichten“.',
           ),
         video: 'start',
       },
@@ -223,6 +223,17 @@ export const FAQ: FaqTopic[] = [
             'Ja: Zieh den Ring auf dem Grün – neben die Fahne oder vor das Grün. Unbewegt plant der Caddie wie gewohnt, verschoben spielt er auf dein Ziel.',
           ),
         video: 'map',
+      },
+      {
+        // Sascha 16.11.2026: "Ich ziele ja nicht immer Mitte Bahn. Daher habe ich Streuungen in den Schlägern, die nicht der
+        // Realität entsprechen"
+        q: () => tr('I did not aim at the middle – how does my spread know?', 'Ich habe nicht auf die Mitte gezielt – woher weiß das meine Streuung?'),
+        a: () =>
+          tr(
+            'In "Check shots" open a shot: under "Where did you aim?" pick Fairway left, middle or right (off the tee) or Flag, Green centre or Lay up – or "On the map" and drag the crosshair to the exact spot. It is saved at once, and the spread of that club is measured against your aim instead of the middle of the hole or the flag. A lay-up counts for the side, not for how far the club goes.',
+            'In „Schläge prüfen“ einen Schlag öffnen: unter „Wohin hast du gezielt?“ Bahn links, Bahnmitte oder Bahn rechts (vom Abschlag) bzw. Fahne, Grünmitte oder Vorlegen wählen – oder „Auf der Karte“ und das Fadenkreuz genau dahin ziehen. Es wird sofort gespeichert, und die Streuung dieses Schlägers wird gegen dein Ziel gerechnet statt gegen die Bahnmitte oder die Fahne. Ein Vorleger zählt zur Seite, nicht für die Weite des Schlägers.',
+          ),
+        video: 'review',
       },
       {
         q: () => tr('What is the green ellipse on the map?', 'Was ist die grüne Ellipse auf der Karte?'),
@@ -306,8 +317,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
         a: () =>
           tr(
-            'On the course or in "Check shots": "Hole drawn wrong? Mark tee and green again" – tap the tee and the green anew; it goes to everyone on the course. In the set-up, "Course map" takes your own marking away again, "All holes" every marking of the course.',
-            'Auf dem Platz oder in „Schläge prüfen“: „Loch falsch eingezeichnet? Abschlag und Grün neu markieren“ – Abschlag und Grün neu antippen; es geht an alle auf dem Platz. Beim Einrichten nimmt „Platzkarte“ deine eigene Markierung wieder weg, „Alle Löcher“ jede Markierung des Platzes.',
+            'On the course or in "Check shots": "Hole drawn wrong? Mark tee and green again" – tap the tee anew and draw once round the green with one finger: the app takes exactly that outline as the green; it goes to everyone on the course. In the set-up, "Course map" takes your own marking away again, "All holes" every marking of the course.',
+            'Auf dem Platz oder in „Schläge prüfen“: „Loch falsch eingezeichnet? Abschlag und Grün neu markieren“ – Abschlag neu antippen und mit einem Finger einmal um das Grün fahren: Die App nimmt genau diesen Umriss als Grün; es geht an alle auf dem Platz. Beim Einrichten nimmt „Platzkarte“ deine eigene Markierung wieder weg, „Alle Löcher“ jede Markierung des Platzes.',
           ),
         video: 'map',
       },
@@ -413,6 +424,16 @@ export const FAQ: FaqTopic[] = [
             'Trag 0 Putts ein – das heißt: von außerhalb des Grüns eingelocht. In „Schläge prüfen“ steht dann „Eingelocht – Chip-in“, der letzte Schlag steht grün als „eingelocht“. Auf dem Platz: den Schlag antippen → „Eingelocht! (Chip-in)“.',
           ),
         video: 'review',
+      },
+      {
+        // Sascha 16.11.2026: "GIR sollten wir auch immer in allen Scorekarten und je Spieler darstellen"
+        q: () => tr('What does the row GIR in the scorecard mean?', 'Was bedeutet die Zeile GIR in der Scorekarte?'),
+        a: () =>
+          tr(
+            'Green in regulation: the green reached with par minus 2 strokes (a par 3 with the first shot, a par 4 with the second, a par 5 with the third) – strokes minus putts. A green tick: hit; "–": missed or picked up; empty where the putts were not entered. On the right the greens hit of the nine.',
+            'Green in Regulation: das Grün mit Par minus 2 Schlägen erreicht (Par 3 mit dem ersten, Par 4 mit dem zweiten, Par 5 mit dem dritten Schlag) – Schläge minus Putts. Grüner Haken: getroffen; „–“: verfehlt oder aufgehoben; leer, wo keine Putts eingetragen sind. Rechts die getroffenen Grüns der Neun.',
+          ),
+        video: 'score',
       },
       {
         // Sascha 14.11.2026 (design E + A): handing in the card per player, a tab per player

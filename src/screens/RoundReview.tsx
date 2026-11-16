@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FloatActions } from '../components/FloatActions';
 import { ShotHereIcon } from '../components/RoundIcons';
-import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
+import type { AimKind, DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
+import { aimChoices, aimFor, aimName, aimsAtFairway, assumedAim, offAim, offAimText } from '../lib/aim';
+import { AimLayer } from '../components/AimLayer';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, offGreen, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, rodeCart, splitRound, teeSpot, type TrackPoint } from '../lib/track';
-import { hasOwnHoleLine, loadCachedCourse, loadCarryBag, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadUnit, removeAllHoleLines, removeHoleLine, saveHoleLine } from '../lib/storage';
+import { hasOwnHoleLine, loadCachedCourse, loadCarryBag, loadGeometry, loadHoleLines, loadImagery, loadLive, loadRounds, loadUnit, removeAllHoleLines, removeHoleLine, saveHoleGreen, saveHoleLine } from '../lib/storage';
 import { HoleSetup } from '../components/HoleSetup';
 import { shareLine } from '../lib/sharedround';
 import { fetchCourseLines, shareCourseLine } from '../lib/courselines';
@@ -171,6 +173,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
   // a shot's place set on the map from its sheet (Sascha 12.11.2026: "set a point, then the distance to the flag")
   const [placingShot, setPlacingShot] = useState<number | null>(null);
+  // a shot's aim dragged on the map of the round (Sascha 16.11.2026: "Ich ziele ja nicht immer Mitte Bahn")
+  const [aiming, setAiming] = useState<number | null>(null);
   // "tap the map where it went in": the map into view (after a drag far down the list it may be above the screen)
   useEffect(() => {
     if (placingMiss != null || placingShot != null) document.querySelector('.review-map')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -765,6 +769,58 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const cadOther = cadMain.length ? cadAll.filter((x) => !cadMain.includes(x)) : []; // none at a shot: all are shown
   const cadShown = moreCad === k ? [...cadMain, ...cadOther] : cadMain.length ? cadMain : cadAll;
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
+  // ---- the aim of a shot (Sascha 16.11.2026): what its spread is measured against ----
+  /** where shot n ended: the next shot, the ball on the green, or where it went out */
+  const endOf = (n: number): LngLat | null => {
+    if (!d) return null;
+    const s = d.shots[n];
+    return s?.penalty && s.missPos ? s.missPos : n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
+  };
+  const aimCtx = (n: number) => {
+    const s = d?.shots[n];
+    if (!s?.pos || !hole) return null;
+    const fairway = aimsAtFairway(n, hole.par);
+    const end = endOf(n);
+    const o = { from: s.pos, end, line: data?.line ?? null, pin, greenCenter: data?.greenCenter ?? null };
+    return { s, fairway, end, o, assumed: assumedAim({ fairway, ...o }) };
+  };
+  const saveAim = (n: number, aim: LngLat | null, kind: AimKind | null) => {
+    if (!d?.shots[n]) return;
+    const shots = d.shots.slice();
+    const { aim: _a, aimKind: _k, ...rest } = shots[n];
+    void _a;
+    void _k;
+    shots[n] = aim && kind ? { ...rest, aim, aimKind: kind } : rest;
+    saveDetail(k, { ...d, shots });
+  };
+  const aimSheet = (n: number) => {
+    const c = aimCtx(n);
+    if (!c) return undefined;
+    const set = c.s.aim ?? null;
+    const against = set ?? c.assumed;
+    const assumedName = c.fairway ? tr('fairway middle', 'Bahnmitte') : tr('flag', 'Fahne');
+    return {
+      choices: aimChoices(c.fairway),
+      kind: c.s.aimKind && c.s.aimKind !== 'map' ? c.s.aimKind : null,
+      title: set ? tr(`Aim: ${aimName(c.s.aimKind) ?? 'set'}`, `Ziel: ${aimName(c.s.aimKind) ?? 'gesetzt'}`) : tr(`Aim: ${assumedName} (assumed)`, `Ziel: ${assumedName} (angenommen)`),
+      dev: c.end && against ? offAimText(offAim(c.s.pos!, against, c.end), set ? 'aim' : c.fairway ? 'middle' : 'flag') : null,
+      onChoose: (kind: AimKind) => {
+        const p = kind === 'map' ? null : aimFor(kind, c.o);
+        if (!p) return;
+        saveAim(n, p, kind);
+        // a lay-up: its spot on the map at once
+        if (kind === 'layup') {
+          setEdit(null);
+          setAiming(n);
+        }
+      },
+      onClear: () => saveAim(n, null, null),
+      onMap: () => {
+        setEdit(null);
+        setAiming(n);
+      },
+    };
+  };
   const roundTotal = entries.reduce(
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
     { strokes: 0, par: 0, holes: 0 },
@@ -1032,11 +1088,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   }
                 : undefined
             }
-            onSave={(line) => {
+            onSave={(line, green) => {
               saveHoleLine(round.courseId, hole.loop, hole.number, line);
+              saveHoleGreen(round.courseId, hole.loop, hole.number, green); // the green drawn round (16.11.2026)
               // the round's other phones take it too, as on the course
               if (round.shared) void shareLine(round, hole.loop, hole.number, line);
-              void shareCourseLine(round.courseId, hole.loop, hole.number, line);
+              void shareCourseLine(round.courseId, hole.loop, hole.number, line, green);
               setGeoTick((t) => t + 1);
               setSetupHole(false);
             }}
@@ -1621,6 +1678,41 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
+      {aiming != null && data && hole && pin && (() => {
+        const c = aimCtx(aiming);
+        if (!c) return null;
+        const n = aiming;
+        const next = d?.shots[n + 1];
+        const endLabel = n + 1 < (d?.shots.length ?? 0) && next ? String(n + 2) : 'P1';
+        return (
+          <AimLayer
+            holeLabel={hole.label}
+            par={hole.par}
+            shotNo={n + 1}
+            club={c.s.club ? clubCode(c.s.club) : null}
+            data={data}
+            from={c.s.pos!}
+            end={c.end}
+            endLabel={endLabel}
+            pin={pin}
+            aim={c.s.aim ?? c.assumed ?? pin}
+            set={!!c.s.aim}
+            assumed={c.fairway ? 'middle' : 'flag'}
+            assumedAim={c.assumed}
+            unit={unit}
+            imagery={imagery}
+            view={view2d ? '2d' : 'aerial'}
+            onImageryFail={() => (imagery.id !== 'esri' ? setImageryPref('esri') : setView2d(true))}
+            // dragged: saved at once, as the chips – "auf der Karte gesetzt"
+            onChange={(p) => saveAim(n, p, 'map')}
+            onClear={() => saveAim(n, null, null)}
+            onClose={() => {
+              setAiming(null);
+              setEdit(n); // back in its sheet
+            }}
+          />
+        );
+      })()}
       {editing && d && (
         <ShotSheet
           title={tr(`Hole ${hole.label} · shot ${edit! + 1}`, `Loch ${hole.label} · Schlag ${edit! + 1}`)}
@@ -1636,6 +1728,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             setEdit(null);
             setPlacingShot(n);
           } : undefined}
+          aim={data && editing.pos && editing.club !== 'Pt' ? aimSheet(edit!) : undefined}
           editing
           bag={bag}
           onCancel={() => setEdit(null)}

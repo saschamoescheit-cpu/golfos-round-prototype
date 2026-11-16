@@ -109,6 +109,8 @@ export type Strike = 'good' | 'fat' | 'thin' | 'topped' | 'toe' | 'heel' | 'slic
 export type Flight = 'pullHook' | 'pull' | 'pullSlice' | 'hook' | 'straight' | 'slice' | 'pushHook' | 'push' | 'pushSlice' | 'draw' | 'fade';
 /** What the shot was meant to do – a layup is no missed green. */
 export type Intent = 'attack' | 'layup' | 'recovery';
+/** the aim of a shot (lib/aim): a chip in its sheet or set on the map */
+export type AimKind = 'flag' | 'green' | 'left' | 'middle' | 'right' | 'layup' | 'map';
 /** The stance: flat, uphill, downhill, ball above / below the feet. */
 export type SlopeLie = 'flat' | 'up' | 'down' | 'above' | 'below';
 export interface Shot {
@@ -131,6 +133,11 @@ export interface Shot {
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
   byHand?: boolean; // noted by hand on the course ("shot here") – drawn as the hand circle with its club (20.10.2026)
+  /** where the player aimed, set in the round check (Sascha 16.11.2026: "Ich ziele ja nicht immer Mitte Bahn") – the spread
+   *  is measured against it; missing = the middle of the hole off the tee of a par 4/5, else the flag (lib/aim) */
+  aim?: LngLat;
+  /** how the aim was set: a chip or dragged on the map */
+  aimKind?: AimKind;
 }
 export interface DetailEntry {
   shots: Shot[]; // all shots before the green (putts are counted separately)

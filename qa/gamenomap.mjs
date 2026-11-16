@@ -5,6 +5,7 @@
 // Usage: node qa/gamenomap.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { drawGreen } from './drawgreen.mjs';
 import { pickPrize } from './prize.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
@@ -100,7 +101,7 @@ if (onSetup) {
   const box = await p.locator('.hole-map').boundingBox();
   await p.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.5);
   await p.waitForTimeout(1200);
-  await p.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.2);
+  await drawGreen(p, box.x + box.width * 0.6, box.y + box.height * 0.2); // the green drawn round (16.11.2026)
   await p.waitForTimeout(400);
   if (process.env.SHOT) await p.screenshot({ path: process.env.SHOT.replace('.png', '2.png') });
   await p.getByRole('button', { name: 'Loch speichern' }).click();

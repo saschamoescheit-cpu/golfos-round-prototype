@@ -1,8 +1,8 @@
-import type { Course, CourseGeometry, LngLat, Round } from '../types';
+import type { Course, CourseGeometry, LngLat, Ring, Round } from '../types';
 import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
-import { holesAsLines } from './geo';
+import { centroid, holesAsLines, pointInRing } from './geo';
 import { CARDS, LINES as COURSE_LINES } from '../data/cards';
 import { GEO, touchGeometry } from './storageguard';
 import { decodeTrack } from './trackcodec';
@@ -147,6 +147,20 @@ export function saveHoleLine(courseId: string, loop: string, number: number, lin
   else linesKept.set(courseId, all);
 }
 
+// The green drawn round with the finger when a hole is marked anew (Sascha 16.11.2026, Hawks Landing 2: "Vielleicht muss
+// man … mit dem Finger um das Grün malen, um das Grün festzusetzen") – a tap took the map's green within 15 m, there the
+// wrong one. Keyed "loop#number" like the lines; in the course map it comes first, so the hole ends on it.
+const GREENS = 'golfos.holegreens.v1.';
+export function loadHoleGreens(courseId: string): Record<string, Ring> {
+  return read<Record<string, Ring>>(GREENS + courseId, {});
+}
+export function saveHoleGreen(courseId: string, loop: string, number: number, ring: Ring | null): void {
+  const all = { ...loadHoleGreens(courseId) };
+  if (ring && ring.length >= 3) all[`${loop}#${number}`] = ring;
+  else delete all[`${loop}#${number}`];
+  write(GREENS + courseId, all);
+}
+
 /** The player's own marking of a hole taken away, asked for by him (Sascha 11.11.2026, Moritz on Cypress: a hole set by
  *  hand wrongly wins over the course map – "Platzkarte verwenden"): the course's map (or the others' line) again. */
 export function removeHoleLine(courseId: string, loop: string, number: number): void {
@@ -155,6 +169,7 @@ export function removeHoleLine(courseId: string, loop: string, number: number): 
   if (write(LINES + courseId, all)) linesKept.delete(courseId);
   else linesKept.set(courseId, all);
   refuseFlightLines(courseId, [`${loop}#${number}`]);
+  saveHoleGreen(courseId, loop, number, null);
 }
 
 // The lines the event's other phones set up (lib/courselines keeps them) – over the course map (Sascha 11.11.2026: a hole
@@ -168,10 +183,27 @@ export function flightLines(courseId: string): Record<string, LngLat[]> {
   const refused = read<Record<string, string>>(REFUSED + courseId, {});
   return Object.fromEntries(Object.entries(lines).filter(([k, l]) => refused[k] !== JSON.stringify(l)));
 }
+// The holes other players marked on the course (lib/courselines) – over the course map for everyone since 16.11.2026
+// (Sascha, Legends: "Ich habe Legends aktualisiert, aber bei Chris hat es sich nicht aktualisiert" → "Gilt für alle"), the
+// latest of each hole; "Platzkarte" refuses the very line (and its green) for this player, a newer one comes through.
+const COMMUNITY = 'golfos.communitylines.v1.';
+const COMMUNITY_GREENS = 'golfos.communitygreens.v1.';
+export function communityLines(courseId: string): Record<string, LngLat[]> {
+  const lines = read<Record<string, LngLat[]>>(COMMUNITY + courseId, {});
+  const refused = read<Record<string, string>>(REFUSED + courseId, {});
+  return Object.fromEntries(Object.entries(lines).filter(([k, l]) => refused['c:' + k] !== JSON.stringify(l)));
+}
+/** the greens other players drew round, for the holes whose line is not refused */
+export function communityGreens(courseId: string): Record<string, Ring> {
+  const lines = communityLines(courseId);
+  return Object.fromEntries(Object.entries(read<Record<string, Ring>>(COMMUNITY_GREENS + courseId, {})).filter(([k]) => lines[k]));
+}
 function refuseFlightLines(courseId: string, keys: string[] | null): void {
   const lines = read<Record<string, LngLat[]>>(FLIGHT_LINES + courseId, {});
+  const others = read<Record<string, LngLat[]>>(COMMUNITY + courseId, {});
   const refused = { ...read<Record<string, string>>(REFUSED + courseId, {}) };
   for (const k of keys ?? Object.keys(lines)) if (lines[k]) refused[k] = JSON.stringify(lines[k]);
+  for (const k of keys ?? Object.keys(others)) if (others[k]) refused['c:' + k] = JSON.stringify(others[k]);
   write(REFUSED + courseId, refused);
 }
 /** All the player's own markings of a course taken away, asked for by him: the course map (or the others' lines) again. */
@@ -179,9 +211,11 @@ export function removeAllHoleLines(courseId: string): void {
   if (write(LINES + courseId, {})) linesKept.delete(courseId);
   else linesKept.set(courseId, {});
   refuseFlightLines(courseId, null);
+  write(GREENS + courseId, {});
 }
 /** Is a marking over the course map – the player's own, or one of his flight's he has not refused ("Platzkarte")? */
-export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean => !!loadHoleLines(courseId)[`${loop}#${number}`] || !!flightLines(courseId)[`${loop}#${number}`];
+export const hasOwnHoleLine = (courseId: string, loop: string, number: number): boolean =>
+  !!loadHoleLines(courseId)[`${loop}#${number}`] || !!flightLines(courseId)[`${loop}#${number}`] || !!communityLines(courseId)[`${loop}#${number}`];
 
 function holeLabel(loop: string, number: number): string {
   if (loop === 'Main') return String(number);
@@ -226,18 +260,17 @@ export function loadGeometry(courseId: string): CourseGeometry {
     const add = COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line, byHand: true })).filter((h) => !have.has(h.ref));
     if (add.length) base = { ...base, holes: [...base.holes.filter((h) => h.line && h.line.length >= 2), ...add].sort((a, b) => Number(a.ref) - Number(b.ref)) };
   }
-  // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
+  // holes other players set up on this course (lib/courselines, 12.11.2026) – over the map since 16.11.2026 (Sascha: "Gilt
+  // für alle"), its par and stroke index kept; not the ones the player refused ("Platzkarte")
   // …and the lines the event's other phones set up (kept apart from the own since 11.11.2026), the server's latest over them
-  const community = read<Record<string, LngLat[]>>('golfos.communitylines.v1.' + courseId, {});
+  const community = communityLines(courseId);
   if (Object.keys(community).length) {
-    const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
-    const add = Object.entries(community)
-      .map(([key, line]) => {
-        const [loop, num] = key.split('#');
-        return { ref: holeLabel(loop, Number(num)), line, byHand: true };
-      })
-      .filter((h) => !have.has(h.ref));
-    if (add.length) base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
+    const add = Object.entries(community).map(([key, line]) => {
+      const [loop, num] = key.split('#');
+      const ref = holeLabel(loop, Number(num));
+      return { ...(base.holes.find((h) => h.ref === ref) ?? {}), ref, line, byHand: true };
+    });
+    base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
   }
   // the flight's lines over the map (a hole marked anew comes through), the player's own over them
   const flight = flightLines(courseId);
@@ -250,6 +283,11 @@ export function loadGeometry(courseId: string): CourseGeometry {
     });
     base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
   }
+  // the greens the player drew round (16.11.2026): first, so a hole ends on them; a mapped green whose middle lies in one
+  // is the same green, drawn worse – it goes
+  // …the own first, then the ones other players drew round
+  const drawn = [...Object.values(loadHoleGreens(courseId)), ...Object.values(communityGreens(courseId))];
+  if (drawn.length) base = { ...base, green: [...drawn, ...base.green.filter((g) => !drawn.some((r) => pointInRing(centroid(g), r)))] };
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {

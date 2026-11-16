@@ -5,6 +5,7 @@
 // Usage: node qa/remotesetup.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { drawGreen } from './drawgreen.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -62,8 +63,8 @@ ok((await p.getByRole('button', { name: 'Ich stehe am Abschlag' }).count()) === 
 const map = await p.locator('.hole-map').boundingBox();
 await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.42);
 await p.waitForTimeout(500);
-ok(/Tippe auf das Grün/.test(await card.innerText()), 'tee tapped – now the green');
-await p.mouse.click(map.x + map.width / 2, map.y + map.height * 0.2);
+ok(/Fahr einmal um das Grün/.test(await card.innerText()), 'tee tapped – now draw round the green');
+await drawGreen(p, map.x + map.width / 2, map.y + map.height * 0.2, 12, 8); // the green drawn round (16.11.2026) – small: the overview of the course
 await p.waitForTimeout(500);
 const len = Number((/Abschlag → Grün: (\d+) m/.exec(await card.innerText()) ?? [])[1]);
 ok(len > 50, `green tapped – tee to green ${len} m`);
@@ -71,7 +72,7 @@ ok(len > 50, `green tapped – tee to green ${len} m`);
 {
   const bar = card.locator('.sc-actions');
   const words = await bar.locator('.sc-action span').allInnerTexts();
-  ok(words[0] === 'Neu beginnen' && words.includes('Nur Score') && (await card.locator('.btn-ghost, .btn-secondary, .btn-primary').count()) === 0, `the set-up's actions in one bar (${words.join(' · ')}), no column of text buttons`);
+  ok(words[0] === 'Neu malen' && words[1] === 'Neu beginnen' && words.includes('Nur Score') && (await card.locator('.btn-ghost, .btn-secondary, .btn-primary').count()) === 0, `the set-up's actions in one bar (${words.join(' · ')}), no column of text buttons`);
   ok((await p.locator('.fab-stack .fab-save').getAttribute('aria-label')) === 'Loch speichern' && !/✓/.test(await card.innerText()), '"Loch speichern" as the floating tick, no "✓" in the card');
   const fab = await p.locator('.fab-stack .fab-save').boundingBox();
   const cb = await card.boundingBox();
