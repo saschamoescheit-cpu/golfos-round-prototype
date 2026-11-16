@@ -124,6 +124,17 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
               { value: 'net', name: tr('Net', 'Netto'), text: tr('Minus the strokes received on each hole – from the playing handicap of each one’s round.', 'Abzüglich der Vorgabeschläge je Loch – aus der Spielvorgabe der eigenen Runde.') },
             ]}
           />
+          {/* with how much of the handicap, right under "Netto" (Sascha 16.11.2026, as Rounds since 15.11.: the allowance
+              under the scoring) – no "Einstellungen" at the end any more */}
+          {net && (
+            <ChoiceRow<number>
+              label={tr('Handicap share', 'Vorgabe')}
+              title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
+              value={share}
+              onChange={setShare}
+              options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
+            />
+          )}
         </SettingsList>
       </section>
       {/* Wo – the pool of bets the duel goes into; without one a new one of the day */}
@@ -194,21 +205,6 @@ export function DuelSetup(props: { onDone: (code: string) => void; /** from a ro
           <StakeRow label={tr('All 18', 'Gesamt (18)')} value={parts.total} sym={sym} stakes={stakes} onChange={(total) => setParts({ ...parts, total })} />
         </SettingsList>
       </section>
-      {/* Einstellungen – with how much of the handicap, when net */}
-      {net && (
-        <section className="setup-part">
-          <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
-          <SettingsList>
-            <ChoiceRow<number>
-              label={tr('Handicap share', 'Vorgabe')}
-              title={tr('With how much of the handicap', 'Mit wie viel Prozent der Vorgabe')}
-              value={share}
-              onChange={setShare}
-              options={[100, 95, 90, 85, 80, 75, 50].map((v) => ({ value: v, name: `${v} %`, ...(v === 100 ? { text: tr('The whole playing handicap.', 'Die ganze Spielvorgabe.') } : {}) }))}
-            />
-          </SettingsList>
-        </section>
-      )}
       {/* no connection: a green notice – nothing done wrong (Facelift 11.11.2026, o4) */}
       {msg && (
         <p className="notice" role="alert">
