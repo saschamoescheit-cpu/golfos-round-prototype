@@ -75,7 +75,18 @@ await p.evaluate(() => {
 await p.reload();
 await p.locator('.tr-cat').first().waitFor({ timeout: 30000 });
 await clean('Wissen');
-ok((await eyebrow('Themen').count()) === 1, 'Wissen: the blocks under eyebrows (THEMEN …)');
+// the topics by area (Sascha 17.11.2026): FÜR DICH on top, then the five areas
+const areas = ['Für dich', 'Kurzes Spiel', 'Langes Spiel', 'Schwung & Ballflug', 'Auf dem Platz', 'Kopf & Körper'];
+const counts = [];
+for (const a of areas) counts.push(await eyebrow(a).count());
+ok(counts.every((n) => n === 1) && (await eyebrow('Themen').count()) === 0, `Wissen: the blocks under eyebrows – FÜR DICH and the five areas (${counts.join(' ')})`);
+ok((await p.locator('.tr-cat').count()) === 21, `all 21 topics, each in its area (${await p.locator('.tr-cat').count()})`);
+// "Inhalte prüfen" only on a device that opened the review link (#pruefen)
+ok((await p.locator('.tr-review-entry').count()) === 0, 'Wissen: no "Inhalte prüfen" for a player');
+await p.goto(new URL('#pruefen', url).href);
+await p.reload();
+await p.locator('.tr-cat').first().waitFor({ timeout: 30000 });
+ok((await p.locator('.tr-review-entry').count()) === 1 && (await p.evaluate(() => location.hash)) === '', 'the review link #pruefen: "Inhalte prüfen" shows, the link is taken out of the address');
 
 // tr1 – a topic's parts as the switch
 await p.locator('.tr-cat').filter({ has: p.locator('strong', { hasText: /^Putten$/ }) }).first().click();

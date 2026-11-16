@@ -17,6 +17,7 @@ import { LieChartView } from '../training/LieChart';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
+import { AREAS, areaOf, isReviewer, plansForYou } from '../training/areas';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { PausedIcon } from '../components/PausedIcon';
 import { DeletedIcon } from '../components/RoundIcons';
@@ -702,20 +703,10 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
     <>
       <h1 className="tab-title">{tr('Library', 'Wissen')}</h1>
       <SearchField nav={props.nav} />
-      {recent.length > 0 && (
-        <section className="tr-block">
-          <Eyebrow>{tr('Recently opened', 'Zuletzt angesehen')}</Eyebrow>
-          <div className="tr-hscroll">
-            {recent.map((d) => (
-              <DrillMini key={d.id} d={d} nav={props.nav} />
-            ))}
-          </div>
-        </section>
-      )}
-      <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
-      {advice.length === 0 && unsignedCount > 0 && (
-        <section className="tr-advice">
-          <Eyebrow>{tr('From your rounds', 'Aus deinen Runden')}</Eyebrow>
+      {/* for you (17.11.2026): the weak spots of the player's rounds, else the hint to sign them, and the drill of the day */}
+      <section className="tr-block tr-advice">
+        <Eyebrow>{tr('For you', 'Für dich')}</Eyebrow>
+        {advice.length === 0 && unsignedCount > 0 && (
           <button type="button" className="list-item" onClick={() => props.nav.openRounds?.('rounds')} disabled={!props.nav.openRounds}>
             <span className="grow">
               <span className="title">{tr('Sign your finished rounds', 'Signiere deine beendeten Runden')}</span>
@@ -728,17 +719,13 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
             </span>
             <span aria-hidden="true">›</span>
           </button>
-        </section>
-      )}
-      {advice.length > 0 && (
-        <section className="tr-advice">
-          <Eyebrow>{tr('From your rounds', 'Aus deinen Runden')}</Eyebrow>
-          {advice.map((a) => {
-            const c = catById(a.cat);
-            if (!c) return null;
-            const fit = shotsForDrills(a.drills, 1)[0];
-            return (
-              <div key={a.cat} className="tr-advice-row">
+        )}
+        {advice.map((a) => {
+          const c = catById(a.cat);
+          if (!c) return null;
+          const fit = shotsForDrills(a.drills, 1)[0];
+          return (
+            <div key={a.cat} className="tr-advice-row">
               <button type="button" className="list-item tr-advice-item" onClick={() => props.nav.push({ name: 'cat', id: a.cat })}>
                 <span className="tr-cat-icon">{CAT_ICON[a.cat]}</span>
                 <span className="grow">
@@ -752,11 +739,11 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
                   {tr('Shot', 'Schlag')}: {t(fit.shot.name)} {TR_GLYPH.next()}
                 </button>
               )}
-              </div>
-            );
-          })}
-        </section>
-      )}
+            </div>
+          );
+        })}
+        <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
+      </section>
       <FaultFinder nav={props.nav} />
       {favs.length > 0 && (
         <section className="tr-block">
@@ -768,32 +755,51 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
           </div>
         </section>
       )}
-      <section className="tr-block">
-        <Eyebrow>{tr('Topics', 'Themen')}</Eyebrow>
-        <div className="tr-cat-grid">
-          {CATEGORIES.map((c) => (
-            <button key={c.id} type="button" className="tr-cat" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
-              <span className="tr-cat-icon">{CAT_ICON[c.id]}</span>
-              <strong>{t(c.name)}</strong>
-              <span className="muted small">{t(c.short)}</span>
-              <span className="tr-count small">
-                {tr(`${drillsOf(c.id).length} drills`, `${drillsOf(c.id).length} Übungen`)}
-                {practised(c.id) > 0 ? tr(` · ${practised(c.id)} practised`, ` · ${practised(c.id)} geübt`) : ''}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-      <button type="button" className="list-item tr-review-entry" onClick={() => props.nav.push({ name: 'review' })}>
-        <span className="tr-cat-icon small" aria-hidden="true">
-          <PenGlyph />
-        </span>
-        <span className="grow">
-          <span className="title">{tr('Review the content', 'Inhalte prüfen')}</span>
-          <span className="muted small">{tr('For our golf pro: keep, change or cut – and share the list.', 'Für unseren Golfprofi: passt, ändern oder streichen – und die Liste teilen.')}</span>
-        </span>
-        <span aria-hidden="true">›</span>
-      </button>
+      {recent.length > 0 && (
+        <section className="tr-block">
+          <Eyebrow>{tr('Recently opened', 'Zuletzt angesehen')}</Eyebrow>
+          <div className="tr-hscroll">
+            {recent.map((d) => (
+              <DrillMini key={d.id} d={d} nav={props.nav} />
+            ))}
+          </div>
+        </section>
+      )}
+      {/* the topics by area (17.11.2026: "nach Bereichen") – short game, long game, swing, on the course, mind and body */}
+      {AREAS.map((area) => (
+        <section key={area.id} className="tr-block" aria-label={t(area.name)}>
+          <Eyebrow>{t(area.name)}</Eyebrow>
+          <div className="tr-cat-grid">
+            {area.cats.flatMap((id) => {
+              const c = catById(id);
+              return c ? [c] : [];
+            }).map((c) => (
+              <button key={c.id} type="button" className="tr-cat" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+                <span className="tr-cat-icon">{CAT_ICON[c.id]}</span>
+                <strong>{t(c.name)}</strong>
+                <span className="muted small">{t(c.short)}</span>
+                <span className="tr-count small">
+                  {tr(`${drillsOf(c.id).length} drills`, `${drillsOf(c.id).length} Übungen`)}
+                  {practised(c.id) > 0 ? tr(` · ${practised(c.id)} practised`, ` · ${practised(c.id)} geübt`) : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+      {/* our golf pro's review – only on a device that opened the review link (#pruefen, 17.11.2026) */}
+      {isReviewer() && (
+        <button type="button" className="list-item tr-review-entry" onClick={() => props.nav.push({ name: 'review' })}>
+          <span className="tr-cat-icon small" aria-hidden="true">
+            <PenGlyph />
+          </span>
+          <span className="grow">
+            <span className="title">{tr('Review the content', 'Inhalte prüfen')}</span>
+            <span className="muted small">{tr('For our golf pro: keep, change or cut – and share the list.', 'Für unseren Golfprofi: passt, ändern oder streichen – und die Liste teilen.')}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
     </>
   );
 }
@@ -812,16 +818,32 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
   const running = sessions.filter((s) => !s.finishedAt);
   const own = loadOwnPlans();
   const advice = useMemo(() => adviceFromRounds(props.rounds), [props.rounds]);
-  const [level, setLevel] = useState<Level | 0>(0);
+  // one session or a weekly plan (17.11.2026: the weekly and goal plans have their own part)
+  const [kind, setKind] = useState<'single' | 'week'>('single');
   // a plan from the rounds: the first drill of each piece of advice, about 45 minutes
   const fromRounds = useMemo(() => {
     const items: { drill: string; minutes: number }[] = [];
     for (const a of advice) for (const id of a.drills.filter((x) => drillById(x)).slice(0, 2)) items.push({ drill: id, minutes: Math.min(12, drillById(id)!.minutes) });
     return items.slice(0, 6);
   }, [advice]);
-  const plans = PLANS.filter((p) => !p.week && (level === 0 || p.level === 0 || p.level === level) && planItems(p).length);
+  const plans = PLANS.filter((p) => !p.week && planItems(p).length);
+  const forYou = plansForYou(plans, advice, playerHcp());
   const favs = loadFavs().filter((id) => drillById(id));
   const weeks = PLANS.filter((p) => p.week);
+  const planRow = (p: Plan) => (
+    <li key={p.id}>
+      <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'plan', plan: p })}>
+        <span className="tr-cat-icon small">{CAT_ICON[p.focus[0]]}</span>
+        <span className="grow">
+          <span className="title">{t(p.name)}</span>
+          <span className="muted small">
+            {planMinutes(p)} min · {planItems(p).length} {tr('drills', 'Übungen')} · {levelName(p.level)}
+          </span>
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+    </li>
+  );
   return (
     <>
       <h1 className="tab-title">{tr('Practice', 'Üben')}</h1>
@@ -842,49 +864,70 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
           <span aria-hidden="true">›</span>
         </button>
       ))}
-      {fromRounds.length > 0 && (
-        <section className="card play-card">
-          <strong className="play-course">{tr('Your plan from your rounds', 'Dein Plan aus deinen Runden')}</strong>
-          <span className="muted small">
-            {advice.map((a) => t(catById(a.cat)?.name)).join(' · ')} – {fromRounds.length} {tr('drills', 'Übungen')}, {fromRounds.reduce((s, i) => s + i.minutes, 0)} min
-          </span>
-          <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(tr('Plan from my rounds', 'Plan aus meinen Runden'), fromRounds, 'rounds'))}>
-            {tr('Start plan', 'Plan starten')}
-          </button>
-        </section>
-      )}
-      {favs.length >= 2 && (
-        <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(tr('My favourites', 'Meine Favoriten'), favs.slice(0, 8).map((id) => ({ drill: id, minutes: drillById(id)!.minutes }))))}>
-          <StarGlyph /> {tr(`Practise my ${Math.min(8, favs.length)} favourites`, `Meine ${Math.min(8, favs.length)} Favoriten üben`)}
+      <div className="chip-row" role="group" aria-label={tr('Kind of plan', 'Art des Plans')}>
+        <button type="button" className={`chip${kind === 'single' ? ' on' : ''}`} aria-pressed={kind === 'single'} onClick={() => setKind('single')}>
+          {tr('One session', 'Einzelne Einheit')}
         </button>
-      )}
-      <section className="tr-block">
-        <Eyebrow>{tr('Ready-made plans', 'Fertige Pläne')}</Eyebrow>
-        <div className="chip-set" role="group" aria-label={tr('Level', 'Niveau')}>
-          {([0, 1, 2, 3] as const).map((l) => (
-            <button key={l} type="button" className={`chip${level === l ? ' on' : ''}`} aria-pressed={level === l} onClick={() => setLevel(l)}>
-              {levelName(l)}
-            </button>
-          ))}
-        </div>
-        <ul className="list">
-          {plans.map((p) => (
-            <li key={p.id}>
-              <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'plan', plan: p })}>
-                <span className="tr-cat-icon small">{CAT_ICON[p.focus[0]]}</span>
-                <span className="grow">
-                  <span className="title">{t(p.name)}</span>
-                  <span className="muted small">
-                    {planMinutes(p)} min · {planItems(p).length} {tr('drills', 'Übungen')} · {levelName(p.level)}
-                  </span>
+        <button type="button" className={`chip${kind === 'week' ? ' on' : ''}`} aria-pressed={kind === 'week'} onClick={() => setKind('week')}>
+          {tr('Weekly plan', 'Wochenplan')}
+        </button>
+      </div>
+      {kind === 'single' && (
+        <>
+          {/* for you: the plan from the player's rounds and two or three ready-made plans for the weak spots and the level */}
+          <section className="tr-block">
+            <Eyebrow>{tr('For you', 'Für dich')}</Eyebrow>
+            {fromRounds.length > 0 && (
+              <section className="card play-card">
+                <strong className="play-course">{tr('Your plan from your rounds', 'Dein Plan aus deinen Runden')}</strong>
+                <span className="muted small">
+                  {advice.map((a) => t(catById(a.cat)?.name)).join(' · ')} – {fromRounds.length} {tr('drills', 'Übungen')}, {fromRounds.reduce((s, i) => s + i.minutes, 0)} min
                 </span>
-                <span aria-hidden="true">›</span>
+                <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(tr('Plan from my rounds', 'Plan aus meinen Runden'), fromRounds, 'rounds'))}>
+                  {tr('Start plan', 'Plan starten')}
+                </button>
+              </section>
+            )}
+            <ul className="list">{forYou.map(planRow)}</ul>
+            {favs.length >= 2 && (
+              <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(tr('My favourites', 'Meine Favoriten'), favs.slice(0, 8).map((id) => ({ drill: id, minutes: drillById(id)!.minutes }))))}>
+                <StarGlyph /> {tr(`Practise my ${Math.min(8, favs.length)} favourites`, `Meine ${Math.min(8, favs.length)} Favoriten üben`)}
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-      {weeks.length > 0 && (
+            )}
+          </section>
+          {own.length > 0 && (
+            <section className="tr-block">
+              <Eyebrow>{tr('My plans', 'Meine Pläne')}</Eyebrow>
+              <ul className="list">
+                {own.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'plan', plan: p, own: true })}>
+                      <span className="grow">
+                        <span className="title">{p.name}</span>
+                        <span className="muted small">
+                          {planMinutes(p)} min · {planItems(p).length} {tr('drills', 'Übungen')}
+                        </span>
+                      </span>
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {/* the ready-made plans by the areas of Wissen (17.11.2026) */}
+          {AREAS.map((area) => {
+            const list = plans.filter((p) => areaOf(p.focus[0]) === area.id && !forYou.includes(p));
+            return list.length ? (
+              <section key={area.id} className="tr-block" aria-label={t(area.name)}>
+                <Eyebrow>{t(area.name)}</Eyebrow>
+                <ul className="list">{list.map(planRow)}</ul>
+              </section>
+            ) : null;
+          })}
+        </>
+      )}
+      {kind === 'week' && (
         <section className="tr-block">
           <Eyebrow>{tr('Goals and weekly plans', 'Ziel- und Wochenpläne')}</Eyebrow>
           <ul className="list">
@@ -895,26 +938,6 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
                   <span className="grow">
                     <span className="title">{t(p.name)}</span>
                     <span className="muted small">{t(p.about)}</span>
-                  </span>
-                  <span aria-hidden="true">›</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {own.length > 0 && (
-        <section className="tr-block">
-          <Eyebrow>{tr('My plans', 'Meine Pläne')}</Eyebrow>
-          <ul className="list">
-            {own.map((p) => (
-              <li key={p.id}>
-                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'plan', plan: p, own: true })}>
-                  <span className="grow">
-                    <span className="title">{p.name}</span>
-                    <span className="muted small">
-                      {planMinutes(p)} min · {planItems(p).length} {tr('drills', 'Übungen')}
-                    </span>
                   </span>
                   <span aria-hidden="true">›</span>
                 </button>

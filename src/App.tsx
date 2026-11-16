@@ -37,6 +37,7 @@ import { loadPools, myPoolBalances, reportDuelsSoon, reportWagers, runningPools 
 import { dayOf } from './lib/wagers';
 import { loadTours, startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
+import { takeReviewerLink } from './training/areas';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -93,6 +94,8 @@ function roundInPlay(rounds: Round[]): Round | undefined {
 // After a crash the player can ask for the start page instead of the round (read once per page load).
 /** A friend's invitation opened (#friend=<code>), read once at the start (the app clears the address then). */
 const FRIEND_LINK = location.hash.startsWith('#friend=') ? codeFromText(location.hash) : null;
+// the review link for our golf pro (#pruefen, 17.11.2026): „Inhalte prüfen“ shows on this device, the app opens in Training
+const REVIEW_LINK = takeReviewerLink();
 const SKIP_RESUME = (() => {
   try {
     const skip = sessionStorage.getItem(NO_RESUME) != null;
@@ -230,7 +233,7 @@ export function App() {
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
   // a join link opens Games – a round's (#round=) Rounds
-  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : FRIEND_LINK ? null : sessionModule()));
+  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : REVIEW_LINK ? 'training' : FRIEND_LINK ? null : sessionModule()));
   // a friend's invitation (#friend=, Sascha 02.11.2026: "a friend request by WhatsApp"): the friends tab asks to accept
   const [homeTab, setHomeTab] = useState<HomeTab>(() => {
     if (!FRIEND_LINK) return AFTER_LANG_SWITCH ? 'profile' : 'start';

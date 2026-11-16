@@ -398,7 +398,9 @@ ok((await p.locator('.topbar h1').innerText()).includes('Gapping'), 'back from M
 await back();
 await back();
 
-// review mode for the golf pro (Sascha 16.10.2026)
+// review mode for the golf pro (Sascha 16.10.2026) – only on a device that opened the review link (17.11.2026)
+await p.evaluate(() => localStorage.setItem('golfos.training.reviewer.v1', '1'));
+await tab('Üben');
 await tab('Wissen');
 await p.locator('.tr-review-entry').click();
 ok((await p.locator('.tr-reviewbar').count()) === 0, 'no review bars while the review mode is off');

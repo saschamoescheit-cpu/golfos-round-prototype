@@ -10,6 +10,8 @@
   background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; min-height: 150px;
 }
 /* a long word breaks inside the card (17.11.2026: Dutch "Baanmanagement" ran 15 px past an iPhone SE) */
+/* the last topic of an area alone in its row takes the whole row (17.11.2026) */
+.tr-cat-grid > .tr-cat:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 0; }
 .tr-cat strong { font: 600 17px var(--display); max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
 .tr-cat .muted { overflow-wrap: break-word; hyphens: auto; }
 .tr-count { margin-top: auto; color: var(--brand-text); font-weight: 600; }
