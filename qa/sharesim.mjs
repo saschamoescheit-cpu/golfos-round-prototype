@@ -63,7 +63,7 @@ export function sharedServer(b, url, o = {}) {
         return json(201, null);
       }
       const cid = decodeURIComponent((u.searchParams.get('course_id') ?? '').replace(/^eq./, ''));
-      return json(200, courseLines.filter((x) => x.course_id === cid).sort((a, b) => (a.at < b.at ? 1 : -1)).map(({ hole_key, line, at }) => ({ hole_key, line, at })));
+      return json(200, courseLines.filter((x) => x.course_id === cid).sort((a, b) => (a.at < b.at ? 1 : -1)).map(({ hole_key, line, at, green }) => ({ hole_key, line, at, ...(green ? { green } : {}) })));
     }
     if (u.pathname.endsWith('/rpc/golfos_friend_card_save')) {
       if (!uid) return json(401, { message: 'not_signed_in' });

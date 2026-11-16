@@ -1573,7 +1573,7 @@ export function HoleScreen(props: {
           // the flight's other phones take it (Sascha 12.11.2026, Cypress: "each of us had to set tees and greens") – and
           // every GolfOS player on this course (courselines)
           if (round.shared) void shareLine(round, hole.loop, hole.number, line);
-          void shareCourseLine(round.courseId, hole.loop, hole.number, line);
+          void shareCourseLine(round.courseId, hole.loop, hole.number, line, green);
           setGeoVersion((v) => v + 1);
           setSetupOpen(false);
           setView('map');

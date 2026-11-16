@@ -1093,7 +1093,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               saveHoleGreen(round.courseId, hole.loop, hole.number, green); // the green drawn round (16.11.2026)
               // the round's other phones take it too, as on the course
               if (round.shared) void shareLine(round, hole.loop, hole.number, line);
-              void shareCourseLine(round.courseId, hole.loop, hole.number, line);
+              void shareCourseLine(round.courseId, hole.loop, hole.number, line, green);
               setGeoTick((t) => t + 1);
               setSetupHole(false);
             }}
