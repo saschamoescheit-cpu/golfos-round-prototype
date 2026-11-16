@@ -166,9 +166,12 @@ ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
 ok((await p.locator('.sheet').getByRole('button', { name: 'Schlag löschen' }).count()) === 0 && (await p.locator('.review-list .row-delete').count()) > 0, 'the shot sheet: no "Schlag löschen" – the bin in its row');
 {
   // the lies: semi rough next to rough (Sascha 18.10.2026), all on the screen
-  const lies = await p.locator('.sheet .chips-field').first().locator('button').allInnerTexts();
-  const fits = await p.locator('.sheet .chips-field').first().evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
+  const lies = await p.locator('.sheet [role=group][aria-label="Lage"]').locator('button').allInnerTexts();
+  const fits = await p.locator('.sheet [role=group][aria-label="Lage"]').evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
   ok(lies.includes('Semi Rough') && lies.indexOf('Semi Rough') === lies.indexOf('Fairway') + 1 && lies.includes('Vorgrün') && lies.includes('Grün') && fits, `lie: "Semi Rough" after fairway, "Vorgrün" too, nothing cut off (${lies.join(' · ')})`);
+  // the aim chips above the lies (16.11.2026) – read in full as well
+  const aimFits = await p.locator('.sheet .shot-aim .chips-field').evaluateAll((es) => es.every((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)));
+  ok(aimFits, 'aim: its chips above the lies, nothing cut off');
   ok((await p.locator('.sheet .club-grid').getByRole('button', { name: /Texas Wedge/ }).count()) === 1, 'club: the putter from off the green (Texas wedge) to choose');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/shot-sheet.png' });
 }
