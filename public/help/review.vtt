@@ -1,77 +1,89 @@
 WEBVTT
 
 1
-00:00:00.018 --> 00:00:02.588 line:-2
+00:00:00.016 --> 00:00:02.586 line:-2
 Nach der Runde steht sie auf der Startseite bei
 
 1-2
-00:00:02.638 --> 00:00:06.245 line:-2
+00:00:02.636 --> 00:00:06.265 line:-2
 „Runden prüfen & signieren“ – und unter „Runden“.
 
 2
-00:00:06.345 --> 00:00:12.992 line:-2
+00:00:06.365 --> 00:00:12.976 line:-2
 Öffne die Runde und tippe unten rechts auf die Lupe – „Schläge prüfen“.
 
 3
-00:00:13.092 --> 00:00:17.182 line:-2
+00:00:13.076 --> 00:00:17.166 line:-2
 Die App hat die Schläge aus deiner GPS-Spur gefunden –
 
 3-2
-00:00:17.232 --> 00:00:20.462 line:-2
+00:00:17.216 --> 00:00:20.446 line:-2
 Schlagart und Schläger schlägt sie so vor, wie du sie bisher gespielt hast.
 
 3-3
-00:00:20.512 --> 00:00:24.950 line:-2
+00:00:20.496 --> 00:00:24.931 line:-2
 Stimmt ein Punkt nicht, ziehst du ihn auf der Karte an seine Stelle.
 
 4
-00:00:25.050 --> 00:00:28.840 line:-2
-Ein Tipp auf einen Schlag öffnet seine Maske. Oben in einer Zeile:
+00:00:25.031 --> 00:00:26.781 line:-2
+Ist ein Loch falsch eingezeichnet,
 
 4-2
-00:00:28.890 --> 00:00:31.320 line:-2
-wie weit es noch zur Fahne war und wie lang der Schlag war –
+00:00:26.831 --> 00:00:30.521 line:-2
+tippst du auf „Loch falsch eingezeichnet?“ und markierst Abschlag und Grün neu –
 
 4-3
-00:00:31.370 --> 00:00:33.882 line:-2
-rechts daneben „Ort ändern“.
+00:00:30.571 --> 00:00:35.283 line:-2
+die App nimmt beides genau so, wie du es antippst.
 
 5
-00:00:33.982 --> 00:00:38.152 line:-2
-Hat Wind den Schlag länger gemacht, steht darunter, wie lang er gespielt hat.
+00:00:35.383 --> 00:00:37.673 line:-2
+Ein Tipp auf einen Schlag öffnet seine Maske. Oben in einer Zeile:
 
 5-2
-00:00:38.202 --> 00:00:41.781 line:-2
-Dann wählst du Schläger, Lage und Schlagart.
+00:00:37.723 --> 00:00:41.913 line:-2
+wie weit es noch zur Fahne war und wie lang der Schlag war –
+
+5-3
+00:00:41.963 --> 00:00:44.018 line:-2
+rechts daneben „Ort ändern“.
 
 6
-00:00:41.881 --> 00:00:46.151 line:-2
-Darunter hältst du fest, wie du getroffen hast und welche Flugbahn der Ball hatte –
+00:00:44.118 --> 00:00:48.308 line:-2
+Hat Wind den Schlag länger gemacht, steht darunter, wie lang er gespielt hat.
 
 6-2
-00:00:46.201 --> 00:00:49.551 line:-2
-die neun von Pull-Hook bis Push-Slice, dazu Draw und Fade.
-
-6-3
-00:00:49.601 --> 00:00:52.944 line:-2
-Aus guten Treffern lernt die App deine Weiten.
+00:00:48.358 --> 00:00:51.861 line:-2
+Dann wählst du Schläger, Lage und Schlagart.
 
 7
-00:00:53.044 --> 00:00:57.788 line:-2
-Passt alles, tippst du auf „Loch passt“ – und weiter zum nächsten Loch.
+00:00:51.961 --> 00:00:56.951 line:-2
+Darunter hältst du fest, wie du getroffen hast und welche Flugbahn der Ball hatte –
+
+7-2
+00:00:57.001 --> 00:01:00.091 line:-2
+die neun von Pull-Hook bis Push-Slice, dazu Draw und Fade.
+
+7-3
+00:01:00.141 --> 00:01:03.617 line:-2
+Aus guten Treffern lernt die App deine Weiten.
 
 8
-00:00:57.888 --> 00:00:59.798 line:-2
-Am letzten Loch signierst du die Runde.
-
-8-2
-00:00:59.848 --> 00:01:06.639 line:-2
-Nur signierte Runden zählen in deiner Statistik.
+00:01:03.717 --> 00:01:08.321 line:-2
+Passt alles, tippst du auf „Loch passt“ – und weiter zum nächsten Loch.
 
 9
-00:01:06.739 --> 00:01:11.649 line:-2
-Danach siehst du dein Rundenfazit, deine Statistik und Strokes Gained dieser Runde.
+00:01:08.421 --> 00:01:10.331 line:-2
+Am letzten Loch signierst du die Runde.
 
 9-2
-00:01:11.699 --> 00:01:16.942 line:-2
+00:01:10.381 --> 00:01:17.055 line:-2
+Nur signierte Runden zählen in deiner Statistik.
+
+10
+00:01:17.155 --> 00:01:22.005 line:-2
+Danach siehst du dein Rundenfazit, deine Statistik und Strokes Gained dieser Runde.
+
+10-2
+00:01:22.055 --> 00:01:27.245 line:-2
 Ganz unten teilst, exportierst oder löschst du die Runde.

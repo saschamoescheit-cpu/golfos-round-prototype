@@ -11,6 +11,7 @@ import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, in
 import { SwipeRow } from './SwipeRow';
 import { isTourHost, loadSeries, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
+import type { SharedCell } from '../types';
 import { loadGames } from '../lib/gamestore';
 import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
 import { wagerLabel } from '../lib/wagers';
@@ -198,6 +199,20 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
     for (const x of inSeries ? [] : res.settle.transfers) {
       if (keyName(x.from) !== keyName(mine) || res.tp.paid?.[x.key]) continue;
       out.push({ key: `prizepay:${t.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${t.ev.name} · prizes and entry fee`, `${t.ev.name} · Preise und Startgeld`), go: () => goTour(t.code) });
+    }
+  }
+  // a card left empty in a tournament played (Sascha 16.11.2026, Moritz on the Oaks 12.11.: he played, not one score on his
+  // card – the bets count him, nobody had noticed): the host is told, to enter the scores ("Scores eintragen")
+  for (const t of tours) {
+    if (t.ev.deletedAt || !isTourHost(t)) continue;
+    const live = cachedEvent(t.code);
+    if (!live) continue;
+    const filled = (c?: (SharedCell | null)[] | null) => (c ?? []).some((x) => !!x && (x.s != null || !!x.p));
+    for (const f of liveFlights(live)) {
+      if (!f.finishedAt) continue;
+      for (const pl of f.players)
+        if (!filled(f.scores?.[pl.id]) && !filled(f.marks?.[pl.id]))
+          out.push({ key: `emptycard:${t.code}:${f.id}:${pl.id}`, title: tr(`${pl.name}'s card is empty`, `Karte von ${pl.name} ist leer`), line: tr(`${live.name} · enter the scores`, `${live.name} · Scores nachtragen`), go: () => goTour(t.code) });
     }
   }
   // a series' one settlement once its last round is in (Sascha 15.11.2026): what it won – and what this phone's player pays

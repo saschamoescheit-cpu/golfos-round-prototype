@@ -136,5 +136,10 @@
  "Someone plays only a few rounds of a series – how do I add them?": "シリーズの一部のラウンドだけ参加する人がいる – どう追加する？",
  "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "そのラウンドだけに追加します：シリーズでラウンドを開き、「トーナメントを変更」→「プレーヤーを追加」。参加した各ラウンドでは完全に集計されます – リーダーボードとその日の賞。ラウンドの半分未満しか参加しない人はゲストです：総合順位では灰色の線の下に「ゲスト」と表示され、順位なし、シリーズの賞と参加費の対象外です。",
  "Guest": "ゲスト",
- "Guests below the line: counted in their own rounds only, not in the total.": "線の下のゲスト：自分のラウンドだけで集計され、総合順位には入りません。"
+ "Guests below the line: counted in their own rounds only, not in the total.": "線の下のゲスト：自分のラウンドだけで集計され、総合順位には入りません。",
+ "{0}'s card is empty": "{0}のスコアカードが空です",
+ "{0} · enter the scores": "{0} · スコアを入力",
+ "Someone did not play a round – does it count for them?": "ラウンドをプレーしなかった人 – その人にもカウントされる？",
+ "No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; \"Total\" shows everyone. A player whose card stayed empty played all the same – the host gets \"Card of … is empty\" in the inbox and enters the scores in the tournament (\"Enter scores\").": "いいえ。順位表の各ラウンドには、そのラウンドをプレーした人だけが表示され、そこで達成されたベットはその人たちだけが支払います。「合計」には全員が表示されます。カードが空のままのプレーヤーも実際にはプレーしています – 主催者には受信箱に「…のスコアカードが空です」と届き、トーナメントでスコアを入力します（「スコアを入力」）。",
+ "Yes: open the hole overview (the bar at the bottom) → \"Tee\". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.": "はい：ホール一覧（下のバー）を開いて →「Tee」。距離、キャディー、コースレーティングとスロープ、あなたのプレーイングハンディキャップが新しいティーに合わせて変わります。すでにプレーしたホールは元のティーのままです。同伴者のティーは変わりません。ラウンド後：スコアカード → 日付の横のティーをタップ。トーナメントでは、主催者だけが後からティーを変更できます（自分のスコアカードで。同じ組のプレーヤーはそのプレーヤーのタブで）。"
 }

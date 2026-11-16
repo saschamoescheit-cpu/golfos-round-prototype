@@ -30,7 +30,7 @@ export const CARDS: Record<string, Record<string, string>[]> = {
 export const LINES: Record<string, LngLat[][]> = {
   'osm:relation/4053362': [
     [[-81.512395,28.360227],[-81.514658,28.362636]], // 1: tee: the long tee strip at the range corner (OSM T7) – Green tee length, Black 40 m further back
-    [[-81.51429,28.362893],[-81.513409,28.361696]], // 2: OSM tees T13 … T22
+    [[-81.51429,28.362893],[-81.5135544,28.3620056]], // 2: OSM tees T13 … T22 – to the green before the one first taken (Sascha 16.11.2026: "das Grün ist das davor"; read off the aerial)
     [[-81.513046,28.362026],[-81.513748,28.362987],[-81.514204,28.364026],[-81.514395,28.364844]], // 3: OSM tees T10 … T51, along the fairway
     [[-81.513944,28.36456],[-81.511361,28.364592],[-81.511281,28.363506],[-81.510586,28.362888]], // 4: OSM tees T24, T41, T33, T8 – dogleg right around the lake
     [[-81.510077,28.362748],[-81.510337,28.365143]], // 5: OSM tees T36, T53

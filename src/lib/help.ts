@@ -20,7 +20,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:56' },
   { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:45' },
   { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:36' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:17' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:27' },
   { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:54' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:49' },
   // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
@@ -28,7 +28,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:27' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '2:46' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '2:49' },
   { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '3:06' },
   // the balance and a tournament over several rounds (Sascha 04.11.2026)
   { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '0:34' },
@@ -37,7 +37,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:04' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:05' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:15' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
@@ -399,8 +399,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('I chose the wrong tee – can I change it during the round?', 'Ich habe den falschen Abschlag gewählt – kann ich ihn in der Runde ändern?'),
         a: () =>
           tr(
-            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard.',
-            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier kann nur der Veranstalter den Abschlag nachträglich ändern – in seiner Scorekarte.',
+            'Yes: open the hole overview (the bar at the bottom) → "Tee". The lengths, the caddie, course rating and slope and your playing handicap follow the new tee; the holes already played keep theirs. Your partners keep theirs. After the round: scorecard → tap the tee beside the date. In a tournament only its host can change the tee afterwards – in their scorecard, for a player of their flight on that player’s tab.',
+            'Ja: Lochübersicht öffnen (die Leiste unten) → „Tee“. Längen, Caddie, Course Rating und Slope und deine Spielvorgabe folgen dem neuen Abschlag; die schon gespielten Löcher behalten ihren. Deine Mitspieler behalten ihren. Nach der Runde: Scorekarte → den Abschlag neben dem Datum antippen. Im Turnier kann nur der Veranstalter den Abschlag nachträglich ändern – in seiner Scorekarte, für einen Spieler seines Flights auf dessen Reiter.',
           ),
         video: 'map',
       },
@@ -555,6 +555,17 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Yes: tap your own open bet in the pool (the host: any bet) → "Give up" (the flag). The sheet says what it costs – a bet against someone: you pay him the stake now; a bet "only when made" costs nothing. Paid already in cash or by PayPal? Turn "Paid already" on – the settlement shows it as paid and the other gets "… paid you" in his inbox to confirm. From then on the bet counts as missed; the standing shows it with the flag, "given up". The host takes it back with "Decided by hand" → "The app judges". Under the bets, "Sum" shows what each one gets from the bets he made and, below it, net – after what he pays the others; in "Total" and in each round.',
             'Ja: im Pool die eigene offene Wette antippen (der Host: jede Wette) → „Aufgeben“ (die Fahne). Das Blatt sagt, was es kostet – eine Wette gegen jemanden: du zahlst ihm jetzt den Einsatz; eine Wette „nur bei Erfolg“ kostet nichts. Schon bar oder per PayPal bezahlt? „Schon bezahlt“ an – die Abrechnung zeigt es als bezahlt, und der andere bekommt „… hat dir … bezahlt“ zum Bestätigen in die Inbox. Ab dann zählt die Wette als verloren; im Stand steht sie mit Fahne, „aufgegeben“. Der Host nimmt es mit „Von Hand entscheiden“ → „App wertet aus“ zurück. Unter den Wetten zeigt „Summe“, was jedem die geschafften Wetten bringen, und darunter netto – nach dem, was er den anderen zahlt; in „Gesamt“ und je Runde.',
+          ),
+        video: 'wagers',
+      },
+      {
+        // Sascha 16.11.2026 after Hawks Landing: "Heute haben nur Cedric, Erik und Sascha gespielt … bei der einzelnen Runde
+        // Chris und Moritz gar nicht anzeigen" – and Moritz's empty Oaks card
+        q: () => tr('Someone did not play a round – does it count for them?', 'Jemand hat eine Runde nicht gespielt – zählt sie für ihn?'),
+        a: () =>
+          tr(
+            'No. In one round of the standing only those who played it are shown, and a bet made in it is paid only by them; "Total" shows everyone. A player whose card stayed empty played all the same – the host gets "Card of … is empty" in the inbox and enters the scores in the tournament ("Enter scores").',
+            'Nein. In einer einzelnen Runde des Stands stehen nur die, die sie gespielt haben, und eine darin geschaffte Wette zahlen nur sie; „Gesamt“ zeigt alle. Wer gespielt hat, dessen Karte aber leer blieb: Der Veranstalter bekommt „Karte von … ist leer“ in die Inbox und trägt die Scores im Turnier nach („Scores eintragen“).',
           ),
         video: 'wagers',
       },
