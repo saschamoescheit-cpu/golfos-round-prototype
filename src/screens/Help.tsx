@@ -50,10 +50,13 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
   const inTours = sessionModule() === 'tournaments'; // the module of its own since 03.11.2026
   const inGames = sessionModule() === 'games' || inTours;
   // in Games its own videos first: playing games, bets (01.11.2026) – in Tournaments the tournaments' video first
-  const own = (id: string) => (inTours ? ['tours', 'tourrounds', 'games', 'wagers', 'balance'].indexOf(id) : inGames ? ['games', 'wagers', 'balance', 'tours', 'tourrounds'].indexOf(id) : -1);
+  // in Training its video and questions first (16.11.2026) – as Games does
+  const inTraining = sessionModule() === 'training';
+  const own = (id: string) => (inTours ? ['tours', 'tourrounds', 'games', 'wagers', 'balance'].indexOf(id) : inGames ? ['games', 'wagers', 'balance', 'tours', 'tourrounds'].indexOf(id) : inTraining ? ['training'].indexOf(id) : -1);
   const rank = (id: string) => (own(id) < 0 ? 99 : own(id));
   const videos = [HELP_TOUR, ...HELP_VIDEOS].sort((a, b) => rank(a.id) - rank(b.id));
-  const topics = [...FAQ].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));
+  const first = inGames ? 'games' : inTraining ? 'training' : null;
+  const topics = [...FAQ].sort((a, b) => (first ? Number(b.id === first) - Number(a.id === first) : 0));
   return (
     <main className="screen help">
       <TopBar title={tr('Help', 'Hilfe')} onBack={props.onBack} backLabel={tr('Back to the profile', 'Zurück zum Profil')} />

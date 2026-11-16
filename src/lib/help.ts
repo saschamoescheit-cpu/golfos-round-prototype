@@ -33,6 +33,8 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the balance and a tournament over several rounds (Sascha 04.11.2026)
   { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '0:34' },
   { id: 'tourrounds', title: () => tr('A tournament over several rounds', 'Turnier über mehrere Runden'), about: () => tr('Rounds, cut, the final dealt by result, the scorecards in the leaderboard', 'Runden, Cut, Finalrunde nach Ergebnis, Scorekarten im Leaderboard'), length: '0:58' },
+  // Training (night 16./17.11.2026): topics as shots, a shot's four parts, a drill and its result, plans, history
+  { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:04' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:05' };
@@ -687,6 +689,68 @@ export const FAQ: FaqTopic[] = [
             'Ja – Turnier, Serie, Spiel oder Wett-Pool: unter „Zuschauer“ „Live-Leaderboard zum Zuschauen“ einschalten (im Turnier, wer es angelegt hat, in Games und Wetten jeder Spieler) und den Link teilen. Er öffnet in jedem Browser, ohne App und ohne Konto: das Leaderboard live alle 20 Sekunden, ein Spieler angetippt zeigt seine Scorekarte; eine Serie wechselt mit „‹ Gesamt ›“ zwischen Gesamtwertung und jeder Runde; die Zeile „Platz“ darunter öffnet jedes Loch im Luftbild mit den Scores daran. Solange eine Runde läuft, öffnet „Live“ unter dem Leaderboard (auch in der Runde) denselben Schalter. Mitspielen geht damit nicht. In Spiel und Pool ist die Zeile eine Auswahl: „An – ohne Beträge“ oder „An – mit Beträgen“ – nur dann steht das Geld da. Ausgeschaltet – oder „Neuer Link“ – öffnet der alte Link nicht mehr.',
           ),
         video: 'tours',
+      },
+    ],
+  },
+  // Training (night 16./17.11.2026, Sascha: help and FAQ on the new state – shots per topic, no drill videos, what our pro
+  // took out is gone)
+  {
+    id: 'training',
+    title: () => tr('Training', 'Training'),
+    items: [
+      {
+        q: () => tr('How is Training organised?', 'Wie ist das Training aufgebaut?'),
+        a: () =>
+          tr(
+            'Under "Library" are the topics – from chipping, pitching and bunker to putting, irons and the driver. A topic opens on its shots; the switch at the top ("‹ Shots ›") leads to its drills, the basics and the faults. Above the topics: the drill of the day, what you opened lately and, after your rounds, what they show you should practise.',
+            'Unter „Wissen“ stehen die Themen – von Chippen, Pitchen und Bunker bis Putten, Eisen und Driver. Ein Thema öffnet auf seinen Schlägen; der Umschalter oben („‹ Schläge ›“) führt zu seinen Übungen, den Grundlagen und den Fehlern. Über den Themen: die Übung des Tages, was du zuletzt angesehen hast und, nach deinen Runden, was sie dir zum Üben zeigen.',
+          ),
+        video: 'training',
+      },
+      {
+        q: () => tr('What does a shot show me?', 'Was zeigt mir ein Schlag?'),
+        a: () =>
+          tr(
+            'Each shot – a standard chip, a chip uphill, a ball plugged in the bunker – has four parts, each with its picture: "Set-up" (ball position, stance, weight, club), "Motion" (how the stroke goes), "What to watch" (what matters, the typical faults) and "Practise" (the drills for it). A tap on the play symbol in the picture plays the movement.',
+            'Jeder Schlag – ein Standard-Chip, ein Chip bergauf, ein Spiegelei im Bunker – hat vier Teile, jeder mit seinem Bild: „Ansprache“ (Ballposition, Stand, Gewicht, Schläger), „Bewegung“ (so läuft der Schlag), „Worauf achten“ (was wichtig ist, die typischen Fehler) und „Üben“ (die Übungen dazu). Ein Tipp auf das Abspiel-Symbol im Bild spielt die Bewegung ab.',
+          ),
+        video: 'training',
+      },
+      {
+        q: () => tr('How do I practise a drill and keep my result?', 'Wie übe ich eine Übung und halte mein Ergebnis fest?'),
+        a: () =>
+          tr(
+            'Open the drill: "How to" shows the set-up and the steps, "Result" the targets for your handicap and the entry – the round green tick at the bottom right saves it, it then shows in the history below. "Gear" lists what you need. "Favourite" with the star keeps a drill in your favourites.',
+            'Übung öffnen: „Anleitung“ zeigt Aufbau und Ablauf, „Ergebnis“ die Ziele für dein Handicap und den Eintrag – der runde grüne Haken unten rechts speichert ihn, danach steht er unten in der Historie. „Zubehör“ nennt, was du brauchst. „Favorit“ mit dem Stern legt eine Übung zu deinen Favoriten.',
+          ),
+        video: 'training',
+      },
+      {
+        q: () => tr('Is there a plan I can follow?', 'Gibt es einen Plan, dem ich folgen kann?'),
+        a: () =>
+          tr(
+            'Yes – under "Practise": ready-made plans, goal and weekly plans, a plan from your rounds (it takes what cost you most strokes) and your own session from the drills you choose. "Start session" leads you from drill to drill; a paused session waits on the start page.',
+            'Ja – unter „Üben“: fertige Pläne, Ziel- und Wochenpläne, ein Plan aus deinen Runden (er nimmt, was dich die meisten Schläge kostet) und deine eigene Einheit aus Übungen, die du wählst. „Einheit starten“ führt dich von Übung zu Übung; eine pausierte Einheit wartet auf der Startseite.',
+          ),
+        video: 'training',
+      },
+      {
+        q: () => tr('Why are there no videos at the drills?', 'Warum gibt es keine Videos bei den Übungen?'),
+        a: () =>
+          tr(
+            'Our golf pro checks every shot and drill. Until then the videos are off; the pictures and the movements stay. A drill he took out no longer shows in the topics or the plans – what you already entered for it stays in your history.',
+            'Unser Golfprofi prüft jeden Schlag und jede Übung. Bis dahin sind die Videos aus; die Bilder und die Bewegungen bleiben. Eine Übung, die er herausgenommen hat, steht nicht mehr in den Themen und Plänen – was du dafür schon eingetragen hast, bleibt in deiner Historie.',
+          ),
+        video: 'training',
+      },
+      {
+        q: () => tr('How do I find a drill quickly?', 'Wie finde ich schnell eine Übung?'),
+        a: () =>
+          tr(
+            'With the search field at the top of "Library": it finds drills, shots, faults and gear – also in the language of your phone.',
+            'Mit dem Suchfeld oben in „Wissen“: Es findet Übungen, Schläge, Fehler und Zubehör – auch in der Sprache deines Handys.',
+          ),
+        video: 'training',
       },
     ],
   },

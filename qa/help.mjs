@@ -35,7 +35,7 @@ ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page o
 const views = p.getByRole('group', { name: 'Hilfe' });
 ok((await p.locator('main .segmented').count()) === 0 && (await views.evaluate((el) => el.classList.contains('chip-row'))) && (await views.locator('button[aria-pressed="true"]').innerText()).trim() === 'Videos', 'Videos | Häufige Fragen as chips, "Videos" chosen');
 const vids = p.locator('.help-video');
-ok((await vids.count()) === 15, `the whole tour and 14 videos – the launch monitor, bets, tournaments, the balance and a tournament over rounds too (${await vids.count()})`);
+ok((await vids.count()) === 16, `the whole tour and 15 videos – the launch monitor, bets, tournaments, the balance, a tournament over rounds and Training (16.11.2026) too (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
 ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Launch-Monitor' && titles[10] === 'Games spielen' && titles[11] === 'Wetten' && titles[12] === 'Turniere' && titles[13] === 'Bilanz' && titles[14] === 'Turnier über mehrere Runden', `in order: ${titles.join(' · ')}`);
 // no chapter numbers (Sascha 23.10.2026 evening)
@@ -44,7 +44,7 @@ await p.locator('.help-video img').last().scrollIntoViewIfNeeded(); // the pictu
 await p.waitForTimeout(800);
 const posters = await p.locator('.help-video img').evaluateAll((imgs) => imgs.map((i) => i.complete && i.naturalWidth > 100));
 ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/15)`);
-ok((await p.locator('.help-video .help-play').count()) === 15, 'the round play symbol at the bottom right of each picture');
+ok((await p.locator('.help-video .help-play').count()) === 16, 'the round play symbol at the bottom right of each picture');
 // play chapter 3
 await p.getByRole('button', { name: 'Video abspielen: Der Caddie' }).click();
 await p.waitForTimeout(2500);
@@ -66,7 +66,7 @@ ok((await p.locator('.help-player').count()) === 0, 'closed again');
 // placed by percent (night 25./26.10.2026)
 {
   const subs = await p.evaluate(async () => {
-    const ids = ['tour', 'start', 'flight', 'map', 'caddie', 'score', 'review', 'stats', 'profile', 'games'];
+    const ids = ['tour', 'start', 'flight', 'map', 'caddie', 'score', 'review', 'stats', 'profile', 'games', 'training'];
     const out = [];
     for (const id of ids) {
       const txt = await (await fetch(`help/${id}.vtt`)).text();
@@ -89,9 +89,9 @@ await p.waitForTimeout(300);
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
 // each topic small above its list (Facelift 11.11.2026, H1) – no heading inside a card
-ok((await p.locator('.help-faq h2').count()) === 0 && (await p.locator('.help-faq .eb-block > .eyebrow + .card.faq-list').count()) === 6, 'the topics as eyebrows above their cards');
+ok((await p.locator('.help-faq h2').count()) === 0 && (await p.locator('.help-faq .eb-block > .eyebrow + .card.faq-list').count()) === 7, 'the 7 topics (Training since 16.11.2026) as eyebrows above their cards');
 const topics = await p.locator('.help-faq .eb-block > .eyebrow').allTextContents();
-ok(topics.join(' · ') === 'Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Games · Konto & Daten', `the questions by topic: ${topics.join(' · ')}`);
+ok(topics.join(' · ') === 'Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Games · Training · Konto & Daten', `the questions by topic: ${topics.join(' · ')}`);
 const q = p.getByRole('button', { name: 'Warum prüfen und signieren?' });
 await q.click();
 await p.waitForTimeout(400);
@@ -113,11 +113,29 @@ await p.waitForTimeout(500);
 await p.getByRole('region', { name: 'Hilfe', exact: true }).getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1200);
 const gTitles = await p.locator('.help-video strong').allInnerTexts();
-ok(gTitles.length === 15 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Wetten' && gTitles[2] === 'Bilanz' && gTitles[3] === 'Turniere' && gTitles[4] === 'Turnier über mehrere Runden' && gTitles[5] === 'Der ganze Rundgang' && gTitles[14] === 'Launch-Monitor', `in Games the Games videos first: ${gTitles.slice(0, 5).join(' · ')} …`);
+ok(gTitles.length === 16 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Wetten' && gTitles[2] === 'Bilanz' && gTitles[3] === 'Turniere' && gTitles[4] === 'Turnier über mehrere Runden' && gTitles[5] === 'Der ganze Rundgang' && gTitles[14] === 'Launch-Monitor' && gTitles[15] === 'Training', `in Games the Games videos first: ${gTitles.slice(0, 5).join(' · ')} …`);
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
 const gTopics = await p.locator('.help-faq .eb-block > .eyebrow').allTextContents();
-ok(gTopics.join(' · ') === 'Games · Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Konto & Daten', `in Games the Games questions first: ${gTopics.join(' · ')}`);
+ok(gTopics.join(' · ') === 'Games · Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Training · Konto & Daten', `in Games the Games questions first: ${gTopics.join(' · ')}`);
+// opened in Training: its video and questions first (16.11.2026), the video plays
+await p.evaluate(() => sessionStorage.setItem('golfos.module', 'training'));
+await p.reload();
+await p.waitForTimeout(1200);
+await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
+await p.waitForTimeout(500);
+await p.getByRole('region', { name: 'Hilfe', exact: true }).getByRole('button', { name: /^Videos/ }).click();
+await p.waitForTimeout(1200);
+const tTitles = await p.locator('.help-video strong').allInnerTexts();
+ok(tTitles[0] === 'Training' && tTitles[1] === 'Der ganze Rundgang', `in Training its video first: ${tTitles.slice(0, 2).join(' · ')}`);
+await p.locator('.help-video').first().locator('.help-play').click();
+await p.waitForTimeout(2000);
+ok(/help\/training\.mp4$/.test(await p.locator('.help-player video').evaluate((el) => el.currentSrc)), 'the Training video plays');
+await p.getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('button', { name: 'Häufige Fragen' }).click();
+await p.waitForTimeout(500);
+const tTopics = await p.locator('.help-faq .eb-block > .eyebrow').allTextContents();
+ok(tTopics[0] === 'Training' && (await p.locator('.help-faq .eb-block').first().locator('.faq-list > *').count()) >= 6, `in Training its questions first: ${tTopics.join(' · ')}`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

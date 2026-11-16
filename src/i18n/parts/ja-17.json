@@ -1,0 +1,16 @@
+{
+ "Training": "トレーニング",
+ "How is Training organised?": "トレーニングはどう構成されていますか？",
+ "Under \"Library\" are the topics – from chipping, pitching and bunker to putting, irons and the driver. A topic opens on its shots; the switch at the top (\"‹ Shots ›\") leads to its drills, the basics and the faults. Above the topics: the drill of the day, what you opened lately and, after your rounds, what they show you should practise.": "「ライブラリ」にはテーマが並んでいます。チップ、ピッチ、バンカーからパット、アイアン、ドライバーまで。テーマを開くと、まずそのショットが表示されます。上部の切り替え（「‹ ショット ›」）から、そのテーマのドリル、基本、ミスへ移れます。テーマの上には、本日のドリル、最近開いたもの、そしてラウンド後には、ラウンドから見えた練習すべき点が表示されます。",
+ "What does a shot show me?": "ショットでは何がわかりますか？",
+ "Each shot – a standard chip, a chip uphill, a ball plugged in the bunker – has four parts, each with its picture: \"Set-up\" (ball position, stance, weight, club), \"Motion\" (how the stroke goes), \"What to watch\" (what matters, the typical faults) and \"Practise\" (the drills for it). A tap on the play symbol in the picture plays the movement.": "各ショット（標準的なチップ、上り傾斜のチップ、バンカーの目玉など）は4つのパートからなり、それぞれに図があります。「セットアップ」（ボール位置、スタンス、体重配分、クラブ）、「動き」（ストロークの流れ）、「注意点」（大事なこと、よくあるミス）、「練習」（そのためのドリル）です。図の再生アイコンをタップすると動きが再生されます。",
+ "How do I practise a drill and keep my result?": "ドリルを練習して結果を記録するには？",
+ "Open the drill: \"How to\" shows the set-up and the steps, \"Result\" the targets for your handicap and the entry – the round green tick at the bottom right saves it, it then shows in the history below. \"Gear\" lists what you need. \"Favourite\" with the star keeps a drill in your favourites.": "ドリルを開きます。「やり方」では準備と手順、「結果」ではハンディキャップに応じた目標と入力欄が表示されます。右下の丸い緑のチェックで保存すると、下の履歴に表示されます。「用具」には必要なものが並びます。「お気に入り」の星でドリルをお気に入りに追加できます。",
+ "Is there a plan I can follow?": "そのとおりに進められるプランはありますか？",
+ "Yes – under \"Practise\": ready-made plans, goal and weekly plans, a plan from your rounds (it takes what cost you most strokes) and your own session from the drills you choose. \"Start session\" leads you from drill to drill; a paused session waits on the start page.": "はい。「練習」に、既成のプラン、目標別プランと週間プラン、ラウンドから作るプラン（最も打数を失っている点を取り上げます）、選んだドリルで組む自分のセッションがあります。「セッションを開始」でドリルからドリルへ順に案内します。一時停止したセッションはスタートページで待っています。",
+ "Why are there no videos at the drills?": "ドリルに動画がないのはなぜですか？",
+ "Our golf pro checks every shot and drill. Until then the videos are off; the pictures and the movements stay. A drill he took out no longer shows in the topics or the plans – what you already entered for it stays in your history.": "私たちのゴルフプロがすべてのショットとドリルを確認しています。それまでは動画をオフにしています。図と動きはそのまま使えます。プロが外したドリルはテーマやプランに表示されなくなりますが、すでに入力した記録は履歴に残ります。",
+ "How do I find a drill quickly?": "ドリルをすばやく見つけるには？",
+ "With the search field at the top of \"Library\": it finds drills, shots, faults and gear – also in the language of your phone.": "「ライブラリ」上部の検索欄を使います。ドリル、ショット、ミス、用具を検索でき、スマートフォンの言語でも探せます。",
+ "Topics and their shots, set-up and motion, a drill and its result, plans, history": "テーマとそのショット、セットアップと動き、ドリルとその結果、プラン、履歴"
+}
