@@ -1519,9 +1519,26 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     if (shapeOf(w.kind) === 'sum') return !!p?.perRound?.some((x) => `${x.day}|${x.course}` === one.key && x.value != null);
     return true;
   };
+  // one round: only the players who played it (Sascha 16.11.2026, Hawks Landing: "Heute haben nur Cedric, Erik und Sascha
+  // gespielt … bei der einzelnen Runde Chris und Moritz gar nicht anzeigen. Bei Gesamt natürlich alle") – a figure of that
+  // round (or the round in play, details missing, a 5+5+10 of it); nobody yet (planned, not begun): everyone as before
+  const inOne = new Set<string>();
+  if (one)
+    for (const w of pool.wagers) {
+      const p = pool.progress[w.id];
+      if (p?.perRound?.some((x) => `${x.day}|${x.course}` === one.key && (x.value != null || x.open || x.unknown))) inOne.add(w.player);
+      for (const d of p?.duels ?? [])
+        if (`${d.day}|${d.course}` === one.key) {
+          inOne.add(w.player);
+          if (w.opponent) inOne.add(w.opponent);
+        }
+    }
+  // – and one without any round in the pool yet: he pays as before (roundPayers), his column stays
+  const known = dayPlayers(pool).get('') ?? new Set<string>();
+  const cols = one && inOne.size ? players.filter((p) => inOne.has(p.id) || !known.has(p.id)) : players;
   const rowsShown = rows
     .map((r) => ({ ...r, cells: Object.fromEntries(Object.entries(r.cells).map(([id, cs]) => [id, cs.filter(({ w }) => inRound(w))])) }))
-    .filter((r) => Object.values(r.cells).some((cs) => cs.length));
+    .filter((r) => cols.some((p) => r.cells[p.id]?.length));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
   // the sum under the bets (Sascha 14.11.2026: "Bei Stand gesamt … eine Summe ziehen … auch bei den einzelnen Runden, sodass
@@ -1698,11 +1715,11 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       {rows.length > 0 && !one?.out && (
         <div className="matrix-wrap">
           {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}
-          <table className="bet-matrix" style={players.length > 4 ? { minWidth: 96 + players.length * 72 } : undefined}>
+          <table className="bet-matrix" style={cols.length > 4 ? { minWidth: 96 + cols.length * 72 } : undefined}>
             <thead>
               <tr>
                 <th scope="col" />
-                {players.map((p) => (
+                {cols.map((p) => (
                   <th key={p.id} scope="col" className={p.id === props.me ? 'me' : ''}>
                     {p.name}
                   </th>
@@ -1713,7 +1730,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
               {rowsShown.map((r) => (
                 <tr key={r.key}>
                   <th scope="row">{r.name}</th>
-                  {players.map((p) => (
+                  {cols.map((p) => (
                     <td key={p.id}>
                       {one ? (r.key.startsWith('nassau|') ? roundDuels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(roundCell)) : r.key.startsWith('nassau|') ? duels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(cell)}
                     </td>
@@ -1723,7 +1740,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
               {sumShown && (
                 <tr className="bet-sum-row">
                   <th scope="row">{tr('Sum', 'Summe')}</th>
-                  {players.map((p) => (
+                  {cols.map((p) => (
                     <td key={p.id}>{sumCell(p.id)}</td>
                   ))}
                 </tr>
