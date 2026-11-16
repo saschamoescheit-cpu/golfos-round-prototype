@@ -1144,7 +1144,7 @@ function RoundFlights(props: { d: TourDraft; k: number; label: (p: TourPlayer, k
           label={tr('Players per flight', 'Spieler je Flight')}
           value={r.draw.size}
           onChange={(size) => setDraw({ size }, r.draw.mode !== 'manual')}
-          options={FLIGHT_SIZES.map((n) => ({ value: n, name: tr(`${n} players`, `${n} Spieler`), text: n === 4 ? tr('Fourballs.', '4er-Flights.') : n === 3 ? tr('Threeballs – as at a club championship.', '3er-Flights – wie bei der Clubmeisterschaft.') : tr('Twoballs.', '2er-Flights.') }))}
+          options={FLIGHT_SIZES.map((n) => ({ value: n, name: tr(`${n} players`, `${n} Spieler`), text: n === 4 ? tr('Fourballs.', '4er-Flights.') : n === 3 ? tr('Threeballs.', '3er-Flights.') : tr('Twoballs.', '2er-Flights.') }))}
         />
         <TimeRow id={`tour-first-${k}`} label={tr('First tee time', 'Erste Startzeit')} value={r.draw.first} onChange={(v) => v && props.onChange({ ...r, draw: { ...r.draw, first: v } })} />
         <ChoiceRow<number> label={tr('Interval', 'Abstand')} value={r.draw.gap} onChange={(gap) => props.onChange({ ...r, draw: { ...r.draw, gap } })} options={GAPS.map((g) => ({ value: g, name: tr(`${g} min`, `${g} Min.`) }))} />

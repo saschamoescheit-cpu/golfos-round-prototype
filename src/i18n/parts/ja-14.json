@@ -131,5 +131,10 @@
  "On – no amounts": "オン – 金額なし",
  "The bets and where they stand – no stakes, no money": "賭けとその状況のみ – 賭け金もお金も表示しない",
  "On – with amounts": "オン – 金額あり",
- "Stakes and who is up": "賭け金と誰がリードしているか"
+ "Stakes and who is up": "賭け金と誰がリードしているか",
+ "in play now": "進行中",
+ "Someone plays only a few rounds of a series – how do I add them?": "シリーズの一部のラウンドだけ参加する人がいる – どう追加する？",
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, \"Guest\", without a place, the series' prizes and its entry fee.": "そのラウンドだけに追加します：シリーズでラウンドを開き、「トーナメントを変更」→「プレーヤーを追加」。参加した各ラウンドでは完全に集計されます – リーダーボードとその日の賞。ラウンドの半分未満しか参加しない人はゲストです：総合順位では灰色の線の下に「ゲスト」と表示され、順位なし、シリーズの賞と参加費の対象外です。",
+ "Guest": "ゲスト",
+ "Guests below the line: counted in their own rounds only, not in the total.": "線の下のゲスト：自分のラウンドだけで集計され、総合順位には入りません。"
 }

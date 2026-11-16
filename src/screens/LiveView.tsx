@@ -14,7 +14,7 @@ import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
 import { dayOf, withDuels } from '../lib/wagers';
 import { leaderText } from '../components/Specials';
-import { LiveBoard, onRounds, SeriesBoard } from './Tournaments';
+import { boardOrder, guestSub, LiveBoard, onRounds, SeriesBoard } from './Tournaments';
 import { ScoreGrid, StandingCard } from './Games';
 import { Standings } from './Wagers';
 import type { HoleScore } from '../components/LiveCourse';
@@ -270,7 +270,7 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
   const evs = series.rounds.map((_, k) => props.v.events[k] ?? null);
   const started = evs.map((e) => !!e && (e.date ?? '') <= today);
   const played = evs.filter((e, k): e is RoundEvent => !!e && started[k]);
-  const total = seriesStandings(played);
+  const total = seriesStandings(played, { field: evs });
   // the round being played – else the last one played, else the first
   const liveK = evs.findIndex((e, k) => !!e && started[k] && eventStandings(e).rows.some((r) => r.thru && !r.finished));
   const lastK = started.lastIndexOf(true);
@@ -317,15 +317,15 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
           title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
           live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
           rounds={series.rounds.map((r) => ({ date: r.date, name: r.name }))}
-          rows={[...total.rows.filter((r) => !out(r.name)), ...total.rows.filter((r) => out(r.name))].map((r) => ({
+          rows={boardOrder(total.rows, out).map((r) => ({
             key: r.name,
-            pos: out(r.name) ? 'CUT' : r.pos,
+            pos: r.guest ? '–' : out(r.name) ? 'CUT' : r.pos,
             name: r.name,
             total: fmtSum(r.sum),
             // the part's index counts the rounds played – its round of the series
-            ...(total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
+            ...(r.guest ? { sub: guestSub(), guest: true } : total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
             parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
-            out: out(r.name),
+            out: !r.guest && out(r.name),
           }))}
           note={total.rows.length ? tr('Tap a player for his rounds and scorecards.', 'Spieler antippen für seine Runden und Scorekarten.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}
           cutAfter={cutPlayed ? cut!.after : undefined}

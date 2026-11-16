@@ -218,10 +218,12 @@ export function loadGeometry(courseId: string): CourseGeometry {
   // no holes in the map, but worked out for this course (Hawks Landing, 27.10.2026): those, with par and stroke index
   // – and where the map has only some of them (15.11.2026: OSM got hole 18 of Hawks Landing, the other 17 were gone):
   // the missing ones from the card's lines, the mapped ones kept
+  // – drawn tee → green like a hole marked by hand (Sascha 16.11.2026, Hawks Landing 2: its tee lies by the green of 1, its
+  // own green is not in the map – the line was turned round, the flag stood on the green before)
   if (COURSE_LINES[courseId]) {
     const card = CARDS[courseId] ?? [];
     const have = new Set(base.holes.filter((h) => h.line && h.line.length >= 2).map((h) => h.ref));
-    const add = COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })).filter((h) => !have.has(h.ref));
+    const add = COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line, byHand: true })).filter((h) => !have.has(h.ref));
     if (add.length) base = { ...base, holes: [...base.holes.filter((h) => h.line && h.line.length >= 2), ...add].sort((a, b) => Number(a.ref) - Number(b.ref)) };
   }
   // holes other players set up on this course (lib/courselines, 12.11.2026) – only where the map has none
@@ -232,7 +234,7 @@ export function loadGeometry(courseId: string): CourseGeometry {
     const add = Object.entries(community)
       .map(([key, line]) => {
         const [loop, num] = key.split('#');
-        return { ref: holeLabel(loop, Number(num)), line };
+        return { ref: holeLabel(loop, Number(num)), line, byHand: true };
       })
       .filter((h) => !have.has(h.ref));
     if (add.length) base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
@@ -244,7 +246,7 @@ export function loadGeometry(courseId: string): CourseGeometry {
       const [loop, num] = key.split('#');
       const ref = holeLabel(loop, Number(num));
       // the map's par and stroke index kept – only the line is the flight's
-      return { ...(base.holes.find((h) => h.ref === ref) ?? {}), ref, line };
+      return { ...(base.holes.find((h) => h.ref === ref) ?? {}), ref, line, byHand: true };
     });
     base = { ...base, holes: [...base.holes.filter((h) => !add.some((a) => a.ref === h.ref)), ...add] };
   }
@@ -252,7 +254,7 @@ export function loadGeometry(courseId: string): CourseGeometry {
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {
     const [loop, num] = key.split('#');
-    return { ref: holeLabel(loop, Number(num)), line };
+    return { ref: holeLabel(loop, Number(num)), line, byHand: true };
   });
   const ownRefs = new Set(ownHoles.map((h) => h.ref));
   return { ...base, holes: [...base.holes.filter((h) => !ownRefs.has(h.ref)), ...ownHoles] };

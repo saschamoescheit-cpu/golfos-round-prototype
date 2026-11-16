@@ -337,3 +337,34 @@ describe('which end of a hole line is the green (27.10.2026)', () => {
     expect(distanceM(d.line[0], ll(0, 0))).toBeLessThan(1);
   });
 });
+
+// Sascha 16.11.2026, Hawks Landing 2 on the iPad: "Wenn ich Abschlag und Grün ändern will, geht es nicht" – his tee lies
+// right by the green of hole 1, the green he tapped is not in the map: the line was turned round (tee taken for the pin) and
+// the flag went to the mapped green 50 m off ("das Grün ist das davor").
+describe('a hole marked by hand', () => {
+  const sq = (c: LngLat, m: number): Ring => {
+    const dx = m / (111320 * Math.cos((c[1] * Math.PI) / 180));
+    const dy = m / 110540;
+    return [[c[0] - dx, c[1] - dy], [c[0] + dx, c[1] - dy], [c[0] + dx, c[1] + dy], [c[0] - dx, c[1] + dy], [c[0] - dx, c[1] - dy]];
+  };
+  const tee: LngLat = [-81.5143, 28.3629];
+  const pin: LngLat = [-81.5136, 28.3622]; // ~100 m on
+  const green1: LngLat = [-81.5144, 28.36305]; // hole 1's green, ~20 m behind the tee
+  const green0: LngLat = [-81.51315, 28.3619]; // another mapped green, ~55 m past his pin
+  const geo = (byHand: boolean) => ({ holes: [{ ref: '2', line: [tee, pin], byHand }], green: [sq(green1, 12), sq(green0, 12)], tee: [], bunker: [], fairway: [], water: [] });
+  it('never turned round, the flag where he put it', () => {
+    const d = holeMapData(geo(true), 'Main', 2)!;
+    expect(d.line[0]).toEqual(tee);
+    expect(d.green).toBeNull();
+    expect(d.greenCenter).toEqual(pin);
+  });
+  it('his green when he tapped into it', () => {
+    const g = { ...geo(true), green: [sq(green1, 12), sq(pin, 10)] };
+    const d = holeMapData(g, 'Main', 2)!;
+    expect(distanceM(d.greenCenter, pin)).toBeLessThan(2);
+  });
+  it('a mapped (OSM) line as before: turned round when it starts at a green', () => {
+    const d = holeMapData({ ...geo(false), holes: [{ ref: '2', line: [pin, tee] }], green: [sq(pin, 10)] }, 'Main', 2)!;
+    expect(d.line[0]).toEqual(tee);
+  });
+});

@@ -8,7 +8,9 @@ export type Ring = LngLat[];
 
 /** Course map data from OpenStreetMap. Hole lines run from the tee to the pin (doglegs included). */
 export interface CourseGeometry {
-  holes: { ref: string; par?: string | null; handicap?: string | null; line: LngLat[] }[];
+  /** byHand: tee → green as a player marked it (his own, his flight's, other players' on this course – Sascha 16.11.2026,
+   *  Hawks Landing 2: "Abschlag und Grün ändern geht nicht") – never turned round, its green only where he tapped it. */
+  holes: { ref: string; par?: string | null; handicap?: string | null; line: LngLat[]; byHand?: boolean }[];
   green: Ring[];
   tee: Ring[];
   bunker: Ring[];

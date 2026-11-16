@@ -261,6 +261,13 @@ ok((await sorted(0)) === 'Chris,Erik,Sascha' && (await sorted(1)) === 'Cedric,Da
 }
 await choose('Einteilung', 'Zufällig');
 ok((await H.locator('.tour-flight-player').count()) === 5 && (await H.getByRole('button', { name: 'Neu auslosen' }).count()) === 1, 'random: everyone in a flight, "Neu auslosen"');
+{
+  // Sascha 16.11.2026: "Wie bei der Clubmeisterschaft raus als Hinweis" – the sizes say only what they are
+  await setting('Spieler je Flight').first().click();
+  const t = (await H.locator('.sheet .pick-option').allInnerTexts()).join(' | ').replace(/\s+/g, ' ');
+  await H.getByRole('button', { name: 'Schließen' }).last().click();
+  ok(/3er-Flights\./.test(t) && !/Clubmeisterschaft/.test(t), `players per flight: no "wie bei der Clubmeisterschaft" (${t})`);
+}
 await choose('Spieler je Flight', '2 Spieler');
 ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 2, 'twos with five players: 3 and 2 – nobody alone');
 // tees 1 and 10: two flights on each time

@@ -36,7 +36,7 @@ export function withTee(round: Round, tee: string, fromNow = false): Round {
   };
 }
 
-export function TeeSwitchSheet(props: { round: Round; onPick: (tee: string) => void; onClose: () => void }) {
+export function TeeSwitchSheet(props: { round: Round; /** the tee shown as chosen – another player's (Scorecard, the host) */ current?: string | null; onPick: (tee: string) => void; onClose: () => void }) {
   const { round } = props;
   const lady = isLady();
   const data = TEES[round.courseId];
@@ -57,13 +57,13 @@ export function TeeSwitchSheet(props: { round: Round; onPick: (tee: string) => v
         </div>
         <div className="pick-list">
           {tees.map((t) => (
-            <button key={t.id} type="button" className="pick-option" aria-pressed={t.id === round.tee} onClick={() => props.onPick(t.id)}>
+            <button key={t.id} type="button" className="pick-option" aria-pressed={t.id === (props.current ?? round.tee)} onClick={() => props.onPick(t.id)}>
               <span className="tee-dot" style={{ background: t.colour }} />
               <span className="grow">
                 <strong>{t.name}</strong>
                 <span className="muted small">{[t.total > 0 ? `${t.total} m` : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}</span>
               </span>
-              {t.id === round.tee && <span className="pick-check" aria-hidden="true">✓</span>}
+              {t.id === (props.current ?? round.tee) && <span className="pick-check" aria-hidden="true">✓</span>}
             </button>
           ))}
         </div>

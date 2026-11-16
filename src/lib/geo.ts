@@ -369,15 +369,20 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
   // only when that end really is at a green (27.10.2026, Hawks Landing 18: its island green is not in the map – the nearest
   // mapped green lay a little nearer the tee, and the hole was turned round)
   const toStart = nearestGreen(raw[0]);
-  const line = toStart < nearestGreen(raw[raw.length - 1]) && toStart < 60 ? raw.slice().reverse() : raw;
+  // – never a hole a player marked himself: his tee may lie right by the green of the hole before (Sascha 16.11.2026,
+  // Hawks Landing 2 – marked anew, it came out backwards)
+  const line = !hole.byHand && toStart < nearestGreen(raw[raw.length - 1]) && toStart < 60 ? raw.slice().reverse() : raw;
   const end = line[line.length - 1];
+  // the green: the one at the line's end – for a hole marked by hand only the one he tapped (or right at its edge), never a
+  // mapped green 60 m off: that is another hole's ("das Grün ist das davor"), the flag stays where he put it
   const green =
     geo.green.find((g) => pointInRing(end, g)) ??
-    geo.green
+    (hole.byHand ? geo.green.find((g) => g.some((q) => distanceM(end, q) < 6)) ?? null : null) ??
+    (hole.byHand ? null : geo.green
       .map((g) => ({ g, d: distanceM(end, centroid(g)) }))
       .filter((x) => x.d < 60)
       .sort((a, b) => a.d - b.d)[0]?.g ??
-    null;
+    null);
   const near = (ring: Ring) => ring.some((p) => distToLine(p, line) <= corridorM) || (green != null && ring.some((p) => distanceM(p, centroid(green)) < 40));
   // Hazards of this hole only (Sascha 15.10.2026: "the pond beside 8A does not belong to the hole"):
   // - bunkers up to 45 m from the line; fairway bunkers up to 60 m, up to 65 m when no other hole's line is nearer

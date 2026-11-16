@@ -2284,6 +2284,8 @@ button.tile:disabled { opacity: 1; }
 .lb-parts .chip { min-height: 30px; padding: 0 10px; font-size: 13px; }
 .lb-rows li.lb-cut { margin-top: 10px; box-shadow: 0 -6px 0 -4px var(--bad); }
 .lb-rows li.lb-out .lb-name, .lb-rows li.lb-out .lb-value { color: var(--text-2); }
+/* guests of a series below their own line – grey, not the cut's red (Sascha 16.11.2026: "Nur Tageswertung") */
+.lb-rows li.lb-guests { margin-top: 10px; box-shadow: 0 -6px 0 -4px var(--line-strong); }
 /* own net classes: the field under the last class adds one (04.11.2026) */
 .class-add { cursor: text; }
 .class-add-input { width: 90px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: right; outline: none; }

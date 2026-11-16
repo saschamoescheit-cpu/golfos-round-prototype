@@ -74,3 +74,24 @@ describe('a finished round corrected', () => {
     expect(takes(birdies, 's', before, { ...right, at: 'z' }, span)).toBe(true);
   });
 });
+
+// audit 16.11.2026: Cedric's and Moritz's reports came while Celebration 07.11. was deleted from the pool; Cedric's held the
+// 14.11. Celebration deleted since (pool.skip hidden). The host's cards bring 07.11. back – taken, as long as nothing else of
+// his is lost; Moritz's own report has his empty Oaks card (he played, the scores are missing) – kept.
+describe('a round deleted from the pool in an old report', () => {
+  const birdies: Wager = { id: 'b', player: 'c', kind: 'birdies', target: 4, stake: 20, payout: 'success', attempts: 'any' } as unknown as Wager;
+  const span: Pick<WagerPool, 'from' | 'to' | 'rounds' | 'skip'> = { from: '2026-11-05', to: '2026-11-18', skip: [{ day: '2026-11-14', course: 'Celebration Golf Club', hidden: true }] };
+  const r = (day: string, course: string, value: number) => ({ day, course, value });
+  const old: Progress = { best: 2, done: false, rounds: 1, at: 'x', perRound: [r('2026-11-09', 'K', 1), r('2026-11-12', 'Oaks', 2), r('2026-11-14', 'Celebration Golf Club', 0)] } as Progress;
+  const host: Progress = { best: 2, done: false, rounds: 1, at: 'y', perRound: [r('2026-11-07', 'Celebration Golf Club', 0), r('2026-11-09', 'K', 1), r('2026-11-12', 'Oaks', 2)] } as Progress;
+  it('the host\'s cards with 07.11. back: taken', () => {
+    expect(takes(birdies, 's', old, host, span)).toBe(true);
+  });
+  it('without the deletion it stays as before: same number of rounds, kept', () => {
+    expect(takes(birdies, 's', old, host, { from: span.from, to: span.to })).toBe(false);
+  });
+  it('a round of his missing on the host\'s phone (Moritz\'s empty Oaks card): kept', () => {
+    const noOaks = { ...host, perRound: [host.perRound![0], host.perRound![1]] } as Progress;
+    expect(takes(birdies, 's', old, noOaks, span)).toBe(false);
+  });
+});

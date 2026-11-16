@@ -12,7 +12,8 @@ import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
 import { EventBoardCard, SignCard, useDiffers, useShareViews } from '../components/ShareRound';
-import { amHost, eventOwner, keptOwner, setFlightTee } from '../lib/sharedround';
+import { amHost, cachedEvent, eventOwner, keptOwner, setFlightTee } from '../lib/sharedround';
+import { playingHandicapFor } from '../lib/handicap';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
@@ -87,6 +88,14 @@ export function Scorecard(props: {
   }, [tourCode]);
   const myTee = round.tee ?? round.players.find((p) => p.isMe)?.tee;
   const teeEditable = finished && !round.preview && (!tourCode || tourHost) && !!myTee && manyTees;
+  // the host also sets a player of his flight on another tee (Sascha 16.11.2026: "theoretisch können Spieler eines Flights
+  // von unterschiedlichen Tees spielen") – on that player's tab: his tee, in the round and the tournament, his playing
+  // handicap from his index
+  const other = view !== 'all' && view !== me.id ? round.players.find((p) => p.id === view) ?? null : null;
+  const otherTee = other ? (other.tee ?? round.tee ?? null) : null;
+  const otherEditable = !!other && finished && !round.preview && !!tourCode && tourHost && !!round.shared && !!otherTee && manyTees;
+  const shownTee = other ? otherTee : myTee;
+  const shownEditable = other ? otherEditable : teeEditable;
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
@@ -234,21 +243,21 @@ export function Scorecard(props: {
         )}
         <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
-          {myTee && !teeEditable && (
+          {shownTee && !shownEditable && (
             <>
               {' · '}
-              <span className="tee-dot" style={{ background: TEE_COLOURS[myTee] ?? '#888' }} />
-              {teeName(myTee)}
+              <span className="tee-dot" style={{ background: TEE_COLOURS[shownTee] ?? '#888' }} />
+              {teeName(shownTee)}
             </>
           )}
           {/* the tee changed afterwards (Sascha 14.11.2026: the Reserve round stored as White, played from Blue) – the
               same sheet as in the round; lengths, course rating and the own playing handicap follow */}
-          {teeEditable && (
+          {shownEditable && (
             <>
               {' · '}
-              <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(myTee!)} – change`, `Abschlag ${teeName(myTee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
-                <span className="tee-dot" style={{ background: TEE_COLOURS[myTee!] ?? '#888' }} />
-                {teeName(myTee!)} <span className="good-text" aria-hidden="true">›</span>
+              <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(shownTee!)} – change`, `Abschlag ${teeName(shownTee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
+                <span className="tee-dot" style={{ background: TEE_COLOURS[shownTee!] ?? '#888' }} />
+                {teeName(shownTee!)} <span className="good-text" aria-hidden="true">›</span>
               </button>
             </>
           )}
@@ -544,9 +553,20 @@ export function Scorecard(props: {
       {teeOpen && (
         <TeeSwitchSheet
           round={round}
+          current={shownTee}
           onClose={() => setTeeOpen(false)}
           onPick={(t) => {
             setTeeOpen(false);
+            if (other) {
+              if (t === otherTee || !tourCode || !round.shared) return;
+              const fp = cachedEvent(tourCode)?.flights[round.shared.flight]?.players.find((x) => x.id === other.id);
+              const playing = fp?.hcpIndex != null ? playingHandicapFor(round.courseId, round.holes, t, String(fp.hcpIndex)) : null;
+              props.onChange({ ...round, players: round.players.map((p) => (p.id === other.id ? { ...p, tee: t, ...(playing != null ? { playingHandicap: playing } : {}) } : p)) });
+              void setFlightTee(tourCode, round.shared.flight, other.id, t, playing).then((ev) => {
+                if (!ev) setShareMsg(tr('The tournament did not take the tee – no connection. Try again later.', 'Im Turnier nicht gespeichert – keine Verbindung. Später noch einmal.'));
+              });
+              return;
+            }
             if (t === myTee) return;
             const next = withTee(round, t);
             props.onChange(next);

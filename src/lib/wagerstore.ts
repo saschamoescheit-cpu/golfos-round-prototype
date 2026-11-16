@@ -449,6 +449,10 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
   // (countedOnly, inPool); judged anew here, a phone without the others' rounds would wipe their bets
   if (pool && old.perRound?.some((r) => !inPool({ day: r.day, course: r.course }, { from: pool.from, to: pool.to, rounds: pool.rounds }, w))) return true;
   if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
+  // a round deleted from the pool (pool.skip hidden) is no round of his any more: an old report that still has it must not
+  // keep the host's fuller one out (audit 16.11.2026: Cedric's report from the time Celebration 07.11. was deleted held the
+  // deleted 14.11. – the host's cards with 07.11. back never got in)
+  const gone = (r: { day: string; course: string }) => !!pool?.skip?.some((s) => s.hidden && s.day === r.day && s.course === r.course);
   // a round reported while it was still played, over now (audit 13.11.2026: Moritz's phone stopped reporting in the middle
   // of the Oaks round – pars in a row 3 instead of 7): the finished round from the host's card
   // – only from a phone that knows as many of his rounds (review 13.11.2026: else the others would vanish from his bet)
@@ -458,7 +462,7 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
   // reported before counts – up or down
   {
     const same = (a: { day: string; course: string }, b: { day: string; course: string }) => a.day === b.day && a.course === b.course;
-    const was = old.perRound ?? [];
+    const was = (old.perRound ?? []).filter((r) => !gone(r));
     const is = now.perRound ?? [];
     // – never a less complete figure (review 14.11.2026: the host's copy without the player's putts, "5?", would overwrite
     // the player's full one, and his phone write it back – back and forth, a push each time)
@@ -467,6 +471,13 @@ export function takes(w: Wager, me: string, old: Progress | undefined, now: Prog
   }
   // the standing per round (Sascha 09.11.2026: "only one round in the table"): a round more – from the host's phone too
   if ((now.perRound?.length ?? 0) > (old.perRound?.length ?? 0) && now.rounds >= old.rounds) return true;
+  // – the same without the deleted rounds: only when every other round reported before is in the new one (nothing of his
+  // lost – Moritz's empty Oaks card is in his own report, not on the host's)
+  {
+    const was = (old.perRound ?? []).filter((r) => !gone(r));
+    const is = (now.perRound ?? []).filter((r) => !gone(r));
+    if (was.length < (old.perRound?.length ?? 0) && is.length > was.length && now.rounds >= old.rounds && was.every((r) => is.some((x) => x.day === r.day && x.course === r.course))) return true;
+  }
   if (now.rounds !== old.rounds) return now.rounds > old.rounds;
   if (now.done !== old.done) return now.done;
   if (now.pending != null && old.pending == null) return true;
