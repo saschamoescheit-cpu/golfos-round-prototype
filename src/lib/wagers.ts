@@ -363,6 +363,8 @@ export interface PoolPlayer {
   /** the handicap index as typed in the setup (Sascha 03.11.2026: the players as in "Runde starten") – a round started
    *  from the pool takes it */
   hcp?: string;
+  /** a guest – in the pool only for his 5+5+10s, never for its bets (isGuest, Sascha 17.11.2026) */
+  guest?: boolean;
 }
 
 /** A round of the trip (Sascha 01.11.2026: "a bet can be tied to a course and to the day it is played – six rounds"):
@@ -1256,10 +1258,31 @@ export function dayPlayers(pool: Pick<WagerPool, 'wagers' | 'progress'>): Map<st
   }
   return m;
 }
+/** A guest of the pool (Sascha 17.11.2026: "Daniel nimmt gar nicht am Wettpool teil … Daniel und Thomas haben nur die
+ *  letzten beiden Tage als Gast mitgespielt – müssen bei erfüllten Wetten nicht bezahlen"): in it only for 5+5+10s – a
+ *  5+5+10 brought him into the pool (PoolPlayer.guest, set by challengeDuels). From before (Daniel, 16.11.2026: a
+ *  challenged player outside the pool was added to it): a 5+5+10 of his, no bet of his own, never joined nor invited
+ *  by the host – a member who joined and has only a 5+5+10 so far is no guest (gate usarehearsal: Erik). He pays and
+ *  gets his own 5+5+10s and a bet made right against him – never the pool's bets "each pays". A bet of his own makes
+ *  him a member. */
+export function isGuest(pool: Pick<WagerPool, 'wagers'> & { players?: PoolPlayer[] }, id: string): boolean {
+  let duel = false;
+  for (const w of pool.wagers) {
+    if (shapeOf(w.kind) === 'duel') duel ||= w.player === id || w.opponent === id;
+    else if (w.player === id) return false;
+  }
+  if (!duel) return false;
+  const p = pool.players?.find((x) => x.id === id);
+  return !!p && (!!p.guest || (!p.joined && !p.invited));
+}
+/** Everyone a bet "each pays" is between: the pool's players but its guests (isGuest), not the one who made it. */
+export const betOthers = (pool: Pick<WagerPool, 'players' | 'wagers'>, w: Pick<Wager, 'payout' | 'opponent' | 'player'>): string[] =>
+  w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player && !isGuest(pool, id));
+
 /** Who pays (or gets) a bet decided in one round: its opponent, or everyone else in the pool – only those who played
- *  that day (Sascha 14.11.2026). Nobody known on that day: everyone, as before. */
+ *  that day (Sascha 14.11.2026), never a guest (isGuest). Nobody known on that day: everyone, as before. */
 export function roundPayers(pool: Pick<WagerPool, 'players' | 'wagers' | 'progress'>, w: Pick<Wager, 'payout' | 'opponent' | 'player'>, day: string, field = dayPlayers(pool)): string[] {
-  const all = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  const all = betOthers(pool, w);
   const there = field.get(day);
   const known = field.get('') ?? new Set<string>();
   // not there that day: only one known to play other rounds of the pool – a player without any round of it pays as before
@@ -1346,7 +1369,7 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
     const prov = withProvisional && provisional(w, pool.progress[w.id]);
     const st = prov ? 'done' : stateOf(w, pool, today);
     if (st === 'open' || !(w.stake > 0)) continue;
-    const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+    const others = betOthers(pool, w);
     if (st === 'missed' && w.payout === 'success') continue;
     const sign = st === 'done' ? 1 : -1;
     for (const o of others) add(w.player, o, w, sign * w.stake, prov);

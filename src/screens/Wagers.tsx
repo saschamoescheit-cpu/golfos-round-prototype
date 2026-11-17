@@ -17,7 +17,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, dayPlayers, roundPayers, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, dayPlayers, roundPayers, betOthers, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -2383,9 +2383,10 @@ export function concedable(w: Wager, pool: WagerPool, today: string): boolean {
 }
 /** What giving up costs: the stake to each one the bet pays when missed (as the settlement counts a missed bet) – nothing
  *  for a bet paid "only when made". */
-export function concedeCost(w: Wager, pool: Pick<WagerPool, 'players'>): { to: string; amount: number }[] {
+export function concedeCost(w: Wager, pool: Pick<WagerPool, 'players' | 'wagers'>): { to: string; amount: number }[] {
   if (w.payout === 'success' || !(w.stake > 0)) return [];
-  const to = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  // not to a guest of the pool (isGuest, Sascha 17.11.2026)
+  const to = betOthers(pool, w);
   return to.map((id) => ({ to: id, amount: w.stake }));
 }
 

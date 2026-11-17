@@ -6,7 +6,7 @@ import { newCode } from './sharedgame';
 import { tr } from './i18n';
 import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, isGuest, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -348,7 +348,9 @@ export async function joinPool(code: string, who: { id: string } | { name: strin
   const joined = { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) };
   const pool = await changePool(code, (p) => {
     const there = p.players.find((x) => x.id === id);
-    const players: PoolPlayer[] = there ? p.players.map((x) => (x.id === id ? { ...x, joined } : x)) : [...p.players, { id, name: 'name' in who ? who.name.trim() : '?', joined }];
+    // a guest of the pool (in it for a 5+5+10 only) stays one when his phone joins (Sascha 17.11.2026: Daniel)
+    const guest = !!there && isGuest(p, id);
+    const players: PoolPlayer[] = there ? p.players.map((x) => (x.id === id ? { ...x, joined, ...(guest ? { guest: true } : {}) } : x)) : [...p.players, { id, name: 'name' in who ? who.name.trim() : '?', joined }];
     return { ...p, players };
   });
   if (!pool) return null;
@@ -651,7 +653,8 @@ export async function challengeDuels(
       };
       if (p.wagers.some((y) => sameDuel(y, w)) || fresh.some((y) => sameDuel(y, w))) continue;
       if (got.added) {
-        players = [...players, opp];
+        // brought in by this 5+5+10: a guest of the pool – never pays its bets (Sascha 17.11.2026)
+        players = [...players, { ...opp, guest: true }];
         if (opp.invited) invite.push({ uid: opp.invited.uid, name: opp.name });
       }
       fresh.push(w);

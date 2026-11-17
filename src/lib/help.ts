@@ -648,6 +648,17 @@ export const FAQ: FaqTopic[] = [
         video: 'wagers',
       },
       {
+        // Sascha 17.11.2026: "Daniel und Thomas haben nur die letzten beiden Tage als Gast mitgespielt – müssen bei
+        // erfüllten Wetten nicht bezahlen" (wagers.ts isGuest)
+        q: () => tr('Does a guest who only plays a 5+5+10 pay for the bets of the pool?', 'Zahlt ein Gast, der nur eine 5+5+10 spielt, für die Wetten des Pools?'),
+        a: () =>
+          tr(
+            'No. Whoever is in the pool only for a 5+5+10 – no bet of his own – is a guest: he pays and gets his 5+5+10 and a bet made right against him, never the bets of the pool. A bet made in a round with him is paid by the others of the pool who played that round. Once he sets a bet of his own, he is in the pool like everyone.',
+            'Nein. Wer nur für eine 5+5+10 im Pool steht – ohne eigene Wette –, ist Gast: Er zahlt und bekommt seine 5+5+10 und eine Wette direkt gegen ihn, nie die Wetten des Pools. Eine Wette, die in einer Runde mit ihm geschafft wird, zahlen die anderen des Pools, die die Runde gespielt haben. Setzt er eine eigene Wette, ist er im Pool wie alle.',
+          ),
+        video: 'wagers',
+      },
+      {
         // Sascha 10.11.2026: "the app may set off – the way it calculated must be shown; set off or one by one as a setting";
         // 11.11.2026: set off only between the same two
         q: () => tr('How is the settlement worked out – and can each debt be paid on its own?', 'Wie wird abgerechnet – und kann man jede Schuld einzeln zahlen?'),
