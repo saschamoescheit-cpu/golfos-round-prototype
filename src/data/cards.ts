@@ -37,8 +37,8 @@ export const LINES: Record<string, LngLat[][]> = {
     [[-81.510215,28.365519],[-81.514406,28.365281]], // 6: OSM tees T40, T6, T31, T20
     [[-81.514894,28.365067],[-81.514843,28.363202]], // 7: OSM tees T14, T44, T18, T47
     [[-81.515441,28.363617],[-81.515009,28.361077]], // 8: OSM tees T21, T50, T19
-    [[-81.514875,28.360296],[-81.511423,28.359061]], // 9: tee estimated (no tee in OSM): from the scorecard length, by the ponds
-    [[-81.510664,28.359503],[-81.508867,28.359494],[-81.505731,28.358869]], // 10: OSM tee T28, along the northern fairway (GolfTraxx aim point there)
+    [[-81.514949,28.359773],[-81.511423,28.359061]], // 9: the Green tee as Sascha set it in his round of 15.11.2026 ("korrekt", 17.11.) – 354 m, card Green 350; the estimate before lay 58 m north
+    [[-81.510947,28.358726],[-81.50842,28.35901],[-81.505731,28.358869]], // 10: the Green tee as Sascha set it on 15.11.2026 ("korrekt", 17.11.), along the fairway his track and second shot took – 513 m, card Green 486 / Black 518; OSM T28 lay 86 m north
     [[-81.504574,28.358358],[-81.503019,28.358786],[-81.501058,28.358985]], // 11: OSM tees T26, T12, T43 – along the fairway to the green on the peninsula
     [[-81.502546,28.358266],[-81.500766,28.358503],[-81.500123,28.358833],[-81.499933,28.359306]], // 12: OSM tees T3, T38 – Black/Green tee not in OSM (further back)
     [[-81.499647,28.359848],[-81.501069,28.359434]], // 13: GolfTraxx tee point (beside OSM tees T32 … T45)
