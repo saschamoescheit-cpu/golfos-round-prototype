@@ -86,7 +86,7 @@ await shot('training', 'tab-shop');
 await tab('Wissen');
 await p.locator('.tr-cat').first().click();
 await shot('training', 'sub-topic');
-await p.locator('.tr-drill-row .list-item').first().click();
+await p.locator('.tr-shots .list-item, .tr-drill-row .list-item').first().click(); // a topic opens on its shots (15.11.2026)
 await shot('training', 'sub-drill');
 await tab('Üben');
 await p.locator('.tr-block .list-item').first().click();
