@@ -2895,3 +2895,14 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .side-bet-table .num { text-align: right; white-space: nowrap; }
 .side-bet-day { overflow-x: auto; }
 .side-bet-settle { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+/* a person in "Bilanz" by round (16.11.2026) */
+.balance-verdict { display: flex; flex-direction: column; gap: 4px; background: var(--surface-2, rgba(255,255,255,0.04)); border-radius: 16px; padding: 14px; }
+.balance-verdict strong { font-size: 19px; }
+.balance-rounds { display: flex; flex-direction: column; gap: 10px; }
+.balance-round { background: var(--surface-2, rgba(255,255,255,0.04)); border-radius: 16px; padding: 4px 14px; }
+.balance-round-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 0 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.balance-why { display: flex; gap: 10px; align-items: flex-start; width: 100%; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; font-variant-numeric: tabular-nums; }
+.balance-round .balance-why:last-child { border-bottom: 0; }
+.balance-why .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.balance-parts { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 13px; }
+.balance-why > span:last-child, .balance-round-head > strong:last-child, .balance-round-head > span { white-space: nowrap; }

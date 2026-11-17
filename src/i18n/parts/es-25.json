@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} aún te paga {1}",
+ "You still pay {0} {1}": "Aún pagas a {0} {1}",
+ "All paid": "Todo pagado",
+ "{0} paid – {1} has not confirmed yet": "{0} pagado – {1} aún no lo ha confirmado",
+ "{0} paid {1} – please confirm": "{0} ha pagado {1} – confírmalo",
+ "What for": "Por qué",
+ "The whole trip": "Todo el viaje",
+ "partly paid": "pagado en parte",
+ "Side bet 5+5+10": "Apuesta paralela 5+5+10",
+ "Your bet “{0}” made": "Tu apuesta «{0}» conseguida",
+ "Your bet “{0}” missed": "Tu apuesta «{0}» fallada",
+ "{0}’s bet “{1}” made": "Apuesta de {0} «{1}» conseguida",
+ "{0}’s bet “{1}” missed": "Apuesta de {0} «{1}» fallada",
+ "Paid – waiting for the confirmation": "Pagado – esperando la confirmación",
+ "Waiting for the confirmation": "Esperando la confirmación",
+ "{0} confirms": "{0} confirma",
+ "set off": "compensado",
+ "What does someone owe me for – and when is it paid?": "¿Por qué me debe alguien algo y cuándo está pagado?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balance → toca al jugador. Arriba «En total»: lo que aún te paga él, o tú a él. Debajo «Por qué»: cada ronda con su día y campo – tus apuestas conseguidas, las suyas, un 5+5+10 con primeros 9, últimos 9 y los 18, un juego – y si la ronda está pagada, pagada en parte o abierta; las apuestas de todo el viaje al final. Un pago solo cuenta cuando el receptor lo ha confirmado: «Pagado» le envía un mensaje a la bandeja («… te ha pagado 20 $ – confirma la recepción»); hasta que toque «Recibido» sigue abierto y aparece como «aún no lo ha confirmado»."
+}

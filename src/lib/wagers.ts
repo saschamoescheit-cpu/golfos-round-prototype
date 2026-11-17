@@ -1298,6 +1298,10 @@ export interface Owed {
   to: string;
   amount: number;
   provisional: boolean;
+  /** the round it came from – a bet for each round, a 5+5+10's day (Sascha 16.11.2026: "nicht erkennbar, wofür Cedric mir
+   *  die 40 $ schuldet – 20 $ für die gestrige Runde und 20 $ für die heutige") */
+  day?: string;
+  course?: string;
 }
 
 /** Every debt the bets decided, each from the one who pays to the one who gets it – the ledger and the way the
@@ -1306,16 +1310,21 @@ export interface Owed {
 export function owings(pool: WagerPool, today?: string, withProvisional = false): Owed[] {
   const out: Owed[] = [];
   // the player gets v from o (v < 0: he pays o)
-  const add = (player: string, o: string, w: Wager, v: number, prov: boolean) => {
+  const add = (player: string, o: string, w: Wager, v: number, prov: boolean, at?: { day: string; course: string }) => {
     if (!v) return;
-    out.push(v > 0 ? { w, from: o, to: player, amount: v, provisional: prov } : { w, from: player, to: o, amount: -v, provisional: prov });
+    const where = at ? { day: at.day, course: at.course } : {};
+    out.push(v > 0 ? { w, from: o, to: player, amount: v, provisional: prov, ...where } : { w, from: player, to: o, amount: -v, provisional: prov, ...where });
   };
   const field = dayPlayers(pool);
   for (const w of pool.wagers) {
     if (shapeOf(w.kind) === 'duel') {
-      // "5+5+10": what the rounds played so far settled, between the two
-      const v = progressOf(pool, w)?.amount ?? 0;
-      if (w.opponent && w.opponent !== w.player && v) add(w.player, w.opponent, w, v, false);
+      // "5+5+10": what the rounds played so far settled, between the two – each day on its own (the same sum)
+      const p = progressOf(pool, w);
+      if (!w.opponent || w.opponent === w.player || !p?.amount) continue;
+      const parts = w.parts ?? { front: 1, back: 1, total: 2 };
+      const days = (p.duels ?? []).map((d) => ({ d, v: (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + (d.total ?? 0) * parts.total }));
+      if (Math.abs(days.reduce((s, x) => s + x.v, 0) - p.amount) > 0.004) add(w.player, w.opponent, w, p.amount, false);
+      else for (const x of days) add(w.player, w.opponent, w, x.v, false, x.d);
       continue;
     }
     // each round on its own (Sascha 09.11.2026): made – the stake from each (or from the opponent) per round; missed –
@@ -1330,7 +1339,7 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
         const made = reached(w, r.value) && (!r.open || !lower(w)) && !(r.unknown && lower(w));
         const missed = !made && !r.open && !r.unknown;
         if (!made && !(missed && w.payout !== 'success')) continue;
-        for (const o of roundPayers(pool, w, r.day, field)) add(w.player, o, w, made ? w.stake : -w.stake, false);
+        for (const o of roundPayers(pool, w, r.day, field)) add(w.player, o, w, made ? w.stake : -w.stake, false, r);
       }
       continue;
     }

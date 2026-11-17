@@ -14,6 +14,7 @@ import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
 import { SwipeRow } from '../components/SwipeRow';
 import { markWord, TAKE_BACK } from '../components/PaidMarks';
+import { Verdict, WhyGroups } from '../components/BalanceWhy';
 import { loadProfile, shownName } from '../lib/profile';
 
 // The menu "Bilanz" (Sascha 03.11.2026): what I won and lost, against each player – which games and bets make it up –,
@@ -275,6 +276,8 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   }
   const owe = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v < -0.004));
   const owed = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v > 0.004));
+  // paid by me, not confirmed by him yet – still open until he does (Sascha 16.11.2026: "erst dann darf abgebucht werden")
+  const sent = ps.map((p) => ({ p, m: Object.fromEntries(Object.entries(sums(p.items, (i) => i.pending)).filter(([, v]) => v < -0.004)) })).filter((x) => Object.keys(x.m).length > 0);
   // paid by him, not confirmed by me yet – and paid by me, not confirmed by him
   const toConfirm = ps.flatMap((p) => p.items.flatMap((i) => waiting(i).filter((x) => x.from === i.him).map((x) => ({ p, i, x }))));
   const person = ps.find((p) => p.key === open) ?? null;
@@ -430,7 +433,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       )}
 
       {/* what is still open – "Bezahlt" for what I owe, "Erhalten" for what I am owed (and booked out when given) */}
-      {!filter && (owe.length > 0 || owed.length > 0 || toConfirm.length > 0) && (
+      {!filter && (owe.length > 0 || owed.length > 0 || toConfirm.length > 0 || sent.length > 0) && (
         <section className="card balance-open" aria-label={tr('Open amounts', 'Offene Beträge')}>
           <span className="eyebrow">{tr('Open amounts', 'Offene Beträge')}</span>
           {toConfirm.length > 0 && (
@@ -478,6 +481,24 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                     <button type="button" className="chip paid-mark mark-paid" disabled={busy} aria-label={tr(`Paid ${p.name}`, `${p.name} bezahlt`)} onClick={() => void settleAll(p, 'paid')}>
                       {markWord(word(p, 'paid'))}
                     </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {sent.length > 0 && (
+            <>
+              <span className="muted small">{tr('Paid – waiting for the confirmation', 'Bezahlt – wartet auf Bestätigung')}</span>
+              <ul className="pool-pays balance-sent" aria-label={tr('Waiting for the confirmation', 'Wartet auf Bestätigung')}>
+                {sent.map(({ p, m }) => (
+                  <li key={p.key}>
+                    <button type="button" className="link-row grow" onClick={() => setOpen(p.key)}>
+                      {p.name}
+                    </button>
+                    <strong>
+                      <Amounts m={m} plain />
+                    </strong>
+                    <span className="small warn-text">{tr(`${p.name} confirms`, `${p.name} bestätigt noch`)}</span>
                   </li>
                 ))}
               </ul>
@@ -605,45 +626,11 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; /**
             ✕
           </button>
         </div>
-        {/* clearer (Sascha 03.11.2026: "this sheet has to show its contents more clearly"): each game or bet a block – its
-            name, the day and course, the score; the amount and its state on the right; the payments below with their own state */}
-        <span className="eyebrow">{tr('How it adds up', 'Wie es sich zusammensetzt')}</span>
-        <ul className="balance-items" aria-label={tr('Games and bets', 'Spiele und Wetten')}>
-          {p.items.map((i) => {
-            const [head, ...rest] = i.title.split(' · ');
-            const done = Math.abs(i.open) < 0.005;
-            // a pool or game tapped: straight there (Sascha 10.11.2026: "tapping USA-Wetten should jump there")
-            const go = props.onOpen?.(i);
-            const Row = go ? 'button' : 'div';
-            return (
-              <li key={`${i.kind}:${i.ref}`}>
-                <Row {...(go ? { type: 'button' as const, onClick: go, 'aria-label': tr(`Open ${head}`, `${head} öffnen`) } : {})} className="balance-item-row">
-                <span className="grow">
-                  <strong>{head}</strong>
-                  <span className="muted small">{[dm(i.day), ...(rest.length ? rest : [i.kind === 'pool' ? tr('Bets', 'Wetten') : tr('Game', 'Spiel')])].join(' · ')}</span>
-                  {i.detail && <span className="muted small">{i.detail}</span>}
-                </span>
-                <span className="balance-item-end">
-                  <strong className={cls(i.amount)}>{formatEuro(i.amount, i.sym)}</strong>
-                  {/* paid in green, not paid in red (Sascha 03.11.2026) */}
-                  {done ? (
-                    <span className="small good-text">{isMoney(i.prize) ? tr('paid', 'bezahlt') : tr('redeemed', 'eingelöst')}</span>
-                  ) : (
-                    <span className="small bad-text">
-                      {Math.abs(i.open - i.amount) > 0.004 ? `${tr('open', 'offen')} ${money(Math.abs(i.open), i.sym)}` : isMoney(i.prize) ? tr('not paid', 'nicht bezahlt') : tr('not redeemed', 'nicht eingelöst')}
-                    </span>
-                  )}
-                </span>
-                {go && (
-                  <span className="muted" aria-hidden="true">
-                    ›
-                  </span>
-                )}
-                </Row>
-              </li>
-            );
-          })}
-        </ul>
+        {/* by round (Sascha 16.11.2026, Bilanz-Mockup B, components/BalanceWhy.tsx): what is left on top – a payment counts
+            once the receiver confirmed it –, then each round with what it was, paid or open */}
+        <Verdict p={p} />
+        <span className="eyebrow">{tr('What for', 'Wofür')}</span>
+        <WhyGroups p={p} onOpen={props.onOpen} />
         <div className="balance-sum">
           <span>{tr('Together', 'Zusammen')}</span>
           <strong>

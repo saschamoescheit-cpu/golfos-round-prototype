@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} betalar dig fortfarande {1}",
+ "You still pay {0} {1}": "Du betalar fortfarande {0} {1}",
+ "All paid": "Allt betalt",
+ "{0} paid – {1} has not confirmed yet": "{0} betalt – {1} har inte bekräftat än",
+ "{0} paid {1} – please confirm": "{0} har betalat {1} – bekräfta",
+ "What for": "Vad för",
+ "The whole trip": "Hela resan",
+ "partly paid": "delvis betalt",
+ "Side bet 5+5+10": "Sidovad 5+5+10",
+ "Your bet “{0}” made": "Ditt vad ”{0}” klarat",
+ "Your bet “{0}” missed": "Ditt vad ”{0}” missat",
+ "{0}’s bet “{1}” made": "{0}s vad ”{1}” klarat",
+ "{0}’s bet “{1}” missed": "{0}s vad ”{1}” missat",
+ "Paid – waiting for the confirmation": "Betalt – väntar på bekräftelse",
+ "Waiting for the confirmation": "Väntar på bekräftelse",
+ "{0} confirms": "{0} bekräftar",
+ "set off": "kvittat",
+ "What does someone owe me for – and when is it paid?": "Vad är någon skyldig mig för – och när är det betalt?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balans → tryck på spelaren. Överst ”Sammanlagt”: vad han fortfarande ska betala dig, eller du honom. Under ”Vad för”: varje runda med dag och bana – dina klarade vad, hans, ett 5+5+10 med främre 9, bakre 9 och alla 18, ett spel – och om rundan är betald, delvis betald eller öppen; vad för hela resan sist. En betalning räknas först när mottagaren har bekräftat den: ”Betalt” skickar honom ett meddelande i inkorgen (”… har betalat dig 20 $ – bekräfta mottagandet”); tills han trycker ”Mottaget” förblir den öppen och står som ”har inte bekräftat än”."
+}

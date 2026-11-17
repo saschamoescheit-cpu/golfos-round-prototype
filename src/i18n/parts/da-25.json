@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} betaler dig stadig {1}",
+ "You still pay {0} {1}": "Du betaler stadig {0} {1}",
+ "All paid": "Alt betalt",
+ "{0} paid – {1} has not confirmed yet": "{0} betalt – {1} har ikke bekræftet endnu",
+ "{0} paid {1} – please confirm": "{0} har betalt {1} – bekræft venligst",
+ "What for": "Hvad for",
+ "The whole trip": "Hele turen",
+ "partly paid": "delvist betalt",
+ "Side bet 5+5+10": "Sidevæddemål 5+5+10",
+ "Your bet “{0}” made": "Dit væddemål „{0}“ klaret",
+ "Your bet “{0}” missed": "Dit væddemål „{0}“ misset",
+ "{0}’s bet “{1}” made": "{0}s væddemål „{1}“ klaret",
+ "{0}’s bet “{1}” missed": "{0}s væddemål „{1}“ misset",
+ "Paid – waiting for the confirmation": "Betalt – venter på bekræftelse",
+ "Waiting for the confirmation": "Venter på bekræftelse",
+ "{0} confirms": "{0} bekræfter",
+ "set off": "modregnet",
+ "What does someone owe me for – and when is it paid?": "Hvad skylder nogen mig for – og hvornår er det betalt?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balance → tryk på spilleren. Øverst „Alt i alt“: hvad han stadig skal betale dig, eller du ham. Nedenunder „Hvad for“: hver runde med dag og bane – dine klarede væddemål, hans, et 5+5+10 med forreste, bagerste og alle 18, et spil – og om runden er betalt, delvist betalt eller åben; væddemål for hele turen til sidst. En betaling tæller først, når modtageren har bekræftet den: „Betalt“ sender ham en besked i indbakken („… har betalt dig 20 $ – bekræft modtagelsen“); indtil han trykker „Modtaget“, forbliver den åben og står som „har ikke bekræftet endnu“."
+}

@@ -1,6 +1,6 @@
 import { tr } from './i18n';
 import { formDef, standingOf, transfers, type Game } from './gameforms';
-import { balances, openPoolTransfers, owings, poolTransfers, settleDebts, withDuels, type Payment, type WagerPool } from './wagers';
+import { balances, openPoolTransfers, owings, poolTransfers, progressOf, settleDebts, shapeOf, wagerLabel, withDuels, type Owed, type Payment, type WagerPool } from './wagers';
 import { isNone, prizeOf, prizeSym, whoOf, type Prize } from './prize';
 
 // The balance against each player, and what is paid (Sascha 03.11.2026: "in the balance the details – which games, how
@@ -47,6 +47,49 @@ export interface Item {
   detail?: string;
   /** the payments between the two in it */
   payments: GamePayment[];
+  /** paid, not confirmed by the receiver yet (Sascha 16.11.2026: "erst dann darf in der Bilanz abgebucht werden"): + he
+   *  marked paid to me, − I marked paid to him – still open in what the balance shows, not to be paid twice */
+  pending: number;
+  /** what it is made of, each round on its own (Sascha 16.11.2026: "nicht erkennbar, wofür Cedric mir die 40 $ schuldet")
+   *  – a pool's bets and 5+5+10s between the two; none when they do not add up to the amount (a meal for the winner) */
+  lines?: WhyLine[];
+}
+
+/** One thing a sum between two is made of: the round (day, course – none: the whole trip), what it was, + he owes me. */
+export interface WhyLine {
+  day: string | null;
+  course: string;
+  text: string;
+  /** a 5+5+10: front, back, 18 – each what it is worth to me */
+  parts?: { part: 'front' | 'back' | 'total'; amount: number }[];
+  amount: number;
+  provisional?: boolean;
+  /** the pool it is in */
+  pool?: string;
+}
+
+/** What a debt of a pool is, between me and him – from my side. */
+export function whyLine(o: Owed, pool: WagerPool, me: string, name: (id: string) => string): WhyLine {
+  const amount = o.to === me ? o.amount : -o.amount;
+  const w = o.w;
+  const base = { day: o.day ?? null, course: o.course ?? '', amount, pool: pool.name, ...(o.provisional ? { provisional: true } : {}) };
+  if (shapeOf(w.kind) === 'duel') {
+    const d = progressOf(pool, w)?.duels?.find((x) => x.day === o.day);
+    const stakes = w.parts ?? { front: 1, back: 1, total: 2 };
+    const side = w.player === me ? 1 : -1;
+    const parts = d ? (['front', 'back', 'total'] as const).filter((k) => d[k] != null).map((k) => ({ part: k, amount: (d[k] ?? 0) * stakes[k] * side || 0 })) : undefined;
+    return { ...base, text: tr('Side bet 5+5+10', 'Side-Bet 5+5+10'), ...(parts?.length ? { parts } : {}) };
+  }
+  const label = wagerLabel(w);
+  const text =
+    w.player === me
+      ? amount >= 0
+        ? tr(`Your bet “${label}” made`, `Deine Wette „${label}“ geschafft`)
+        : tr(`Your bet “${label}” missed`, `Deine Wette „${label}“ verpasst`)
+      : amount < 0
+        ? tr(`${name(w.player)}’s bet “${label}” made`, `Wette von ${name(w.player)} „${label}“ geschafft`)
+        : tr(`${name(w.player)}’s bet “${label}” missed`, `Wette von ${name(w.player)} „${label}“ verpasst`);
+  return { ...base, text };
 }
 
 export interface Person {
@@ -117,10 +160,13 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
       const amount = round2(ts.reduce((s, t) => s + (t.from === o.id && t.to === me.id ? t.amount : t.from === me.id && t.to === o.id ? -t.amount : 0), 0));
       const pays = livePayments(g.payments).filter((x) => (x.from === me.id && x.to === o.id) || (x.from === o.id && x.to === me.id));
       const open = round2(amount - pays.reduce((s, x) => s + (x.from === o.id ? x.amount : -x.amount), 0));
+      const pending = round2(pays.filter((x) => !x.receivedAt).reduce((s, x) => s + (x.from === o.id ? x.amount : -x.amount), 0));
       if (Math.abs(amount) < 0.005 && !pays.length) continue;
       const shown = (id: string) => st.rows.find((x) => x.id === id);
       const detail = shown(me.id) && shown(o.id) ? `${me.name} ${shown(me.id)!.value} – ${o.name} ${shown(o.id)!.value}` : undefined;
-      p.items.push({ kind: 'game', ref: g.id, ...(detail ? { detail } : {}), title: `${formDef(g.form).name()} · ${g.courseName}`, day: (g.finishedAt ?? g.createdAt).slice(0, 10), sym: prizeSym(prize), prize, amount, open, me: me.id, him: o.id, payments: pays });
+      const day = (g.finishedAt ?? g.createdAt).slice(0, 10);
+      const line: WhyLine = { day, course: g.courseName, text: `${formDef(g.form).name()}${detail ? ` · ${detail}` : ''}`, amount };
+      p.items.push({ kind: 'game', ref: g.id, ...(detail ? { detail } : {}), title: `${formDef(g.form).name()} · ${g.courseName}`, day, sym: prizeSym(prize), prize, amount, open, pending, me: me.id, him: o.id, payments: pays, lines: [line] });
     }
   }
   for (const e of pools) {
@@ -130,7 +176,9 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
     if (pool.deletedAt) continue;
     const prize = prizeOf(pool);
     const bal = balances(pool, today, true);
-    const debts = settleDebts(pool, owings(pool, today, true));
+    const owed = owings(pool, today, true);
+    const debts = settleDebts(pool, owed);
+    const nameOf = (id: string) => pool.players.find((x) => x.id === id)?.name ?? '?';
     const all = poolTransfers(pool, bal, debts);
     const open = openPoolTransfers(pool, bal, debts);
     for (const o of pool.players.filter((x) => x.id !== e.me)) {
@@ -139,7 +187,11 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
       const amount = round2(between(all));
       const left = round2(between(open));
       if (Math.abs(amount) < 0.005 && Math.abs(left) < 0.005 && !pays.length) continue;
-      person(o.name).items.push({ kind: 'pool', ref: e.code, title: pool.name, day: pool.from, sym: prizeSym(prize), prize, amount, open: left, me: e.me, him: o.id, payments: pays });
+      const pending = round2(pays.filter((x) => !x.receivedAt).reduce((s, x) => s + (x.from === o.id ? x.amount : -x.amount), 0));
+      // each debt between the two on its own – only when they make the amount (money each pays each)
+      const lines = owed.filter((x) => (x.from === o.id && x.to === e.me) || (x.from === e.me && x.to === o.id)).map((x) => whyLine(x, pool, e.me, nameOf));
+      const fits = Math.abs(lines.reduce((s, l) => s + l.amount, 0) - amount) < 0.01;
+      person(o.name).items.push({ kind: 'pool', ref: e.code, title: pool.name, day: pool.from, sym: prizeSym(prize), prize, amount, open: left, pending, me: e.me, him: o.id, payments: pays, ...(fits && lines.length ? { lines } : {}) });
     }
   }
   return [...map.values()].filter((p) => p.games || p.items.length).sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));

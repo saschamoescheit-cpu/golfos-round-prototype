@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} ti deve ancora {1}",
+ "You still pay {0} {1}": "Devi ancora a {0} {1}",
+ "All paid": "Tutto pagato",
+ "{0} paid – {1} has not confirmed yet": "{0} pagato – {1} non ha ancora confermato",
+ "{0} paid {1} – please confirm": "{0} ha pagato {1} – conferma",
+ "What for": "Per cosa",
+ "The whole trip": "Tutto il viaggio",
+ "partly paid": "pagato in parte",
+ "Side bet 5+5+10": "Scommessa laterale 5+5+10",
+ "Your bet “{0}” made": "La tua scommessa «{0}» riuscita",
+ "Your bet “{0}” missed": "La tua scommessa «{0}» mancata",
+ "{0}’s bet “{1}” made": "Scommessa di {0} «{1}» riuscita",
+ "{0}’s bet “{1}” missed": "Scommessa di {0} «{1}» mancata",
+ "Paid – waiting for the confirmation": "Pagato – in attesa di conferma",
+ "Waiting for the confirmation": "In attesa di conferma",
+ "{0} confirms": "{0} conferma",
+ "set off": "compensato",
+ "What does someone owe me for – and when is it paid?": "Per cosa qualcuno mi deve qualcosa – e quando è pagato?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Bilancio → tocca il giocatore. In alto «In tutto»: quanto ti deve ancora, o tu a lui. Sotto «Per cosa»: ogni giro con giorno e campo – le tue scommesse riuscite, le sue, un 5+5+10 con prime 9, seconde 9 e tutte le 18, un gioco – e se il giro è pagato, pagato in parte o aperto; le scommesse di tutto il viaggio alla fine. Un pagamento conta solo quando il destinatario lo ha confermato: «Pagato» gli invia un messaggio nella posta («… ti ha pagato 20 $ – conferma la ricezione»); finché non tocca «Ricevuto», resta aperto e compare come «non ha ancora confermato»."
+}

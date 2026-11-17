@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} betaalt jou nog {1}",
+ "You still pay {0} {1}": "Jij betaalt {0} nog {1}",
+ "All paid": "Alles betaald",
+ "{0} paid – {1} has not confirmed yet": "{0} betaald – {1} heeft nog niet bevestigd",
+ "{0} paid {1} – please confirm": "{0} heeft {1} betaald – bevestig",
+ "What for": "Waarvoor",
+ "The whole trip": "De hele reis",
+ "partly paid": "deels betaald",
+ "Side bet 5+5+10": "Zijweddenschap 5+5+10",
+ "Your bet “{0}” made": "Jouw weddenschap „{0}” gehaald",
+ "Your bet “{0}” missed": "Jouw weddenschap „{0}” gemist",
+ "{0}’s bet “{1}” made": "Weddenschap van {0} „{1}” gehaald",
+ "{0}’s bet “{1}” missed": "Weddenschap van {0} „{1}” gemist",
+ "Paid – waiting for the confirmation": "Betaald – wacht op bevestiging",
+ "Waiting for the confirmation": "Wacht op bevestiging",
+ "{0} confirms": "{0} bevestigt nog",
+ "set off": "verrekend",
+ "What does someone owe me for – and when is it paid?": "Waarvoor is iemand mij iets schuldig – en wanneer is het betaald?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balans → tik op de speler. Bovenaan „Alles bij elkaar”: wat hij jou nog betaalt, of jij hem. Daaronder „Waarvoor”: elke ronde met dag en baan – jouw gehaalde weddenschappen, de zijne, een 5+5+10 met voorste 9, achterste 9 en alle 18, een spel – en of de ronde betaald, deels betaald of open is; weddenschappen van de hele reis aan het eind. Een betaling telt pas als de ontvanger hem heeft bevestigd: „Betaald” stuurt hem een bericht in de inbox („… heeft je 20 $ betaald – ontvangst bevestigen”); tot hij op „Ontvangen” tikt, blijft het open en staat er „heeft nog niet bevestigd”."
+}

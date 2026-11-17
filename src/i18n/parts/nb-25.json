@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} betaler deg fortsatt {1}",
+ "You still pay {0} {1}": "Du betaler fortsatt {0} {1}",
+ "All paid": "Alt betalt",
+ "{0} paid – {1} has not confirmed yet": "{0} betalt – {1} har ikke bekreftet ennå",
+ "{0} paid {1} – please confirm": "{0} har betalt {1} – bekreft",
+ "What for": "Hva for",
+ "The whole trip": "Hele turen",
+ "partly paid": "delvis betalt",
+ "Side bet 5+5+10": "Sideveddemål 5+5+10",
+ "Your bet “{0}” made": "Veddemålet ditt «{0}» klart",
+ "Your bet “{0}” missed": "Veddemålet ditt «{0}» bommet",
+ "{0}’s bet “{1}” made": "Veddemålet til {0} «{1}» klart",
+ "{0}’s bet “{1}” missed": "Veddemålet til {0} «{1}» bommet",
+ "Paid – waiting for the confirmation": "Betalt – venter på bekreftelse",
+ "Waiting for the confirmation": "Venter på bekreftelse",
+ "{0} confirms": "{0} bekrefter",
+ "set off": "motregnet",
+ "What does someone owe me for – and when is it paid?": "Hva skylder noen meg for – og når er det betalt?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balanse → trykk på spilleren. Øverst «Alt i alt»: hva han fortsatt skal betale deg, eller du ham. Under «Hva for»: hver runde med dag og bane – dine klarte veddemål, hans, et 5+5+10 med første 9, siste 9 og alle 18, et spill – og om runden er betalt, delvis betalt eller åpen; veddemål for hele turen til slutt. En betaling teller først når mottakeren har bekreftet den: «Betalt» sender ham en melding i innboksen («… har betalt deg 20 $ – bekreft mottaket»); til han trykker «Mottatt», forblir den åpen og står som «har ikke bekreftet ennå»."
+}

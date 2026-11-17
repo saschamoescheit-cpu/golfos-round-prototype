@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0}があなたにまだ{1}支払います",
+ "You still pay {0} {1}": "あなたが{0}にまだ{1}支払います",
+ "All paid": "すべて支払済み",
+ "{0} paid – {1} has not confirmed yet": "{0}支払済み – {1}はまだ確認していません",
+ "{0} paid {1} – please confirm": "{0}が{1}支払いました – 確認してください",
+ "What for": "内訳",
+ "The whole trip": "旅行全体",
+ "partly paid": "一部支払済み",
+ "Side bet 5+5+10": "サイドベット 5+5+10",
+ "Your bet “{0}” made": "あなたのベット「{0}」達成",
+ "Your bet “{0}” missed": "あなたのベット「{0}」未達成",
+ "{0}’s bet “{1}” made": "{0}のベット「{1}」達成",
+ "{0}’s bet “{1}” missed": "{0}のベット「{1}」未達成",
+ "Paid – waiting for the confirmation": "支払済み – 確認待ち",
+ "Waiting for the confirmation": "確認待ち",
+ "{0} confirms": "{0}の確認待ち",
+ "set off": "相殺",
+ "What does someone owe me for – and when is it paid?": "誰かが私に何の分を払うのか、いつ支払済みになるのか？",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "収支 → プレーヤーをタップ。上に「合計」：相手があなたに、またはあなたが相手にまだ払う額。その下「内訳」：日付とコースごとのラウンド――達成したあなたのベット、相手のベット、前半9・後半9・全18の5+5+10、ゲーム――と、そのラウンドが支払済み・一部支払済み・未払いのどれか。旅行全体のベットは最後。支払いは受取人が確認して初めて反映されます：「支払済み」で相手の受信箱にメッセージ（「… があなたに20 $支払いました – 受け取りを確認」）が届き、相手が「受け取り済み」をタップするまで未払いのまま「まだ確認していません」と表示されます。"
+}

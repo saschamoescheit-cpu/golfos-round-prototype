@@ -12,7 +12,9 @@ import { SwipeRow } from './SwipeRow';
 import { isTourHost, loadSeries, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import type { SharedCell } from '../types';
-import { loadGames } from '../lib/gamestore';
+import { loadGames, saveGame } from '../lib/gamestore';
+import { exchange } from '../lib/sharedgame';
+import { gamePrize, meIn } from '../lib/gamepay';
 import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
 import { wagerLabel } from '../lib/wagers';
 import { money } from '../lib/gameforms';
@@ -118,6 +120,20 @@ function betSeen(id: string): void {
   }
 }
 
+/** A game's payment confirmed from the inbox: on this phone and to the game's other phones. */
+async function markGameReceived(gameId: string, id: string): Promise<boolean> {
+  const g = loadGames().find((x) => x.id === gameId);
+  if (!g) return false;
+  const next = { ...g, payments: (g.payments ?? []).map((x) => (x.id === id ? { ...x, receivedAt: new Date().toISOString() } : x)) };
+  saveGame(next);
+  window.dispatchEvent(new Event('golfos:games-changed'));
+  if (next.shared) {
+    const m = await exchange(next);
+    if (m) saveGame(m);
+  }
+  return true;
+}
+
 function localItems(markReceived: (code: string, id: string) => Promise<boolean>): InboxItem[] {
   const out: InboxItem[] = [];
   const pools = loadPools().filter((e) => e.me && !e.pool.deletedAt);
@@ -152,6 +168,23 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
         action: { label: tr('Received', 'Erhalten'), aria: tr(`Received ${sum} from ${by}`, `${sum} von ${by} erhalten`), run: () => markReceived(e.code, pm.id) },
       });
     }
+  // a game's payment to you marked paid on the other phone – the same (Sascha 16.11.2026: "Wenn jemand bezahlt klickt, muss
+  // der andere eine Inbox-Nachricht bekommen, um den Erhalt zu bestätigen. Erst dann darf in der Bilanz abgebucht werden")
+  for (const g of loadGames().filter((x) => x.finishedAt && x.shared)) {
+    const me = meIn(g).id;
+    for (const pm of g.payments ?? []) {
+      if (pm.to !== me || !pm.paidAt || pm.receivedAt || pm.undoneAt) continue;
+      const by = g.players.find((p) => p.id === pm.from)?.name ?? '?';
+      const sum = money(pm.amount, prizeSym(gamePrize(g)));
+      out.push({
+        key: `gpaid:${g.id}:${pm.id}`,
+        title: tr(`${by} paid you ${sum}`, `${by} hat dir ${sum} bezahlt`),
+        line: tr(`${g.courseName} · confirm the receipt`, `${g.courseName} · Erhalt bestätigen`),
+        ask: true,
+        action: { label: tr('Received', 'Erhalten'), aria: tr(`Received ${sum} from ${by}`, `${sum} von ${by} erhalten`), run: () => markGameReceived(g.id, pm.id) },
+      });
+    }
+  }
   // a friend's request waiting: its sheet with "Annehmen" / "Ablehnen"
   if (pendingAsk()) out.push({ key: 'friend', title: tr('Friend request', 'Freundschaftsanfrage'), line: tr('Accept or decline', 'Annehmen oder ablehnen'), go: () => window.dispatchEvent(new Event('golfos:friend-ask')), ask: true });
   for (const { e, w } of openChallenges()) {
