@@ -1256,10 +1256,27 @@ export function dayPlayers(pool: Pick<WagerPool, 'wagers' | 'progress'>): Map<st
   }
   return m;
 }
+/** A guest of the pool (Sascha 17.11.2026: "Daniel nimmt gar nicht am Wettpool teil … Daniel und Thomas haben nur die
+ *  letzten beiden Tage als Gast mitgespielt – müssen bei erfüllten Wetten nicht bezahlen"): in it only for 5+5+10s – a
+ *  5+5+10 of his, no bet of his own. A 5+5+10 brought him into the pool (before 16.11.2026 a challenged player outside
+ *  the pool was added to it). He pays and gets his own 5+5+10s and a bet made right against him – never the pool's
+ *  bets "each pays". */
+export function isGuest(pool: Pick<WagerPool, 'wagers'>, id: string): boolean {
+  let duel = false;
+  for (const w of pool.wagers) {
+    if (shapeOf(w.kind) === 'duel') duel ||= w.player === id || w.opponent === id;
+    else if (w.player === id) return false;
+  }
+  return duel;
+}
+/** Everyone a bet "each pays" is between: the pool's players but its guests (isGuest), not the one who made it. */
+export const betOthers = (pool: Pick<WagerPool, 'players' | 'wagers'>, w: Pick<Wager, 'payout' | 'opponent' | 'player'>): string[] =>
+  w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player && !isGuest(pool, id));
+
 /** Who pays (or gets) a bet decided in one round: its opponent, or everyone else in the pool – only those who played
- *  that day (Sascha 14.11.2026). Nobody known on that day: everyone, as before. */
+ *  that day (Sascha 14.11.2026), never a guest (isGuest). Nobody known on that day: everyone, as before. */
 export function roundPayers(pool: Pick<WagerPool, 'players' | 'wagers' | 'progress'>, w: Pick<Wager, 'payout' | 'opponent' | 'player'>, day: string, field = dayPlayers(pool)): string[] {
-  const all = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  const all = betOthers(pool, w);
   const there = field.get(day);
   const known = field.get('') ?? new Set<string>();
   // not there that day: only one known to play other rounds of the pool – a player without any round of it pays as before
@@ -1346,7 +1363,7 @@ export function owings(pool: WagerPool, today?: string, withProvisional = false)
     const prov = withProvisional && provisional(w, pool.progress[w.id]);
     const st = prov ? 'done' : stateOf(w, pool, today);
     if (st === 'open' || !(w.stake > 0)) continue;
-    const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+    const others = betOthers(pool, w);
     if (st === 'missed' && w.payout === 'success') continue;
     const sign = st === 'done' ? 1 : -1;
     for (const o of others) add(w.player, o, w, sign * w.stake, prov);
