@@ -12,6 +12,9 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
+import { planGuests } from '../lib/planinvite';
+import { loadFriends } from '../lib/friends';
+import { userId } from '../lib/sync';
 import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeSeriesPrizes, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
@@ -1465,7 +1468,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       )}
       {/* a round of a series: the series' invitation and live link – one code, one QR, one switch for all its rounds (Sascha
           09.11.2026: "invited to the series, a round still offers Stefan; live on in the series, off in its rounds") */}
-      {host && <TourInvite code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} date={ev.date} />}
+      {host && <TourInvite code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} date={ev.date} typed={notInvited(live ?? ev)} />}
       {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
       {host && <LiveShare code={ev.series?.code ?? props.code} name={ev.series?.name ?? ev.name} />}
       {msg && (
@@ -1507,9 +1510,16 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   );
 }
 
+/** The players of a plan the app cannot invite (a typed name, no linked friend) and who play on no phone yet – the host
+ *  sends them the code (Sascha 17.11.2026, "Automatisch einladen": linked friends are invited by themselves). */
+const notInvited = (ev: RoundEvent): string[] => {
+  const onPhone = new Set(liveFlights(ev).flatMap((f) => Object.values(f.phones ?? {}).map((ph) => f.players.find((p) => p.id === ph.player)?.name ?? '')));
+  return planGuests(ev, loadFriends(), userId()).typed.filter((n) => !onPhone.has(n) && ![...onPhone].some((x) => x.split(' & ').includes(n)));
+};
+
 /** "Mitspieler einladen" of a tournament or a series: a section of its own with the QR code at once – the one look of
  *  every invitation in the app (Sascha 03.11.2026: "the QR code identical everywhere, as under Friends"). */
-function TourInvite(props: { code: string; name: string; date: string }) {
+function TourInvite(props: { code: string; name: string; date: string; /** typed names – told to send them the code */ typed?: string[] }) {
   const url = roundJoinLink(props.code);
   // the text and the link apart, no title – as the invitations of a round and of a pool (Sascha 02.11.2026: WhatsApp
   // did not take the tournament's: the link inside the text, with a title)
@@ -1518,6 +1528,12 @@ function TourInvite(props: { code: string; name: string; date: string }) {
   return (
     <section className="setup-part" aria-label={tr('Invite players', 'Mitspieler einladen')}>
       <span className="eyebrow">{tr('Invite players', 'Mitspieler einladen')}</span>
+      {/* linked friends are invited by themselves – the others need the code (Sascha 17.11.2026) */}
+      {!!props.typed?.length && (
+        <p className="notice tour-uninvited" role="status">
+          {tr(`Not invited yet: ${props.typed.join(', ')} – not a linked friend. Send the link or show the QR code.`, `Noch nicht eingeladen: ${props.typed.join(', ')} – kein verknüpfter Freund. Schick den Link oder zeig den QR-Code.`)}
+        </p>
+      )}
       <div className="card invite-card tour-invite">
         <InviteCard
           link={url}

@@ -1,0 +1,5 @@
+{
+ "Do the players of a planned tournament get the invitation?": "計画した大会のプレーヤーには招待が届きますか？",
+ "Your linked friends do, by themselves: whoever you put into a tournament or into single rounds of a series gets the invitation in his inbox and a push – once, saving again asks nobody twice; on the day \"Tournament today › Take part\" puts him into his flight. Taken out before he answered, the invitation is withdrawn. Anyone else (a name typed in, not a linked friend): the tournament's page says \"Not invited yet: …\" above the invitation – send him the link or show the QR code.": "リンク済みの友だちには自動で届きます：大会やシリーズの一部のラウンドに入れた人には、受信箱と通知で招待が届きます – 1回だけで、保存し直しても二重には届きません。当日は「今日の大会 › 参加する」で自分の組に入れます。返事の前に外すと、招待は取り消されます。それ以外の人（入力した名前で、リンク済みの友だちではない）：大会ページの招待の上に「まだ招待していません：…」と表示されます – リンクを送るかQRコードを見せてください。",
+ "Not invited yet: {0} – not a linked friend. Send the link or show the QR code.": "まだ招待していません：{0} – リンク済みの友だちではありません。リンクを送るかQRコードを見せてください。"
+}

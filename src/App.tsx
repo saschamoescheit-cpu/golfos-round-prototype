@@ -35,7 +35,7 @@ import { pushRound, takePushTarget } from './lib/push';
 import { cachedEvent, exchangeRound, liveFlights } from './lib/sharedround';
 import { loadPools, myPoolBalances, reportDuelsSoon, reportWagers, runningPools } from './lib/wagerstore';
 import { dayOf } from './lib/wagers';
-import { loadTours, startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
+import { inviteHostedPlans, loadTours, startTourPush, toursSoon, toursTodayCodes } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
 
 /** A practice session of the Training module is paused (read without loading the module). */
@@ -324,6 +324,9 @@ export function App() {
       });
     startFriendLinks(); // the own friend card after each sync, the friends' cards every few minutes
     startTourPush(); // a tournament's result told once every flight is in (07.11.2026)
+    // the plans this account hosts: their linked friends not in yet invited (Sascha 17.11.2026 – "nachträglich"), a
+    // moment after the start
+    const tours = window.setTimeout(() => void inviteHostedPlans().catch(() => null), 6000);
     // a friend's request asks to sign in first (03.11.2026: it shows on every screen): the profile of the start page
     const toProfile = () => {
       setModule(null);
@@ -354,6 +357,7 @@ export function App() {
       window.removeEventListener('golfos:join-round', toJoin);
       window.removeEventListener('golfos:join-game', toJoinGame);
       window.clearInterval(t);
+      window.clearTimeout(tours);
     };
   }, []);
 

@@ -8,6 +8,7 @@ import type { TourDraw } from './tourdraw';
 import type { TourPrizes } from './tourprizes';
 import { tellTourResult, tourChanges } from './tourpush';
 import { pushTourChanged } from './push';
+import { invitePlanned } from './planinvite';
 
 // The tournaments planned in Games (Sascha 01.11.2026: "I could set up the tournaments for the USA now, put the flights
 // together and choose the markers, and send the invitations once everyone has the app – in the USA everything is
@@ -185,10 +186,32 @@ export async function syncTours(): Promise<boolean> {
       changed = true;
     }
     if (changed) saveTours(list);
+    // the hosted plans' linked friends not in yet: invited now (Sascha 17.11.2026) – in the background
+    void inviteHostedPlans().catch(() => null);
     return true;
   } catch {
     return false;
   }
+}
+
+let hostedAt = 0;
+/** The plans this account hosts, saved before the invitations went by themselves (Sascha 17.11.2026: "Die Nachricht in
+ *  die Inbox sollten Daniel und Thomas auf jeden Fall dann noch nachträglich erhalten"): every linked friend in one of
+ *  today's or a later round, or with his card of the last two weeks still to sign, who is not in it yet gets the
+ *  invitation now – once (a member is not asked again), nothing taken away. At most every ten minutes. */
+export async function inviteHostedPlans(now = Date.now()): Promise<number> {
+  const me = myAccount();
+  if (!me || now - hostedAt < 10 * 60000) return 0;
+  hostedAt = now;
+  const from = dayOf(new Date(now - 14 * 86400000));
+  let n = 0;
+  for (const e of loadTours()) {
+    if (e.owner !== me || e.ev.deletedAt || e.ev.date < from) continue;
+    // the flights as their own rows have them (a guest put into one round later lives there)
+    const ev = await refreshEvent(e.code).catch(() => null);
+    if (ev && !ev.deletedAt) n += (await invitePlanned(e.code, ev).catch(() => ({ invited: [] }))).invited.length;
+  }
+  return n;
 }
 
 /** A new tournament on the server – the event and its flights (Rounds' publishPlannedEvent). Its code, or null. */
@@ -196,6 +219,8 @@ export async function createTour(ev: PlannedEvent): Promise<string | null> {
   const code = await publishPlannedEvent(ev);
   if (!code) return null;
   keepTour(code, ev, myAccount() ?? undefined);
+  // its linked friends invited by themselves – inbox and push (Sascha 17.11.2026, "Automatisch einladen")
+  void invitePlanned(code, ev).catch(() => null);
   return code;
 }
 
@@ -205,6 +230,8 @@ export async function changeTour(code: string, ev: PlannedEvent, o: { /** saved 
   const before = loadTours().find((e) => e.code === code)?.ev;
   const written = await updatePlannedEvent(code, ev);
   if (written) keepTour(code, isPlanned(written) ? written : ev);
+  // a linked friend put in: invited; one taken out before he answered: withdrawn (Sascha 17.11.2026)
+  if (written) void invitePlanned(code, written, before ?? null).catch(() => null);
   // the players hear what changed for them (Sascha 07.11.2026) – the flight, the tee time, the marker; the day, the
   // course, called off
   if (written && before && !o.quiet) {

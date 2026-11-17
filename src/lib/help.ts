@@ -327,6 +327,16 @@ export const FAQ: FaqTopic[] = [
         video: 'score',
       },
       {
+        // Sascha 17.11.2026, "Automatisch einladen": Thomas and Daniel were put into the Legends rounds and heard nothing
+        q: () => tr('Do the players of a planned tournament get the invitation?', 'Bekommen die Spieler eines geplanten Turniers die Einladung?'),
+        a: () =>
+          tr(
+            'Your linked friends do, by themselves: whoever you put into a tournament or into single rounds of a series gets the invitation in his inbox and a push – once, saving again asks nobody twice; on the day "Tournament today › Take part" puts him into his flight. Taken out before he answered, the invitation is withdrawn. Anyone else (a name typed in, not a linked friend): the tournament\'s page says "Not invited yet: …" above the invitation – send him the link or show the QR code.',
+            'Deine verknüpften Freunde von selbst: Wen du in ein Turnier oder in einzelne Runden einer Serie einträgst, bekommt die Einladung in seine Inbox und als Mitteilung – einmal, erneutes Speichern fragt niemanden doppelt; am Turniertag bringt ihn „Turnier heute › Teilnehmen“ in seinen Flight. Nimmst du ihn wieder heraus, bevor er geantwortet hat, wird die Einladung zurückgezogen. Alle anderen (ein eingetippter Name, kein verknüpfter Freund): Die Turnierseite zeigt über der Einladung „Noch nicht eingeladen: …“ – schick ihm den Link oder zeig den QR-Code.',
+          ),
+        video: 'tours',
+      },
+      {
         // Sascha 11.11.2026: "Loch 4 als Loch 5 gesetzt – wie korrigiere ich das?"; Moritz on Cypress
         q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
         a: () =>
