@@ -1809,6 +1809,36 @@ export async function letInvited(code: string, friend: string, name: string, who
   return false;
 }
 
+/** A friend taken out of a planned tournament (Sascha 17.11.2026, "Automatisch einladen"): his invitation withdrawn while
+ *  unanswered – out of the members and the requests, only when the host invited him and no phone of his plays in any of
+ *  its flights. Nothing of his is touched (his rounds stay on his phone). True when withdrawn. */
+export async function withdrawInvite(code: string, friend: string): Promise<boolean> {
+  const h = await headers();
+  if (!h) return false;
+  const ev = await refreshEvent(code);
+  if (!ev || Object.values(ev.flights).some((f) => Object.values(f.phones ?? {}).some((ph) => ph.uid === friend))) return false;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=members,near_requests,updated_at`, { headers: h });
+      if (!r.ok) return false;
+      const rows = (await r.json()) as { members: string[]; near_requests: Record<string, { invited?: string }> | null; updated_at: string }[];
+      if (!rows.length || !rows[0].near_requests?.[friend]?.invited) return false;
+      const { [friend]: _gone, ...near_requests } = rows[0].near_requests;
+      void _gone;
+      const w = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&updated_at=eq.${encodeURIComponent(rows[0].updated_at)}`, {
+        method: 'PATCH',
+        headers: { ...h, Prefer: 'return=representation' },
+        body: JSON.stringify({ members: rows[0].members.filter((m) => m !== friend), near_requests, updated_at: new Date().toISOString() }),
+      });
+      if (!w.ok) return false;
+      if (((await w.json()) as unknown[]).length) return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export interface RoundInvite {
   code: string;
   who: string;
