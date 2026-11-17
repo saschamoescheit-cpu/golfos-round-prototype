@@ -38,6 +38,8 @@ const pool = {
 
 const SIZES = [
   { name: 'iPhone SE', ...devices['iPhone SE'] },
+  // the iPhone SE of today (2nd/3rd gen.) 375 wide – "+4250 $" was 2px over the edge of the Bilanz tile there (17.11.2026)
+  { name: 'iPhone SE 3', ...devices['iPhone SE'], viewport: { width: 375, height: 667 } },
   { name: 'iPhone 13', ...devices['iPhone 13'] },
   { name: 'iPad hoch', viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: devices['iPad (gen 7)'].userAgent },
   { name: 'iPad quer', viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: devices['iPad (gen 7)'].userAgent },
