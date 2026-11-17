@@ -584,7 +584,21 @@ function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave:
  *  confusing" – the PGA app's build, in GolfOS' look): one line a player – place, name, total, the hole he is on in
  *  the round played now ("F" once in), that round's score. Tapped: a sheet with his total and each round's scorecard,
  *  the rounds as one switch (as the bets' standing). */
-export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; /** "auf 5 Runden" – once someone has a No Return (Sascha 11.11.2026) */ sub?: string; out?: boolean; /** a guest – below the others, no place (Sascha 16.11.2026) */ guest?: boolean; parts: { k: number; text: string; thru: number; finished: boolean; retired?: boolean; noReturn?: boolean; card: () => Round | null }[] };
+export type SeriesBoardRow = { key: string; pos: string; name: string; total: string; /** "auf 5 Runden" – once someone has a No Return (Sascha 11.11.2026) */ sub?: string; out?: boolean; /** a guest – not in the total, in the board of his rounds (Sascha 16./17.11.2026) */ guest?: boolean; parts: { k: number; text: string; /** the round's value as the total adds it – the round's board ranks by it */ sort: number; thru: number; finished: boolean; retired?: boolean; noReturn?: boolean; card: () => Round | null }[] };
+/** One round's board of a series (Sascha 17.11.2026, Mockup B: "Gesamt | R7" – the guests ranked in their round with
+ *  "Gast", the total without them): everyone with a part in round k, by that round's value – a No Return last. */
+export function roundBoard(rows: SeriesBoardRow[], k: number, higherBetter = false): { row: SeriesBoardRow; part: SeriesBoardRow['parts'][number]; pos: string }[] {
+  const all = rows.flatMap((row) => row.parts.filter((p) => p.k === k).map((part) => ({ row, part })));
+  const val = (x: (typeof all)[number]) => (higherBetter ? -x.part.sort : x.part.sort);
+  const ranked = all.filter((x) => !x.part.noReturn).sort((a, b) => val(a) - val(b));
+  return [
+    ...ranked.map((x) => {
+      const same = ranked.filter((y) => val(y) === val(x));
+      return { ...x, pos: `${same.length > 1 ? 'T' : ''}${ranked.findIndex((y) => val(y) === val(x)) + 1}` };
+    }),
+    ...all.filter((x) => x.part.noReturn).map((x) => ({ ...x, pos: 'NR' })),
+  ];
+}
 /** "auf 6 Runden" – what a total stands on, once a player has a No Return (Sascha 11.11.2026) */
 export const onRounds = (n: number): string => (n === 1 ? tr('on 1 round', 'auf 1 Runde') : tr(`on ${n} rounds`, `auf ${n} Runden`));
 /** "Gast" under a guest's name in the series' total (Sascha 16.11.2026) – his rounds in his sheet */
@@ -595,23 +609,33 @@ export const boardOrder = <T extends { name: string; guest: boolean }>(rows: T[]
   ...rows.filter((r) => !r.guest && out(r.name)),
   ...rows.filter((r) => r.guest),
 ];
-export function SeriesBoard(props: { label: string; title: string; live: boolean; rounds: { date: string; name?: string }[]; rows: SeriesBoardRow[]; note?: string; cutAfter?: number }) {
+export function SeriesBoard(props: { label: string; title: string; live: boolean; rounds: { date: string; name?: string }[]; rows: SeriesBoardRow[]; note?: string; cutAfter?: number; /** Stableford: more is better – the round's board */ higherBetter?: boolean; /** the rounds have a switch of their own (the live view's "‹ Gesamt ›"): no tabs here, the guests' line opens round k there */ onRound?: (k: number) => void }) {
   const [who, setWho] = useState<string | null>(null);
   const [pick, setPick] = useState<number | null>(null);
+  // "Gesamt" (-1) or one round's board (Sascha 17.11.2026, Mockup B)
+  const [view, setView] = useState(-1);
   // the round played now – else the last one played
   const cur = props.rows.reduce((m, r) => r.parts.reduce((n, p) => Math.max(n, p.k), m), -1);
   const row = props.rows.find((r) => r.key === who) ?? null;
   const partNow = (r: SeriesBoardRow) => r.parts.find((p) => p.k === cur);
-  const thru = (r: SeriesBoardRow) => {
-    const p = partNow(r);
-    return !p ? '–' : p.noReturn ? 'NR' : p.retired ? tr('WD', 'Aufg.') : p.finished ? 'F' : String(p.thru);
+  const thruOf = (p: SeriesBoardRow['parts'][number] | undefined) => (!p ? '–' : p.noReturn ? 'NR' : p.retired ? tr('WD', 'Aufg.') : p.finished ? 'F' : String(p.thru));
+  const thru = (r: SeriesBoardRow) => thruOf(partNow(r));
+  // the rounds played so far – a tab each; the total without its guests, they stand in their rounds' boards
+  const played = [...new Set(props.rows.flatMap((r) => r.parts.map((p) => p.k)))].sort((a, b) => a - b);
+  const inTotal = props.rows.filter((r) => !r.guest);
+  const guestsIn = played.map((k) => ({ k, names: props.rows.filter((r) => r.guest && r.parts.some((p) => p.k === k)).map((r) => r.name) })).filter((x) => x.names.length > 0);
+  const shownView = played.includes(view) ? view : -1;
+  const open = (key: string, k: number | null) => {
+    setPick(k);
+    setWho(key);
   };
   const shown = row ? (row.parts.find((p) => p.k === pick) ?? row.parts[row.parts.length - 1]) : undefined;
   const card = shown ? shown.card() : null;
   return (
     <section className="card tour-live" aria-label={props.label}>
       <div className="tour-live-head">
-        <span className="eyebrow">{props.title}</span>
+        {/* a round's tab: its own title, not "alle Runden" */}
+        <span className="eyebrow">{played.includes(view) ? `${tr('Live leaderboard', 'Live-Leaderboard')} · R${view + 1}` : props.title}</span>
         {props.live && (
           <span className="tour-live-badge">
             <i aria-hidden="true" />
@@ -619,40 +643,87 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
           </span>
         )}
       </div>
-      <div className="series-lb-head" aria-hidden="true">
-        <span>{tr('Pos', 'Pl.')}</span>
-        <span>{tr('Player', 'Spieler')}</span>
-        <span>{tr('Total', 'Ges.')}</span>
-        <span>{tr('Thru', 'Loch')}</span>
-        <span>{cur >= 0 ? `R${cur + 1}` : ''}</span>
-      </div>
-      <ol className="lb-rows series-lb">
-        {props.rows.map((r, i) => (
-          <li key={r.key} className={`${r.out || r.guest ? 'lb-out' : ''}${r.out && !r.guest && !props.rows[i - 1]?.out ? ' lb-cut' : ''}${r.guest && i > 0 && !props.rows[i - 1]?.guest ? ' lb-guests' : ''}`}>
-            <button
-              type="button"
-              className="series-lb-row"
-              disabled={!r.parts.length}
-              aria-label={tr(`${r.name} – total ${r.total}, his rounds`, `${r.name} – gesamt ${r.total}, seine Runden`)}
-              onClick={() => {
-                setPick(null);
-                setWho(r.key);
-              }}
-            >
-              <span className="lb-rank">{r.pos}</span>
-              <span className="lb-name">
-                {r.name}
-                {r.sub && <span className="muted small lb-sub">{r.sub}</span>}
-              </span>
-              <span className="lb-value">{r.total}</span>
-              <span className="series-lb-thru">{thru(r)}</span>
-              <span className="series-lb-now">{partNow(r)?.text ?? '–'}</span>
+      {/* "Gesamt" and each round played as tabs, as the scorecard's (Sascha 17.11.2026, Mockup B) */}
+      {played.length > 0 && !props.onRound && (
+        <div className="chip-set sc-tabs series-tabs" role="tablist" aria-label={tr('Standing', 'Wertung')}>
+          <button type="button" role="tab" aria-selected={shownView < 0} className={`chip${shownView < 0 ? ' on' : ''}`} onClick={() => setView(-1)}>
+            {tr('Total', 'Gesamt')}
+          </button>
+          {played.map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={shownView === k} aria-label={tr(`Round ${k + 1}`, `Runde ${k + 1}`)} className={`chip${shownView === k ? ' on' : ''}`} onClick={() => setView(k)}>
+              {`R${k + 1}`}
             </button>
-          </li>
-        ))}
-      </ol>
-      {props.rows.some((r) => r.guest) && <span className="muted small">{tr('Guests below the line: counted in their own rounds only, not in the total.', 'Gäste unter der Linie: nur in ihren Runden gewertet, nicht in der Gesamtwertung.')}</span>}
-      {props.cutAfter != null && props.rows.some((r) => r.out && !r.guest) && <span className="muted small">{tr(`Below the line: missed the cut after round ${props.cutAfter}.`, `Unter der Linie: Cut nach Runde ${props.cutAfter} verpasst.`)}</span>}
+          ))}
+        </div>
+      )}
+      {shownView < 0 ? (
+        <>
+          <div className="series-lb-head" aria-hidden="true">
+            <span>{tr('Pos', 'Pl.')}</span>
+            <span>{tr('Player', 'Spieler')}</span>
+            <span>{tr('Total', 'Ges.')}</span>
+            <span>{tr('Thru', 'Loch')}</span>
+            <span>{cur >= 0 ? `R${cur + 1}` : ''}</span>
+          </div>
+          <ol className="lb-rows series-lb">
+            {inTotal.map((r, i) => (
+              <li key={r.key} className={`${r.out ? 'lb-out' : ''}${r.out && !inTotal[i - 1]?.out ? ' lb-cut' : ''}`}>
+                <button type="button" className="series-lb-row" disabled={!r.parts.length} aria-label={tr(`${r.name} – total ${r.total}, his rounds`, `${r.name} – gesamt ${r.total}, seine Runden`)} onClick={() => open(r.key, null)}>
+                  <span className="lb-rank">{r.pos}</span>
+                  <span className="lb-name">
+                    {r.name}
+                    {r.sub && <span className="muted small lb-sub">{r.sub}</span>}
+                  </span>
+                  <span className="lb-value">{r.total}</span>
+                  <span className="series-lb-thru">{thru(r)}</span>
+                  <span className="series-lb-now">{partNow(r)?.text ?? '–'}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          {/* the guests: not in the total – a line to the round they played (Mockup B: "2 Gäste in R7: Daniel, Thomas ›") */}
+          {guestsIn.map((g) => (
+            <button key={g.k} type="button" className="link-row series-guests" onClick={() => (props.onRound ? props.onRound(g.k) : setView(g.k))}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+              </svg>
+              <span className="grow">
+                {g.names.length === 1 ? tr(`1 guest in R${g.k + 1}: ${g.names[0]}`, `1 Gast in R${g.k + 1}: ${g.names[0]}`) : tr(`${g.names.length} guests in R${g.k + 1}: ${g.names.join(', ')}`, `${g.names.length} Gäste in R${g.k + 1}: ${g.names.join(', ')}`)}
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+        </>
+      ) : (
+        <>
+          <span className="muted small">
+            {[props.rounds[shownView]?.date ? dm(props.rounds[shownView].date) : null, props.rounds[shownView]?.name].filter(Boolean).join(' · ')}
+          </span>
+          <div className="series-lb-head series-lb-round" aria-hidden="true">
+            <span>{tr('Pos', 'Pl.')}</span>
+            <span>{tr('Player', 'Spieler')}</span>
+            <span>{`R${shownView + 1}`}</span>
+            <span>{tr('Thru', 'Loch')}</span>
+          </div>
+          <ol className="lb-rows series-lb">
+            {roundBoard(props.rows, shownView, props.higherBetter).map(({ row: r, part, pos }) => (
+              <li key={r.key}>
+                <button type="button" className="series-lb-row series-lb-round" aria-label={tr(`${r.name} – round ${shownView + 1}: ${part.text}, his scorecard`, `${r.name} – Runde ${shownView + 1}: ${part.text}, seine Scorekarte`)} onClick={() => open(r.key, shownView)}>
+                  <span className="lb-rank">{pos}</span>
+                  <span className="lb-name">
+                    <span className="lb-name-text">{r.name}</span>
+                    {r.guest && <span className="badge warn lb-guest">{guestSub()}</span>}
+                  </span>
+                  <span className="lb-value">{part.text}</span>
+                  <span className="series-lb-thru">{thruOf(part)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+      {shownView < 0 && props.cutAfter != null && inTotal.some((r) => r.out) && <span className="muted small">{tr(`Below the line: missed the cut after round ${props.cutAfter}.`, `Unter der Linie: Cut nach Runde ${props.cutAfter} verpasst.`)}</span>}
       {props.note && <span className="muted small">{props.note}</span>}
       {row && shown && (
         <div className="sheet-backdrop" onClick={() => setWho(null)}>
@@ -942,6 +1013,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       {/* the total live (Sascha 03.11.2026): each player, what every round added – a running one "nach 9" */}
       <SeriesBoard
         label={tr('Total standing', 'Gesamtwertung')}
+        higherBetter={total.higherBetter}
         title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
         live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
         rounds={s.rounds.map((r) => ({ date: r.date, name: r.name }))}
@@ -953,7 +1025,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
                 name: r.name,
                 total: fmtSum(r.sum),
                 ...(r.guest ? { sub: guestSub(), guest: true } : total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
-                parts: r.parts.map((p) => ({ k: p.k, text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(evs[p.k], r.name) })),
+                parts: r.parts.map((p) => ({ k: p.k, text: p.noReturn ? 'NR' : fmtSum(p.sort), sort: p.sort, thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(evs[p.k], r.name) })),
                 out: !r.guest && out(r.name),
               }))
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, total: '–', parts: [] }))
@@ -1042,7 +1114,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         actions={[
           // the live link while a round of it is played (Sascha 12.11.2026) – its host switches it, as below
           host && total.rows.some((r) => r.parts.some((x) => !x.finished)) && liveAction(() => setSheet('live')),
-          total.rows.length > 0 && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(s.name, boardText(`${s.name} · ${tr('Total standing', 'Gesamtwertung')}`, total.rows.map((r) => ({ pos: r.guest ? tr('Guest', 'Gast') : out(r.name) ? 'CUT' : r.pos, name: r.name, value: fmtSum(r.sum), thru: onRounds(r.rounds) })))).then(setMsg) },
+          total.rows.length > 0 && { label: tr('Share', 'Teilen'), aria: tr('Share the result', 'Ergebnis teilen'), icon: 'share', onClick: () => void shareText(s.name, boardText(`${s.name} · ${tr('Total standing', 'Gesamtwertung')}`, total.rows.filter((r) => !r.guest).map((r) => ({ pos: out(r.name) ? 'CUT' : r.pos, name: r.name, value: fmtSum(r.sum), thru: onRounds(r.rounds) })))).then(setMsg) },
           total.rows.length > 0 && { label: 'CSV', aria: tr('Results as a list (CSV)', 'Ergebnisliste (CSV)'), icon: 'csv', onClick: () => void saveCsv(s.name, seriesCsv(s.name, s.rounds.length, total, out)) },
           host && (multi ? { label: tr('Delete', 'Löschen'), aria: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo', 'Auflösen'), aria: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }),
         ]}

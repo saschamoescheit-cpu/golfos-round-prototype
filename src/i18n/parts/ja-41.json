@@ -1,0 +1,6 @@
+{
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: not in the total, without the series' prizes and its entry fee. Below the total \"1 guest in R7 ›\" opens the tab of his round – there he is ranked with \"Guest\".": "そのラウンドだけに追加します：シリーズでラウンドを開き、「トーナメントを変更」→「プレーヤーを追加」。参加した各ラウンドでは完全に集計されます – リーダーボードとその日の賞。ラウンドの半分未満しか参加しない人はゲストです：総合順位には含まれず、シリーズの賞と参加費の対象外です。総合順位の下の「R7のゲスト1人 ›」で、そのラウンドのタブが開き、そこでは順位と「ゲスト」の表示付きで並びます。",
+ "1 guest in R{0}: {1}": "R{0}のゲスト1人：{1}",
+ "{0} guests in R{1}: {2}": "R{1}のゲスト{0}人：{2}",
+ "{0} – round {1}: {2}, his scorecard": "{0} – ラウンド{1}：{2}、スコアカード"
+}

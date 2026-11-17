@@ -323,8 +323,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Someone plays only a few rounds of a series – how do I add them?', 'Jemand spielt nur ein paar Runden einer Serie mit – wie füge ich ihn hinzu?'),
         a: () =>
           tr(
-            'Add them in those rounds only: open the round in the series, "Change the tournament", "Add player". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: in the total below a grey line, "Guest", without a place, the series\' prizes and its entry fee.',
-            'Nur in diesen Runden hinzufügen: die Runde in der Serie öffnen, „Turnier bearbeiten“, „Spieler hinzufügen“. In jeder seiner Runden zählt er voll – Leaderboard und Tagespreise. Wer in weniger als der Hälfte der Runden dabei ist, ist Gast: in der Gesamtwertung unter einer grauen Linie, „Gast“, ohne Platz, ohne die Preise der Serie und ihr Startgeld.',
+            'Add them in those rounds only: open the round in the series, "Change the tournament", "Add player". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: not in the total, without the series\' prizes and its entry fee. Below the total "1 guest in R7 ›" opens the tab of his round – there he is ranked with "Guest".',
+            'Nur in diesen Runden hinzufügen: die Runde in der Serie öffnen, „Turnier bearbeiten“, „Spieler hinzufügen“. In jeder seiner Runden zählt er voll – Leaderboard und Tagespreise. Wer in weniger als der Hälfte der Runden dabei ist, ist Gast: nicht in der Gesamtwertung, ohne die Preise der Serie und ihr Startgeld. Unter der Gesamtwertung öffnet „1 Gast in R7 ›“ den Reiter seiner Runde – dort steht er mit Platz und „Gast“.',
           ),
         video: 'score',
       },

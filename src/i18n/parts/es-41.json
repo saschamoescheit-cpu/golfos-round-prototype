@@ -1,0 +1,6 @@
+{
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: not in the total, without the series' prizes and its entry fee. Below the total \"1 guest in R7 ›\" opens the tab of his round – there he is ranked with \"Guest\".": "Añádelo solo en esas rondas: abre la ronda en la serie, «Cambiar el torneo», «Añadir jugador». En cada una de sus rondas cuenta del todo: clasificación y premios del día. Quien está en menos de la mitad de las rondas es invitado: no entra en la clasificación total, sin los premios de la serie ni su inscripción. Bajo la clasificación total, «1 invitado en R7 ›» abre la pestaña de su ronda: allí aparece con puesto e «Invitado».",
+ "1 guest in R{0}: {1}": "1 invitado en R{0}: {1}",
+ "{0} guests in R{1}: {2}": "{0} invitados en R{1}: {2}",
+ "{0} – round {1}: {2}, his scorecard": "{0} – ronda {1}: {2}, su tarjeta"
+}

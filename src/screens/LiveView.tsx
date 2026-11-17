@@ -314,6 +314,8 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
       {view < 0 && (
         <SeriesBoard
           label={tr('Total standing', 'Gesamtwertung')}
+          higherBetter={total.higherBetter}
+          onRound={setView}
           title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
           live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
           rounds={series.rounds.map((r) => ({ date: r.date, name: r.name }))}
@@ -324,7 +326,7 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
             total: fmtSum(r.sum),
             // the part's index counts the rounds played – its round of the series
             ...(r.guest ? { sub: guestSub(), guest: true } : total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
-            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
+            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), sort: p.sort, thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
             out: !r.guest && out(r.name),
           }))}
           note={total.rows.length ? tr('Tap a player for his rounds and scorecards.', 'Spieler antippen für seine Runden und Scorekarten.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}
