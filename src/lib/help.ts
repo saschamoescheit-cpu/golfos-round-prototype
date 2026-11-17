@@ -271,7 +271,12 @@ export const FAQ: FaqTopic[] = [
       },
       {
         q: () => tr('What does "plays like" mean?', 'Was heißt „spielt wie“?'),
-        a: () => tr('How long the shot plays today: with the wind, the temperature and up- or downhill.', 'Wie lang der Schlag heute spielt: mit Wind, Temperatur und bergauf oder bergab.'),
+        // 16.11.2026: the course's height above the sea too (Sascha: "je 300 Höhenmeter 2 % länger")
+        a: () =>
+          tr(
+            'How long the shot plays today: with the wind, the temperature, up- or downhill – and the course’s height above the sea: the ball flies about 2 % further per 300 m higher than where your distances come from (Profile → Caddie → "Height of your distances": "Automatic" takes your home course).',
+            'Wie lang der Schlag heute spielt: mit Wind, Temperatur, bergauf oder bergab – und der Höhe des Platzes über dem Meer: Je 300 m höher als dort, wo deine Weiten entstanden sind, fliegt der Ball etwa 2 % weiter (Profil → Caddie → „Höhe deiner Weiten“: „Automatisch“ nimmt deinen Heimatclub).',
+          ),
         video: 'caddie',
       },
       {

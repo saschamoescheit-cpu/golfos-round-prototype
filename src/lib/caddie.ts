@@ -22,6 +22,9 @@ export const FACTORS = {
   tempRefC: 20,
   heightPerM: 1, // 1 m higher target = 1 m longer
   driftPerKmhPer100m: 0.25, // crosswind: ball drifts 0.25 m per km/h per 100 m carry
+  // the course's height above the sea (Sascha 16.11.2026: "fliegt der Ball je 300 Höhenmeter 2 % länger?"): thinner air,
+  // the ball flies about 2 % further per 1000 ft (305 m) – against the height the player's distances come from
+  altPerM: 0.02 / 304.8,
 };
 
 export interface Conditions {
@@ -29,6 +32,8 @@ export interface Conditions {
   gustKmh: number;
   windFromDeg: number; // meteorological: where the wind comes FROM
   tempC: number;
+  /** metres above the sea: where the player stands, and where his distances come from (his home course) */
+  alt?: { here: number; home: number };
 }
 
 export interface PlaysLike {
@@ -37,6 +42,9 @@ export interface PlaysLike {
   wind: number; // metres added (+) or saved (−) by the wind
   temp: number; // metres from temperature
   height: number; // metres from the height difference
+  alt: number; // metres from the course's height above the sea against the home course's (higher: plays shorter)
+  /** the two heights it came from */
+  altAt?: { here: number; home: number };
   headKmh: number; // effective head (+) / tail (−) wind
   crossKmh: number; // effective cross wind, + = from the right
   aimM: number; // aim offset into the wind: + = aim right, − = aim left
@@ -62,12 +70,15 @@ export function playsLike(distance: number, shotBearing: number, c: Conditions |
   }
   const temp = c ? distance * FACTORS.tempPerDeg * (FACTORS.tempRefC - c.tempC) : 0;
   const height = heightDiff != null ? heightDiff * FACTORS.heightPerM : 0;
+  const alt = c?.alt ? -distance * FACTORS.altPerM * (c.alt.here - c.alt.home) : 0;
   return {
     distance,
-    playsLike: distance + wind + temp + height,
+    playsLike: distance + wind + temp + height + alt,
     wind,
     temp,
     height,
+    alt,
+    ...(c?.alt ? { altAt: c.alt } : {}),
     headKmh: Math.round(headKmh),
     crossKmh: Math.round(crossKmh),
     aimM: Math.round(aimM),
@@ -126,6 +137,11 @@ export function explain(p: PlaysLike, c: Conditions | null): string[] {
     out.push(`${p.headKmh >= 0 ? tr('Into the wind', 'Gegenwind') : tr('Downwind', 'Rückenwind')} ${Math.abs(p.headKmh)} km/h${c.gustKmh > c.windKmh + 5 ? tr(' (gusty)', ' (böig)') : ''}: ${m(p.wind)}`);
   if (c && Math.abs(p.temp) >= 1) out.push(`${Math.round(c.tempC)} °C: ${m(p.temp)}`);
   if (Math.abs(p.height) >= 1) out.push(`${p.height > 0 ? tr('Uphill', 'Bergauf') : tr('Downhill', 'Bergab')} ${Math.abs(Math.round(p.height))} m: ${m(p.height)}`);
+  if (c?.alt && Math.abs(p.alt) >= 1) {
+    const here = Math.round(c.alt.here);
+    const home = Math.round(c.alt.home);
+    out.push(`${tr(`Altitude ${here} m (your distances ${home} m)`, `Höhe ${here} m (deine Weiten ${home} m)`)}: ${m(p.alt)}`);
+  }
   if (Math.abs(p.aimM) >= 2)
     out.push(tr(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}`, `Seitenwind ${Math.abs(p.crossKmh)} km/h von ${p.crossKmh > 0 ? 'rechts' : 'links'}`));
   return out;

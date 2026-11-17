@@ -374,6 +374,8 @@ export interface CaddieSettings {
   favourite: number; // favourite approach distance (m) for layups
   voice: boolean; // read the caddie's advice aloud by itself (with headphones; default off – Sascha 15.10.2026)
   greenSpeed: 'slow' | 'medium' | 'fast'; // for the putt read: Stimp 8.5 / 9.5 / 11
+  /** the height above the sea the player's distances come from (16.11.2026): 'auto' – his home course's, else metres */
+  homeAlt?: 'auto' | number;
 }
 export function loadCaddieSettings(): CaddieSettings {
   // green speed is no setting any more (Sascha 15.10.2026): the putt line reads club greens (medium)

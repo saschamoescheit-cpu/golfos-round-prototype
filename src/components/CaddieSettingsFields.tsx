@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
 import { tr } from '../lib/i18n';
+import { autoHomeAlt } from '../lib/homealt';
 import { ChoiceRow, OnOffRow } from './Settings';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
@@ -15,6 +16,7 @@ const STYLES: { value: CaddieSettings['style']; label: () => string; hint: () =>
 
 export function CaddieSettingsFields() {
   const [s, setS] = useState<CaddieSettings>(loadCaddieSettings);
+  const auto = autoHomeAlt();
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...s, ...patch };
     setS(next);
@@ -40,6 +42,24 @@ export function CaddieSettingsFields() {
         value={s.style}
         onChange={(v) => set({ style: v })}
         options={STYLES.map((o) => ({ value: o.value, name: o.label(), text: o.hint() }))}
+      />
+      {/* the height of the player's distances (Sascha 16.11.2026: "je 300 Höhenmeter fliegt der Ball 2 % länger") – a
+          course higher than home plays shorter, a lower one longer */}
+      <ChoiceRow<string>
+        label={tr('Height of your distances', 'Höhe deiner Weiten')}
+        title={tr('Where your distances come from', 'Wo deine Weiten entstanden sind')}
+        value={String(s.homeAlt ?? 'auto')}
+        onChange={(v) => set({ homeAlt: v === 'auto' ? 'auto' : Number(v) })}
+        options={[
+          {
+            value: 'auto',
+            name: tr('Automatic', 'Automatisch'),
+            text: auto.course
+              ? tr(`Your home course ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`, `Dein Heimatplatz ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`)
+              : tr('Your home course from the profile – not found yet: choose a height', 'Dein Heimatclub aus dem Profil – noch nicht gefunden: Höhe wählen'),
+          },
+          ...[0, 100, 200, 300, 400, 500, 600, 800, 1000, 1200, 1500, 2000].map((m) => ({ value: String(m), name: m === 0 ? tr('0 m – sea level', '0 m – Meereshöhe') : `${m} m` })),
+        ]}
       />
     </div>
   );

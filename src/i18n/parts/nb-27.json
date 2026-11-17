@@ -1,0 +1,11 @@
+{
+ "altitude {0} m · yours {1} m": "høyde {0} m · din {1} m",
+ "Height of your distances": "Høyden for lengdene dine",
+ "Where your distances come from": "Hvor lengdene dine er målt",
+ "Automatic": "Automatisk",
+ "Your home course {0}{1}": "Hjemmebanen din {0}{1}",
+ "Your home course from the profile – not found yet: choose a height": "Hjemmeklubben fra profilen – ikke funnet ennå: velg en høyde",
+ "0 m – sea level": "0 m – havnivå",
+ "Altitude {0} m (your distances {1} m)": "Høyde {0} m (lengdene dine {1} m)",
+ "How long the shot plays today: with the wind, the temperature, up- or downhill – and the course’s height above the sea: the ball flies about 2 % further per 300 m higher than where your distances come from (Profile → Caddie → \"Height of your distances\": \"Automatic\" takes your home course).": "Hvor langt slaget spiller i dag: med vinden, temperaturen, opp- eller nedoverbakke – og banens høyde over havet: ballen flyr ca. 2 % lenger per 300 m høyere enn der lengdene dine er målt (Profil → Caddie → «Høyden for lengdene dine»: «Automatisk» bruker hjemmeklubben)."
+}

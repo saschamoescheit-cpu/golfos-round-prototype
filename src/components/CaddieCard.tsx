@@ -376,6 +376,7 @@ const Icon = (p: { d: string }) => (
 const WIND = 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8';
 const TEMP = 'M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z';
 const HILL = 'M3 19l6-8 4 5 3-3 5 6z';
+const PEAK = 'M2 20l7-13 4 7 2-3 7 9z';
 const STAKE = 'M7 3v18M17 3v18M7 8h10M7 14h10';
 const SAND = 'M3 16c3-4 6-4 9 0s6 4 9 0M5 11c2-2 5-2 7 0';
 const WATER = 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z';
@@ -417,6 +418,13 @@ function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh:
             <span className="cf">
               <Icon d={HILL} />
               {pl.height > 0 ? tr('uphill', 'bergauf') : tr('downhill', 'bergab')} <b>{m(pl.height)}</b>
+            </span>
+          )}
+          {/* the course's height above the sea against where the distances come from (Sascha 16.11.2026) */}
+          {pl.altAt && Math.abs(pl.alt) >= 1 && (
+            <span className="cf">
+              <Icon d={PEAK} />
+              {tr(`altitude ${Math.round(pl.altAt.here)} m · yours ${Math.round(pl.altAt.home)} m`, `Höhe ${Math.round(pl.altAt.here)} m · deine ${Math.round(pl.altAt.home)} m`)} <b>{m(pl.alt)}</b>
             </span>
           )}
         </div>

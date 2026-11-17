@@ -1,0 +1,11 @@
+{
+ "altitude {0} m · yours {1} m": "altitud {0} m · la tuya {1} m",
+ "Height of your distances": "Altitud de tus distancias",
+ "Where your distances come from": "Dónde se midieron tus distancias",
+ "Automatic": "Automático",
+ "Your home course {0}{1}": "Tu campo de casa {0}{1}",
+ "Your home course from the profile – not found yet: choose a height": "Tu club de casa del perfil – aún no encontrado: elige una altitud",
+ "0 m – sea level": "0 m – nivel del mar",
+ "Altitude {0} m (your distances {1} m)": "Altitud {0} m (tus distancias {1} m)",
+ "How long the shot plays today: with the wind, the temperature, up- or downhill – and the course’s height above the sea: the ball flies about 2 % further per 300 m higher than where your distances come from (Profile → Caddie → \"Height of your distances\": \"Automatic\" takes your home course).": "Lo largo que juega el golpe hoy: con el viento, la temperatura, cuesta arriba o abajo – y la altitud del campo sobre el mar: la bola vuela un 2 % más por cada 300 m por encima de donde se midieron tus distancias (Perfil → Caddie → «Altitud de tus distancias»: «Automático» toma tu club de casa)."
+}
