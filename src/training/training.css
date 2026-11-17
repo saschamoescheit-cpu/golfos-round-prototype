@@ -354,3 +354,11 @@
 .tr-lie-club { color: var(--brand-text); font-weight: 700; }
 .tr-advice-row { display: grid; gap: 6px; }
 .tr-advice-shot { justify-self: start; }
+
+/* the caddie puts a session together (Sascha 17.11.2026): the wish in words or by voice, the rows it read, the session */
+.tr-caddie-ask { display: flex; gap: 8px; align-items: center; }
+.tr-caddie-ask .input { flex: 1; min-width: 0; min-height: 48px; }
+.tr-caddie-mic { width: 48px; height: 48px; flex: none; }
+.tr-caddie-mic.on { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+.tr-caddie-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tr-caddie-acts .btn-secondary { flex: 1 1 auto; }

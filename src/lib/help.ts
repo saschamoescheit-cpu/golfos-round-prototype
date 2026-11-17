@@ -787,6 +787,15 @@ export const FAQ: FaqTopic[] = [
         video: 'training',
       },
       {
+        q: () => tr('Can the caddie put a session together for me?', 'Kann mir der Caddie eine Einheit zusammenstellen?'),
+        a: () =>
+          tr(
+            'Yes – at the top of "Practise", tell the caddie what you want, by voice or typed: "30 minutes putting, direction". He sets time, topic and focus – you can change them in the rows – and puts drills together that fill the time. Next time for the same wish he takes other drills first, so it stays fun; "New drills" mixes again, "Like last time" brings back the session you did before.',
+            'Ja – oben unter „Üben“ sagst oder schreibst du dem Caddie, was du willst: „30 Minuten Putten, Richtung“. Er stellt Zeit, Thema und Schwerpunkt ein – in den Zeilen kannst du sie ändern – und stellt Übungen zusammen, die die Zeit füllen. Beim nächsten Mal mit demselben Wunsch nimmt er zuerst andere Übungen, damit es Spaß macht; „Neue Übungen“ mischt neu, „Wie letztes Mal“ holt die Einheit vom letzten Mal zurück.',
+          ),
+        video: 'training',
+      },
+      {
         q: () => tr('How do I practise a drill and keep my result?', 'Wie übe ich eine Übung und halte mein Ergebnis fest?'),
         a: () =>
           tr(

@@ -8,7 +8,9 @@ import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { ModuleTop, TopTools } from '../components/TopTools';
 import { Stepper, TopBar } from '../components/ui';
-import { SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
+import { ChoiceRow, SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
+import { canListen, startListening, type Listening } from '../lib/caddietalk';
+import { compose, history, MINUTES, readWish, remember, total, type CaddieItem, type Focus, type Wish } from '../training/caddiePlan';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
 import { CATEGORIES, DRILLS, anyDrillById, catById, drillById, drillsOf, shotById, shotsForDrills, shotsOfDrill, videoById } from '../training/content';
@@ -813,6 +815,189 @@ function PausedMark() {
   );
 }
 
+// ---------- the caddie puts a session together (Sascha 17.11.2026) ----------
+const FOCUS_NAME: Record<Focus, () => string> = {
+  mixed: () => tr('Mixed', 'Gemischt'),
+  direction: () => tr('Direction', 'Richtung'),
+  distance: () => tr('Length', 'Länge'),
+  contact: () => tr('Strike', 'Treffer'),
+  pressure: () => tr('Under pressure', 'Unter Druck'),
+};
+const WISH_KEY = 'golfos.training.caddie.wish.v1';
+function lastWish(): Wish {
+  try {
+    const w = JSON.parse(localStorage.getItem(WISH_KEY) ?? 'null') as Wish | null;
+    if (w && catById(w.cat)) return w;
+  } catch {
+    /* none yet */
+  }
+  return { minutes: 30, cat: 'putting', focus: 'mixed', home: false };
+}
+const MIC = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+  </svg>
+);
+const STOP = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="6" width="12" height="12" rx="2" />
+  </svg>
+);
+const SHUFFLE = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+  </svg>
+);
+const AGAIN = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+/** "Caddie, what do you want to practise?" – a wish in words or by voice becomes time, topic and focus (as rows to
+ *  change), and from them a session that fills the time; other drills than last time first, "Wie letztes Mal" brings
+ *  back the session last started for the same wish. */
+function CaddiePlanner(props: { nav: Nav }) {
+  const [wish, setWishState] = useState<Wish>(lastWish);
+  const [text, setText] = useState('');
+  const [items, setItems] = useState<CaddieItem[] | null>(null);
+  // the drills shown since the wish was made – "Neue Übungen" leaves them out
+  const [shown, setShown] = useState<string[]>([]);
+  const [heard, setHeard] = useState(false);
+  const [words, setWords] = useState<string | null>(null);
+  const listening = useRef<Listening | null>(null);
+  const make = (w: Wish) => {
+    setWishState(w);
+    try {
+      localStorage.setItem(WISH_KEY, JSON.stringify(w));
+    } catch {
+      /* the next visit starts from 30 minutes putting */
+    }
+    const s = compose(w);
+    setItems(s);
+    setShown(s.map((i) => i.drill));
+  };
+  const ask = (q: string) => {
+    if (!q.trim()) return;
+    setText(q);
+    make(readWish(q, wish));
+  };
+  const before = history(wish)[0];
+  const cat = catById(wish.cat);
+  const topics = AREAS.flatMap((a) => a.cats.flatMap((id) => {
+    const c = catById(id);
+    return c ? [{ value: id, name: t(c.name), group: t(a.name) }] : [];
+  }));
+  return (
+    <section className="tr-block tr-caddie" aria-label={tr('Caddie', 'Caddie')}>
+      <Eyebrow>{tr('Caddie', 'Caddie')}</Eyebrow>
+      <form
+        className="tr-caddie-ask"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(text);
+        }}
+      >
+        <input
+          className="input"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={tr('What do you want to practise? e.g. 30 minutes putting, direction', 'Was willst du üben? z. B. 30 Minuten Putten, Richtung')}
+          aria-label={tr('What do you want to practise?', 'Was willst du üben?')}
+          enterKeyHint="go"
+        />
+        {canListen() && (
+          <button
+            type="button"
+            className={`icon-btn tr-caddie-mic${heard ? ' on' : ''}`}
+            aria-pressed={heard}
+            aria-label={heard ? tr('Done – put it together', 'Fertig – zusammenstellen') : tr('Say it', 'Sagen')}
+            onClick={async () => {
+              if (listening.current) return listening.current.stop();
+              const l = startListening((w) => setWords(w));
+              if (!l) return;
+              listening.current = l;
+              setWords('');
+              setHeard(true);
+              const said = await l.result;
+              listening.current = null;
+              setHeard(false);
+              setWords(null);
+              if (said) ask(said);
+            }}
+          >
+            {heard ? STOP : MIC}
+          </button>
+        )}
+      </form>
+      {heard && (
+        <p className="muted small" role="status">
+          {words ? tr(`“${words}” …`, `„${words}“ …`) : tr('Listening … say what you want to practise.', 'Ich höre zu … sag, was du üben willst.')}
+        </p>
+      )}
+      <SettingsList label={tr('Your session', 'Deine Einheit')}>
+        <ChoiceRow label={tr('Time', 'Zeit')} options={MINUTES.map((m) => ({ value: m, name: `${m} min` }))} value={wish.minutes} onChange={(m) => make({ ...wish, minutes: m })} />
+        <ChoiceRow label={tr('Topic', 'Thema')} options={topics} value={wish.cat} onChange={(c) => make({ ...wish, cat: c })} />
+        <ChoiceRow label={tr('Focus', 'Schwerpunkt')} options={(Object.keys(FOCUS_NAME) as Focus[]).map((f) => ({ value: f, name: FOCUS_NAME[f]() }))} value={wish.focus} onChange={(f) => make({ ...wish, focus: f })} />
+        <TickRow label={tr('At home', 'Zu Hause')} on={wish.home} onChange={(h) => make({ ...wish, home: h })} />
+      </SettingsList>
+      {items === null ? (
+        <button type="button" className="btn-secondary" onClick={() => make(wish)}>
+          {tr('Put a session together', 'Einheit zusammenstellen')}
+        </button>
+      ) : items.length === 0 ? (
+        <p className="muted">{tr('No drills for this – try another topic.', 'Dafür gibt es keine Übungen – nimm ein anderes Thema.')}</p>
+      ) : (
+        <>
+          <span className="eyebrow">
+            {cat ? t(cat.name) : ''} · {FOCUS_NAME[wish.focus]()} · {total(items)} min
+          </span>
+          <ol className="tr-plan-list card">
+            {items.map((i) => (
+              <li key={i.drill}>
+                <PlanRow drill={i.drill} meta={`${i.minutes} min`} nav={props.nav} />
+              </li>
+            ))}
+          </ol>
+          <div className="tr-caddie-acts">
+            <button
+              type="button"
+              className="btn-secondary icon-text"
+              onClick={() => {
+                const s = compose(wish, { avoid: shown });
+                // all drills of the topic seen: start again from the beginning
+                const next = s.length && s.some((i) => !shown.includes(i.drill)) ? s : compose(wish, { avoid: items.map((i) => i.drill) });
+                setItems(next);
+                setShown([...shown, ...next.map((i) => i.drill)]);
+              }}
+            >
+              {SHUFFLE} {tr('New drills', 'Neue Übungen')}
+            </button>
+            {before && (
+              <button type="button" className="btn-secondary icon-text" onClick={() => setItems(before.items)}>
+                {AGAIN} {tr('Like last time', 'Wie letztes Mal')}
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              remember(wish, items);
+              props.nav.start(newSession(`${cat ? t(cat.name) : tr('Caddie', 'Caddie')} · ${FOCUS_NAME[wish.focus]()} · ${total(items)} min`, items, 'caddie'));
+            }}
+          >
+            {tr('Start session', 'Einheit starten')}
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+
 function TrainTab(props: { nav: Nav; rounds: Round[] }) {
   const sessions = loadSessions();
   const running = sessions.filter((s) => !s.finishedAt);
@@ -864,6 +1049,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
           <span aria-hidden="true">›</span>
         </button>
       ))}
+      <CaddiePlanner nav={props.nav} />
       <div className="chip-row" role="group" aria-label={tr('Kind of plan', 'Art des Plans')}>
         <button type="button" className={`chip${kind === 'single' ? ' on' : ''}`} aria-pressed={kind === 'single'} onClick={() => setKind('single')}>
           {tr('One session', 'Einzelne Einheit')}
