@@ -39,38 +39,45 @@ await p.waitForTimeout(600);
 const sw = p.getByRole('group', { name: 'Runden' });
 const basis = async () => (await p.locator('main p.muted.small').filter({ hasText: 'geprüften' }).first().innerText()).replace(/\s+/g, ' ');
 ok((await sw.locator('.step-pick-now').count()) === 1 && (await p.locator('main .segmented').count()) === 0, 'the rounds as the switch "‹ Runden ›", no block of three buttons');
-ok(/Letzte 5/.test(await sw.locator('.step-pick-now').innerText()) && (await sw.getByRole('button', { name: 'Nächste' }).isDisabled()), '"Letzte 5" at first, the last one');
-ok(/Aus 5 geprüften/.test(await basis()), `the numbers from 5 rounds (${await basis()})`);
-await sw.getByRole('button', { name: 'Vorherige' }).click();
+// "Alle" at first, always (Sascha 16.11.2026: "Statistik sollte Alle immer Standard sein")
+{
+  const all = (await sw.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ');
+  ok(/Alle/.test(all) && /7 Runden/.test(all) && !/von/.test(all) && (await sw.getByRole('button', { name: 'Vorherige' }).isDisabled()), `"Alle · 7 Runden" at first, the first one, no "1 von 3" (${all})`);
+  ok(/Aus 7 geprüften/.test(await basis()), `the numbers from all 7 rounds (${await basis()})`);
+}
+await sw.getByRole('button', { name: 'Nächste' }).click();
 await p.waitForTimeout(300);
-ok(/Letzte 10/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 7 geprüften/.test(await basis()), `‹ "Letzte 10" (${await basis()})`);
-await sw.getByRole('button', { name: 'Vorherige' }).click();
+ok(/Letzte 10/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 7 geprüften/.test(await basis()), `› "Letzte 10" (${await basis()})`);
+await sw.getByRole('button', { name: 'Nächste' }).click();
 await p.waitForTimeout(300);
-const all = (await sw.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ');
-ok(/Alle/.test(all) && /7 Runden/.test(all) && !/von/.test(all) && (await sw.getByRole('button', { name: 'Vorherige' }).isDisabled()), `‹ "Alle · 7 Runden", the first one, no "1 von 3" (${all})`);
+ok(/Letzte 5/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 5 geprüften/.test(await basis()) && (await sw.getByRole('button', { name: 'Nächste' }).isDisabled()), `› "Letzte 5", the last one (${await basis()})`);
 await sw.locator('.step-pick-now').click();
 const dlg = p.getByRole('dialog', { name: 'Runden' });
 await dlg.waitFor();
 const names = await dlg.locator('.pick-option strong').allInnerTexts();
 ok(names.join('|') === 'Alle|Letzte 10|Letzte 5', `the list: ${names.join(' · ')}`);
-await dlg.locator('.pick-option').filter({ hasText: 'Letzte 5' }).click();
+await dlg.locator('.pick-option').filter({ hasText: 'Alle' }).click();
 await p.waitForTimeout(300);
-ok(/Letzte 5/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 5 geprüften/.test(await basis()), 'picked from the list: "Letzte 5"');
-// the topics as the same switch "‹ Abschlag ›" (Facelift 11.11.2026, R13 – before six chips scrolling sideways), the
+ok(/Alle/.test(await sw.locator('.step-pick-now').innerText()) && /Aus 7 geprüften/.test(await basis()), 'picked from the list: "Alle"');
+// the topics as tabs, as the scorecard's (Sascha 16.11.2026 – before the switch "‹ Abschlag ›" of the Facelift, R13), the
 // directions as SVG arrows (before ←, →, ↑), every block's title small above its card (O6)
 {
-  const topic = p.getByRole('group', { name: 'Thema' });
-  ok((await topic.locator('.step-pick-now').count()) === 1 && (await p.locator('.section-chips').count()) === 0 && /Überblick/.test(await topic.locator('.step-pick-now').innerText()) && /1 von 6/.test(await topic.locator('.step-pick-now').innerText()), `the topics as a switch: ${(await topic.locator('.step-pick-now').innerText()).replace(/\s+/g, ' ')}`);
+  const tabs = p.getByRole('tablist', { name: 'Thema' });
+  const names = (await tabs.getByRole('tab').allInnerTexts()).map((t) => t.trim());
+  ok(names.join('|') === 'Überblick|Abschlag|Grün & kurzes Spiel|Putten|Schläger|Plätze' && (await p.getByRole('group', { name: 'Thema' }).count()) === 0, `the topics as tabs: ${names.join(' · ')}`);
+  ok((await tabs.getByRole('tab', { selected: true }).innerText()).trim() === 'Überblick', '"Überblick" at first');
+  const box = await tabs.boundingBox();
+  ok(!!box && box.x >= 0 && box.x + box.width <= p.viewportSize().width + 1, 'the tab row within the screen (it scrolls sideways inside)');
   ok((await p.locator('main h2').count()) === 0 && (await p.locator('main .eb-block > .eyebrow').count()) >= 1, 'Überblick: the titles as eyebrows, no heading in a card');
-  await topic.getByRole('button', { name: 'Nächste' }).click();
+  await tabs.getByRole('tab', { name: 'Abschlag' }).click();
   await p.waitForTimeout(300);
-  ok(/Abschlag/.test(await topic.locator('.step-pick-now').innerText()), '› goes to "Abschlag"');
+  ok((await tabs.getByRole('tab', { selected: true }).innerText()).trim() === 'Abschlag', 'a tap on "Abschlag"');
   const text = await p.locator('main').innerText();
   ok(!/[←→↑]/.test(text), 'Abschlag: no arrow glyphs in the text');
   ok((await p.locator('.insight-num svg.dir-icon').count()) >= 1 && (await p.locator('.ring-label svg.dir-icon').count()) >= 2, `the tendency tile and the rings "links/rechts verfehlt" with SVG arrows (${await p.locator('.insight-num svg.dir-icon').count()} tiles, ${await p.locator('.ring-label svg.dir-icon').count()} rings)`);
   ok((await p.locator('main h2').count()) === 0 && (await p.locator('main .eb-block > .eyebrow').allTextContents()).includes('Vom Abschlag'), 'Abschlag: "Vom Abschlag" small above its card');
   await pickTopic(p, 'Putten');
-  ok(/Putten/.test(await topic.locator('.step-pick-now').innerText()) && /4 von 6/.test(await topic.locator('.step-pick-now').innerText()), 'a tap lists the topics – "Putten" picked from the sheet');
+  ok((await tabs.getByRole('tab', { selected: true }).innerText()).trim() === 'Putten', '"Putten" by its tab');
   if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stats-topic.png`, fullPage: true });
 }
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);

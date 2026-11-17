@@ -35,7 +35,8 @@ type Range = 5 | 10 | 0;
 type Section = 'overview' | 'tee' | 'green' | 'putting' | 'clubs' | 'courses';
 
 export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void; onToSign?: () => void; /** no round yet: start one */ onNew?: () => void }) {
-  const [range, setRange] = useState<Range>(5);
+  // "Alle" at first, always (Sascha 16.11.2026: "Statistik sollte Alle immer Standard sein")
+  const [range, setRange] = useState<Range>(0);
   const [section, setSection] = useState<Section>('overview');
   // the range's launch monitor shots beside the course's (Sascha 26.10.2026: optional) – off at first, remembered
   const rangeShots = useMemo(() => rangeByClub(), []);
@@ -146,9 +147,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
         </div>
       ) : (
         <>
-          {/* the topics as the same switch as the rounds above, "‹ Abschlag ›" (Facelift 11.11.2026, R13 – before six chips
-              scrolling sideways) */}
-          <StepPick<Section> label={tr('Topic', 'Thema')} value={section} onChange={setSection} options={sections.map((x) => ({ value: x.id, name: x.label }))} />
+          {/* the topics as tabs, as the scorecard's (Sascha 16.11.2026: "den Filter darunter lieber in Tabs darstellen" –
+              before the switch "‹ Abschlag ›" of the Facelift, R13) */}
+          <div className="chip-set sc-tabs stats-tabs" role="tablist" aria-label={tr('Topic', 'Thema')}>
+            {sections.map((x) => (
+              <button key={x.id} type="button" role="tab" aria-selected={section === x.id} className={`chip${section === x.id ? ' on' : ''}`} onClick={() => setSection(x.id)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
           <p className="muted small" style={{ margin: 0 }}>
             {/* what the numbers rest on (Sascha 22.10.2026: "aus 6 geprüften Runden · 2 warten noch") */}
             {tr(`From ${a.rounds} checked ${a.rounds === 1 ? 'round' : 'rounds'}`, `Aus ${a.rounds} geprüften ${a.rounds === 1 ? 'Runde' : 'Runden'}`)}
