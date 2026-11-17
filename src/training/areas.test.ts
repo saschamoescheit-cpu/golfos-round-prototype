@@ -31,3 +31,17 @@ describe('areas', () => {
     expect(none.every((p) => p.level !== 1)).toBe(true);
   });
 });
+
+describe('plan names', () => {
+  it('a plan that names its minutes takes that long (17.11.2026: after Chris took drills out)', async () => {
+    const { DRILLS } = await import('./content');
+    const live = new Set(DRILLS.map((d) => d.id));
+    // waiting for Chris's answer to the proposals of part 3 (his review page): replacements that bring them back
+    const waiting = ['slice-fix-40', 'hook-fix-30', 'tempo-30', 'home-swing-20', 'beginner-60'];
+    for (const p of PLANS.filter((x) => !x.week && !waiting.includes(x.id))) {
+      const named = Number(/(\d+) Min/.exec(p.name.de)?.[1]);
+      if (!named) continue;
+      expect(p.items.filter((i) => live.has(i.drill)).reduce((s, i) => s + i.minutes, 0), p.id).toBe(named);
+    }
+  });
+});

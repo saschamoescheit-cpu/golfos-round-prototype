@@ -62,7 +62,7 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'putt-home-15',
-    name: L('Putting at home 15 min', 'Putten zu Hause 15 Min'),
+    name: L('Putting at home 8 min', 'Putten zu Hause 8 Min'), // 15 before Chris took out the mat and the roll-back trainer (16.11.2026)
     about: L('On a mat or carpet – every evening.', 'Auf Matte oder Teppich – jeden Abend.'),
     level: 0,
     focus: ['putting'],
@@ -75,8 +75,8 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'greens-30',
-    name: L('Reading greens 30 min', 'Grün lesen 30 Min'),
-    about: L('Fall line, feet, apex – and miss on the pro side.', 'Falllinie, Füße, Scheitelpunkt – und auf der Pro-Seite verfehlen.'),
+    name: L('Reading greens 22 min', 'Grün lesen 22 Min'), // 30 before Chris took out feeling the slope with the feet
+    about: L('Fall line and apex – and miss on the pro side.', 'Falllinie und Scheitelpunkt – und auf der Pro-Seite verfehlen.'),
     level: 2,
     focus: ['greenreading', 'putting'],
     items: [
@@ -132,7 +132,7 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'bunker-30',
-    name: L('Bunker 30 min', 'Bunker 30 Min'),
+    name: L('Bunker 26 min', 'Bunker 26 Min'), // 30 before Chris took out splashing without a ball
     about: L('Entry point, open face, then length and special lies.', 'Eintrittspunkt, offene Fläche, dann Länge und besondere Lagen.'),
     level: 1,
     focus: ['bunker'],
