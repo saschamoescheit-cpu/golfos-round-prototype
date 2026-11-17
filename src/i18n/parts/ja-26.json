@@ -48,5 +48,17 @@
   "No drills for this – try another topic.": "これに合うドリルがありません。別のテーマを選んでください。",
   "New drills": "新しいドリル",
   "Like last time": "前回と同じ",
-  "lob": "ロブ"
+  "lob": "ロブ",
+  "Anywhere": "どこでも",
+  "For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.": "そのためには署名済みのラウンドが必要です – ラウンドで署名すると、何で打数を失っているかが分かります。",
+  "I did not catch a topic – choose it below, or say e.g. \"30 minutes putting, direction\".": "テーマを聞き取れませんでした – 下から選ぶか、例えば「30分パッティング、方向性」と言ってください。",
+  "From your rounds: {0}": "あなたのラウンドから：{0}",
+  "What should I practise?": "何を練習すればいい？",
+  "Part {0}": "パート{0}",
+  "Remove part {0}": "パート{0}を削除",
+  "Fault": "ミス",
+  "Another topic": "別のテーマ",
+  "{0}: no drill {1} – the caddie takes others.": "{0}：{1}のドリルはありません – キャディが別のドリルを選びます。",
+  "Start session · {0} min": "セッションを開始 · {0}分",
+  "putt": "パット"
 }

@@ -48,5 +48,17 @@
   "No drills for this – try another topic.": "Tähän ei ole harjoitteita – kokeile toista aihetta.",
   "New drills": "Uudet harjoitteet",
   "Like last time": "Kuten viimeksi",
-  "lob": "lobi"
+  "lob": "lobi",
+  "Anywhere": "Missä tahansa",
+  "For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.": "Tarvitsen siihen allekirjoitettuja kierroksia – allekirjoita ne Kierroksissa, niin tiedän, mikä maksaa sinulle lyöntejä.",
+  "I did not catch a topic – choose it below, or say e.g. \"30 minutes putting, direction\".": "En tunnistanut aihetta – valitse se alta tai sano esim. ”30 minuuttia puttausta, suunta”.",
+  "From your rounds: {0}": "Kierroksistasi: {0}",
+  "What should I practise?": "Mitä minun pitäisi harjoitella?",
+  "Part {0}": "Osa {0}",
+  "Remove part {0}": "Poista osa {0}",
+  "Fault": "Virhe",
+  "Another topic": "Toinen aihe",
+  "{0}: no drill {1} – the caddie takes others.": "{0}: ei harjoitusta {1} – caddie valitsee muita.",
+  "Start session · {0} min": "Aloita harjoitus · {0} min",
+  "putt": "putti"
 }

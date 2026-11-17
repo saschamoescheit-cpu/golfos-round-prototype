@@ -48,5 +48,17 @@
   "No drills for this – try another topic.": "没有适合的练习——换个主题试试。",
   "New drills": "换一批练习",
   "Like last time": "和上次一样",
-  "lob": "高抛"
+  "lob": "高抛",
+  "Anywhere": "不限地点",
+  "For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.": "为此我需要签过名的轮次——在“轮次”里签名后，我就知道是什么让你丢杆了。",
+  "I did not catch a topic – choose it below, or say e.g. \"30 minutes putting, direction\".": "我没听出主题——请在下方选择，或者说例如“30分钟推杆，方向”。",
+  "From your rounds: {0}": "来自你的轮次：{0}",
+  "What should I practise?": "我该练什么？",
+  "Part {0}": "第{0}部分",
+  "Remove part {0}": "移除第{0}部分",
+  "Fault": "失误",
+  "Another topic": "再加一个主题",
+  "{0}: no drill {1} – the caddie takes others.": "{0}：{1}没有练习——球童会选别的。",
+  "Start session · {0} min": "开始练习 · {0} 分钟",
+  "putt": "推杆"
 }

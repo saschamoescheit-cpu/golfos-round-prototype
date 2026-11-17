@@ -48,5 +48,17 @@
   "No drills for this – try another topic.": "Pas d'exercices pour ça – essaie un autre thème.",
   "New drills": "Nouveaux exercices",
   "Like last time": "Comme la dernière fois",
-  "lob": "lob"
+  "lob": "lob",
+  "Anywhere": "Peu importe",
+  "For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.": "Pour cela, j'ai besoin de parties signées – signe-les dans Parcours, et je saurai ce qui te coûte des coups.",
+  "I did not catch a topic – choose it below, or say e.g. \"30 minutes putting, direction\".": "Je n'ai pas compris de thème – choisis-le ci-dessous ou dis p. ex. « 30 minutes de putting, direction ».",
+  "From your rounds: {0}": "D'après tes parties : {0}",
+  "What should I practise?": "Que dois-je travailler ?",
+  "Part {0}": "Partie {0}",
+  "Remove part {0}": "Retirer la partie {0}",
+  "Fault": "Défaut",
+  "Another topic": "Autre thème",
+  "{0}: no drill {1} – the caddie takes others.": "{0} : aucun exercice {1} – le caddie en prend d'autres.",
+  "Start session · {0} min": "Lancer la séance · {0} min",
+  "putt": "putt"
 }

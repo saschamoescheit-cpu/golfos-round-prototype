@@ -48,5 +48,17 @@
   "No drills for this – try another topic.": "Ingen øvelser til dette – prøv et andet emne.",
   "New drills": "Nye øvelser",
   "Like last time": "Som sidste gang",
-  "lob": "lob"
+  "lob": "lob",
+  "Anywhere": "Hvor som helst",
+  "For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.": "Til det skal jeg bruge underskrevne runder – underskriv dem i Runder, så ved jeg, hvad der koster dig slag.",
+  "I did not catch a topic – choose it below, or say e.g. \"30 minutes putting, direction\".": "Jeg fangede ikke et emne – vælg det nedenfor, eller sig f.eks. “30 minutter putting, retning”.",
+  "From your rounds: {0}": "Fra dine runder: {0}",
+  "What should I practise?": "Hvad skal jeg træne?",
+  "Part {0}": "Del {0}",
+  "Remove part {0}": "Fjern del {0}",
+  "Fault": "Fejl",
+  "Another topic": "Endnu et emne",
+  "{0}: no drill {1} – the caddie takes others.": "{0}: ingen øvelse {1} – caddien tager andre.",
+  "Start session · {0} min": "Start sessionen · {0} min",
+  "putt": "putt"
 }
