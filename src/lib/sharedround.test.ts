@@ -745,3 +745,29 @@ describe('a new phone joins a flight whose scorer enters every card (Sascha 17.1
     expect(strokes(ipad, 'p2')[0]).toBe(4);
   });
 });
+
+import { tournamentAt } from './sharedround';
+describe('the tournament on this course today – the warning before a round of one\'s own (Sascha 17.11.2026)', () => {
+  const ev = (o: Partial<RoundEvent> = {}): RoundEvent => ({
+    ...plannedEvent({ name: 'Legends R7', date: '2026-11-16', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stroke', allowance: 0 }, flights: [{ teeTime: '11:50', players: [{ name: 'Sascha', playingHandicap: 7 }, { name: 'Thomas', playingHandicap: 17 }] }] }),
+    ...o,
+  });
+  it('his flight on this course today: found, with his flight', () => {
+    const hit = tournamentAt({ id: course.id, name: course.name }, [{ code: '253481', ev: ev() }], 'Thomas', '2026-11-16');
+    expect(hit?.code).toBe('253481');
+    expect(hit?.flight?.teeTime).toBe('11:50');
+  });
+  it('the course by its name too (another source of the same course)', () => {
+    expect(tournamentAt({ id: 'oga:legends', name: 'hetzenhof' }, [{ code: '1', ev: ev() }], 'Thomas', '2026-11-16')).not.toBeNull();
+  });
+  it('another course, another day, called off, or his flight ended: none', () => {
+    expect(tournamentAt({ id: 'x', name: 'Cypress' }, [{ code: '1', ev: ev() }], 'Thomas', '2026-11-16')).toBeNull();
+    expect(tournamentAt({ id: course.id, name: course.name }, [{ code: '1', ev: ev() }], 'Thomas', '2026-11-17')).toBeNull();
+    expect(tournamentAt({ id: course.id, name: course.name }, [{ code: '1', ev: ev({ deletedAt: '2026-11-15T10:00:00Z' }) }], 'Thomas', '2026-11-16')).toBeNull();
+    const e = ev();
+    const fid = Object.keys(e.flights)[0];
+    const ended = { ...e, flights: { [fid]: { ...e.flights[fid], finishedAt: '2026-11-16T18:00:00Z' } } };
+    expect(tournamentAt({ id: course.id, name: course.name }, [{ code: '1', ev: ended }], 'Thomas', '2026-11-16')).toBeNull();
+    expect(tournamentAt(null, [{ code: '1', ev: ev() }], 'Thomas', '2026-11-16')).toBeNull();
+  });
+});

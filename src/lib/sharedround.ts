@@ -1466,6 +1466,20 @@ export async function tournamentsAhead(): Promise<{ code: string; ev: RoundEvent
   }
 }
 
+/** The tournament (or series round) played today on this course that this person is in – for the warning before a round
+ *  of one's own there (Sascha 17.11.2026, Legends: Thomas's phone played a round of its own beside the tournament, his
+ *  scores never met Sascha's – "ja, die App sollte in diesem Fall warnen"). `found`: the events this account belongs to
+ *  or was invited to. Not one called off, not one whose flight of this name has ended; his own flight first. null: none. */
+export function tournamentAt(course: { id: string; name: string } | null | undefined, found: { code: string; ev: RoundEvent }[], who: string, today = localDay()): { code: string; ev: RoundEvent; flight: Flight | null } | null {
+  if (!course) return null;
+  const same = (c: CourseSummary) => c.id === course.id || (!!plainName(c.name) && plainName(c.name) === plainName(course.name));
+  const hits = found
+    .filter(({ ev }) => isEvent(ev) && !ev.deletedAt && (!ev.date || ev.date === today) && same(ev.course))
+    .map(({ code, ev }) => ({ code, ev, flight: flightOfName(ev, who) }))
+    .filter((h) => !h.flight?.finishedAt && (h.flight || liveFlights(h.ev).some((f) => !f.finishedAt)));
+  return hits.find((h) => h.flight) ?? hits[0] ?? null;
+}
+
 /** A tournament's new flight goes into the event (its own row, the event marked a tournament). */
 export async function addFlight(code: string, flight: Flight): Promise<boolean> {
   const h = await headers();
