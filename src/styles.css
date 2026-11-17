@@ -1838,6 +1838,8 @@ button.tile:disabled { opacity: 1; }
 .review-progress-bar i { display: block; height: 100%; background: var(--brand-text); border-radius: 3px; }
 .notice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .notice-actions .btn-secondary { min-height: 44px; padding: 0 14px; font-size: 14px; flex: 1 1 auto; }
+.tour-here { margin: 4px 0 12px; } /* a round of one's own beside one's tournament today – said before the start (Sascha 17.11.2026) */
+.notice-actions .tour-here-join { min-height: 48px; font-size: 16px; }
 .shot-row { width: 100%; }
 .shot-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .shot-sg { font: 700 13px var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; }

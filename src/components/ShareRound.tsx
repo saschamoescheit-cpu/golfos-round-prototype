@@ -3,7 +3,7 @@ import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
 import { eventCard, shareView, type ShareView } from '../lib/sharedround';
 import { LiveBoard } from './LiveBoard';
-import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, keptOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, netClasses, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, signAsScorer, askReopen, confirmReopen, eventOwner, keptOwner, amHost, reopenAsked, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs, tournamentAt, tournamentsToday, roundInvites } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, loadRounds, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -207,6 +207,54 @@ export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => 
 type NewPlayer = { name: string; hcp: string };
 /** A code being joined when the player went off to sign in with Google: Play opens it again on the way back. */
 export const PENDING_JOIN = 'golfos.join.pending';
+
+/** A round of one's own on a course where one's tournament (or series round) is played today: said before the start,
+ *  with "Turnier beitreten" one tap away (Sascha 17.11.2026, Legends: "ja, die App sollte in diesem Fall warnen" – Thomas's
+ *  phone played a round of its own, the scores Sascha entered never reached it). The tournaments of this account today
+ *  and the rounds it was invited to; nothing while none is found. */
+export function TournamentHere(props: { course: { id: string; name: string } | null | undefined }) {
+  const [hit, setHit] = useState<ReturnType<typeof tournamentAt>>(null);
+  const id = props.course?.id ?? '';
+  useEffect(() => {
+    if (!props.course) return;
+    let gone = false;
+    void (async () => {
+      const own = await tournamentsToday().catch(() => []);
+      // invited (a friend's tap lets him in): the round as the server has it – the ones known already not asked again
+      const invites = (await roundInvites([], true).catch(() => [])).filter((i) => i.kind === 'round' && !own.some((o) => o.code === i.code));
+      const asked = await Promise.all(invites.map(async (i) => ({ code: i.code, ev: (await refreshEvent(i.code).catch(() => null)) ?? cachedEvent(i.code) })));
+      const known = loadTours().filter((t) => !own.some((o) => o.code === t.code)).map((t) => ({ code: t.code, ev: cachedEvent(t.code) ?? t.ev }));
+      const all = [...own, ...asked, ...known].filter((x): x is { code: string; ev: RoundEvent } => !!x.ev);
+      if (!gone) setHit(tournamentAt(props.course, all, shownName(loadProfile()) || myName()));
+    })();
+    return () => {
+      gone = true;
+    };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!hit) return null;
+  const tee = hit.flight?.teeTime;
+  return (
+    <div className="notice tour-here" role="status" aria-label={tr('Tournament on this course today', 'Turnier heute auf diesem Platz')}>
+      <strong>{hit.ev.name}</strong>
+      {' · '}
+      {hit.flight ? (tee ? tr(`your flight ${tee}`, `dein Flight ${tee}`) : tr('your flight', 'dein Flight')) : tr('today on this course', 'heute auf diesem Platz')}
+      <br />
+      {tr(
+        'A new round here is a round of its own: the scores of your flight do not come into it, and it is not on the leaderboard. Join the tournament instead.',
+        'Eine neue Runde hier ist eine eigene Runde: Die Scores deines Flights kommen dort nicht an, und sie steht nicht im Leaderboard. Tritt stattdessen dem Turnier bei.',
+      )}
+      <div className="notice-actions">
+        <button type="button" className="btn-primary tour-here-join" onClick={() => window.dispatchEvent(new CustomEvent('golfos:join-round', { detail: hit.code }))}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 4h8a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-8" />
+            <path d="M4 12h10M10.5 8.5L14 12l-3.5 3.5" />
+          </svg>
+          {tr('Join the tournament', 'Turnier beitreten')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function JoinRoundSheet(props: {
   initial?: string;

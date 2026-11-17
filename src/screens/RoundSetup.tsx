@@ -21,7 +21,7 @@ import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
-import { InvitePanel, myName } from '../components/ShareRound';
+import { InvitePanel, myName, TournamentHere } from '../components/ShareRound';
 import { SettingsList, SettingsRow, AddRow } from '../components/Settings';
 import { AidsRow } from '../components/AidsRow';
 import { SwipeRow } from '../components/SwipeRow';
@@ -311,6 +311,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   return (
     <main className="screen">
       <TopBar title={tr('New round', 'Neue Runde')} onBack={props.onBack} />
+      {/* one's tournament on this course today: said before a round of one's own (Sascha 17.11.2026) */}
+      <TournamentHere course={props.course} />
 
       {kindOpen && (
         <div className="sheet-backdrop" onClick={() => setKindOpen(false)}>
