@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
 import { tr } from '../lib/i18n';
 import { autoHomeAlt } from '../lib/homealt';
@@ -16,6 +16,13 @@ const STYLES: { value: CaddieSettings['style']; label: () => string; hint: () =>
 
 export function CaddieSettingsFields() {
   const [s, setS] = useState<CaddieSettings>(loadCaddieSettings);
+  // another device changed them: read again here – an open sheet stays open (Sascha 17.11.2026, iPad: the sheets closed by
+  // themselves while the iPhone synced – the profile used to rebuild this block on every sync)
+  useEffect(() => {
+    const again = () => setS(loadCaddieSettings());
+    window.addEventListener('golfos:pulled', again);
+    return () => window.removeEventListener('golfos:pulled', again);
+  }, []);
   const auto = autoHomeAlt();
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...s, ...patch };
