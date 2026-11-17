@@ -347,6 +347,16 @@ export const FAQ: FaqTopic[] = [
         video: 'map',
       },
       {
+        // Sascha 17.11.2026, Legends: Thomas's phone showed par on 1–7 for both – his own "New round", not the tournament
+        q: () => tr("My partner's phone shows par instead of my scores – why?", 'Beim Mitspieler steht Par statt meiner Scores – warum?'),
+        a: () =>
+          tr(
+            'Only a phone that joined your round gets its scores – by the code, the QR code or the link; a tournament also under "Tournament today › Take part". A "New round" set up on that phone with the same players is a round of its own: nothing of yours arrives there, and a hole left without a score counts as par on it. Then on that phone: "Join a round", the code of your round – the name finds its place, the card shows your scores, and in a tournament the card is signed there. The other round stays until its owner deletes it. In a round joined, a score kept on another phone never shows par: "–" until it arrives.',
+            'Die Scores bekommt nur ein Handy, das deiner Runde beigetreten ist – per Code, QR-Code oder Link, ein Turnier auch über „Turnier heute › Teilnehmen“. Eine „Neue Runde“ mit denselben Spielern auf dem anderen Handy ist eine eigene Runde: Von dir kommt dort nichts an, und ein Loch ohne Score zählt dort als Par. Dann auf diesem Handy: „Runde beitreten“, den Code deiner Runde – der Name findet seinen Platz, die Karte zeigt deine Scores, im Turnier wird dort auch unterschrieben. Die andere Runde bleibt, bis ihr Besitzer sie löscht. In einer beigetretenen Runde steht bei einem Score, den ein anderes Handy erfasst, nie Par: „–“, bis er ankommt.',
+          ),
+        video: 'map',
+      },
+      {
         q: () => tr('Why do I see a drawn hole instead of the aerial image?', 'Warum sehe ich eine gezeichnete Bahn statt des Luftbilds?'),
         a: () => tr('When the aerial image service does not answer, the app draws the hole. "2D" switches by hand.', 'Wenn der Luftbild-Dienst gerade nicht antwortet, zeichnet die App die Bahn. Mit „2D“ wechselst du von Hand.'),
         video: 'map',
