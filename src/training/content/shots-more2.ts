@@ -410,7 +410,7 @@ export const WOOD_SHOTS: TopicShot[] = [
         L('Only from a good lie and with room in front – otherwise a hybrid or an iron.', 'Nur aus guter Lage und mit Platz davor – sonst Hybrid oder Eisen.'),
       ],
     },
-    drills: ['woods-sweep', 'brush-five', 'tee-low-wood'],
+    drills: ['wood-par5-layup', 'gapping'], // Chris took the sweeping drills out (part 2) – new ones proposed to him
   },
   {
     id: 'wood-tee',
@@ -447,7 +447,7 @@ export const WOOD_SHOTS: TopicShot[] = [
         L('Test it: “3-wood or driver?” – the drill shows where you lose fewer strokes.', 'Teste es: „Holz 3 oder Driver?“ – die Übung zeigt, wo du weniger Schläge verlierst.'),
       ],
     },
-    drills: ['wood-tee-shot', 'wood-off-tee', 'tee-low-wood'],
+    drills: ['gapping'], // Chris took the tee drills out (part 2) – new ones proposed to him
   },
   {
     id: 'hybrid',
@@ -527,7 +527,7 @@ export const DRIVER_SHOTS: TopicShot[] = [
         L('Marks on the top of the head (sky ball): tee higher, ball forward, do not hit down.', 'Spuren oben auf dem Kopf (Kerze): höher aufteen, Ball vorn, nicht abwärts schlagen.'),
       ],
     },
-    drills: ['tee-height', 'hit-up-tee', 'driver-face-gate', 'driver-wide-stance', 'speed-training'],
+    drills: ['tee-height', 'hit-up-tee', 'driver-wide-stance', 'speed-training'],
   },
   {
     id: 'driver-safe',

@@ -93,7 +93,7 @@ export const strategy: Category = {
       looks: L('One bad shot becomes a triple bogey.', 'Ein schlechter Schlag wird zum Triple-Bogey.'),
       cause: L('The hero shot after a miss.', 'Der Heldenschlag nach einem Fehler.'),
       fix: L('Escape rule, bogey plan.', 'Rettungsregel, Bogey-Plan.'),
-      drills: ['bogey-plan', 'escape-decision'],
+      drills: ['bogey-plan'],
     },
   ],
   videos: [

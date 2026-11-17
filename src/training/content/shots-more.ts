@@ -366,7 +366,7 @@ export const SPIN_SHOTS: TopicShot[] = [
       ],
       graphic: 'bounceOpen',
     },
-    drills: ['low-spinner', 'towel-behind', 'tee-after-ball'],
+    drills: ['fairway-vs-rough-spin', 'towel-behind', 'tee-after-ball'],
   },
 ];
 
@@ -457,7 +457,7 @@ export const BUNKER_SHOTS: TopicShot[] = [
         txt([3.4, 1.95], L('enough loft for the lip', 'genug Loft für die Kante'), 11),
       ], L('The lip decides the club.', 'Die Kante bestimmt den Schläger.')),
     },
-    drills: ['fairway-bunker', 'tee-in-sand', 'towel-behind'],
+    drills: ['fairway-bunker-club-up', 'towel-behind'],
   },
   {
     id: 'bunker-plugged',
@@ -703,7 +703,7 @@ export const SLOPE_SHOTS: TopicShot[] = [
       ],
       sketch: aimCurve(1, L('From above: aim right, the ball comes back left.', 'Von oben: rechts zielen, der Ball kommt nach links zurück.')),
     },
-    drills: ['aim-for-slope', 'four-lies-circuit', 'slope-home-balance'],
+    drills: ['aim-for-slope', 'four-lies-circuit'],
     videos: ['2jkum70WgLc', 'Ma3CVK5QNNw', 'vWZvqBnDkEE'],
   },
   {
@@ -735,7 +735,7 @@ export const SLOPE_SHOTS: TopicShot[] = [
       ],
       sketch: aimCurve(-1, L('From above: aim left, the ball comes back right.', 'Von oben: links zielen, der Ball kommt nach rechts zurück.')),
     },
-    drills: ['below-feet-stay', 'four-lies-circuit', 'slope-home-balance'],
+    drills: ['below-feet-stay', 'four-lies-circuit'],
     videos: ['Ma3CVK5QNNw', 'vWZvqBnDkEE', 'Ufp6j_vIIpk'],
   },
 ];
@@ -777,7 +777,7 @@ export const TROUBLE_SHOTS: TopicShot[] = [
         ...landRoll(6, 0.5, 3.6, 5.2, 0.55, flat, [L('under the branches', 'unter den Ästen'), L('runs a long way', 'rollt weit')]),
       ], L('Low flight, long roll.', 'Flacher Flug, langes Rollen.')),
     },
-    drills: ['punch-gap', 'knockdown-wind', 'escape-decision'],
+    drills: ['punch-gap', 'knockdown-wind'],
     videos: ['MvU5yDXHLJw', '2pzn4RuGGy8', 'JzbPT93PoXE'],
   },
   {
@@ -1061,7 +1061,7 @@ export const LOWPOINT_SHOTS: TopicShot[] = [
       ],
       drillPic: 'line-drill-irons',
     },
-    drills: ['line-drill-irons', 'towel-behind', 'tee-after-ball', 'step-drill', 'impact-bag', 'divot-board-drill'],
+    drills: ['line-drill-irons', 'towel-behind', 'tee-after-ball', 'step-drill', 'impact-bag'],
     videos: ['Ifc37epOCqM', 'W_b6ov29TUA', 'fIRndq3lXlk', 'Rn5QtoZZ7OU'],
   },
   {

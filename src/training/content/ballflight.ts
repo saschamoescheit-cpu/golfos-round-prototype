@@ -87,14 +87,14 @@ export const ballflight: Category = {
       looks: L('Strong curve right, weak flight, loss of distance.', 'Starke Kurve nach rechts, schwacher Flug, Längenverlust.'),
       cause: L('Face open to an out-to-in path.', 'Fläche offen zu einer Bahn von außen nach innen.'),
       fix: L('Grip check, gate drill from the inside, headcover outside the ball, split-grip release.', 'Griff-Check, Tor-Übung von innen, Haube außerhalb des Balls, Release mit getrennten Händen.'),
-      drills: ['grip-check', 'slice-gate', 'headcover-outside', 'split-grip'],
+      drills: ['headcover-outside', 'split-grip'],
     },
     {
       name: L('Hook', 'Hook'),
       looks: L('Strong curve left, often low.', 'Starke Kurve nach links, oft flach.'),
       cause: L('Face closed to the path; hands flip.', 'Fläche geschlossen zur Bahn; die Hände klappen über.'),
       fix: L('Weaker grip, keep turning, hold the finish.', 'Schwächerer Griff, weiter drehen, Finish halten.'),
-      drills: ['grip-check', 'hook-gate', 'hold-finish'],
+      drills: ['hook-gate', 'hold-finish'],
     },
     {
       name: L('Shank', 'Shank'),
@@ -108,7 +108,7 @@ export const ballflight: Category = {
       looks: L('The ball rolls along the ground.', 'Der Ball rollt am Boden.'),
       cause: L('Standing up, pulling the arms in, trying to lift the ball.', 'Aufrichten, Arme einziehen, den Ball heben wollen.'),
       fix: L('Keep the posture, brush the grass after the ball.', 'Haltung halten, das Gras nach dem Ball streifen.'),
-      drills: ['tee-after-ball', 'brush-five'],
+      drills: ['tee-after-ball'],
     },
   ],
   videos: [

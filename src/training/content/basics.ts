@@ -107,7 +107,7 @@ export const basics: Category = {
       looks: L('No speed, slice, wrists cannot hinge.', 'Keine Geschwindigkeit, Slice, die Handgelenke winkeln nicht ab.'),
       cause: L('Holding the club like a hammer.', 'Den Schläger halten wie einen Hammer.'),
       fix: L('Grip check with the knuckles and the V.', 'Griff-Check mit den Knöcheln und dem V.'),
-      drills: ['grip-check', 'grip-pressure'],
+      drills: ['grip-pressure'],
     },
   ],
   videos: [

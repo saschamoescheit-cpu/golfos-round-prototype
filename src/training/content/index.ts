@@ -1,3 +1,4 @@
+import { chris2Drills } from './chris2';
 import type { Category, CategoryId, Drill, Motion, Section, TopicShot, ShotPart, Sketch, Video } from '../types';
 import { highlow, lob, lowpoint, spin } from './topics-new';
 import { putting, puttingDrills } from './putting';
@@ -66,6 +67,7 @@ const RAW_DRILLS = [
   ...practiceDrills,
   ...moreDrills,
   ...mobilityDrills, // corrective drills of the mobility screen (17.10.2026)
+  ...chris2Drills, // Chris' review part 2 (16.11.2026): two drills for the gaps
 ] as Drill[];
 /** a side picture with its movement */
 function withMotion<T extends { sketch?: Sketch }>(x: T, motion?: Motion): T {

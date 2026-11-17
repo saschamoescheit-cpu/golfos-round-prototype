@@ -92,7 +92,7 @@ export const trouble: Category = {
       looks: L('From the trees directly into the next trouble.', 'Aus dem Wald direkt in die nächste Gefahr.'),
       cause: L('Overestimating the chance, the green as target.', 'Chance überschätzt, das Grün als Ziel.'),
       fix: L('Escape rule; play the safe target game on a practice round.', 'Rettungsregel; das Sicheres-Ziel-Spiel bei einer Übungsrunde.'),
-      drills: ['escape-decision', 'safe-target'],
+      drills: ['safe-target'],
     },
     {
       name: L('Flyer over the green', 'Flyer über das Grün'),

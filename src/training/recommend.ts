@@ -21,7 +21,7 @@ export interface Advice {
 
 const SG_TO_CAT: Record<SgCategory, { cat: CategoryId; drills: string[] }> = {
   tee: { cat: 'driver', drills: ['fairway-gate', 'tee-height', 'driver-9-shot'] },
-  long: { cat: 'woods', drills: ['woods-sweep', 'hybrid-tee-down'] },
+  long: { cat: 'woods', drills: ['hybrid-tee-down', 'wood-par5-layup'] },
   approach: { cat: 'irons', drills: ['towel-behind', 'line-drill-irons', 'three-distances'] },
   around: { cat: 'chipping', drills: ['landing-ring', 'up-and-down-9', 'chip-ladder'] },
   putting: { cat: 'putting', drills: ['lag-circle', 'clock', 'ball-gate'] },
@@ -79,7 +79,7 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
         add({
           cat: 'ballflight',
           why: right > left ? tr(`Fairway misses: ${right}× right, ${left}× left – a slice pattern`, `Fairway verfehlt: ${right}× rechts, ${left}× links – Slice-Muster`) : tr(`Fairway misses: ${left}× left, ${right}× right – a hook pattern`, `Fairway verfehlt: ${left}× links, ${right}× rechts – Hook-Muster`),
-          drills: right > left ? ['slice-gate', 'split-grip', 'headcover-outside'] : ['hook-gate', 'hold-finish', 'grip-check'],
+          drills: right > left ? ['headcover-outside', 'split-grip', 'aim-check'] : ['hook-gate', 'hold-finish', 'aim-check'],
           weight: fo.gap * 0.9,
         });
     } else if (fo.area === 'Course management') {

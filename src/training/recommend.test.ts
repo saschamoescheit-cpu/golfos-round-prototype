@@ -64,7 +64,7 @@ describe('advice from patterns in the rounds', () => {
     const rs = ['a', 'b'].map((id) => shaped(id, (k) => ({ strokes: 5, fairway: k % 6 === 0 ? 'left' : k % 6 === 1 ? 'hit' : 'right' })));
     const flight = adviceFromRounds(rs).find((a) => a.cat === 'ballflight');
     expect(flight?.why).toMatch(/slice/i);
-    expect(flight?.drills).toContain('slice-gate');
+    expect(flight?.drills).toContain('headcover-outside'); // the slice gate is out (Chris 16.11.2026)
   });
 
   it('many three-putts → length drills, not short-putt drills', () => {

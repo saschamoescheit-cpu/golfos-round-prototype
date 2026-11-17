@@ -13,7 +13,7 @@ export const PLANS: Plan[] = [
     level: 1,
     focus: ['putting'],
     items: [
-      { drill: 'sweetspot-gate', minutes: 6 },
+      { drill: 'coin-line', minutes: 6 }, // for the sweetspot gate Chris took out (part 2, 16.11.2026)
       { drill: 'tiger-gate', minutes: 10 },
       { drill: 'ball-gate', minutes: 8 },
       { drill: 'clock', minutes: 6 },
@@ -157,18 +157,7 @@ export const PLANS: Plan[] = [
       { drill: 'lag-circle', minutes: 8 },
     ],
   },
-  {
-    id: 'chip-home-20',
-    name: L('Short game at home 20 min', 'Kurzes Spiel zu Hause 20 Min'),
-    about: L('Garden or living room: basket, foam balls, mat.', 'Garten oder Wohnzimmer: Korb, Schaumstoffbälle, Matte.'),
-    level: 0,
-    focus: ['chipping', 'putting'],
-    items: [
-      { drill: 'chip-towel-home', minutes: 8 },
-      { drill: 'coin-line', minutes: 5 },
-      { drill: 'wellputt-lines', minutes: 7 },
-    ],
-  },
+  // 'chip-home-20' (Kurzes Spiel zu Hause 20 Min) taken out – Chris 16.11.2026 (only one of its three drills was left)
 
   // ---------- full swing ----------
   {
@@ -448,7 +437,7 @@ export const PLANS: Plan[] = [
         items: [
           { drill: 'wedge-ladder', minutes: 15 },
           { drill: 'random-wedges', minutes: 15 },
-          { drill: 'low-spinner', minutes: 10 },
+          { drill: 'fairway-vs-rough-spin', minutes: 10 },
           { drill: 'flop-shot', minutes: 10 },
           { drill: 'hundred-game', minutes: 10 },
         ],
@@ -595,6 +584,31 @@ export const PLANS: Plan[] = [
       { drill: 'skills-test', minutes: 30 },
       { drill: 'three-distances', minutes: 15 },
       { drill: 'fairway-gate', minutes: 15 },
+    ],
+  },
+  // ---------- Können (Hcp 0–10): Chris took both proposals (part 2, 16.11.2026) ----------
+  {
+    id: 'pro-45-short-pressure',
+    name: L('Advanced 45 min: short game under pressure', 'Können 45 Min: kurzes Spiel unter Druck'),
+    about: L('For single-figure handicaps: holing out, three heights around the green, every length from the sand.', 'Für einstellige Handicaps: Lochen unter Druck, drei Höhen ums Grün, jede Länge aus dem Sand.'),
+    level: 3,
+    focus: ['putting', 'chipping', 'bunker'],
+    items: [
+      { drill: 'mickelson-circle', minutes: 20 },
+      { drill: 'elevator', minutes: 12 },
+      { drill: 'bunker-ladder', minutes: 13 },
+    ],
+  },
+  {
+    id: 'pro-50-ball-flight',
+    name: L('Advanced 50 min: control the ball flight', 'Können 50 Min: Ballflug steuern'),
+    about: L('For single-figure handicaps: nine flights with one club, then draw and fade on purpose.', 'Für einstellige Handicaps: neun Flugkurven mit einem Schläger, dann Draw und Fade mit Absicht.'),
+    level: 3,
+    focus: ['ballflight'],
+    items: [
+      { drill: 'nine-shot', minutes: 20 },
+      { drill: 'draw-on-purpose', minutes: 15 },
+      { drill: 'fade-on-purpose', minutes: 15 },
     ],
   },
 ];

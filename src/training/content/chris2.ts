@@ -1,0 +1,93 @@
+import { L, type Drill } from '../types';
+
+// Two new drills from Chris' review part 2 (16.11.2026, brought by Sascha 17.11.2026): proposals of Sascha and Claude
+// for the gaps his "Raus" left – he took both ("Übernehmen").
+export const chris2Drills: Drill[] = [
+  {
+    id: 'fairway-bunker-club-up',
+    cat: 'bunker',
+    also: ['irons'],
+    name: L('Fairway bunker: one club more, quiet legs', 'Fairwaybunker: ein Schläger mehr, ruhige Beine'),
+    goal: L('From the fairway bunker hit the ball first and still get the length.', 'Aus dem Fairwaybunker den Ball zuerst treffen und trotzdem Länge machen.'),
+    level: 2,
+    minutes: 15,
+    place: 'bunker',
+    balls: 10,
+    needs: [L('a practice bunker with a low lip', 'ein Übungsbunker mit flacher Kante')],
+    setup: L(
+      'A practice bunker with a low lip, 10 balls, a target at 80–120 m, one club more than from the fairway.',
+      'Übungsbunker mit flacher Kante, 10 Bälle, Ziel auf 80–120 m, ein Schläger mehr als vom Fairway.',
+    ),
+    steps: [
+      L('Twist the feet only slightly into the sand – just enough that they do not slip.', 'Füße nur leicht in den Sand drehen – gerade so, dass sie nicht rutschen.'),
+      L('Ball in the middle of the stance, grip the club about 2 cm shorter.', 'Ball in der Mitte des Stands, den Schläger etwa 2 cm kürzer greifen.'),
+      L('A three-quarter swing, quiet lower body, the weight stays forward.', 'Dreiviertelschwung, Unterkörper ruhig, das Gewicht bleibt vorn.'),
+      L('Hit the ball first – the sand only comes after the ball.', 'Ball zuerst treffen – der Sand kommt erst nach dem Ball.'),
+      L('Count: how many of the 10 balls are hit clean and fly at least 80 % of your normal length?', 'Zählen: Wie viele der 10 Bälle sind sauber getroffen und fliegen mindestens 80 % deiner normalen Länge?'),
+    ],
+    scoring: { kind: 'made', of: 10, unit: L('clean and at least 80 % of the length', 'sauber und mindestens 80 % der Länge') },
+    targets: { high: 3, mid: 5, low: 7 },
+    sketch: {
+      view: 'top',
+      w: 3,
+      h: 6,
+      items: [
+        { k: 'fairway', x: 0, y: 0, w: 3, h: 6 },
+        { k: 'sand', x: 0.5, y: 0.2, w: 2, h: 1.6, round: true },
+        { k: 'ball', at: [1.5, 0.9] },
+        { k: 'path', pts: [[1.5, 0.9], [1.5, 5.6]], style: 'flight', arrow: true },
+        { k: 'mark', at: [1.5, 0.9], t: L('ball first – the sand after it', 'erst der Ball – der Sand danach') },
+        { k: 'text', at: [1.5, 5.75], t: L('80–120 m', '80–120 m') },
+      ],
+      caption: L('From the sand: one club more, a three-quarter swing, the ball first.', 'Aus dem Sand: ein Schläger mehr, Dreiviertelschwung, erst der Ball.'),
+    },
+  },
+  {
+    id: 'fairway-vs-rough-spin',
+    cat: 'pitching',
+    also: ['spin'],
+    name: L('Fairway against rough: how far does the ball roll?', 'Fairway gegen Rough: Wie weit rollt der Ball?'),
+    goal: L(
+      'See for yourself how grass between face and ball takes the spin away – and choose the landing spot by it.',
+      'Selbst sehen, wie Gras zwischen Schlagfläche und Ball den Spin nimmt – und den Landepunkt danach wählen.',
+    ),
+    level: 2,
+    minutes: 15,
+    place: 'chipping',
+    balls: 15,
+    needs: [L('a towel', 'ein Handtuch')],
+    setup: L(
+      'A practice green with fringe and light rough, 15 balls, a towel as landing spot at 15–20 m, always the same wedge.',
+      'Übungsgrün mit Vorgrün und leichtem Rough, 15 Bälle, ein Handtuch als Landepunkt auf 15–20 m, immer dasselbe Wedge.',
+    ),
+    steps: [
+      L('Pitch 5 balls from the fairway onto the towel – note where they stop.', '5 Bälle vom Fairway auf das Handtuch pitchen – merken, wo sie liegen bleiben.'),
+      L('5 balls from light rough onto the same towel.', '5 Bälle aus leichtem Rough auf dasselbe Handtuch.'),
+      L('Compare the roll-out: from the rough the ball usually rolls clearly further.', 'Ausrollen vergleichen: Aus dem Rough rollt der Ball meist deutlich weiter.'),
+      L('5 more from the rough – land them so much shorter that they stop at the target.', 'Noch einmal 5 aus dem Rough – den Landepunkt so weit vorverlegen, dass sie am Ziel liegen bleiben.'),
+    ],
+    scoring: { kind: 'meters', unit: L('the last 5 from the rough: average to the target', 'die letzten 5 aus dem Rough: im Mittel zum Ziel'), lower: true },
+    targets: { high: 5, mid: 4, low: 3 },
+    sketch: {
+      view: 'top',
+      w: 4,
+      h: 7,
+      items: [
+        { k: 'rough', x: 0, y: 0, w: 4, h: 7 },
+        { k: 'fairway', x: 0, y: 0, w: 2, h: 2.2 },
+        { k: 'green', x: 0.3, y: 3, w: 3.4, h: 3.8, round: true },
+        { k: 'towel', x: 1.55, y: 3.6, w: 0.9, h: 0.3 },
+        { k: 'hole', at: [2, 5.6] },
+        { k: 'ball', at: [1, 1.2] },
+        { k: 'ball', at: [3, 1.2] },
+        { k: 'path', pts: [[1, 1.2], [1.9, 3.75]], style: 'flight' },
+        { k: 'path', pts: [[1.9, 3.75], [2, 5.4]], style: 'roll' },
+        { k: 'path', pts: [[3, 1.2], [2.1, 3.75]], style: 'flight' },
+        { k: 'path', pts: [[2.1, 3.75], [2.2, 6.6]], style: 'roll' },
+        { k: 'text', at: [1, 0.6], t: L('fairway', 'Fairway') },
+        { k: 'text', at: [3, 0.6], t: L('rough', 'Rough') },
+      ],
+      caption: L('Same landing spot: from the rough the ball rolls further – land it shorter.', 'Gleicher Landepunkt: Aus dem Rough rollt der Ball weiter – kürzer landen.'),
+    },
+  },
+];

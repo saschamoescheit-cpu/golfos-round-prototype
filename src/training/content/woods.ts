@@ -49,14 +49,14 @@ export const woods: Category = {
       looks: L('The ball rolls along the ground.', 'Der Ball rollt am Boden entlang.'),
       cause: L('Trying to lift the ball, standing up, ball too far forward.', 'Den Ball heben wollen, Aufrichten, Ball zu weit vorn.'),
       fix: L('Sweep drill with a tee, brush the grass, chest over the ball.', 'Fege-Übung mit Tee, das Gras streifen, Brust über dem Ball.'),
-      drills: ['woods-sweep', 'tee-low-wood'],
+      drills: [],
     },
     {
       name: L('Fat (chunked) woods', 'Fette Hölzer'),
       looks: L('Big divot, short.', 'Großes Divot, kurz.'),
       cause: L('Too steep, as with an iron; weight back.', 'Zu steil, wie mit dem Eisen; Gewicht hinten.'),
       fix: L('Wide, flat takeaway; brush, not dig.', 'Weites, flaches Ausholen; fegen, nicht graben.'),
-      drills: ['woods-sweep', 'brush-five'],
+      drills: [],
     },
   ],
   videos: [

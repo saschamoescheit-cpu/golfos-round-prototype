@@ -78,7 +78,9 @@ describe('training content', () => {
       expect(filled(c.name) && filled(c.short) && filled(c.intro), c.id).toBe(true);
       expect(c.sections.length + (c.shots?.length ?? 0), c.id).toBeGreaterThan(1);
       // the topics new as shots (15.11.2026) are built from the drills their shots use
-      expect(c.shots?.length && !DRILLS.some((d) => d.cat === c.id) ? drillsOf(c.id).length >= 3 : DRILLS.filter((d) => d.cat === c.id).length >= 5, c.id).toBe(true);
+      // the woods: Chris took 9 of their drills out (part 2, 16.11.2026) – new ones are proposed to him; until then 3
+      const least = c.id === 'woods' ? 3 : 5;
+      expect(c.shots?.length && !DRILLS.some((d) => d.cat === c.id) ? drillsOf(c.id).length >= 3 : DRILLS.filter((d) => d.cat === c.id).length >= least, c.id).toBe(true);
       for (const v of c.videos ?? []) expect(v.id, c.id).toMatch(/^[A-Za-z0-9_-]{11}$/);
     }
   });

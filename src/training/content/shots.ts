@@ -109,7 +109,7 @@ const CHIP_SHOTS: TopicShot[] = [
       ],
       sketch: S(6, 2.2, [hill(6, 0.2, 0.62).item, ...landRoll(6, 0.6, 3.4, 4.6, 0.95, hill(6, 0.2, 0.62).at, [L('higher, shorter', 'höher, kürzer'), L('little roll', 'wenig Rollen')])], L('Uphill: land it closer to the hole.', 'Bergauf: näher zur Fahne landen.')),
     },
-    drills: ['slope-chips', 'slope-ball-position', 'slope-home-balance'],
+    drills: ['slope-chips', 'slope-ball-position'],
   },
   {
     id: 'chip-downhill',
@@ -154,7 +154,7 @@ const CHIP_SHOTS: TopicShot[] = [
       ],
       sketch: S(6, 2.2, [hill(6, 0.75, 0.2).item, ...landRoll(6, 0.6, 2.0, 4.6, 0.55, hill(6, 0.75, 0.2).at, [L('lower', 'flacher'), L('long roll', 'langes Rollen')])], L('Downhill: land it short.', 'Bergab: kurz landen.')),
     },
-    drills: ['slope-chips', 'slope-ball-position', 'slope-home-balance'],
+    drills: ['slope-chips', 'slope-ball-position'],
   },
   {
     id: 'chip-above-feet',
@@ -200,7 +200,7 @@ const CHIP_SHOTS: TopicShot[] = [
       ],
       sketch: aimCurve(1, L('From above: aim right, the ball comes back left.', 'Von oben: rechts zielen, der Ball kommt nach links zurück.')),
     },
-    drills: ['slope-chips', 'aim-for-slope', 'slope-home-balance'],
+    drills: ['slope-chips', 'aim-for-slope'],
   },
   {
     id: 'chip-below-feet',
@@ -239,7 +239,7 @@ const CHIP_SHOTS: TopicShot[] = [
       ],
       sketch: aimCurve(-1, L('From above: aim left, the ball comes back right.', 'Von oben: links zielen, der Ball kommt nach rechts zurück.')),
     },
-    drills: ['below-feet-stay', 'slope-chips', 'slope-home-balance'],
+    drills: ['below-feet-stay', 'slope-chips'],
   },
   {
     id: 'chip-bare',

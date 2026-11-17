@@ -5,7 +5,7 @@ const ids = (q: string) => search(q).drills.map((d) => d.id);
 
 describe('training search (night run 16./17.10.2026)', () => {
   it('finds the drills of a fault by its name (Slice, Hook, Shank)', () => {
-    expect(ids('Slice')).toContain('slice-gate');
+    expect(ids('Slice')).toContain('headcover-outside'); // the slice gate is out (Chris 16.11.2026)
     expect(ids('Hook')).toContain('hook-gate');
     expect(ids('Shank')).toContain('shank-tee');
   });

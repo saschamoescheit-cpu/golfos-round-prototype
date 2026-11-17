@@ -75,7 +75,7 @@ export const driver: Category = {
       looks: L('The ball curves strongly to the right.', 'Der Ball dreht stark nach rechts.'),
       cause: L('Open face to an out-to-in path; often a weak grip and shoulders open at address.', 'Offene Fläche zu einer Bahn von außen nach innen; oft schwacher Griff und offene Schultern beim Ansprechen.'),
       fix: L('See Ball flight: grip, gate drill, headcover outside.', 'Siehe Ballflug: Griff, Tor-Übung, Schlägerhaube außen.'),
-      drills: ['slice-gate', 'headcover-outside', 'grip-check'],
+      drills: ['headcover-outside'],
     },
     {
       name: L('Sky ball (pop-up)', 'Kerze (Sky Ball)'),
@@ -89,7 +89,7 @@ export const driver: Category = {
       looks: L('Short drives that curve.', 'Kurze Drives, die drehen.'),
       cause: L('Distance to the ball changes during the swing.', 'Der Abstand zum Ball ändert sich während des Schwungs.'),
       fix: L('Strike spray and the two-tee gate.', 'Treffspray und das Zwei-Tee-Tor.'),
-      drills: ['driver-face-gate'],
+      drills: [],
     },
   ],
   videos: [
