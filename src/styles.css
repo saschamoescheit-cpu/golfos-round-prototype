@@ -1191,7 +1191,8 @@ button.tile:disabled { opacity: 1; }
 /* friends to add with a tap; the Games balance */
 .friend-chips { display: flex; flex-direction: column; gap: 6px; }
 /* tournaments planned in Games (Sascha 01.11.2026): flights with tee times and markers */
-.tile-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* three a row, filled row by row (Sascha 16.11.2026: the Bilanz's six tiles stood 3 narrow + 3 wide in one line, "Wetten" cut off) */
+.tile-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row; }
 .tour-flight { display: flex; flex-direction: column; gap: 8px; }
 .tour-flight-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tour-scorer { color: var(--brand-text); font-weight: 600; }
