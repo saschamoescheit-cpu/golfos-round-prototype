@@ -137,3 +137,16 @@ describe('the session', () => {
     expect(compose(one(30, 'irons', 'mixed', 'range'), { seed: 5 }).every((i) => drillById(i.drill)!.place === 'range')).toBe(true);
   });
 });
+
+describe('a user check (17.11.2026)', () => {
+  it('a long session with few drills: no drill runs much longer than its own time, the time is still filled', () => {
+    const s = compose({ parts: [{ minutes: 90, cat: 'woods', focus: 'mixed' }], where: 'any' }, { seed: 6 });
+    expect(total(s)).toBe(90);
+    const worst = Math.max(...s.slice(0, -1).map((i) => i.minutes / drillById(i.drill)!.minutes));
+    expect(worst).toBeLessThanOrEqual(2);
+  });
+  it('a time that is not in the list (25 minutes, 2 hours) is kept', () => {
+    expect(readWish('25 Minuten Chippen', DEFAULT_WISH).wish.parts[0].minutes).toBe(25);
+    expect(readWish('2 Stunden Eisen', DEFAULT_WISH).wish.parts[0].minutes).toBe(120);
+  });
+});

@@ -320,7 +320,22 @@ export function compose(w: Wish, o: { seed?: number; avoid?: string[]; recent?: 
       left -= m;
     }
     // not enough drills: the last one takes the rest; too much: the last one gives back
-    if (mine.length && left !== 0) mine[mine.length - 1].minutes = Math.max(5, mine[mine.length - 1].minutes + left);
+    // too much: the last one gives back; not enough drills for the time: every drill a little longer (a user check
+    // 17.11.2026: one drill of 60 minutes is no session), up to twice its own length; what is left the last one takes
+    if (mine.length && left < 0) mine[mine.length - 1].minutes = Math.max(5, mine[mine.length - 1].minutes + left);
+    for (let round = 0; left >= 5 && round < 20; round++) {
+      let grew = false;
+      for (const it of mine) {
+        const own = DRILLS.find((d) => d.id === it.drill)?.minutes ?? it.minutes;
+        if (left >= 5 && it.minutes + 5 <= own * 2) {
+          it.minutes += 5;
+          left -= 5;
+          grew = true;
+        }
+      }
+      if (!grew) break;
+    }
+    if (mine.length && left > 0) mine[mine.length - 1].minutes += left;
     items.push(...mine);
   });
   return items;

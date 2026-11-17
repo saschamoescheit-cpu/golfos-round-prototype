@@ -947,7 +947,8 @@ function CaddiePlanner(props: { nav: Nav; rounds: Round[] }) {
             onClick={async () => {
               if (listening.current) return listening.current.stop();
               const l = startListening((w) => setWords(w));
-              if (!l) return;
+              // the microphone not allowed or not there: say so, typing still works (user check 17.11.2026)
+              if (!l) return setNote(tr('The microphone is not available – type what you want to practise.', 'Das Mikrofon ist nicht verfügbar – schreib, was du üben willst.'));
               listening.current = l;
               setWords('');
               setHeard(true);
@@ -993,7 +994,7 @@ function CaddiePlanner(props: { nav: Nav; rounds: Round[] }) {
             )}
             <SettingsList label={many ? tr(`Part ${i + 1}`, `Teil ${i + 1}`) : tr('Your session', 'Deine Einheit')}>
               <ChoiceRow label={tr('Topic', 'Thema')} options={topics} value={p.cat} onChange={(v) => setPart(i, { cat: v, fault: undefined })} />
-              <ChoiceRow label={tr('Time', 'Zeit')} options={MINUTES.map((m) => ({ value: m, name: `${m} min` }))} value={p.minutes} onChange={(m) => setPart(i, { minutes: m })} />
+              <ChoiceRow label={tr('Time', 'Zeit')} options={[...new Set([...MINUTES, p.minutes])].sort((x, y) => x - y).map((m) => ({ value: m, name: `${m} min` }))} value={p.minutes} onChange={(m) => setPart(i, { minutes: m })} />
               <ChoiceRow label={tr('Focus', 'Schwerpunkt')} options={(Object.keys(FOCUS_NAME) as Focus[]).map((x) => ({ value: x, name: FOCUS_NAME[x]() }))} value={p.focus} onChange={(v) => setPart(i, { focus: v })} />
               {(c?.faults?.length ?? 0) > 0 && <ChoiceRow label={tr('Fault', 'Fehler')} options={faults} value={p.fault ?? -1} onChange={(v) => setPart(i, { fault: v < 0 ? undefined : v })} />}
             </SettingsList>
