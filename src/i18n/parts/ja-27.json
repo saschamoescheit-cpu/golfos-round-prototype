@@ -1,0 +1,11 @@
+{
+ "altitude {0} m · yours {1} m": "標高 {0} m · あなた {1} m",
+ "Height of your distances": "飛距離の基準標高",
+ "Where your distances come from": "飛距離を測った場所",
+ "Automatic": "自動",
+ "Your home course {0}{1}": "ホームコース {0}{1}",
+ "Your home course from the profile – not found yet: choose a height": "プロフィールのホームクラブ – まだ見つかりません：標高を選んでください",
+ "0 m – sea level": "0 m – 海抜0",
+ "Altitude {0} m (your distances {1} m)": "標高 {0} m（あなたの飛距離 {1} m）",
+ "How long the shot plays today: with the wind, the temperature, up- or downhill – and the course’s height above the sea: the ball flies about 2 % further per 300 m higher than where your distances come from (Profile → Caddie → \"Height of your distances\": \"Automatic\" takes your home course).": "今日その一打がどれだけの距離に相当するか：風、気温、打ち上げ・打ち下ろし――そしてコースの標高も。飛距離を測った場所より300 m高いごとにボールは約2 %遠くへ飛びます（プロフィール → キャディ → 「飛距離の基準標高」：「自動」はホームクラブを使います）。"
+}

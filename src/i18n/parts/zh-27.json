@@ -1,0 +1,11 @@
+{
+ "altitude {0} m · yours {1} m": "海拔 {0} m · 你的 {1} m",
+ "Height of your distances": "你距离的基准海拔",
+ "Where your distances come from": "你的距离是在哪里测得的",
+ "Automatic": "自动",
+ "Your home course {0}{1}": "你的主场 {0}{1}",
+ "Your home course from the profile – not found yet: choose a height": "个人资料中的主场俱乐部 – 尚未找到：请选择海拔",
+ "0 m – sea level": "0 m – 海平面",
+ "Altitude {0} m (your distances {1} m)": "海拔 {0} m（你的距离 {1} m）",
+ "How long the shot plays today: with the wind, the temperature, up- or downhill – and the course’s height above the sea: the ball flies about 2 % further per 300 m higher than where your distances come from (Profile → Caddie → \"Height of your distances\": \"Automatic\" takes your home course).": "这一杆今天相当于多远：考虑风、气温、上坡或下坡——以及球场的海拔：比你测得距离的地方每高 300 m，球大约多飞 2 %（个人资料 → 球童 → “你距离的基准海拔”：“自动”采用你的主场俱乐部）。"
+}

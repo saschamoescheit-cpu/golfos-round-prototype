@@ -37,6 +37,18 @@ describe('AI caddie', () => {
     expect(aimAdvice(-9, null, 'Dr', -17)).toBe('Aim at the left edge of the fairway (wind + slope)');
     expect(aimAdvice(25, null, 'Dr')).toBe('Aim 20 m right (wind)');
   });
+  // Sascha 16.11.2026: "je 300 Höhenmeter fliegt der Ball 2 % länger" – against the height the distances come from
+  it('altitude: a course 400 m lower than home plays longer, a higher one shorter; at home nothing', () => {
+    const still = { windKmh: 0, gustKmh: 0, windFromDeg: 0, tempC: 20 };
+    const florida = playsLike(150, 0, { ...still, alt: { here: 30, home: 400 } }, 0);
+    expect(Math.round(florida.alt)).toBe(4); // 150 × 2 % × 370/305
+    expect(Math.round(florida.playsLike)).toBe(154);
+    expect(explain(florida, { ...still, alt: { here: 30, home: 400 } })).toContain('Altitude 30 m (your distances 400 m): +4 m');
+    const denver = playsLike(150, 0, { ...still, alt: { here: 1600, home: 0 } }, 0);
+    expect(Math.round(denver.alt)).toBe(-16); // a mile high: about 10 % further
+    expect(playsLike(150, 0, { ...still, alt: { here: 400, home: 400 } }, 0).alt).toBeCloseTo(0, 5);
+    expect(playsLike(150, 0, still, 0).alt).toBe(0); // the height not known: nothing
+  });
   it('crosswind from the right: aim right', () => {
     const p = playsLike(150, 0, { windKmh: 20, gustKmh: 20, windFromDeg: 90, tempC: 20 }, 0);
     expect(p.crossKmh).toBe(20);

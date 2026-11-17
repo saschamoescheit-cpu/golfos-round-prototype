@@ -40,6 +40,7 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
+import { homeAltitude } from '../lib/homealt';
 import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, warmUpSwing, watchHoleFor, watchPlaceWins, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { TeeSwitchSheet, roundTees, withTee } from '../components/TeeSwitch';
@@ -909,6 +910,15 @@ export function HoleScreen(props: {
     };
   }, [round.courseId]);
   const heightAt = (p: LngLat) => (tgrid ? gridHeight(tgrid, p) : null) ?? hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
+  // the height above the sea the player's distances come from (Sascha 16.11.2026: "2 % per 300 m") – his home course's
+  const [homeAlt, setHomeAlt] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void homeAltitude().then((a) => alive && setHomeAlt(a));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Moved on to the next hole without a score on the last one: score and putts are what the round check needs to
   // find the shots – one tap back to enter them.
@@ -1593,7 +1603,10 @@ export function HoleScreen(props: {
   }
 
   if (view === 'map' && mapData) {
-    const conditions = weather ? { windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg, tempC: weather.tempC } : null;
+    // the course's height above the sea against the home course's – the hole's tee (a few metres up or down on the
+    // course count as uphill or downhill already)
+    const altHere = heightAt(mapData.tee);
+    const conditions = weather ? { windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg, tempC: weather.tempC, ...(altHere != null && homeAlt != null ? { alt: { here: altHere, home: homeAlt } } : {}) } : null;
     // The caddie's spread model works with the 18-hole playing handicap; a 9-hole round carries the 9-hole value
     // (about half – right for Stableford), so it is doubled here.
     const caddiePlaying = playing18(round.holes.length, me.playingHandicap);

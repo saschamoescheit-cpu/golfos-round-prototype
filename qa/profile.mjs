@@ -73,7 +73,8 @@ ok((await p.locator('main .list-item').filter({ hasText: /^Freunde/ }).count()) 
 {
   const caddie = p.getByRole('region', { name: 'Caddie', exact: true });
   const rows = (await caddie.locator('.settings-list > .settings-row').allInnerTexts()).map((t) => t.split(String.fromCharCode(10))[0].trim());
-  ok(rows.join('|') === 'Schlägerempfehlungen|Grün-Neigung auf dem Grün|Von selbst vorlesen|Wie der Caddie plant' && (await caddie.locator('.card, .drawer-list').count()) === 0, `Caddie: rows of a settings list, no card (${rows.join(' · ')})`);
+  // + "Höhe deiner Weiten" (Sascha 16.11.2026: the course's height above the sea)
+  ok(rows.join('|') === 'Schlägerempfehlungen|Grün-Neigung auf dem Grün|Von selbst vorlesen|Wie der Caddie plant|Höhe deiner Weiten' &&(await caddie.locator('.card, .drawer-list').count()) === 0, `Caddie: rows of a settings list, no card (${rows.join(' · ')})`);
   const subs = await caddie.locator('.onoff-row .switch-label .muted.small').allInnerTexts();
   ok(subs.length === 3 && subs.every((t) => t.trim().length > 3), `each of the three switches with its line (${subs.join(' · ')})`);
   const push = p.getByRole('region', { name: 'Mitteilungen' });
