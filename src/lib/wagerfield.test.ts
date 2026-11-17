@@ -89,3 +89,24 @@ describe("a guest of the pool – in it only for a 5+5+10 – never pays the poo
     expect(isGuest(p2, 'gast')).toBe(false);
   });
 });
+
+// gate usarehearsal (17.11.2026): Erik joined the pool by its link, has no bet of his own yet, only a 5+5+10 – a member
+describe('a member with only a 5+5+10 is no guest', () => {
+  const duel: Wager = { id: 'd2', player: 'chris', opponent: 'erik', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: '2026-11-15' };
+  const base: WagerPool = { ...pool, wagers: [bet('ws', 'sascha'), duel], progress: { ws: pool.progress.ws } };
+  const withErik = (erik: Partial<(typeof players)[number]> & { joined?: { name: string; at: string }; invited?: { uid: string; name: string; at: string }; guest?: boolean }) => ({ ...base, players: players.map((p) => (p.id === 'erik' ? { ...p, ...erik } : p)) });
+  it('joined by his phone: a member – he pays Sascha', () => {
+    const p = withErik({ joined: { name: 'Erik', at: '' } });
+    expect(isGuest(p, 'erik')).toBe(false);
+    expect(roundPayers(p, p.wagers[0], '2026-11-15')).toContain('erik');
+  });
+  it('invited by the host: a member', () => {
+    expect(isGuest(withErik({ invited: { uid: 'u', name: 'Erik', at: '' } }), 'erik')).toBe(false);
+  });
+  it('brought in by the 5+5+10 (marked a guest): a guest even after his phone joined', () => {
+    expect(isGuest(withErik({ joined: { name: 'Erik', at: '' }, guest: true }), 'erik')).toBe(true);
+  });
+  it('from before, never joined nor invited, only the 5+5+10 (Daniel): a guest', () => {
+    expect(isGuest(withErik({}), 'erik')).toBe(true);
+  });
+});
