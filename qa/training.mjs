@@ -200,7 +200,7 @@ ok((await block('Zuletzt angesehen').locator('.tr-mini').first().innerText()).in
 
 // fault finder
 await p.locator('.chip').filter({ hasText: 'Slice' }).first().click();
-ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 3, 'fault finder: Slice shows cause, cure and drills');
+ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 2, 'fault finder: Slice shows cause, cure and drills (2 since Chris took out grip check and slice gate, 16.11.2026)');
 await back();
 
 // the built-in metronome on a distance drill (Sascha 16.10.2026)
