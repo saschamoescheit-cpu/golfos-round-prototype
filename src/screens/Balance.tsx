@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { convert, fetchRate, homeMoney, moneyOfSym, symOf, type Money } from '../lib/fx';
 import { FloatActions } from '../components/FloatActions';
 import { tr } from '../lib/i18n';
@@ -38,6 +38,14 @@ function Amounts(props: { m: Record<string, number>; plain?: boolean; zero?: str
     </>
   );
 }
+
+/** the text of Amounts – its length sizes the numbers of the tiles (Sascha 17.11.2026, tilefit: "+4250 $" over the edge of
+ *  the Bilanz tile on an iPhone SE) */
+const amountsText = (m: Record<string, number>, plain?: boolean, zero?: string) => {
+  const parts = Object.entries(m).filter(([, v]) => Math.abs(v) > 0.004);
+  if (!parts.length) return money(0, zero ?? '€');
+  return parts.map(([sym, v]) => (plain ? money(Math.abs(v), sym) : formatEuro(v, sym))).join(' · ');
+};
 
 // the marks of the tiles – as the tiles of Rounds and Games (Sascha 03.11.2026: "the tiles have no icons of their own")
 const tileIcon = (d: ReactNode) => (
@@ -347,7 +355,12 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         </button>
       )}
       {(done.length > 0 || pools.length > 0) && (
-        <section className="tile-row tile-row-3 balance-totals" aria-label={tr('Totals', 'Summen')}>
+        <section
+          className="tile-row tile-row-3 balance-totals"
+          aria-label={tr('Totals', 'Summen')}
+          // the longest amount of the row: the numbers of all six tiles sized to fit it (one size in the row)
+          style={{ '--chars': Math.max(4, ...[amountsText(gain, true, zero), amountsText(loss, true, zero), amountsText(total, false, zero)].map((t) => t.length)) } as CSSProperties}
+        >
           <button type="button" className="tile" aria-pressed={filter === 'games'} disabled={!counts.games} onClick={() => pick('games')}>
             <span className="tile-head">
               <strong className="tile-num">{done.length}</strong>

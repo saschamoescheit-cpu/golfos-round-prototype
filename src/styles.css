@@ -2380,8 +2380,15 @@ button.tile:disabled { opacity: 1; }
 .balance-notice .grow { flex: 1; min-width: 0; }
 .balance-notice-go { display: block; margin-top: 4px; }
 /* the tiles of the Bilanz as those of Rounds (Sascha 03.11.2026) – an amount on one line, smaller on a narrow phone */
-.balance-totals .tile { padding-left: 10px; padding-right: 10px; }
-.balance-totals .tile-num { font-size: clamp(15px, 4.6vw, 24px); }
+.balance-totals .tile { padding-left: 10px; padding-right: 10px; container-type: inline-size; }
+/* the numbers sized to the tile and the longest amount of the row (--chars, Balance.tsx) – a long "+4250 $" never over the
+   edge (Sascha 17.11.2026, tilefit on an iPhone SE); 0.6em a character, 22px the mark beside it */
+.balance-totals .tile-num { font-size: clamp(12px, calc((100cqi - 22px) / (var(--chars, 6) * 0.6)), 24px); }
+/* a tile too narrow for the mark beside the amount: the marks of the row away, the number the whole width */
+@container (max-width: 84px) {
+  .balance-totals .tile-mark { display: none; }
+  .balance-totals .tile-num { font-size: clamp(11px, calc(100cqi / (var(--chars, 6) * 0.6)), 24px); }
+}
 /* the person sheet of the Bilanz (Sascha 03.11.2026: "more clearly"): a block a game or bet – name, day and course, score; amount and state on the right */
 .balance-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .balance-items li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
