@@ -163,12 +163,14 @@ export function ShotSheet(props: {
                 {tr('On the map', 'Auf der Karte')}
               </button>
             </div>
-            <Chips<AimKind>
-              label={tr('Aim', 'Ziel')}
-              value={props.aim.kind}
-              onChange={(v) => (v ? props.aim!.onChoose(v) : props.aim!.onClear())}
-              options={props.aim.choices.map((c) => ({ value: c.value, label: c.label() }))}
-            />
+            {props.aim.choices.length > 0 && (
+              <Chips<AimKind>
+                label={tr('Aim', 'Ziel')}
+                value={props.aim.kind}
+                onChange={(v) => (v ? props.aim!.onChoose(v) : props.aim!.onClear())}
+                options={props.aim.choices.map((c) => ({ value: c.value, label: c.label() }))}
+              />
+            )}
           </div>
         )}
         <div className="field">

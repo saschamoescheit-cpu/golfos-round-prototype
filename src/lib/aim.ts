@@ -28,22 +28,23 @@ export function besideLine(from: LngLat, p: LngLat, m: number): LngLat {
 export const aimsAtFairway = (shotIndex: number, par: number): boolean => shotIndex === 0 && par >= 4;
 
 /** The chips a shot offers: the fairway off the tee of a par 4/5, else the flag, the green and a lay-up. */
+// the names of every aim – also the fairway ones set before 16.11.2026 (Sascha: "Die Auswahlen Bahnmitte, Bahn links
+// und Bahn rechts kann entfernt werden" – off the tee the aim is set on the map)
+const AIM_NAMES: { value: Exclude<AimKind, 'map'>; label: () => string }[] = [
+  { value: 'left', label: () => tr('Fairway left', 'Bahn links') },
+  { value: 'middle', label: () => tr('Fairway middle', 'Bahnmitte') },
+  { value: 'right', label: () => tr('Fairway right', 'Bahn rechts') },
+  { value: 'flag', label: () => tr('Flag', 'Fahne') },
+  { value: 'green', label: () => tr('Green centre', 'Grünmitte') },
+  { value: 'layup', label: () => tr('Lay up', 'Vorlegen') },
+];
+/** The chips of "Wohin hast du gezielt?": off the tee none (the aim on the map), later Fahne / Grünmitte / Vorlegen. */
 export function aimChoices(fairway: boolean): { value: AimKind; label: () => string }[] {
-  return fairway
-    ? [
-        { value: 'left', label: () => tr('Fairway left', 'Bahn links') },
-        { value: 'middle', label: () => tr('Fairway middle', 'Bahnmitte') },
-        { value: 'right', label: () => tr('Fairway right', 'Bahn rechts') },
-      ]
-    : [
-        { value: 'flag', label: () => tr('Flag', 'Fahne') },
-        { value: 'green', label: () => tr('Green centre', 'Grünmitte') },
-        { value: 'layup', label: () => tr('Lay up', 'Vorlegen') },
-      ];
+  return fairway ? [] : AIM_NAMES.filter((c) => c.value === 'flag' || c.value === 'green' || c.value === 'layup');
 }
 
 export const aimName = (k: AimKind | undefined): string | null =>
-  !k ? null : k === 'map' ? tr('set on the map', 'auf der Karte gesetzt') : ([...aimChoices(true), ...aimChoices(false)].find((c) => c.value === k)?.label() ?? null);
+  !k ? null : k === 'map' ? tr('set on the map', 'auf der Karte gesetzt') : (AIM_NAMES.find((c) => c.value === k)?.label() ?? null);
 
 /** What the shot is measured against when no aim is set: the middle of the hole at the ball's distance (tee shot, par
  *  4/5) or the flag – as the club statistics do. */

@@ -1141,6 +1141,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 : undefined
             }
             walked={walked}
+            aims={(d?.shots ?? []).flatMap((s, n) => (s.pos && s.aim ? [{ from: s.pos, pos: s.aim, n: n + 1 }] : []))}
             track={[
               // the shots noted by hand on the course: shown and movable here too (Sascha 17.10.2026) – unless the hole's
               // shots are made of them: then each shot is drawn as its hand circle with its club, once (20.10.2026)
@@ -1407,6 +1408,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   {(s.strike && s.strike !== 'slice' && s.strike !== 'hook') || flightOf(s) || s.intent || (s.review && !odd) ? (
                     <span className="muted small" style={{ display: 'block' }}>
                       {[s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? strikeName(s.strike) : '', flightOf(s) ? flightName(flightOf(s)!) : '', s.intent ? intentName(s.intent) : '', s.review && !odd ? tr('check', 'prüfen') : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  ) : null}
+                  {/* its aim, and how far off it went (Sascha 16.11.2026, Mockup B: "die Abweichung nur unterhalb des Schlages") */}
+                  {s.aim && s.pos && endOf(n) ? (
+                    <span className="small shot-aim-row" style={{ display: 'block' }}>
+                      <span className="good-text">{tr(`Aim: ${aimName(s.aimKind) ?? tr('on the map', 'auf der Karte')}`, `Ziel: ${aimName(s.aimKind) ?? 'auf der Karte'}`)}</span>
+                      <span className="muted"> · {offAimText(offAim(s.pos, s.aim, endOf(n)!), 'aim')}</span>
                     </span>
                   ) : null}
                   {odd && <span className="bad-text small" style={{ display: 'block' }}>{tr('Impossible length – drag the shot to where the ball was', 'Unmögliche Länge – Schlag auf der Karte an die richtige Stelle ziehen')}</span>}

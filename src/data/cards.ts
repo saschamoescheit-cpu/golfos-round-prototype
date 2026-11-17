@@ -45,7 +45,7 @@ export const LINES: Record<string, LngLat[][]> = {
     [[-81.500577,28.360006],[-81.504172,28.358983]], // 14: OSM tees T15, T42, T11
     [[-81.504551,28.358479],[-81.504865,28.35961]], // 15: GolfTraxx tee point (OSM tees T4 … T16 beside it)
     [[-81.505097,28.359982],[-81.501804,28.361027]], // 16: OSM tees T9, T34, T49
-    [[-81.503794,28.361911],[-81.505339,28.361477]], // 17: OSM tees T54, T17 – 156 m to the green, the card says 251 m: back tee not found
+    [[-81.50301,28.36195],[-81.505339,28.361477]], // 17: the back tee from the USGS NAIP aerial (16.11.2026 night: the mown box east of the cart-path crossing) – 233 m to the green, the card 251 m; OSM T54/T17 are the forward tees (159 m)
     [[-81.508384,28.359626],[-81.510208,28.359281]], // 18: island green from the aerial (GolfTraxx has the old green); back tees estimated, OSM T23/T39 forward
   ],
 };
