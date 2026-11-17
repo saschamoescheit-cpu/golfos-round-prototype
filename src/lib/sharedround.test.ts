@@ -682,3 +682,66 @@ describe('withEventPars', () => {
     expect(withEventPars(own, r([4, 3, 5], [1, 2, 3]))).toBe(own);
   });
 });
+
+import { commitParAt } from './scoring';
+describe('a new phone joins a flight whose scorer enters every card (Sascha 17.11.2026, Legends: Thomas saw par on 1–7)', () => {
+  // the planned tournament as on 16.11.: Sascha ("p1") keeps both cards on his iPad, Thomas joins with his phone mid-round
+  const plan = () =>
+    plannedEvent({
+      name: 'Legends', date: '2026-11-16', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stroke', allowance: 0 },
+      flights: [{ players: [{ name: 'Sascha', playingHandicap: 7 }, { name: 'Thomas', playingHandicap: 17 }], scorer: 'p1' }],
+    });
+  it('the first pull brings what the scorer entered; going on without a score writes no par; the roles stay', () => {
+    let ev = plan();
+    const fid = Object.keys(ev.flights)[0];
+    let ipad = roundFromEvent(ev, fid, 'p1', 'ABCDEF', 'ph-ipad', 'Sascha');
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    expect(ipad.shared!.roles).toEqual({ p1: 'own', p2: 'free' });
+    ipad = score(score(ipad, 'p1', 0, 5), 'p2', 0, 6);
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    // Thomas's phone, new: joins after hole 1 – the card as it stands
+    let thomas = roundFromEvent(ev, fid, 'p2', 'ABCDEF', 'ph-thomas', 'Thomas');
+    expect(strokes(thomas, 'p1')[0]).toBe(5);
+    expect(strokes(thomas, 'p2')[0]).toBe(6);
+    expect(thomas.shared!.roles).toEqual({ p1: 'view', p2: 'view' });
+    // he goes on to hole 3 before the iPad has entered 2: no invented par for either
+    thomas = commitParAt(commitParAt(thomas, 1), 2);
+    expect(strokes(thomas, 'p1')).toEqual([5, null, null]);
+    expect(strokes(thomas, 'p2')).toEqual([6, null, null]);
+    ({ ev, r: thomas } = exchange(ev, thomas, 'Thomas'));
+    // his phone never becomes the writer of Sascha's card – the iPad keeps both
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    expect(ipad.shared!.roles).toEqual({ p1: 'own', p2: 'free' });
+    ipad = score(score(ipad, 'p1', 1, 4), 'p2', 1, 7);
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    ({ ev, r: thomas } = exchange(ev, thomas, 'Thomas'));
+    expect(strokes(thomas, 'p1')).toEqual([5, 4, null]);
+    expect(strokes(thomas, 'p2')).toEqual([6, 7, null]);
+    // the board ranks only what was entered
+    expect(eventStandings(ev).rows.map((x) => [x.name, x.thru])).toEqual([['Sascha', 2], ['Thomas', 2]]);
+  });
+  it('a par already shown on such a phone (an older app) is replaced by the card at the next exchange – nothing else lost', () => {
+    let ev = plan();
+    const fid = Object.keys(ev.flights)[0];
+    let ipad = roundFromEvent(ev, fid, 'p1', 'ABCDEF', 'ph-ipad', 'Sascha');
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    let thomas = roundFromEvent(ev, fid, 'p2', 'ABCDEF', 'ph-thomas', 'Thomas');
+    ({ ev, r: thomas } = exchange(ev, thomas, 'Thomas'));
+    thomas = score(score(thomas, 'p1', 0, 4), 'p2', 0, 4); // the par written by the app before
+    ipad = score(score(ipad, 'p1', 0, 5), 'p2', 0, 6);
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    ({ ev, r: thomas } = exchange(ev, thomas, 'Thomas'));
+    expect(strokes(thomas, 'p1')[0]).toBe(5);
+    expect(strokes(thomas, 'p2')[0]).toBe(6);
+    expect(ev.flights[fid].scores.p2[0]).toEqual({ s: 6 });
+  });
+  it('a player this phone keeps (own, free) still gets par when the hole is left untouched – quick tracking', () => {
+    let ev = plan();
+    const fid = Object.keys(ev.flights)[0];
+    let ipad = roundFromEvent(ev, fid, 'p1', 'ABCDEF', 'ph-ipad', 'Sascha');
+    ({ ev, r: ipad } = exchange(ev, ipad, 'Sascha'));
+    ipad = commitParAt(ipad, 0);
+    expect(strokes(ipad, 'p1')[0]).toBe(4);
+    expect(strokes(ipad, 'p2')[0]).toBe(4);
+  });
+});
