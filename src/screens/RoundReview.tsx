@@ -463,20 +463,30 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
   /** The shots of hole i from the places noted by hand ("shot here") – in the order they were noted, the tee shot
    *  added when the first one was not on the tee; a place on the green is where the putts began. */
-  const handDetail = (i: number, m: HoleMapData, base: DetailEntry, partI: TrackPoint[]): DetailEntry | null => {
+  /** The shots to the green the score leaves (strokes − putts − penalties), null without a score. */
+  const allowedShots = (i: number): number | null => {
+    const e = entries[i];
+    return e?.strokes != null ? e.strokes - (e.putts ?? 0) - (e.penalties ?? 0) : null;
+  };
+  /** The places noted on the course off the green of hole i that count as shots (in playing order). */
+  const handPlaces = (i: number, m: HoleMapData) => {
     // the watch's swings bunched by place and never more than the score leaves off the green (Sascha 14.11.2026: Erik's
     // 47 shots on hole 6 for a 5)
-    const e = entries[i];
-    const allowed = e?.strokes != null ? e.strokes - (e.putts ?? 0) - (e.penalties ?? 0) : null;
+    const allowed = allowedShots(i);
     // green and off the green apart before bunching (review 14.11.2026: a chip 15 m short and the putt after it were one
-    // place – the chip lost, the putts begun at the last putt); where the putts began: the first on the green
+    // place – the chip lost, the putts begun at the last putt)
     const raw = (round.manualShots ?? []).filter((x) => x.hole === i);
-    if (!raw.length) return null;
-    const onGreen = [...raw].sort((a, b) => a.t - b.t).map((x) => x.pos).filter((p) => onGreenSpot(p, m));
     // swings on the green are putts – the cap counts the shots to the green, the tee shot added below among them
     let offHs = pickWatchShots(raw.filter((x) => !onGreenSpot(x.pos, m)), null);
     if (allowed != null) offHs = pickWatchShots(offHs, allowed - (!offHs.length || !nearTee(offHs[0].pos, m) ? 1 : 0));
-    const off = offHs.map((x) => x.pos);
+    return offHs;
+  };
+  const handDetail = (i: number, m: HoleMapData, base: DetailEntry, partI: TrackPoint[]): DetailEntry | null => {
+    const raw = (round.manualShots ?? []).filter((x) => x.hole === i);
+    if (!raw.length) return null;
+    // where the putts began: the first on the green
+    const onGreen = [...raw].sort((a, b) => a.t - b.t).map((x) => x.pos).filter((p) => onGreenSpot(p, m));
+    const off = handPlaces(i, m).map((x) => x.pos);
     const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false, byHand: true }));
     if (!shots.length || !nearTee(shots[0].pos!, m)) shots.unshift({ pos: teeSpot(partI, m) ?? m.tee, lie: 'tee', club: null, penalty: false });
     return withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false, fromHand: true }, round.holes[i].par, entries[i]?.weather);
@@ -625,9 +635,20 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // score, putts and penalties from the course: the number of swings, water and out of bounds (see track.ts)
       const e = list[i];
       // the places the player noted by hand on the course are the truth (Sascha 18.10.2026: "take them over by
-      // themselves") – the GPS detection only where there are none; still to check like every first suggestion
-      const hand = handDetail(i, m, { ...emptyDetail(), pin: pinFor(i) }, part);
-      const gps = hand ? null : detectWithScore(part, m, h.par, bag, e, { cart });
+      // themselves") – the GPS detection where there are none (or too few, below); still to check like every first suggestion
+      let hand = handDetail(i, m, { ...emptyDetail(), pin: pinFor(i) }, part);
+      // fewer places noted than the score leaves (a chip the watch did not feel, a tap forgotten – Sascha 17.11.2026:
+      // "automatisch und genauer"): the track fills in the rest – the chain goes through every place noted (Anchor)
+      const allowed = allowedShots(i);
+      let filled: DetailEntry | null = null;
+      if (hand && allowed != null && hand.shots.length < allowed) {
+        const fill = detectWithScore(part, m, h.par, bag, e, { cart, anchors: handPlaces(i, m).map((x) => ({ p: x.pos, t: x.t })) });
+        if (fill && fill.shots.length > hand.shots.length) {
+          filled = { ...fill, onGreen: hand.onGreen ?? fill.onGreen, fromHand: true };
+          hand = null;
+        }
+      }
+      const gps = hand ? null : (filled ?? detectWithScore(part, m, h.par, bag, e, { cart }));
       // a GPS shot near a place noted by hand goes to that place – the tap is the truth, the GPS is ±15 m (Sascha
       // 20.10.2026: "the club should show where the shot was noted"); each place takes the nearest shot within 40 m
       if (gps) gps.shots = snapToHand(gps.shots, i, m, false);
@@ -639,7 +660,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const found = hand ? { ...hand, shots: hand.shots.map((s) => ({ ...s, review: true })) } : gps;
       if (!found) return;
       holes++;
-      if (hand) byHand++;
+      if (hand || filled) byHand++;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);
       if (list[i].strokes != null) delete derived.strokes; // keep the score entered on the course
       if ((e.penalties ?? 0) > (derived.penalties ?? 0)) delete derived.penalties; // and its penalties, not yet placed
@@ -1141,6 +1162,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 : undefined
             }
             walked={walked}
+            aims={(d?.shots ?? []).flatMap((s, n) => (s.pos && s.aim ? [{ from: s.pos, pos: s.aim, n: n + 1 }] : []))}
             track={[
               // the shots noted by hand on the course: shown and movable here too (Sascha 17.10.2026) – unless the hole's
               // shots are made of them: then each shot is drawn as its hand circle with its club, once (20.10.2026)
@@ -1407,6 +1429,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   {(s.strike && s.strike !== 'slice' && s.strike !== 'hook') || flightOf(s) || s.intent || (s.review && !odd) ? (
                     <span className="muted small" style={{ display: 'block' }}>
                       {[s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? strikeName(s.strike) : '', flightOf(s) ? flightName(flightOf(s)!) : '', s.intent ? intentName(s.intent) : '', s.review && !odd ? tr('check', 'prüfen') : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  ) : null}
+                  {/* its aim, and how far off it went (Sascha 16.11.2026, Mockup B: "die Abweichung nur unterhalb des Schlages") */}
+                  {s.aim && s.pos && endOf(n) ? (
+                    <span className="small shot-aim-row" style={{ display: 'block' }}>
+                      <span className="good-text">{tr(`Aim: ${aimName(s.aimKind) ?? tr('on the map', 'auf der Karte')}`, `Ziel: ${aimName(s.aimKind) ?? 'auf der Karte'}`)}</span>
+                      <span className="muted"> · {offAimText(offAim(s.pos, s.aim, endOf(n)!), 'aim')}</span>
                     </span>
                   ) : null}
                   {odd && <span className="bad-text small" style={{ display: 'block' }}>{tr('Impossible length – drag the shot to where the ball was', 'Unmögliche Länge – Schlag auf der Karte an die richtige Stelle ziehen')}</span>}

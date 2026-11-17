@@ -41,7 +41,8 @@ describe('the aim of a shot', () => {
     expect(offAimText(o, 'aim')).toMatch(/7 m (right of the target|rechts vom Ziel) · 4 m (short|zu kurz)/);
   });
   it('the chips: the fairway off the tee of a par 4/5, else flag, green, lay-up', () => {
-    expect(aimChoices(true).map((c) => c.value)).toEqual(['left', 'middle', 'right']);
+    // off the tee no chips since 16.11.2026 (Sascha: "Bahnmitte, Bahn links und Bahn rechts kann entfernt werden")
+    expect(aimChoices(true)).toEqual([]);
     expect(aimChoices(false).map((c) => c.value)).toEqual(['flag', 'green', 'layup']);
   });
   it('a lay-up: "Vorlegen" or an aim well short of what the club goes', () => {

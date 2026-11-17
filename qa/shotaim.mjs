@@ -1,6 +1,6 @@
 // QA (Sascha 16.11.2026: "Damit die Ellipse für die Streuung der Schläge genauer wird, brauchen wir bei der Nachbereitung
 // … den Zielpunkt zu positionieren … Ich ziele ja nicht immer Mitte Bahn"): in "Schläge prüfen" a shot's sheet has
-// "Wohin hast du gezielt?" – off the tee of a par 4 Bahn links / Bahnmitte / Bahn rechts, later Fahne / Grünmitte /
+// "Wohin hast du gezielt?" – off the tee the aim on the map (no fairway chips since 16.11.2026), later Fahne / Grünmitte /
 // Vorlegen – each saved at once; "Auf der Karte" opens the playing view with the crosshair, dragged it saves "auf der
 // Karte gesetzt"; the tick goes back to the sheet; a chip tapped again takes the aim away. Usage: node qa/shotaim.mjs [url]
 import { webkit, devices } from 'playwright';
@@ -59,18 +59,12 @@ const dev = () => p.locator('.shot-aim-text .muted').innerText().catch(() => '')
 await p.locator('li[data-shot="0"] .shot-row').click();
 await p.waitForTimeout(600);
 ok((await p.locator('.shot-aim').count()) === 1, 'the sheet asks "Wohin hast du gezielt?"');
-const chips = await p.locator('.shot-aim .chips-field button').allInnerTexts();
-ok(chips.join('|') === 'Bahn links|Bahnmitte|Bahn rechts', `off the tee of a par 4: ${chips.join(' · ')}`);
+// off the tee no chips since 16.11.2026 (Sascha: "Die Auswahlen Bahnmitte, Bahn links und Bahn rechts kann entfernt
+// werden") – the aim set on the map
+ok((await p.locator('.shot-aim .chips-field button').count()) === 0, 'off the tee of a par 4: no chips, only "Auf der Karte"');
 ok(/Bahnmitte \(angenommen\)/.test(await title()), `before: ${await title()}`);
 ok(/links der Bahnmitte/.test(await dev()), `the ball against the middle: ${await dev()}`);
 if (SHOTS) await p.screenshot({ path: `${SHOTS}/shotaim-1.png` });
-await p.locator('.shot-aim .chips-field button').filter({ hasText: 'Bahn links' }).click();
-await p.waitForTimeout(500);
-let s0 = await shot(0);
-ok(s0.aimKind === 'left' && Array.isArray(s0.aim), 'Bahn links saved at once');
-ok(/Ziel: Bahn links/.test(await title()), `the title: ${await title()}`);
-ok(/vom Ziel/.test(await dev()), `the ball against the aim: ${await dev()}`);
-if (SHOTS) await p.screenshot({ path: `${SHOTS}/shotaim-2.png` });
 // on the map: the playing view with the crosshair
 await p.locator('.shot-aim button').filter({ hasText: 'Auf der Karte' }).click();
 await p.waitForTimeout(3500);
@@ -84,8 +78,8 @@ await p.mouse.down();
 await p.mouse.move(bb.x + bb.width / 2 + 50, bb.y + bb.height / 2 + 10, { steps: 6 });
 await p.mouse.up();
 await p.waitForTimeout(600);
-s0 = await shot(0);
-ok(s0.aimKind === 'map', `dragged: saved as set on the map (${s0.aimKind})`);
+let s0 = await shot(0);
+ok(s0.aimKind === 'map' && Array.isArray(s0.aim), `dragged: saved as set on the map (${s0.aimKind})`);
 const card = await p.locator('.aim-card strong').innerText();
 ok(/vom Ziel/.test(card), `the card: ${card}`);
 if (SHOTS) await p.screenshot({ path: `${SHOTS}/shotaim-3.png` });
@@ -93,16 +87,34 @@ await p.getByTitle('Fertig').click();
 await p.waitForTimeout(800);
 ok((await p.locator('.aim-layer').count()) === 0 && (await p.locator('.shot-aim').count()) === 1, 'the tick: back in the sheet');
 ok(/auf der Karte gesetzt/.test(await title()), `the title: ${await title()}`);
-// a chip tapped twice: the aim goes
-await p.locator('.shot-aim .chips-field button').filter({ hasText: 'Bahnmitte' }).click();
-await p.waitForTimeout(400);
-ok((await shot(0)).aimKind === 'middle', 'Bahnmitte chosen');
-await p.locator('.shot-aim .chips-field button').filter({ hasText: 'Bahnmitte' }).click();
-await p.waitForTimeout(400);
-s0 = await shot(0);
-ok(!s0.aim && !s0.aimKind && s0.club === 'Dr', 'tapped again: the aim taken away, the shot as it was');
+ok(/vom Ziel/.test(await dev()), `the ball against the aim: ${await dev()}`);
 await p.getByRole('button', { name: 'Schließen' }).first().click();
+await p.waitForTimeout(800);
+// the review's map and list (Sascha 16.11.2026, Mockup B: "das Ziel auch in dieser Karte – die Abweichung nur unterhalb
+// des Schlages"): a ring "Ziel 1" on the map, under the shot "Ziel: … · 12 m rechts vom Ziel · …"
+{
+  const ring = p.locator('.review-map .review-aim');
+  ok((await ring.count()) === 1 && /Ziel 1/.test(await ring.innerText()), `the map: the ring "Ziel 1" (${await ring.count()})`);
+  const row = (await p.locator('li[data-shot="0"] .shot-aim-row').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok(/Ziel: auf der Karte gesetzt · .*vom Ziel/.test(row), `the shot's row: ${row}`);
+  ok((await p.locator('li[data-shot="1"] .shot-aim-row').count()) === 0, 'a shot without an aim: no aim row');
+  ok((await p.locator('.review-map').getByText(/m (rechts|links) vom Ziel/).count()) === 0, 'the map without the deviation');
+  if (SHOTS) await p.screenshot({ path: `${SHOTS}/shotaim-review.png` });
+}
+// taken away on the map: "Ziel entfernen"
+await p.locator('li[data-shot="0"] .shot-row').click();
+await p.waitForTimeout(600);
+await p.locator('.shot-aim button').filter({ hasText: 'Auf der Karte' }).click();
+await p.waitForTimeout(2500);
+await p.locator('.aim-clear').click();
+await p.waitForTimeout(600);
+s0 = await shot(0);
+ok(!s0.aim && !s0.aimKind && s0.club === 'Dr', '"Ziel entfernen": the aim taken away, the shot as it was');
+if ((await p.locator('.aim-layer').count()) === 1) await p.getByTitle('Fertig').click();
 await p.waitForTimeout(500);
+await p.getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
+await p.waitForTimeout(500);
+ok((await p.locator('.review-map .review-aim').count()) === 0, 'the ring gone from the map');
 // the approach: Fahne / Grünmitte / Vorlegen – Vorlegen goes to the map at once
 await p.locator('li[data-shot="1"] .shot-row').click();
 await p.waitForTimeout(600);

@@ -31,8 +31,8 @@ describe('scorecards for courses without holes in the map', () => {
         const black = TEES[id].holes[String(k + 1)][0]!;
         expect(line.length).toBeGreaterThanOrEqual(2);
         expect(len).toBeLessThanOrEqual(black + 30);
-        // two holes miss their back tee in the map (12: 84 m, 17: 92 m) – the others within 45 m
-        expect(black - len).toBeLessThanOrEqual(['12', '17'].includes(String(k + 1)) ? 100 : 45);
+        // one hole misses its back tee in the map (12: 84 m – not found on the aerial either, 16.11.2026) – the others within 45 m
+        expect(black - len).toBeLessThanOrEqual(['12'].includes(String(k + 1)) ? 100 : 45);
       });
     }
   });

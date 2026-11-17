@@ -28,13 +28,18 @@ export const fmtHcp = (v: number): string => (v < 0 ? `+${-v}` : String(v));
  * Quick tracking pre-fills par: when the player leaves a hole (or finishes the round on it) without touching the
  * score, par is written for every player. Holes with recorded shots are left alone – their score comes from the
  * shots and putts, and a guessed par would hide an unfinished hole.
+ * A score another phone keeps (a shared round: role "view" – the scorer's card, a player on his own phone) gets no par
+ * here: this phone shows what that phone entered, "–" until it arrives – never an invented par (Sascha 17.11.2026:
+ * Thomas's phone showed par on 1–7 for both and ranked it on the live board).
  */
 export function commitParAt(r: Round, index: number): Round {
   const hole = r.holes[index];
   if (!hole || !(hole.par > 0)) return r;
   const entries = { ...r.entries };
   for (const p of r.players) {
-    const e = entries[p.id][index];
+    if (r.shared?.roles?.[p.id] === 'view') continue;
+    const e = entries[p.id]?.[index];
+    if (!e) continue;
     if (e.strokes == null && !e.pickedUp && !(e.detail && e.detail.shots.length > 0)) {
       const list = entries[p.id].slice();
       list[index] = { ...e, strokes: hole.par };

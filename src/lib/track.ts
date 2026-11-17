@@ -202,6 +202,7 @@ interface Place {
   q: number; // how sure we are that the player stood there (and not just walked past)
   w: number; // weight of its position (a stop's centre beats the first fix after unlocking)
   guess?: boolean; // a spot on a stretch the phone saw nothing of – no fix there
+  hand?: boolean; // noted on the course (Anchor)
 }
 
 /** All places on this hole: stops, the first fix after opening the app, the last fix before the phone went away.
@@ -245,6 +246,17 @@ function places(track: TrackPoint[], hole: HoleMapData, inCart = false): Place[]
   return merged.filter((x) => distToLine(x.p, hole.line) <= DETECT.corridorM);
 }
 
+/** Where the player noted a shot on the course – a tap "shot here" or a swing of the watch (the ones the review keeps):
+ *  the chain goes through every one of them, the track fills in the shots between (ANCHOR). */
+export interface Anchor {
+  p: LngLat;
+  t: number;
+}
+/** How sure a place noted on the course is (far above any stop), and how near a stop of the track is the same ball. */
+export const ANCHOR = { q: 5, sameM: 15 };
+
+type DetectOpts = { shots?: number | null; cart?: boolean; anchors?: Anchor[] };
+
 /**
  * Detects the shots of one hole from the part of the track played on it. Every shot is marked "review",
  * the player confirms or corrects them after the round.
@@ -255,7 +267,7 @@ function places(track: TrackPoint[], hole: HoleMapData, inCart = false): Place[]
  * a shot that loses a stroke; leaving out the own ball would need a shot no amateur hits. The most plausible chain
  * of places wins (dynamic programming over the places in time order).
  */
-export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: { shots?: number | null; cart?: boolean } = {}): DetailEntry | null {
+export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: DetectOpts = {}): DetailEntry | null {
   const plain = detectCore(track, hole, par, bag, opts, false);
   // A chip from the fringe: the GPS puts the short stop at the green's edge inside the green outline, and it is taken
   // for the first putt. When the score says a shot is missing and another stop on the green follows, that first stop
@@ -267,9 +279,15 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
   return plain?.detail ?? null;
 }
 
-function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: typeof BAG, opts: { shots?: number | null; cart?: boolean }, fringe: boolean): { detail: DetailEntry; suggested: boolean; total: number } | null {
+function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: typeof BAG, opts: DetectOpts, fringe: boolean): { detail: DetailEntry; suggested: boolean; total: number } | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
   let list = places(track, hole, !!opts.cart);
+  // the places noted on the course: in place of the stops of the same ball (near it, within two minutes)
+  const anchors = (opts.anchors ?? []).filter((a) => !onGreenAt(a.p, hole));
+  if (anchors.length) {
+    list = list.filter((x) => !anchors.some((a) => distanceM(a.p, x.p) <= ANCHOR.sameM && a.t >= x.from - 120000 && a.t <= x.to + 120000));
+    list = [...list, ...anchors.map((a): Place => ({ p: a.p, from: a.t, to: a.t, q: ANCHOR.q, w: 1, hand: true }))].sort((a, b) => a.from - b.from);
+  }
   if (list.length === 0 && track.length === 0) return null;
   // The tee: the last place near the tee (waiting for the group in front does not matter there). The player tees
   // off from the tee even when the phone was in the pocket there.
@@ -285,12 +303,19 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     });
     return bk;
   };
-  const teeIdx = (opts.cart ? nearestTee(25) : undefined) ?? nearTee(40);
+  // a place noted on the tee (25 m, as the review takes it) is the tee shot
+  const handTee = list.map((x, k) => (x.hand && distanceM(x.p, hole.tee) <= 25 ? k : -1)).filter((k) => k >= 0).pop();
+  const teeIdx = handTee ?? (opts.cart ? nearestTee(25) : undefined) ?? nearTee(40);
   const tee: Place = teeIdx != null ? list[teeIdx] : { p: hole.tee, from: track[0]?.t ?? 0, to: track[0]?.t ?? 0, q: 0, w: 1 };
   if (teeIdx != null) list = list.slice(teeIdx + 1);
-  list = list.filter((x) => distanceM(x.p, hole.tee) > 40);
-  // The ball on the green: the first place on it (or a long stop right next to it – GPS error at the edge).
-  let g = list.findIndex((x) => onGreenAt(x.p, hole) || (toGreen(x.p) <= greenRadius(hole) + 4 && (x.to - x.from) / 1000 >= 60));
+  list = list.filter((x) => distanceM(x.p, hole.tee) > 40 || x.hand);
+  // The ball on the green: the first place on it (or a long stop right next to it – GPS error at the edge) – after the
+  // last place noted off the green
+  let lastHand = -1;
+  list.forEach((x, k) => {
+    if (x.hand) lastHand = k;
+  });
+  let g = list.findIndex((x, k) => k > lastHand && (onGreenAt(x.p, hole) || (toGreen(x.p) <= greenRadius(hole) + 4 && (x.to - x.from) / 1000 >= 60)));
   // fringe: the first place on the green was the chip, the ball on the green is the next place on it (3 m away or more)
   const chipSpot = fringe && g >= 0 ? list[g] : null;
   if (fringe) {
@@ -351,7 +376,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     if (progress < 5) ll -= 3; // a "shot" that does not get closer to the green
     return ll;
   };
-  const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0, guess: false }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q, guess: !!x.guess }))];
+  const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0, guess: false, hand: !!tee.hand }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q, guess: !!x.guess, hand: !!x.hand }))];
   // in a cart: a full shot well short of what the player meant is a mishit – more likely a partner's ball (CART_RULES)
   const drive = bag.find((b) => b.club === 'Dr')?.m ?? Math.max(...bag.map((b) => b.m));
   const reach = Math.max(0, ...bag.filter((b) => b.club !== 'Dr' && b.club !== 'Pt').map((b) => b.m));
@@ -418,7 +443,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     const kind = suggestKind(lie, toGreen(p), null, hole.green?.length ? (pointInRing(p, hole.green) ? 0 : distToLine(p, hole.green)) : null);
     // the short game: the club the player takes from here, as his checked shots tell (Sascha 13.11.2026)
     const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? (learnedClub(learned(), kind, toGreen(p)) ?? clubForLength(Math.max(length, 50), false, bag)) : clubForLength(length, n === 0 && par >= 4, bag);
-    return { pos: p, lie, club, penalty: false, kind, review: true };
+    return { pos: p, lie, club, penalty: false, kind, review: true, ...(nodes[chain[n]]?.hand ? { byHand: true } : {}) };
   });
   return { detail: { shots, onGreen: end, pin: null, holedOut: false }, suggested, total };
 }
@@ -441,8 +466,13 @@ export function splitRound(track: TrackPoint[], holes: (HoleMapData | null)[]): 
     if (next) {
       // seen near the green (or at least well on the hole) first, then at the next tee
       // on the green (or right at it) first – a ball 35 m short of the green is not the end of the hole yet
-      let onHole = rest.findIndex((x, k) => k > start && (onGreenAt(x.p, hole) || distanceM(x.p, hole.greenCenter) <= 20));
-      if (onHole < 0) onHole = rest.findIndex((x, k) => k > start && distanceM(x.p, hole.greenCenter) <= 40);
+      // – only before the tee after the next one (Sascha's Hawks Landing 15.11.2026: the cart parked 45 m from the 3rd green
+      // by the 4th tee; the track passed the 3rd green again on the 5th hole – the 3rd hole took the rest of the round)
+      const after = holes[n + 2] ?? null;
+      let limit = after ? rest.findIndex((x, k) => k > start && distanceM(x.p, after.tee) <= 40 && k + 1 < rest.length && distanceM(rest[k + 1].p, after.tee) <= 40) : -1;
+      if (limit < 0) limit = rest.length;
+      let onHole = rest.findIndex((x, k) => k > start && k < limit && (onGreenAt(x.p, hole) || distanceM(x.p, hole.greenCenter) <= 20));
+      if (onHole < 0) onHole = rest.findIndex((x, k) => k > start && k < limit && distanceM(x.p, hole.greenCenter) <= 40);
       const from = onHole > 0 ? onHole : start;
       // at the next tee: near it (40 m – the tee box played may lie in front of or behind the mapped one) and nearer to
       // it than to this green (tees often lie right next to the last green) – or already on the next hole's line
@@ -697,7 +727,24 @@ export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties:
     left--;
     return { ...s, penalty: true, penaltyKind: 'water' as const, missPos: miss };
   });
-  return { ...d, shots };
+  // The ball flew on past where it was dropped (Reserve 14, 13.11.2026: the drop zone 20 m short of the water, the
+  // ball in it by the green – the penalty was taken for out of bounds and the chip from the drop lost): the flight on
+  // beyond the next spot, up to half its length again
+  const out = shots.map((s, k) => {
+    if (left < 1 || s.penalty || !s.pos || k + 1 >= shots.length || !shots[k + 1].pos) return s;
+    const end = shots[k + 1].pos!;
+    const len = distanceM(s.pos, end);
+    for (let m = len; m <= len * 1.5; m += 5) {
+      const f = m / len;
+      const q: LngLat = [s.pos[0] + (end[0] - s.pos[0]) * f, s.pos[1] + (end[1] - s.pos[1]) * f];
+      if (inWater(q)) {
+        left--;
+        return { ...s, penalty: true, penaltyKind: 'water' as const, missPos: q };
+      }
+    }
+    return s;
+  });
+  return { ...d, shots: out };
 }
 
 /**
@@ -713,10 +760,10 @@ export function detectWithScore(
   par: number,
   bag: typeof BAG | undefined,
   e: { strokes: number | null; putts: number | null; penalties?: number; pickedUp?: boolean },
-  opts: { cart?: boolean } = {},
+  opts: { cart?: boolean; anchors?: Anchor[] } = {},
 ): DetailEntry | null {
   const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
-  const detect = (n: number | null) => detectHoleShots(part, hole, par, bag, { shots: n != null && n >= 1 ? n : null, cart: opts.cart });
+  const detect = (n: number | null) => detectHoleShots(part, hole, par, bag, { shots: n != null && n >= 1 ? n : null, cart: opts.cart, anchors: opts.anchors });
   const raw = detect(count);
   if (!raw) return null;
   const pen = e.penalties ?? 0;

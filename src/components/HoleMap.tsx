@@ -41,6 +41,9 @@ export interface HoleMapProps {
   missMap?: { pos: LngLat; cost: number }[];
   /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
   aimPoint?: LngLat | null;
+  /** Review: the aims set for the shots (Sascha 16.11.2026, Mockup B: "das Ziel auch in dieser Karte – die Abweichung
+   *  nur rechts unter dem Schlag"): a ring "Ziel n" and a dashed line from where the shot was played */
+  aims?: { from: LngLat; pos: LngLat; n: number }[];
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
   greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat]; roomy?: boolean; fit?: LngLat[] } | null; // roomy: map buttons still on screen; fit: the green itself fills the screen
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
@@ -132,7 +135,7 @@ export function HoleMap(props: HoleMapProps) {
       return false;
     }
   };
-  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
+  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker; aims: maplibregl.Marker[]; aimsKey?: string }>({ targets: [], labels: [], track: [], aims: [] });
   const latest = useRef(props);
   // the shots' marks as last made, and one under the finger (Sascha 16.11.2026: "er springt wieder")
   const lastTrackKey = useRef('');
@@ -244,6 +247,9 @@ export function HoleMap(props: HoleMapProps) {
       });
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], layout: { visibility: latest.current.clean ? 'none' : 'visible' }, paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
       setCourseLook(m, latest.current.view === '2d' ? 'plan' : latest.current.clean ? 'hidden' : 'overlay');
+      m.addSource('aims', { type: 'geojson', data: aimsData(latest.current) });
+      m.addLayer({ id: 'aims-casing', type: 'line', source: 'aims', paint: { 'line-color': '#0E1418', 'line-width': 4, 'line-opacity': 0.45 } });
+      m.addLayer({ id: 'aims-line', type: 'line', source: 'aims', paint: { 'line-color': '#FFFFFF', 'line-width': 2, 'line-opacity': 0.9, 'line-dasharray': [2, 2] } });
       m.addSource('walked', { type: 'geojson', data: walkedData(latest.current) });
       m.addLayer({ id: 'walked-line', type: 'line', source: 'walked', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [1, 2] } });
       m.addLayer({ id: 'walked-stop', type: 'circle', source: 'walked', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': 'rgba(255,255,255,0.25)', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
@@ -416,9 +422,21 @@ export function HoleMap(props: HoleMapProps) {
     }
     if (!trackDragging()) (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
     (m.getSource('walked') as maplibregl.GeoJSONSource | undefined)?.setData(walkedData(p));
+    (m.getSource('aims') as maplibregl.GeoJSONSource | undefined)?.setData(aimsData(p));
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     syncGreenChart(m, p.greenChart ?? null);
     const mk = markers.current;
+    // the shots' aims in the review: a ring "Ziel n" each, as the caddie's aim – made anew only when they change
+    const aimsKey = JSON.stringify(p.aims ?? []);
+    if (mk.aimsKey !== aimsKey) {
+      mk.aims.forEach((x) => x.remove());
+      mk.aims = (p.aims ?? []).map((a) => {
+        const d = el('map-aim review-aim');
+        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#FFFFFF" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#9BC53D" stroke="#0E1418" stroke-width="1"/></svg><span>' + tr(`Aim ${a.n}`, `Ziel ${a.n}`) + '</span>';
+        return new maplibregl.Marker({ element: d }).setLngLat(a.pos).addTo(m);
+      });
+      mk.aimsKey = aimsKey;
+    }
     if (p.aimPoint) {
       if (!mk.aim) {
         const d = el('map-aim');
@@ -876,6 +894,9 @@ function missData(p: HoleMapProps): GeoJSON.FeatureCollection {
   };
 }
 
+function aimsData(p: HoleMapProps): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features: (p.aims ?? []).map((a) => ({ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: [a.from, a.pos] } })) };
+}
 function walkedData(p: HoleMapProps): GeoJSON.FeatureCollection {
   const w = p.walked;
   if (!w) return { type: 'FeatureCollection', features: [] };

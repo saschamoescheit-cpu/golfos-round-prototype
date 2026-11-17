@@ -17,6 +17,7 @@ import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
 import { TopBar } from '../components/ui';
 import { Standings } from './Wagers';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
+import { TournamentHere } from '../components/ShareRound';
 
 // A round started from a pool of bets (Sascha 02.11.2026: "start the round right from the bet – else again through
 // Rounds, the players set up again"): the course (the pool's round of the day, if it has one), the loop, the pool's
@@ -105,6 +106,8 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
   return (
     <main className="screen">
       <TopBar title={tr('Start the round', 'Runde starten')} onBack={props.onBack} />
+      {/* one's tournament on this course today: said before a round of one's own (Sascha 17.11.2026) */}
+      <TournamentHere course={course} />
       {/* the pool named: a tap leads back to it (night 10./11.11.2026: click paths) */}
       <span className="muted small">
         {tr('For the bets ', 'Für die Wetten ')}

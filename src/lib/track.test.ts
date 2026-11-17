@@ -286,6 +286,70 @@ describe('penalties from the course', () => {
     // no penalty entered: nothing changes
     expect(markWaterPenalties(d2, hole, 0)).toBe(d2);
   });
+  it('the ball flew on past the drop zone into the water (Reserve 14, 13.11.2026)', () => {
+    const M = 1 / 111320;
+    const k = Math.cos((48.78 * Math.PI) / 180);
+    const at = (e: number, n: number): LngLat => [9.69 + (e * M) / k, 48.78 + n * M];
+    // a par 3 of 175 m: water right of the green, the drop zone 35 m short of it
+    const pond = [at(15, 155), at(45, 155), at(45, 180), at(15, 180), at(15, 155)];
+    const hole = { line: [at(0, 0), at(0, 175)], tee: at(0, 0), green: null, greenCenter: at(0, 175), bunkers: [], water: [pond], fairways: [], tees: [] };
+    const drop = at(14, 140);
+    const d = { shots: [{ pos: at(0, 0), lie: 'tee' as const, club: null, penalty: false }, { pos: drop, lie: 'rough' as const, club: null, penalty: false }], onGreen: at(0, 178), pin: null, holedOut: false };
+    // the flight to the drop does not cross the water, the drop is 15 m from it – the line on beyond it does
+    const m = markWaterPenalties(d, hole, 1);
+    expect(m.shots[0].penalty).toBe(true);
+    expect(m.shots[0].penaltyKind).toBe('water');
+    expect(m.shots[1].penalty).toBe(false);
+    // the water half the shot's length again beyond the next spot or more: not this shot's
+    const far = { ...d, shots: [d.shots[0], { ...d.shots[1], pos: at(0, 90) }] };
+    expect(markWaterPenalties(far, hole, 1).shots[0].penalty).toBe(false);
+  });
+});
+
+describe('places noted on the course (taps, the watch) with the track (Anchor)', () => {
+  // the watch felt the tee shot and the second shot, not the pitch – the track has stops by the third ball only
+  const ball2 = shift(pointAt(hole1.line, 220), 10, 0);
+  const ball3 = shift(hole1.greenCenter, -6, -40);
+  const onGreen = shift(hole1.greenCenter, 2, -4);
+  const walk = () => {
+    const w = new Walker(hole1.tee);
+    w.stand(40);
+    const atTee = w.t;
+    w.walk(ball2); // no stop: the swing came right away
+    const at2 = w.t;
+    w.walk(ball3);
+    w.stand(40);
+    w.walk(onGreen);
+    w.stand(90);
+    return { pts: w.pts, atTee, at2 };
+  };
+  it('the chain goes through every place noted, the track fills in the shot the watch did not feel', () => {
+    const { pts, atTee, at2 } = walk();
+    const score = { strokes: 5, putts: 2, penalties: 0 };
+    const anchors = [
+      { p: shift(hole1.tee, 1, 1), t: atTee },
+      { p: ball2, t: at2 },
+    ];
+    const d = detectWithScore(pts, hole1, 4, undefined, score, { anchors })!;
+    expect(d.shots.length).toBe(3);
+    expect(distanceM(d.shots[0].pos!, anchors[0].p)).toBeLessThan(0.5);
+    expect(distanceM(d.shots[1].pos!, ball2)).toBeLessThan(0.5);
+    expect(d.shots[1].byHand).toBe(true);
+    expect(distanceM(d.shots[2].pos!, ball3)).toBeLessThan(5);
+    // the track alone does not know the second ball
+    const gps = detectWithScore(pts, hole1, 4, undefined, score)!;
+    expect(gps.shots.some((s) => distanceM(s.pos!, ball2) < 15)).toBe(false);
+  });
+  it('a stop of the track at a place noted is the same ball – not a shot of its own', () => {
+    const { pts } = walk();
+    const score = { strokes: 4, putts: 2, penalties: 0 };
+    // the pitch noted 6 m from where the track stood
+    const noted = shift(ball3, 6, 0);
+    const t3 = pts.find((x) => distanceM(x.p, ball3) < 4)!.t;
+    const d = detectWithScore(pts, hole1, 4, undefined, score, { anchors: [{ p: noted, t: t3 + 20000 }] })!;
+    expect(d.shots.length).toBe(2);
+    expect(distanceM(d.shots[1].pos!, noted)).toBeLessThan(0.5);
+  });
 });
 
 describe('detection with the score from the course', () => {
@@ -344,6 +408,35 @@ describe('round split', () => {
     w.stand(40);
     const [a] = splitRound(w.pts, [hole1, hole2]);
     expect(a[a.length - 1].t).toBeGreaterThanOrEqual(putting - 5000);
+  });
+  it('the green passed again two holes later does not keep the hole going (Hawks Landing 3, 15.11.2026)', () => {
+    const M = 1 / 111320;
+    const k = Math.cos((48.78 * Math.PI) / 180);
+    const at = (e: number, n: number): LngLat => [9.69 + (e * M) / k, 48.78 + n * M];
+    const hole = (tee: LngLat, green: LngLat) => ({ line: [tee, green], tee, green: null, greenCenter: green, bunkers: [], water: [], fairways: [], tees: [] });
+    const A = hole(at(0, 0), at(0, 300));
+    const B = hole(at(40, 330), at(330, 330)); // its tee 50 m from A's green
+    const C = hole(at(350, 290), at(20, 280)); // back west, its green 28 m from A's
+    const D = hole(at(-10, 250), at(-10, -50));
+    const w = new Walker(A.tee);
+    w.stand(60);
+    w.walk(at(10, 150));
+    w.stand(40);
+    w.walk(at(35, 325)); // the cart parked 43 m from A's green, by B's tee – the phone never nearer
+    w.stand(400);
+    const onB = w.t;
+    w.walk(B.greenCenter);
+    w.stand(120);
+    w.walk(C.tee);
+    w.stand(60);
+    w.walk(at(10, 285)); // C's green: 18 m from A's
+    w.stand(120);
+    w.walk(D.tee);
+    w.stand(60);
+    const [a, b, c] = splitRound(w.pts, [A, B, C, D]);
+    expect(a[a.length - 1].t).toBeLessThanOrEqual(onB);
+    expect(b.length).toBeGreaterThan(0);
+    expect(c.length).toBeGreaterThan(0);
   });
 });
 

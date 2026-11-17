@@ -18,26 +18,26 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, your tee, playing handicap, birdie book', 'Platz, Schleifen, dein Tee, Vorgabe, Birdiebook'), length: '0:59' },
   { id: 'flight', title: () => tr('Flight & format', 'Flight & Spielform'), about: () => tr('Players, their tees, kind of round, mode, scoring', 'Spieler, ihre Tees, Rundenart, Modus, Scoring'), length: '1:48' },
   { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:56' },
-  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:45' },
+  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '1:05' },
   { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:36' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:38' },
-  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:54' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '1:57' },
+  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:59' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:49' },
   // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
   { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:10' },
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:27' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '2:49' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, inviting right at a player, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, beim Spieler einladen, Runde starten, der Stand, die Abrechnung'), length: '3:11' },
   { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '3:06' },
   // the balance and a tournament over several rounds (Sascha 04.11.2026)
-  { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '0:34' },
+  { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '1:08' },
   { id: 'tourrounds', title: () => tr('A tournament over several rounds', 'Turnier über mehrere Runden'), about: () => tr('Rounds, cut, the final dealt by result, the scorecards in the leaderboard', 'Runden, Cut, Finalrunde nach Ergebnis, Scorekarten im Leaderboard'), length: '0:58' },
   // Training (night 16./17.11.2026): topics as shots, a shot's four parts, a drill and its result, plans, history
   { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:09' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '8:26' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '9:09' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
@@ -329,6 +329,16 @@ export const FAQ: FaqTopic[] = [
         video: 'score',
       },
       {
+        // Sascha 17.11.2026, "Automatisch einladen": Thomas and Daniel were put into the Legends rounds and heard nothing
+        q: () => tr('Do the players of a planned tournament get the invitation?', 'Bekommen die Spieler eines geplanten Turniers die Einladung?'),
+        a: () =>
+          tr(
+            'Your linked friends do, by themselves: whoever you put into a tournament or into single rounds of a series gets the invitation in his inbox and a push – once, saving again asks nobody twice; on the day "Tournament today › Take part" puts him into his flight. Taken out before he answered, the invitation is withdrawn. Anyone else (a name typed in, not a linked friend): the tournament\'s page says "Not invited yet: …" above the invitation – send him the link or show the QR code.',
+            'Deine verknüpften Freunde von selbst: Wen du in ein Turnier oder in einzelne Runden einer Serie einträgst, bekommt die Einladung in seine Inbox und als Mitteilung – einmal, erneutes Speichern fragt niemanden doppelt; am Turniertag bringt ihn „Turnier heute › Teilnehmen“ in seinen Flight. Nimmst du ihn wieder heraus, bevor er geantwortet hat, wird die Einladung zurückgezogen. Alle anderen (ein eingetippter Name, kein verknüpfter Freund): Die Turnierseite zeigt über der Einladung „Noch nicht eingeladen: …“ – schick ihm den Link oder zeig den QR-Code.',
+          ),
+        video: 'tours',
+      },
+      {
         // Sascha 11.11.2026: "Loch 4 als Loch 5 gesetzt – wie korrigiere ich das?"; Moritz on Cypress
         q: () => tr('A hole is drawn wrong – how do I correct it?', 'Ein Loch ist falsch eingezeichnet – wie korrigiere ich es?'),
         a: () =>
@@ -345,6 +355,16 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Yes, signed in: when you set up the round, under "Invite players", "Create a code" makes a code and a QR code – also later in the round: pull up the bar → "Invite players". Every round can – social as well; tournaments over several flights are planned in the module Tournaments. The others tap "Join a friend\'s round": nearby (about 300 m, for two hours) the round shows at the top, a tap is enough – else the code. No account needed – the name is enough; you let each one in (several: "Let all in"), a push tells you. Your flight picks who it is. Under "Score entry" you choose who enters the scores: everyone his own (the default; strokes, putts, penalties); "With a marker" – everyone also marks a partner, a difference shows (in a tournament always); or "One for all" – one player enters every card, the others see it live, and at the end he signs once – his own card and the count of the others – then everyone gets a push and signs his own card on his own phone (no marker per player); whoever also wants his putts, tee shot and sand for his own analysis gets "Own details" (per player in the setup, switched on his own phone). In scramble and foursomes one keeps the team\'s card, another can take it over. The leaderboard shows the flight live.',
             'Ja, angemeldet: Beim Einrichten der Runde unter „Mitspieler einladen“ erzeugt „Code erzeugen“ einen Code und einen QR-Code – auch später in der Runde: Leiste hochziehen → „Mitspieler einladen“. Das geht bei jeder Runde, auch Social; Turniere über mehrere Flights planst du im Modul Tournaments. Die anderen tippen „Runde beitreten“: In der Nähe (etwa 300 m, zwei Stunden lang) steht die Runde ganz oben, ein Tipp genügt – sonst der Code. Ein Konto brauchen sie nicht – der Name genügt; du bestätigst jeden Beitritt (bei mehreren: „Alle zulassen“), eine Mitteilung sagt es dir. Dein Flight wählt, wer er ist. Unter „Score-Erfassung“ wählst du, wer die Scores erfasst: „Jeder seinen eigenen“ (Standard) (Schläge, Putts, Strafschläge); „Mit Zähler“ – jeder zählt dazu einen Mitspieler, eine Abweichung wird angezeigt (im Turnier immer); oder „Einer für alle“ – ein Spieler trägt alle Scorecards ein, die anderen sehen alles live, und am Ende unterschreibt er einmal – seine Karte und die Zählung der anderen –, danach bekommt jeder eine Mitteilung und unterschreibt seine eigene Karte auf seinem Handy; erst dann ist die Runde abgegeben (keine Zähler je Spieler); für die anderen erfasst er Schläge und Putts – Sand, Strafschläge und Abschlag dazu, wenn eine Wette die Runde zählt; wer zusätzlich Putts, Sand, Strafschläge und Abschlag für die eigene Auswertung erfassen will (seine eigenen Putts zählen dann vor denen des Schreibers), bekommt „Eigene Detailerfassung“ (je Spieler im Setup, auf dem eigenen Handy umschaltbar). Bei Scramble und Vierer führt einer die Scorecard des Teams, ein anderer kann sie übernehmen. Das Leaderboard zeigt den Flight live.',
+          ),
+        video: 'map',
+      },
+      {
+        // Sascha 17.11.2026, Legends: Thomas's phone showed par on 1–7 for both – a round of its own beside the flight
+        q: () => tr("My flight partner's phone shows par instead of the scores I enter – why?", 'Beim Mitspieler steht Par statt der Scores, die ich eintrage – warum?'),
+        a: () =>
+          tr(
+            "Then that phone plays a round of its own beside your flight – its leaderboard says \"Live · the phones of the flight\" and carries the course and the day as its name, not the tournament. Only a phone that joined your flight gets its scores: the tournament's or the series' code, QR code or link (\"Take part today\"), or \"Tournament today › Take part\" on the start page. On that phone: \"Join a round\", the code – the name finds its place in the flight, the card shows your scores, and in a tournament the card is signed there. The round of its own stays until its owner deletes it. A new round on the course of a tournament you play today: the app warns before the start and offers \"Join the tournament\". In a flight joined, a score kept on another phone never shows par: \"–\" until it arrives.",
+            "Dann spielt dieses Handy neben deinem Flight eine eigene Runde – ihr Leaderboard heißt „Live · alle Handys des Flights“ und trägt Platz und Tag als Namen, nicht das Turnier. Die Scores bekommt nur ein Handy, das deinem Flight beigetreten ist: Code, QR-Code oder Link des Turniers oder der Serie („Heute teilnehmen“) oder „Turnier heute › Teilnehmen“ auf der Startseite. Auf diesem Handy: „Runde beitreten“, den Code – der Name findet seinen Platz im Flight, die Karte zeigt deine Scores, im Turnier wird dort auch unterschrieben. Die eigene Runde bleibt, bis ihr Besitzer sie löscht. Eine neue Runde auf dem Platz eines Turniers, das du heute spielst: Die App warnt vor dem Start und bietet „Turnier beitreten“ an. In einem beigetretenen Flight steht bei einem Score, den ein anderes Handy erfasst, nie Par: „–“, bis er ankommt.",
           ),
         video: 'map',
       },

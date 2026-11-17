@@ -12,7 +12,13 @@ const langs = process.argv.slice(2).length ? process.argv.slice(2) : [...new Set
 for (const lang of langs) {
   const out = {};
   let bad = 0;
-  for (let n = 0; existsSync(`src/i18n/parts/${lang}-${n}.json`); n++) {
+  // every part of the language in its order – a gap in the numbers (parts made on another branch) skips none after it
+  const nums = readdirSync('src/i18n/parts')
+    .map((f) => (f.startsWith(`${lang}-`) && /^\d+\.json$/.test(f.slice(lang.length + 1)) ? Number(f.slice(lang.length + 1, -5)) : null))
+    .filter((n) => n != null)
+    .sort((a, b) => a - b);
+  for (const n of nums) {
+    if (!existsSync(`src/i18n/parts/${lang}-${n}.json`)) continue;
     const part = JSON.parse(readFileSync(`src/i18n/parts/${lang}-${n}.json`, 'utf8'));
     for (const [k, v] of Object.entries(part)) {
       if (!(k in source) || typeof v !== 'string' || !v.trim()) continue;

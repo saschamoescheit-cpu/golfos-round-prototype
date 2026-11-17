@@ -1,0 +1,5 @@
+{
+ "Do the players of a planned tournament get the invitation?": "已计划比赛的球员会收到邀请吗？",
+ "Your linked friends do, by themselves: whoever you put into a tournament or into single rounds of a series gets the invitation in his inbox and a push – once, saving again asks nobody twice; on the day \"Tournament today › Take part\" puts him into his flight. Taken out before he answered, the invitation is withdrawn. Anyone else (a name typed in, not a linked friend): the tournament's page says \"Not invited yet: …\" above the invitation – send him the link or show the QR code.": "已关联的好友会自动收到：你把谁加入比赛或系列赛的某几轮，他就会在收件箱里收到邀请，并收到推送——只发一次，再次保存不会重复；比赛当天“今日比赛 › 参加”会把他带进自己的小组。如果在他回复前把他移除，邀请会被撤回。其他人（手动输入的名字，不是已关联的好友）：比赛页面会在邀请上方显示“尚未邀请：…”——把链接发给他或给他看二维码。",
+ "Not invited yet: {0} – not a linked friend. Send the link or show the QR code.": "尚未邀请：{0} – 不是已关联的好友。发送链接或出示二维码。"
+}
