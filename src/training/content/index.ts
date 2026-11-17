@@ -22,7 +22,7 @@ import { SKETCHES } from './sketches';
 import { moreDrills } from './more';
 import { MOBILITY_DRILL_VIDEOS, mobilityDrills } from './mobility';
 import { VIDEOS_DE } from './videos-de';
-import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS } from './motions';
+import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS, SHOT_MOTIONS } from './motions';
 import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
@@ -112,7 +112,7 @@ export const CATEGORIES: Category[] = BUILT
     return {
       ...c,
       // what our pro took out does not show (content/retired.ts)
-      shots: sh.shots.filter((s) => !RETIRED_SHOTS.includes(s.id)).map((s) => ({ ...s, drills: s.drills?.filter((d) => !RETIRED_DRILLS.includes(d)), setup: pic(s.setup), move: pic(s.move), watch: pic(s.watch) })),
+      shots: sh.shots.filter((s) => !RETIRED_SHOTS.includes(s.id)).map((s) => ({ ...s, drills: s.drills?.filter((d) => !RETIRED_DRILLS.includes(d)), setup: pic(s.setup), move: withMotion(pic(s.move), SHOT_MOTIONS[s.id]), watch: pic(s.watch) })),
       lieChart: sh.lie,
       sections: c.sections.filter((s) => !absorbs.includes(s.title.en)),
       absorbed: c.sections.filter((s) => absorbs.includes(s.title.en)),

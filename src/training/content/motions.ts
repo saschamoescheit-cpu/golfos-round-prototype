@@ -6,7 +6,7 @@ import { L, type CategoryId, type Motion, type MotionFrame, type Shot } from '..
 // (Sascha 17.11.2026: "the 3D animations are not good") – the phases of a movement are drawn as pictures side by side.
 
 /** the full swing, face-on: back in three counts, down in one (Tour Tempo 3:1), the finish held */
-const fullSwing = (opts?: MotionFrame['opts'], top = 0.3, shot: Shot = 'full'): Motion => ({
+export const fullSwing = (opts?: MotionFrame['opts'], top = 0.3, shot: Shot = 'full'): Motion => ({
   frames: [
     { pose: 'front', opts, t: 0, hold: 0.5 },
     { pose: 'takeaway', opts, t: 0.5, label: L('back in one piece – one', 'aus einem Guss zurück – eins') },
@@ -44,13 +44,24 @@ const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
 });
 
 /** the chip: the same pendulum with a lofted club, the grip leads, the short finish held */
-const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
+export const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
   frames: [
     { pose: 'chip', opts, t: 0, hold: 0.6 },
     { pose: 'chip', opts, rock: -15, t: 0.6, label: L('the shoulders rock, the wrists stay firm', 'die Schultern schaukeln, die Handgelenke bleiben fest') },
     { pose: 'chip', opts, rock: 0, t: 0.25, label: L('the club brushes the grass', 'der Schläger streift das Gras'), hit: 'chip' },
     { pose: 'chip', opts, rock: 17, t: 0.3, hold: 1, label: L('the grip leads – hold the finish', 'der Griff führt – Finish halten') },
     { pose: 'chip', opts, t: 0.7, hold: 0.2 },
+  ],
+});
+
+/** the full swing from down the line (the slopes with the ball above or below the feet, 17.11.2026: their phases as
+ *  pictures): set-up, the top, back through the set-up at impact, the finish held */
+export const sideSwing = (opts?: MotionFrame['opts'], say?: { top?: L; impact?: L; finish?: L }): Motion => ({
+  frames: [
+    { pose: 'address', opts, t: 0, hold: 0.5 },
+    { pose: 'top', opts, t: 1.0, hold: 0.3, label: say?.top ?? L('back to the top', 'zurück bis oben') },
+    { pose: 'address', opts, t: 0.35, label: say?.impact ?? L('impact: back at the set-up', 'Treffmoment: zurück in der Ansprache'), hit: 'full' },
+    { pose: 'finish', opts, t: 0.45, hold: 1, label: say?.finish ?? L('hold the finish', 'Finish halten') },
   ],
 });
 
@@ -269,4 +280,16 @@ export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> 
       with: [{ fig: 1, frames: [{ pose: 'address', t: 0, hold: 0.5 }, { pose: 'top', t: 1.1, hold: 0.3 }, { pose: 'address', t: 0.5, hold: 1.4 }] }],
     },
   },
+};
+
+/** the movement of a shot's "Bewegung" picture, by shot id (17.11.2026, Sascha: the slope shots as phase pictures too) */
+export const SHOT_MOTIONS: Record<string, Motion> = {
+  'chip-uphill': { fig: 0, ...chipStroke() },
+  'chip-downhill': { fig: 0, ...chipStroke() },
+  'chip-below-feet': { fig: 0, ...chipStroke() },
+  // (the chip with the ball above the feet keeps its still picture: from the side the figure only has the full finish)
+  'slope-uphill': fullSwing(),
+  'slope-downhill': fullSwing(undefined, 0.2),
+  'slope-above': sideSwing(undefined, { top: L('a flatter swing around the body', 'ein flacherer Schwung um den Körper') }),
+  'slope-below': sideSwing({ crouch: true }, { top: L('stay in the knees', 'in den Knien bleiben'), impact: L('keep the height through the ball', 'die Höhe durch den Ball halten') }),
 };

@@ -47,3 +47,14 @@ describe('captions', () => {
     expect(saysAgain('Bergab: kurz landen.', 'Der Ball kommt flacher und rollt weit – kurz landen.')).toBe(false); // too short to judge
   });
 });
+
+describe('the slope shots', () => {
+  it('their "Bewegung" shows 4 phase pictures (17.11.2026, Sascha: "Phasenbilder für Hang-Schläge")', () => {
+    const shots = CATEGORIES.flatMap((c) => c.shots ?? []);
+    for (const id of ['chip-uphill', 'chip-downhill', 'chip-below-feet', 'slope-uphill', 'slope-downhill', 'slope-above', 'slope-below']) {
+      const s = shots.find((x) => x.id === id)?.move.sketch;
+      expect(s, id).toBeTruthy();
+      expect(phasesOf(s!).length, id).toBe(4);
+    }
+  });
+});
