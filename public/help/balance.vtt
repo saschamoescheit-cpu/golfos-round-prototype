@@ -1,45 +1,73 @@
 WEBVTT
 
 1
-00:00:00.005 --> 00:00:02.415 line:-2
+00:00:00.010 --> 00:00:02.620 line:-2
 Unter „Bilanz“ siehst du, was du in Spielen
 
 1-2
-00:00:02.465 --> 00:00:05.686 line:-2
+00:00:02.670 --> 00:00:06.374 line:-2
 und Wetten gewonnen und verloren hast – oben die Kacheln.
 
 2
-00:00:05.786 --> 00:00:10.176 line:-2
-Eine Kachel filtert: „Verlust“ zeigt nur die Spiele, bei denen du verloren hast.
+00:00:06.474 --> 00:00:09.684 line:-2
+Eine Kachel filtert: „Gewinn“ zeigt nur, wo du gewonnen hast.
 
 2-2
-00:00:10.226 --> 00:00:13.177 line:-2
-Ein Tipp auf ein Spiel öffnet sein Ergebnis.
+00:00:09.734 --> 00:00:12.776 line:-2
+Ein zweiter Tipp zeigt wieder alles.
 
 3
-00:00:13.277 --> 00:00:17.746 line:-2
+00:00:12.876 --> 00:00:17.838 line:-2
 Unter „Offene Beträge“ steht, was du schuldest und was dir geschuldet wird.
 
 4
-00:00:17.846 --> 00:00:19.136 line:-2
-Tippe auf einen Mitspieler:
-
-4-2
-00:00:19.186 --> 00:00:22.986 line:-2
-jedes Spiel zwischen euch, wie es stand, und was noch offen ist.
+00:00:17.938 --> 00:00:24.017 line:-2
+Tippe auf einen Mitspieler. Oben steht „Unterm Strich“: Cedric zahlt dir noch 20 $.
 
 5
-00:00:23.086 --> 00:00:25.176 line:-2
-Hast du bezahlt, tippst du „Bezahlt“.
+00:00:24.117 --> 00:00:28.487 line:-2
+Unter „Wofür“ folgt jede Runde mit Tag und Platz und den Wetten darin –
 
 5-2
-00:00:25.226 --> 00:00:28.438 line:-2
-Dein Mitspieler sieht es und bestätigt mit „Erhalten“.
+00:00:28.537 --> 00:00:32.698 line:-2
+und ob sie bezahlt, teilweise bezahlt oder offen ist.
 
 6
-00:00:28.538 --> 00:00:30.228 line:-2
-Hat dir jemand etwas gegeben,
+00:00:32.798 --> 00:00:37.288 line:-2
+Bei Erik steht auch euer 5+5+10 – vorne, hinten und gesamt.
 
 6-2
-00:00:30.278 --> 00:00:34.258 line:-2
-buchst du es unter „Offene Beträge“ mit „Erhalten“ aus.
+00:00:37.338 --> 00:00:41.873 line:-2
+Eure beiden Wetten von gestern heben sich auf: verrechnet.
+
+7
+00:00:41.973 --> 00:00:44.763 line:-2
+Hast du Erik bezahlt, tippst du „Bezahlt“.
+
+7-2
+00:00:44.813 --> 00:00:49.063 line:-2
+Erik bekommt eine Nachricht in seine Inbox und bestätigt den Erhalt –
+
+7-3
+00:00:49.113 --> 00:00:52.386 line:-2
+bis dahin steht hier „Erik bestätigt noch“.
+
+8
+00:00:52.486 --> 00:00:55.756 line:-2
+Umgekehrt genauso: Chris hat dir 20 $ bezahlt.
+
+8-2
+00:00:55.806 --> 00:00:58.276 line:-2
+Die Nachricht steht oben rechts in deiner Inbox –
+
+8-3
+00:00:58.326 --> 00:01:01.311 line:-2
+erst mit „Erhalten“ wird es abgebucht.
+
+9
+00:01:01.411 --> 00:01:04.101 line:-2
+Bei Chris ist die Runde von gestern jetzt bezahlt –
+
+9-2
+00:01:04.151 --> 00:01:07.684 line:-2
+offen ist nur noch die von heute.
