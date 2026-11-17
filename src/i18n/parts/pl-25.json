@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} jeszcze płaci ci {1}",
+ "You still pay {0} {1}": "Jeszcze płacisz {0} {1}",
+ "All paid": "Wszystko zapłacone",
+ "{0} paid – {1} has not confirmed yet": "{0} zapłacone – {1} jeszcze nie potwierdził",
+ "{0} paid {1} – please confirm": "{0} zapłacił {1} – potwierdź",
+ "What for": "Za co",
+ "The whole trip": "Cały wyjazd",
+ "partly paid": "częściowo zapłacone",
+ "Side bet 5+5+10": "Zakład poboczny 5+5+10",
+ "Your bet “{0}” made": "Twój zakład „{0}” zrealizowany",
+ "Your bet “{0}” missed": "Twój zakład „{0}” nieudany",
+ "{0}’s bet “{1}” made": "Zakład {0} „{1}” zrealizowany",
+ "{0}’s bet “{1}” missed": "Zakład {0} „{1}” nieudany",
+ "Paid – waiting for the confirmation": "Zapłacone – czeka na potwierdzenie",
+ "Waiting for the confirmation": "Czeka na potwierdzenie",
+ "{0} confirms": "{0} potwierdza",
+ "set off": "skompensowane",
+ "What does someone owe me for – and when is it paid?": "Za co ktoś jest mi winien – i kiedy jest zapłacone?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Bilans → dotknij gracza. Na górze „Łącznie”: ile on ci jeszcze płaci albo ty jemu. Poniżej „Za co”: każda runda z dniem i polem – twoje zrealizowane zakłady, jego, 5+5+10 z pierwszymi 9, drugimi 9 i całymi 18, gra – oraz czy runda jest zapłacona, częściowo zapłacona czy otwarta; zakłady na cały wyjazd na końcu. Płatność liczy się dopiero, gdy odbiorca ją potwierdzi: „Zapłacone” wysyła mu wiadomość do skrzynki („… zapłacił ci 20 $ – potwierdź odbiór”); dopóki nie dotknie „Otrzymane”, pozostaje otwarta i widnieje jako „jeszcze nie potwierdził”."
+}

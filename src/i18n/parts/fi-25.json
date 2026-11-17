@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} maksaa sinulle vielä {1}",
+ "You still pay {0} {1}": "Maksat vielä pelaajalle {0} {1}",
+ "All paid": "Kaikki maksettu",
+ "{0} paid – {1} has not confirmed yet": "{0} maksettu – {1} ei ole vielä vahvistanut",
+ "{0} paid {1} – please confirm": "{0} maksoi {1} – vahvista",
+ "What for": "Mistä",
+ "The whole trip": "Koko matka",
+ "partly paid": "osittain maksettu",
+ "Side bet 5+5+10": "Sivuveto 5+5+10",
+ "Your bet “{0}” made": "Vetosi ”{0}” onnistui",
+ "Your bet “{0}” missed": "Vetosi ”{0}” epäonnistui",
+ "{0}’s bet “{1}” made": "Pelaajan {0} veto ”{1}” onnistui",
+ "{0}’s bet “{1}” missed": "Pelaajan {0} veto ”{1}” epäonnistui",
+ "Paid – waiting for the confirmation": "Maksettu – odottaa vahvistusta",
+ "Waiting for the confirmation": "Odottaa vahvistusta",
+ "{0} confirms": "{0} vahvistaa",
+ "set off": "kuitattu",
+ "What does someone owe me for – and when is it paid?": "Mistä joku on minulle velkaa – ja milloin se on maksettu?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Tilanne → napauta pelaajaa. Ylhäällä ”Kaikkiaan”: mitä hän vielä maksaa sinulle tai sinä hänelle. Alla ”Mistä”: jokainen kierros päivineen ja kenttineen – onnistuneet vetosi, hänen vetonsa, 5+5+10 etu 9:n, taka 9:n ja koko 18:n kanssa, peli – ja onko kierros maksettu, osittain maksettu vai avoin; koko matkan vedot lopussa. Maksu lasketaan vasta, kun vastaanottaja on vahvistanut sen: ”Maksettu” lähettää hänelle viestin saapuneisiin (”… maksoi sinulle 20 $ – vahvista vastaanotto”); kunnes hän napauttaa ”Vastaanotettu”, se pysyy avoimena ja näkyy ”ei ole vielä vahvistanut”."
+}

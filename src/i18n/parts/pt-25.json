@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} ainda te paga {1}",
+ "You still pay {0} {1}": "Ainda pagas a {0} {1}",
+ "All paid": "Tudo pago",
+ "{0} paid – {1} has not confirmed yet": "{0} pago – {1} ainda não confirmou",
+ "{0} paid {1} – please confirm": "{0} pagou {1} – confirma",
+ "What for": "Porquê",
+ "The whole trip": "Toda a viagem",
+ "partly paid": "pago em parte",
+ "Side bet 5+5+10": "Aposta paralela 5+5+10",
+ "Your bet “{0}” made": "A tua aposta “{0}” conseguida",
+ "Your bet “{0}” missed": "A tua aposta “{0}” falhada",
+ "{0}’s bet “{1}” made": "Aposta de {0} “{1}” conseguida",
+ "{0}’s bet “{1}” missed": "Aposta de {0} “{1}” falhada",
+ "Paid – waiting for the confirmation": "Pago – à espera de confirmação",
+ "Waiting for the confirmation": "À espera de confirmação",
+ "{0} confirms": "{0} confirma",
+ "set off": "compensado",
+ "What does someone owe me for – and when is it paid?": "Porque é que alguém me deve algo – e quando está pago?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Balanço → toca no jogador. Em cima “No total”: o que ele ainda te paga, ou tu a ele. Em baixo “Porquê”: cada volta com dia e campo – as tuas apostas conseguidas, as dele, um 5+5+10 com primeiros 9, últimos 9 e os 18, um jogo – e se a volta está paga, paga em parte ou em aberto; apostas de toda a viagem no fim. Um pagamento só conta quando o recetor o confirma: “Pago” envia-lhe uma mensagem na caixa de entrada (“… pagou-te 20 $ – confirma a receção”); até ele tocar em “Recebido”, fica em aberto e aparece como “ainda não confirmou”."
+}

@@ -73,8 +73,9 @@ if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance.
 // Cedric tapped: how the −35 € add up
 await p.getByRole('button', { name: 'Cedric – die Details' }).click();
 const sheet = p.getByRole('dialog', { name: 'Cedric' });
-const items = (await sheet.getByRole('list', { name: 'Spiele und Wetten' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(items.length === 2 && items.some((t) => /Skins 01\.11\. · Hetzenhof.*−5 €/.test(t)) && items.some((t) => /Skins 02\.11\. · Hetzenhof.*−30 €/.test(t)), `Cedric: the two games with their amounts (${items.join(' | ')})`);
+// since 16.11.2026 by round (Bilanz-Mockup B): each game its round – day, course, the game, its amount
+const items = await sheet.locator('.balance-round').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+ok(items.length === 2 && items.some((t) => /1\. Nov\. · Hetzenhof.*−5 €.*Skins/.test(t)) && items.some((t) => /2\. Nov\. · Hetzenhof.*−30 €.*Skins/.test(t)), `Cedric: the two games, each its round with its amount (${items.join(' | ')})`);
 ok(/Zusammen −35 €/.test(await txt(sheet.locator('.balance-sum'))), 'Cedric: together −35 €');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance-person.png' });
 await sheet.getByRole('button', { name: /^Bezahlt – 35 €/ }).click();

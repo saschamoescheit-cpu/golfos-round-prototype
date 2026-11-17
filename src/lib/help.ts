@@ -532,6 +532,17 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'balance',
       },
+      // Sascha 16.11.2026: "nicht erkennbar, wofür Cedric mir die 40 $ schuldet" → Mockup B (by round, paid or open);
+      // "erst dann darf in der Bilanz abgebucht werden"
+      {
+        q: () => tr('What does someone owe me for – and when is it paid?', 'Wofür schuldet mir jemand etwas – und wann ist es bezahlt?'),
+        a: () =>
+          tr(
+            'Balance → tap the player. On top "On the whole": what he still pays you, or you him. Below "What for": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: "Paid" sends him a message in the inbox ("… paid you 20 $ – confirm the receipt"); until he taps "Received" it stays open, marked "has not confirmed yet".',
+            'Bilanz → den Mitspieler antippen. Oben „Unterm Strich“: was er dir noch zahlt oder du ihm. Darunter „Wofür“: jede Runde mit Tag und Platz – deine geschafften Wetten, seine, eine 5+5+10 mit vorne, hinten und gesamt, ein Spiel –, und ob die Runde bezahlt, teilweise bezahlt oder offen ist; Wetten über die ganze Reise am Ende. Eine Zahlung zählt erst, wenn der Empfänger sie bestätigt hat: „Bezahlt“ schickt ihm eine Nachricht in die Inbox („… hat dir 20 $ bezahlt – Erhalt bestätigen“); bis er „Erhalten“ tippt, bleibt sie offen und steht als „bestätigt noch“ da.',
+          ),
+        video: 'balance',
+      },
       {
         q: () => tr('Can we play for drinks instead of money?', 'Können wir auch um Getränke statt um Geld spielen?'),
         a: () =>

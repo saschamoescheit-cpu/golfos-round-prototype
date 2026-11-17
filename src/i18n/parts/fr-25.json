@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} te doit encore {1}",
+ "You still pay {0} {1}": "Tu dois encore {1} à {0}",
+ "All paid": "Tout est payé",
+ "{0} paid – {1} has not confirmed yet": "{0} payé – {1} n’a pas encore confirmé",
+ "{0} paid {1} – please confirm": "{0} a payé {1} – merci de confirmer",
+ "What for": "Pour quoi",
+ "The whole trip": "Tout le voyage",
+ "partly paid": "payé en partie",
+ "Side bet 5+5+10": "Pari annexe 5+5+10",
+ "Your bet “{0}” made": "Ton pari « {0} » réussi",
+ "Your bet “{0}” missed": "Ton pari « {0} » manqué",
+ "{0}’s bet “{1}” made": "Pari de {0} « {1} » réussi",
+ "{0}’s bet “{1}” missed": "Pari de {0} « {1} » manqué",
+ "Paid – waiting for the confirmation": "Payé – en attente de confirmation",
+ "Waiting for the confirmation": "En attente de confirmation",
+ "{0} confirms": "{0} confirme",
+ "set off": "compensé",
+ "What does someone owe me for – and when is it paid?": "Pour quoi quelqu’un me doit-il quelque chose – et quand est-ce payé ?",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "Bilan → touche le joueur. En haut « Au total » : ce qu’il te doit encore, ou toi à lui. En dessous « Pour quoi » : chaque partie avec son jour et son parcours – tes paris réussis, les siens, un 5+5+10 avec aller, retour et les 18, un jeu – et si la partie est payée, payée en partie ou ouverte ; les paris de tout le voyage à la fin. Un paiement ne compte qu’une fois confirmé par le destinataire : « Payé » lui envoie un message dans la boîte de réception (« … t’a payé 20 $ – confirme la réception ») ; tant qu’il n’a pas touché « Reçu », il reste ouvert, marqué « n’a pas encore confirmé »."
+}

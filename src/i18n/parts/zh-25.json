@@ -1,0 +1,21 @@
+{
+ "{0} still pays you {1}": "{0} 还要付给你 {1}",
+ "You still pay {0} {1}": "你还要付给 {0} {1}",
+ "All paid": "全部已付",
+ "{0} paid – {1} has not confirmed yet": "已付 {0} – {1} 尚未确认",
+ "{0} paid {1} – please confirm": "{0} 已付 {1} – 请确认",
+ "What for": "明细",
+ "The whole trip": "整个旅程",
+ "partly paid": "部分已付",
+ "Side bet 5+5+10": "边注 5+5+10",
+ "Your bet “{0}” made": "你的赌注“{0}”达成",
+ "Your bet “{0}” missed": "你的赌注“{0}”未达成",
+ "{0}’s bet “{1}” made": "{0} 的赌注“{1}”达成",
+ "{0}’s bet “{1}” missed": "{0} 的赌注“{1}”未达成",
+ "Paid – waiting for the confirmation": "已付 – 等待确认",
+ "Waiting for the confirmation": "等待确认",
+ "{0} confirms": "{0} 待确认",
+ "set off": "已抵消",
+ "What does someone owe me for – and when is it paid?": "别人欠我的钱是因为什么——什么时候算付清？",
+ "Balance → tap the player. On top \"On the whole\": what he still pays you, or you him. Below \"What for\": each round with its day and course – your bets made, his, a 5+5+10 with front, back and 18, a game –, and whether the round is paid, partly paid or open; bets of the whole trip at the end. A payment counts only once the receiver confirmed it: \"Paid\" sends him a message in the inbox (\"… paid you 20 $ – confirm the receipt\"); until he taps \"Received\" it stays open, marked \"has not confirmed yet\".": "收支 → 点按该球友。顶部“总计”：他还要付给你多少，或你还要付给他多少。下方“明细”：每一轮的日期和球场——你达成的赌注、他的赌注、带前 9 洞、后 9 洞和全部 18 洞的 5+5+10、一局游戏——以及该轮是已付、部分已付还是未付；整个旅程的赌注放在最后。付款只有在收款人确认后才计入：“已付”会给他的收件箱发一条消息（“… 已付给你 20 $ – 确认收款”）；在他点“已收到”之前，款项仍算未付，并显示“尚未确认”。"
+}

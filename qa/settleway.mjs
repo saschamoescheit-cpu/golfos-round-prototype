@@ -178,7 +178,8 @@ await H.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 await H.waitForTimeout(800);
 await H.locator('button').filter({ hasText: 'Erik' }).first().click();
 const sheet = H.getByRole('dialog', { name: 'Erik' });
-await sheet.getByRole('button', { name: 'USA-Wetten öffnen' }).click();
+// since 16.11.2026 by round (Bilanz-Mockup B): a line of the pool tapped
+await sheet.locator('button.balance-why').first().click();
 await H.waitForTimeout(800);
 ok((await H.locator('.topbar h1').filter({ hasText: 'USA-Wetten' }).count()) === 1, 'the Bilanz: "USA-Wetten" tapped – the pool opens');
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
