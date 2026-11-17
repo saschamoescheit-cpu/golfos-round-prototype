@@ -223,10 +223,10 @@ await p.locator('.tr-metro-go').click();
 ok((await p.locator('.tr-metro-go').getAttribute('aria-pressed')) === 'false', 'metronome stops');
 await back();
 await back();
-// the full swing gets the tempo trainer 3 : 1 (Tour Tempo)
-await p.locator('.tr-search input').fill('3:1-Rhythmus');
+// the full swing gets the tempo trainer 3 : 1 (Tour Tempo) – on the feet-together swing since Chris took out the 3:1 drill (16.11.2026)
+await p.locator('.tr-search input').fill('geschlossenen Füßen');
 await p.locator('.tr-search input').press('Enter');
-await p.locator('.tr-drill-row .list-item').filter({ hasText: '3:1-Rhythmus' }).first().click();
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Schwung mit geschlossenen Füßen' }).first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-metronome').innerText()).toLowerCase().includes('schwung-tempo 3 : 1') && (await p.locator('.tr-metro-lights i').count()) === 3, 'swing drill: tempo trainer 3 : 1 with three sounds');
 await p.locator('.tr-metronome .chip').filter({ hasText: '21/7' }).click();
@@ -246,8 +246,8 @@ await tab('Üben');
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-block .list-item').count()) >= 10, 'ready-made plans listed');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
-// the plan's sweetspot gate is out (Chris 15.11.2026): three drills left – tiger gate, start line gate, clock
-ok((await p.locator('.tr-plan-row .tr-thumb > svg').count()) === 3, 'every drill of the plan has a small picture (Sascha 16.10.2026)');
+// the plan's sweetspot gate is out (Chris 15.11.2026), the coin in its place (Chris 16.11.2026): coin, tiger gate, start line gate, clock
+ok((await p.locator('.tr-plan-row .tr-thumb > svg').count()) === 4, 'every drill of the plan has a small picture (Sascha 16.10.2026)');
 await p.getByRole('button', { name: 'Einheit starten' }).click();
 await p.waitForTimeout(2300);
 ok(await p.locator('.tr-now').isVisible(), 'session runs');
@@ -255,7 +255,7 @@ ok((await p.locator('.tr-timer, .tr-timer-time').count()) === 0, 'no timer in th
 await shot('session');
 for (let i = 0; i < 14; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Fertig – nächste Übung' }).click();
-ok((await p.locator('.tr-now-name').innerText()).includes('Startlinien-Tor'), 'next drill after done');
+ok((await p.locator('.tr-now-name').innerText()).includes('Tiger-Woods-Tor'), 'next drill after done');
 // the arrow without a result opens the result sheet – like the score sheet on a hole
 await p.locator('.hole-bar-arrow').last().click();
 ok(await p.getByRole('dialog', { name: 'Dein Ergebnis' }).isVisible(), 'drill bar: the arrow without a result opens the result sheet');
@@ -263,7 +263,7 @@ await p.getByRole('button', { name: 'Überspringen – nächste Übung' }).click
 ok((await p.locator('.map-hole-no').innerText()) === '3', 'result sheet: skip goes on to the next drill');
 // pause through the overview
 await p.locator('.hole-bar .map-score').click();
-ok((await p.locator('.drawer-row').count()) === 3, 'overview lists the 3 drills');
+ok((await p.locator('.drawer-row').count()) === 4, 'overview lists the 4 drills');
 await p.locator('.drawer-action').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.list-item').filter({ has: p.locator('.paused-mark') }).first().isVisible(), 'paused session: a row with the pause mark (like a paused round)');
@@ -279,7 +279,7 @@ await back();
 await p.locator('button.btn-primary').filter({ hasText: /^Einheit beenden$/ }).click();
 await p.getByRole('button', { name: 'Speichern & beenden' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.tile-num').first().innerText()).startsWith('1/3'), 'result page: 1 of 3 drills done');
+ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result page: 1 of 4 drills done');
 await shot('result');
 await back();
 await p.waitForTimeout(200);
