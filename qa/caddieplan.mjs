@@ -40,7 +40,7 @@ await caddie.locator('.tr-caddie-ask input').fill('Ich habe jetzt 30 Minuten Zei
 await caddie.locator('.tr-caddie-ask input').press('Enter');
 await p.waitForTimeout(400);
 const rows = (await caddie.locator('.settings-row').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
-ok(rows[0].includes('30 min') && rows[1].includes('Putten') && rows[2].includes('Richtung'), `read: ${rows.slice(0, 3).join(' | ')}`);
+ok(rows[1].includes('30 min') && rows[0].includes('Putten') && rows[2].includes('Richtung'), `read: ${rows.slice(0, 4).join(' | ')}`);
 const mins = async () => (await caddie.locator('.tr-plan-row .muted').allInnerTexts()).reduce((s, x) => s + parseInt(x, 10), 0);
 const names = () => caddie.locator('.tr-plan-row strong').allInnerTexts();
 const first = await names();
@@ -70,7 +70,7 @@ await p.evaluate(() => {
   localStorage.setItem(k, JSON.stringify(list.map((x) => ({ ...x, finishedAt: x.finishedAt ?? new Date().toISOString() }))));
 });
 await open();
-ok((await caddie.locator('.settings-row').first().innerText()).includes('30 min'), 'the caddie remembers the last wish');
+ok((await caddie.locator('.settings-row').nth(1).innerText()).includes('30 min'), 'the caddie remembers the last wish');
 await caddie.locator('.tr-caddie-ask input').fill('30 Minuten Putten Richtung');
 await caddie.locator('.tr-caddie-ask input').press('Enter');
 await p.waitForTimeout(400);
@@ -81,6 +81,34 @@ await p.waitForTimeout(300);
 ok((await names()).join() === started.join(), '"Wie letztes Mal": the session started before');
 // the buttons in the app's look: SVG symbols, no emoji
 ok((await caddie.locator('.tr-caddie-acts button svg').count()) === 2 && !/[\u{1F300}-\u{1FAFF}]/u.test(await caddie.innerText()), 'buttons with SVG symbols, no emoji');
+// a fault (17.11.2026 night): its row shows it, its drills come first
+const say = async (q) => {
+  await caddie.locator('.tr-caddie-ask input').fill(q);
+  await caddie.locator('.tr-caddie-ask input').press('Enter');
+  await p.waitForTimeout(400);
+};
+await say('20 Minuten, meine Chips sind fett');
+const rowsF = (await caddie.locator('.settings-row').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
+ok(rowsF[0].includes('Chippen') && rowsF.some((r) => /Fehler.*Fetter Chip/.test(r)) && (await mins()) === 20, `a fault: ${rowsF.join(' | ')}`);
+// several topics
+await say('20 Minuten Putten und 20 Minuten Chippen');
+ok((await caddie.locator('.tr-caddie-part').count()) === 2 && (await caddie.locator('.tr-caddie-session').count()) === 2 && (await mins()) === 40, 'two topics: two parts, each with its drills, 40 minutes');
+ok(/Einheit starten · 40 min/.test(await caddie.locator('.btn-primary').innerText()), 'the start button says the whole time');
+await caddie.getByRole('button', { name: 'Teil 2 entfernen' }).click();
+await p.waitForTimeout(300);
+ok((await caddie.locator('.tr-caddie-part').count()) === 1 && (await mins()) === 20, 'a part removed: one topic, 20 minutes');
+await caddie.getByRole('button', { name: /Weiteres Thema/ }).click();
+await p.waitForTimeout(300);
+ok((await caddie.locator('.tr-caddie-part').count()) === 2, '"Weiteres Thema" adds a part');
+// a place
+await say('30 Minuten Eisen auf der Range');
+ok((await caddie.locator('.settings-row').filter({ hasText: /^Wo/ }).innerText()).includes('Driving Range') && (await caddie.locator('.tr-caddie-part').count()) === 1, 'a place: Wo · Driving Range');
+// the rounds – without signed rounds it says so
+await say('Was soll ich üben?');
+ok(/signierte Runden/.test(await caddie.locator('.tr-caddie-note').innerText().catch(() => '')), 'no signed rounds: the caddie says what he needs');
+// words he does not know
+await say('hallo');
+ok(/nicht verstanden/.test(await caddie.locator('.tr-caddie-note').innerText().catch(() => '')), 'nothing he knows: he says so');
 // an iPhone SE: nothing sideways
 await p.setViewportSize({ width: 320, height: 640 });
 await p.waitForTimeout(300);

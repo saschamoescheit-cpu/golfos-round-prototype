@@ -8,9 +8,9 @@ import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { ModuleTop, TopTools } from '../components/TopTools';
 import { Stepper, TopBar } from '../components/ui';
-import { ChoiceRow, SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
+import { AddRow, ChoiceRow, SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { canListen, startListening, type Listening } from '../lib/caddietalk';
-import { compose, history, MINUTES, readWish, remember, total, type CaddieItem, type Focus, type Wish } from '../training/caddiePlan';
+import { compose, DEFAULT_WISH, history, MINUTES, nothingThere, readWish, remember, total, upgrade, WHERE, type CaddieItem, type Focus, type Part, type Where, type Wish } from '../training/caddiePlan';
 import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
 import { CATEGORIES, DRILLS, anyDrillById, catById, drillById, drillsOf, shotById, shotsForDrills, shotsOfDrill, videoById } from '../training/content';
@@ -823,15 +823,16 @@ const FOCUS_NAME: Record<Focus, () => string> = {
   contact: () => tr('Strike', 'Treffer'),
   pressure: () => tr('Under pressure', 'Unter Druck'),
 };
+const whereName = (w: Where): string => (w === 'any' ? tr('Anywhere', 'Egal') : placeName(w).replace(/^./, (c) => c.toUpperCase()));
 const WISH_KEY = 'golfos.training.caddie.wish.v1';
 function lastWish(): Wish {
   try {
-    const w = JSON.parse(localStorage.getItem(WISH_KEY) ?? 'null') as Wish | null;
-    if (w && catById(w.cat)) return w;
+    const w = upgrade(JSON.parse(localStorage.getItem(WISH_KEY) ?? 'null'));
+    if (w && w.parts.every((p) => catById(p.cat))) return w;
   } catch {
     /* none yet */
   }
-  return { minutes: 30, cat: 'putting', focus: 'mixed', home: false };
+  return DEFAULT_WISH;
 }
 const MIC = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -855,19 +856,34 @@ const AGAIN = (
     <path d="M3 3v5h5" />
   </svg>
 );
+const REMOVE = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
 
-/** "Caddie, what do you want to practise?" – a wish in words or by voice becomes time, topic and focus (as rows to
- *  change), and from them a session that fills the time; other drills than last time first, "Wie letztes Mal" brings
- *  back the session last started for the same wish. */
-function CaddiePlanner(props: { nav: Nav }) {
+/** the line over a part's drills: "Putten · Richtung · Slice · 20 min" */
+function partLine(p: Part): string {
+  const c = catById(p.cat);
+  const fault = p.fault != null ? c?.faults?.[p.fault] : undefined;
+  return [c ? t(c.name) : '', fault ? t(fault.name) : FOCUS_NAME[p.focus](), `${p.minutes} min`].join(' · ');
+}
+
+/** "Caddie, what do you want to practise?" – a wish in words or by voice becomes the parts of a session (topic, time,
+ *  focus, fault) and a place, shown as rows to change; from them drills that fill the time; other drills than last
+ *  time first, "Wie letztes Mal" brings back the session last started for the same wish; "Was soll ich üben?" asks
+ *  the player's rounds. */
+function CaddiePlanner(props: { nav: Nav; rounds: Round[] }) {
   const [wish, setWishState] = useState<Wish>(lastWish);
   const [text, setText] = useState('');
   const [items, setItems] = useState<CaddieItem[] | null>(null);
   // the drills shown since the wish was made – "Neue Übungen" leaves them out
   const [shown, setShown] = useState<string[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [heard, setHeard] = useState(false);
   const [words, setWords] = useState<string | null>(null);
   const listening = useRef<Listening | null>(null);
+  const advice = useMemo(() => adviceFromRounds(props.rounds).map((a) => ({ cat: a.cat, why: a.why })), [props.rounds]);
   const make = (w: Wish) => {
     setWishState(w);
     try {
@@ -882,14 +898,28 @@ function CaddiePlanner(props: { nav: Nav }) {
   const ask = (q: string) => {
     if (!q.trim()) return;
     setText(q);
-    make(readWish(q, wish));
+    const r = readWish(q, wish, advice);
+    setNote(
+      r.noRounds
+        ? tr('For that I need signed rounds – sign them in Rounds, then I know what costs you strokes.', 'Dafür brauche ich signierte Runden – signiere sie in Rounds, dann weiß ich, was dich Schläge kostet.')
+        : r.unknown
+          ? tr('I did not catch a topic – choose it below, or say e.g. "30 minutes putting, direction".', 'Ein Thema habe ich nicht verstanden – wähle es unten oder sag z. B. „30 Minuten Putten, Richtung“.')
+          : r.why
+            ? tr(`From your rounds: ${r.why}`, `Aus deinen Runden: ${r.why}`)
+            : null,
+    );
+    if (!r.noRounds) make(r.wish);
   };
+  const setPart = (i: number, p: Partial<Part>) => make({ ...wish, parts: wish.parts.map((x, k) => (k === i ? { ...x, ...p } : x)) });
   const before = history(wish)[0];
-  const cat = catById(wish.cat);
-  const topics = AREAS.flatMap((a) => a.cats.flatMap((id) => {
-    const c = catById(id);
-    return c ? [{ value: id, name: t(c.name), group: t(a.name) }] : [];
-  }));
+  const topics = AREAS.flatMap((a) =>
+    a.cats.flatMap((id) => {
+      const c = catById(id);
+      return c ? [{ value: id, name: t(c.name), group: t(a.name) }] : [];
+    }),
+  );
+  const many = wish.parts.length > 1;
+  const away = wish.parts.filter((p) => nothingThere(p, wish.where));
   return (
     <section className="tr-block tr-caddie" aria-label={tr('Caddie', 'Caddie')}>
       <Eyebrow>{tr('Caddie', 'Caddie')}</Eyebrow>
@@ -937,12 +967,59 @@ function CaddiePlanner(props: { nav: Nav }) {
           {words ? tr(`“${words}” …`, `„${words}“ …`) : tr('Listening … say what you want to practise.', 'Ich höre zu … sag, was du üben willst.')}
         </p>
       )}
-      <SettingsList label={tr('Your session', 'Deine Einheit')}>
-        <ChoiceRow label={tr('Time', 'Zeit')} options={MINUTES.map((m) => ({ value: m, name: `${m} min` }))} value={wish.minutes} onChange={(m) => make({ ...wish, minutes: m })} />
-        <ChoiceRow label={tr('Topic', 'Thema')} options={topics} value={wish.cat} onChange={(c) => make({ ...wish, cat: c })} />
-        <ChoiceRow label={tr('Focus', 'Schwerpunkt')} options={(Object.keys(FOCUS_NAME) as Focus[]).map((f) => ({ value: f, name: FOCUS_NAME[f]() }))} value={wish.focus} onChange={(f) => make({ ...wish, focus: f })} />
-        <TickRow label={tr('At home', 'Zu Hause')} on={wish.home} onChange={(h) => make({ ...wish, home: h })} />
+      {/* the rounds know the weak spots – one tap (Sascha 17.11.2026: "Fragt deine Runden") */}
+      <div className="chip-row">
+        <button type="button" className="chip" onClick={() => ask(tr('What should I practise?', 'Was soll ich üben?'))}>
+          {tr('What should I practise?', 'Was soll ich üben?')}
+        </button>
+      </div>
+      {note && (
+        <p className="muted small tr-caddie-note" role="status">
+          {note}
+        </p>
+      )}
+      {wish.parts.map((p, i) => {
+        const c = catById(p.cat);
+        const faults = [{ value: -1, name: tr('None', 'Keiner') }, ...(c?.faults ?? []).map((x, k) => ({ value: k, name: t(x.name) }))];
+        return (
+          <div key={i} className="tr-caddie-part">
+            {many && (
+              <div className="tr-eb-row">
+                <span className="eyebrow">{tr(`Part ${i + 1}`, `Teil ${i + 1}`)}</span>
+                <button type="button" className="icon-btn tr-caddie-remove" aria-label={tr(`Remove part ${i + 1}`, `Teil ${i + 1} entfernen`)} onClick={() => make({ ...wish, parts: wish.parts.filter((_, k) => k !== i) })}>
+                  {REMOVE}
+                </button>
+              </div>
+            )}
+            <SettingsList label={many ? tr(`Part ${i + 1}`, `Teil ${i + 1}`) : tr('Your session', 'Deine Einheit')}>
+              <ChoiceRow label={tr('Topic', 'Thema')} options={topics} value={p.cat} onChange={(v) => setPart(i, { cat: v, fault: undefined })} />
+              <ChoiceRow label={tr('Time', 'Zeit')} options={MINUTES.map((m) => ({ value: m, name: `${m} min` }))} value={p.minutes} onChange={(m) => setPart(i, { minutes: m })} />
+              <ChoiceRow label={tr('Focus', 'Schwerpunkt')} options={(Object.keys(FOCUS_NAME) as Focus[]).map((x) => ({ value: x, name: FOCUS_NAME[x]() }))} value={p.focus} onChange={(v) => setPart(i, { focus: v })} />
+              {(c?.faults?.length ?? 0) > 0 && <ChoiceRow label={tr('Fault', 'Fehler')} options={faults} value={p.fault ?? -1} onChange={(v) => setPart(i, { fault: v < 0 ? undefined : v })} />}
+            </SettingsList>
+          </div>
+        );
+      })}
+      <SettingsList label={tr('Where', 'Wo')}>
+        <ChoiceRow label={tr('Where', 'Wo')} options={WHERE.map((w) => ({ value: w, name: whereName(w) }))} value={wish.where} onChange={(w) => make({ ...wish, where: w })} />
       </SettingsList>
+      {wish.parts.length < 4 && (
+        <AddRow
+          label={tr('Another topic', 'Weiteres Thema')}
+          onClick={() => {
+            const next = topics.find((o) => !wish.parts.some((p) => p.cat === o.value))?.value ?? 'chipping';
+            make({ ...wish, parts: [...wish.parts, { cat: next, minutes: 15, focus: 'mixed' }] });
+          }}
+        />
+      )}
+      {away.length > 0 && (
+        <p className="muted small">
+          {tr(
+            `${away.map((p) => t(catById(p.cat)!.name)).join(', ')}: no drill ${placeName(wish.where as Place)} – the caddie takes others.`,
+            `${away.map((p) => t(catById(p.cat)!.name)).join(', ')}: keine Übung ${placeName(wish.where as Place)} – der Caddie nimmt andere.`,
+          )}
+        </p>
+      )}
       {items === null ? (
         <button type="button" className="btn-secondary" onClick={() => make(wish)}>
           {tr('Put a session together', 'Einheit zusammenstellen')}
@@ -951,26 +1028,31 @@ function CaddiePlanner(props: { nav: Nav }) {
         <p className="muted">{tr('No drills for this – try another topic.', 'Dafür gibt es keine Übungen – nimm ein anderes Thema.')}</p>
       ) : (
         <>
-          <span className="eyebrow">
-            {cat ? t(cat.name) : ''} · {FOCUS_NAME[wish.focus]()} · {total(items)} min
-          </span>
-          <ol className="tr-plan-list card">
-            {items.map((i) => (
-              <li key={i.drill}>
-                <PlanRow drill={i.drill} meta={`${i.minutes} min`} nav={props.nav} />
-              </li>
-            ))}
-          </ol>
+          {wish.parts.map((p, i) => {
+            const mine = items.filter((x) => (x.part ?? 0) === i);
+            return mine.length ? (
+              <div key={i} className="tr-caddie-session">
+                <span className="eyebrow">{partLine({ ...p, minutes: total(mine) })}</span>
+                <ol className="tr-plan-list card">
+                  {mine.map((x) => (
+                    <li key={x.drill}>
+                      <PlanRow drill={x.drill} meta={`${x.minutes} min`} nav={props.nav} />
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null;
+          })}
           <div className="tr-caddie-acts">
             <button
               type="button"
               className="btn-secondary icon-text"
               onClick={() => {
-                const s = compose(wish, { avoid: shown });
+                const s2 = compose(wish, { avoid: shown });
                 // all drills of the topic seen: start again from the beginning
-                const next = s.length && s.some((i) => !shown.includes(i.drill)) ? s : compose(wish, { avoid: items.map((i) => i.drill) });
+                const next = s2.length && s2.some((x) => !shown.includes(x.drill)) ? s2 : compose(wish, { avoid: items.map((x) => x.drill) });
                 setItems(next);
-                setShown([...shown, ...next.map((i) => i.drill)]);
+                setShown([...shown, ...next.map((x) => x.drill)]);
               }}
             >
               {SHUFFLE} {tr('New drills', 'Neue Übungen')}
@@ -986,17 +1068,16 @@ function CaddiePlanner(props: { nav: Nav }) {
             className="btn-primary"
             onClick={() => {
               remember(wish, items);
-              props.nav.start(newSession(`${cat ? t(cat.name) : tr('Caddie', 'Caddie')} · ${FOCUS_NAME[wish.focus]()} · ${total(items)} min`, items, 'caddie'));
+              props.nav.start(newSession(`${wish.parts.map((p) => t(catById(p.cat)?.name)).join(' + ')} · ${total(items)} min`, items.map((x) => ({ drill: x.drill, minutes: x.minutes })), 'caddie'));
             }}
           >
-            {tr('Start session', 'Einheit starten')}
+            {tr(`Start session · ${total(items)} min`, `Einheit starten · ${total(items)} min`)}
           </button>
         </>
       )}
     </section>
   );
 }
-
 
 function TrainTab(props: { nav: Nav; rounds: Round[] }) {
   const sessions = loadSessions();
@@ -1049,7 +1130,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
           <span aria-hidden="true">›</span>
         </button>
       ))}
-      <CaddiePlanner nav={props.nav} />
+      <CaddiePlanner nav={props.nav} rounds={props.rounds} />
       <div className="chip-row" role="group" aria-label={tr('Kind of plan', 'Art des Plans')}>
         <button type="button" className={`chip${kind === 'single' ? ' on' : ''}`} aria-pressed={kind === 'single'} onClick={() => setKind('single')}>
           {tr('One session', 'Einzelne Einheit')}
