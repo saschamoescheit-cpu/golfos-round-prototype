@@ -2546,8 +2546,6 @@ button.balance-item-row { cursor: pointer; }
 /* the series' board: "Gesamt" and each round as tabs; the guests in their round's board, a line to it under the total
    (Sascha 17.11.2026, Mockup B) */
 .series-tabs { margin: 2px 0 4px; }
-.series-guests { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 12px; border: 0; border-radius: 12px; background: none; color: var(--text-2); font: 500 14px var(--body); text-align: left; cursor: pointer; }
-.series-guests .grow { flex: 1; min-width: 0; color: var(--text); }
 .series-lb-head.series-lb-round, .series-lb-row.series-lb-round { grid-template-columns: 30px minmax(0, 1fr) 52px 48px; }
 .series-lb-row.series-lb-round .lb-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .series-lb-row .lb-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

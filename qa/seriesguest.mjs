@@ -1,6 +1,6 @@
 // QA (Sascha 16.11.2026, Orlando: "Thomas und Daniel spielen morgen und übermorgen Legends mit" – "Nur Tageswertung"):
-// a guest of a series – in the flights of fewer than half its rounds – is not in the total (17.11.2026, Mockup B: a line
-// "1 Gast in R3: Thomas ›" opens the round's tab, there he is ranked with "Gast"), and wins nothing of the series' own
+// a guest of a series – in the flights of fewer than half its rounds – is not in the total (17.11.2026, Mockup B "ohne den
+// Texthinweis": no line under the total – the round's tab ranks him with "Gast"), and wins nothing of the series' own
 // prizes, nor pays into its pot.
 // Three tournaments in a series, Sascha, Chris, Cedric in all; Thomas only in round 3 – better than everyone.
 // R1 Sascha +0, Chris +2, Cedric +4 – R2 Sascha +1, Chris +2, Cedric +3 – R3 Thomas +0, Sascha +1, Chris +3, Cedric +5.
@@ -65,7 +65,7 @@ await H.waitForTimeout(1200);
 await H.locator('.list-item').filter({ hasText: 'USA-Serie' }).first().click();
 await H.waitForTimeout(2500);
 
-// 1. the total without the guest (Sascha 17.11.2026, Mockup B): Sascha first, the three only – Thomas a line to his round
+// 1. the total without the guest (Sascha 17.11.2026, Mockup B): Sascha first, the three only – nothing about Thomas there
 const total = H.getByRole('region', { name: 'Gesamtwertung' });
 const lines = (await total.locator('.series-lb li').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
 ok(lines.length === 3 && /^1 Sascha/.test(lines[0]), `the total: the three, Sascha first (${lines.join(' | ')})`);
@@ -74,11 +74,10 @@ const tabs = (await total.getByRole('tab').allInnerTexts()).map((x) => x.trim())
 ok(tabs.join(',') === 'Gesamt,R1,R2,R3', `tabs Gesamt, R1–R3 (${tabs.join(',')})`);
 ok(!/Gäste unter der Linie|Gast · auf/.test(await txt(total)), 'no note under the board');
 ok(!/Cut nach Runde/.test(await txt(total)), 'no cut note');
-const toGuest = total.locator('.series-guests');
-ok((await toGuest.count()) === 1 && /1 Gast in R3: Thomas/.test(await txt(toGuest)), `the line "1 Gast in R3: Thomas" (${await txt(toGuest)})`);
+ok(!/Thomas|Gast in R|Gäste in R/.test(await txt(total)), 'no guest line under the total ("ohne den Texthinweis", 18.11.)');
 if (shots) await total.screenshot({ path: `${shots}/seriesguest-total.png` });
-// tapped: round 3's board – everyone of the round, Thomas first with "Gast"
-await toGuest.click();
+// the tab R3: round 3's board – everyone of the round, Thomas first with "Gast"
+await total.getByRole('tab', { name: 'Runde 3' }).click();
 await H.waitForTimeout(400);
 ok((await total.getByRole('tab', { name: 'Runde 3' }).getAttribute('aria-selected')) === 'true', 'R3 chosen');
 const r3 = (await total.locator('.series-lb li').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());

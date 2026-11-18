@@ -645,7 +645,6 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
   // the rounds played so far – a tab each; the total without its guests, they stand in their rounds' boards
   const played = [...new Set(props.rows.flatMap((r) => r.parts.map((p) => p.k)))].sort((a, b) => a - b);
   const inTotal = props.rows.filter((r) => !r.guest);
-  const guestsIn = played.map((k) => ({ k, names: props.rows.filter((r) => r.guest && r.parts.some((p) => p.k === k)).map((r) => r.name) })).filter((x) => x.names.length > 0);
   const shownView = played.includes(view) ? view : -1;
   const open = (key: string, k: number | null) => {
     setPick(k);
@@ -707,19 +706,8 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
               </li>
             ))}
           </ol>
-          {/* the guests: not in the total – a line to the round they played (Mockup B: "2 Gäste in R7: Daniel, Thomas ›") */}
-          {guestsIn.map((g) => (
-            <button key={g.k} type="button" className="link-row series-guests" onClick={() => (props.onRound ? props.onRound(g.k) : setView(g.k))}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-              </svg>
-              <span className="grow">
-                {g.names.length === 1 ? tr(`1 guest in R${g.k + 1}: ${g.names[0]}`, `1 Gast in R${g.k + 1}: ${g.names[0]}`) : tr(`${g.names.length} guests in R${g.k + 1}: ${g.names.join(', ')}`, `${g.names.length} Gäste in R${g.k + 1}: ${g.names.join(', ')}`)}
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-          ))}
+          {/* the guests: not in the total, only in the round they played with a "Gast" badge – no line pointing there
+              (Sascha 17.11.2026: "B, aber ohne den Texthinweis"; 18.11.: the line was the hint left out) */}
         </>
       ) : (
         <>
