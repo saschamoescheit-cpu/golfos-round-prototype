@@ -1,7 +1,8 @@
 // QA (Sascha 18.11.2026: "Damit einhergehend sind auch die Wetten aus dem Wettpool USA beendet. Demzufolge sollte auch
 // dieser Wettpool geschlossen werden und die finale Abrechnung erfolgen. Auch hierzu sollte es eine Meldung in der Inbox
-// geben." – "Erst alle Karten signiert"): a pool over yesterday and today, yesterday's tournament its only one, played
-// out. 1. Cards not signed: the pool "wartet auf Unterschriften", its card lists them, the inbox "USA-Wetten wartet auf
+// geben." – "Erst alle Karten signiert"): a pool over yesterday and today, today's tournament its only one, played
+// out – its last day the tournament's ("Sollte unser Pool bspw bis 01.12. laufen und die aktuelle Serie heute enden, dann
+// bleibt der Pool offen": a second pool, two weeks on, stays open throughout). 1. Cards not signed: the pool "wartet auf Unterschriften", its card lists them, the inbox "USA-Wetten wartet auf
 // Unterschriften · 2 Karten offen · 1 davon deine"; no settlement. 2. Both cards in (entered by the host): the host's
 // phone closes the pool by itself – "beendet", the inbox "USA-Wetten ist abgerechnet · Endabrechnung: …".
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/poolend.mjs [url]   (SHOTS=dir)
@@ -25,9 +26,9 @@ const days = await H.evaluate(() => {
     const x = new Date(Date.now() + n * 864e5);
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
   };
-  return { yesterday: d(-1), today: d(0) };
+  return { yesterday: d(-1), today: d(0), later: d(14) };
 });
-// the pool: yesterday and today, Cedric's Pars (each pays) – yesterday's round counts for it
+// the pool: yesterday and today, Cedric's Pars (each pays) – today's round counts for it
 const code = await H.evaluate(async (days) => {
   const ws = await import('/src/lib/wagerstore.ts');
   const pool = {
@@ -39,10 +40,23 @@ const code = await H.evaluate(async (days) => {
   return (await ws.createPool(pool, 'ps'))?.code ?? null;
 }, days);
 ok(!!code, `the pool: ${code}`);
-sim.shared.get(code).game.progress = { 'w-p': { perRound: [{ day: days.yesterday, course: 'Hetzenhof', value: 18, counted: true }], at: new Date().toISOString(), best: 18, done: true, rounds: 1 } };
+sim.shared.get(code).game.progress = { 'w-p': { perRound: [{ day: days.today, course: 'Hetzenhof', value: 18, counted: true }], at: new Date().toISOString(), best: 18, done: true, rounds: 1 } };
 
-// yesterday's tournament: played out, every flight in – the cards not signed
-const t1 = await sim.plan(H, { name: 'Legends', date: days.yesterday, flights: [{ teeTime: '10:00', players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Cedric', playingHandicap: 10 }] }] });
+// a second pool, on for two weeks – the same round counts for it: it stays open
+const code2 = await H.evaluate(async (days) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  const pool = {
+    kind: 'wager-pool', id: 'season', name: 'Saison-Wetten', from: days.yesterday, to: days.later, createdAt: new Date().toISOString(), currency: 'USD',
+    players: [{ id: 'ps', name: 'Sascha', joined: { name: 'Sascha', at: new Date().toISOString(), uid: 'Sascha' } }, { id: 'pc', name: 'Cedric' }],
+    wagers: [{ id: 'w-q', player: 'pc', kind: 'pars', target: 3, stake: 20, payout: 'success', attempts: 'any', by: 'Sascha' }],
+    progress: {},
+  };
+  return (await ws.createPool(pool, 'ps'))?.code ?? null;
+}, days);
+sim.shared.get(code2).game.progress = { 'w-q': { perRound: [{ day: days.today, course: 'Hetzenhof', value: 18, counted: true }], at: new Date().toISOString(), best: 18, done: true, rounds: 1 } };
+
+// today's tournament: played out, every flight in – the cards not signed
+const t1 = await sim.plan(H, { name: 'Legends', date: days.today, flights: [{ teeTime: '10:00', players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Cedric', playingHandicap: 10 }] }] });
 const flightRows = () => [...sim.shared.entries()].filter(([, r]) => r.event_code === t1);
 const ev = sim.shared.get(t1).game;
 for (const [, row] of flightRows()) {
@@ -112,6 +126,8 @@ const in2 = await inbox();
 // Cedric made his Pars – each pays: Sascha 20 $ to him
 ok(/USA-Wetten ist abgerechnet/.test(in2) && /Endabrechnung: −20 \$ · du zahlst noch 20 \$/.test(in2), `the inbox: "USA-Wetten ist abgerechnet · Endabrechnung: −20 $ · du zahlst noch 20 $" (${in2.slice(0, 260)})`);
 ok(!/wartet auf Unterschriften/.test(in2), '"wartet auf Unterschriften" gone');
+ok(!/Saison-Wetten/.test(in1 + in2), 'the pool running on: no message at all');
+ok(!sim.shared.get(code2).game.finishedAt, 'the pool running on (two weeks): stays open – only the tournament is over');
 if (shots) await H.screenshot({ path: `${shots}/poolend-settled.png` });
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);
 await b.close();

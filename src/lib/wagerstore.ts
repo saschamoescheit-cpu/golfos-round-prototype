@@ -242,7 +242,8 @@ export async function syncPools(): Promise<boolean> {
 
 /** How a pool ends (Sascha 18.11.2026: "Damit einhergehend sind auch die Wetten aus dem Wettpool USA beendet. Demzufolge
  *  sollte auch dieser Wettpool geschlossen werden und die finale Abrechnung erfolgen" – "Erst alle Karten signiert"):
- *  the tournaments in its days all played out (or its last day gone) – then every card of its players in them signed by
+ *  its last day gone – or that day its last tournament's and every tournament in its days played out (a pool running on
+ *  after its series stays open, only the series ends) – then every card of its players in them signed by
  *  player and marker, or entered by the host; a card left empty (not played) holds nothing. 'cards': waiting for the
  *  signatures; 'ready': to be closed (by the host's phone) and settled. A pool without tournaments ends by its day. */
 export interface PoolEnd {
@@ -260,7 +261,10 @@ export function poolEnd(e: PoolEntry, today: string): PoolEnd {
   if (!tours.length) return { phase: dayGone ? 'ready' : 'running', open: [], tours: 0 };
   const evs = tours.map((t) => ({ t, ev: cachedEvent(t.code) }));
   const played = evs.every(({ t, ev }) => t.ev.date <= today && !!ev && roundOver(ev));
-  if (!played && !dayGone) return { phase: 'running', open: [], tours: tours.length };
+  // before its last day only when that day is its last tournament's (Sascha 18.11.2026: "Sollte unser Pool bspw bis
+  // 01.12. laufen und die aktuelle Serie heute enden, dann bleibt der Pool offen und es schließt nur die Serie")
+  const lastTour = tours.reduce((m, t) => (t.ev.date > m ? t.ev.date : m), '');
+  if (!dayGone && !(played && p.to <= lastTour)) return { phase: 'running', open: [], tours: tours.length };
   const open: PoolEnd['open'] = [];
   // only the days the pool counts – a bet with a figure that day, or a 5+5+10 (Celebration 07.11. counted for no bet:
   // its cards are no matter for the settlement)

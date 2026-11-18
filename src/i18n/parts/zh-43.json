@@ -8,10 +8,10 @@
  "{0} is settled": "{0} 已结算",
  "Final: {0} · {1}": "最终结算：{0} · {1}",
  "When does a pool end – and when does the final settlement come?": "赌注池什么时候结束？最终结算什么时候到？",
- "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "当其日期内的每场比赛都已打完（或最后一天已过），且其球员的每张记分卡都已签名——由球员和记分员签名，或由主办人录入。在此之前，赌注池显示“等待签名”，卡片上列出哪些人的记分卡未签，所有人的收件箱都会收到提醒。之后主办人的手机会自动关闭赌注池：赌注即为最终结果，每个人的收件箱都会收到“…已结算”，写明应收或应付的金额（并推送通知）。主办人可随时手动结束（“结束赌注池”）。不应计入的轮次：将“计入此轮”设为关闭——就不再需要该轮的记分卡。",
  "waiting for signatures": "等待签名",
  "Cards to sign": "未签记分卡",
  "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "所有轮次都已打完。每张记分卡签名后——或你结束赌注池时——最终结算就会到来。",
  "Every round is played. The final settlement comes once every card is signed.": "所有轮次都已打完。每张记分卡签名后，最终结算就会到来。",
- "{0} (you)": "{0}（你）"
+ "{0} (you)": "{0}（你）",
+ "Once its last day is gone – or earlier, when its last day is its last tournament's and every tournament in its days is played out – and every card of its players is signed, by player and marker, or entered by the host. A pool running on after a series stays open; only the series ends. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "当其最后一天已过——或更早，若其最后一天正是最后一场比赛的日子且期间内每场比赛都已打完——并且其球员的每张记分卡都已签名（由球员和记分员签名，或由主办人录入）时结束。系列赛之后仍继续的赌注池保持开放，只有系列赛结束。在此之前，赌注池显示“等待签名”，卡片上列出哪些人的记分卡未签，所有人的收件箱都会收到提醒。之后主办人的手机会自动关闭赌注池：赌注即为最终结果，每个人的收件箱都会收到“…已结算”，写明应收或应付的金额（并推送通知）。主办人可随时手动结束（“结束赌注池”）。不应计入的轮次：将“计入此轮”设为关闭——就不再需要该轮的记分卡。"
 }
