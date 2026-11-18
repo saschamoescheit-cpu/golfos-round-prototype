@@ -56,6 +56,9 @@ export interface TourSeries {
   prizes?: TourPrizes | null;
   /** the one settlement at its end – day prizes and its own together: a payment marked paid by the host, `${from}>${to}` → when */
   paid?: Record<string, string>;
+  /** the payments of its settlement made in Bilanz (Sascha 18.11.2026: as the bets – "Bezahlt" by who pays, counted once
+   *  the receiver confirmed "Erhalten"); from / to are the players' names */
+  payments?: { id: string; from: string; to: string; amount: number; paidAt?: string; receivedAt?: string; undoneAt?: string }[];
 }
 export interface SeriesEntry {
   code: string;
@@ -421,6 +424,15 @@ export async function renameSeries(code: string, name: string): Promise<boolean>
 }
 
 /** The host sets what the series is played for, or marks a payment of its settlement paid (Sascha 15.11.2026). */
+/** A payment of the series' settlement written (Bilanz, 18.11.2026) – false: no connection, or this account is not in the
+ *  series' row (only in single rounds of it). */
+export async function changeSeriesPayments(code: string, change: (ps: NonNullable<TourSeries['payments']>) => NonNullable<TourSeries['payments']>): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, payments: change(x.payments ?? []) }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
+  window.dispatchEvent(new Event('golfos:tours-changed'));
+  return true;
+}
 export async function changeSeriesPrizes(code: string, patch: { prizes?: TourPrizes | null; paid?: Record<string, string> }): Promise<boolean> {
   const s = await changeRow(code, isSeries, (x) => ({ ...x, ...patch }));
   if (!s) return false;

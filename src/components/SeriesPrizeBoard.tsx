@@ -1,9 +1,11 @@
 import { tr } from '../lib/i18n';
-import { prizeAmount, prizeName, type Prize } from '../lib/prize';
-import { eventStandings, liveFlights, type RoundEvent } from '../lib/sharedround';
+import { prizeAmount, prizeName, prizeSym, type Prize } from '../lib/prize';
+import { cachedEvent, eventStandings, liveFlights, type RoundEvent } from '../lib/sharedround';
 import { roundOver, seriesGuests, seriesStandings } from '../lib/seriesstandings';
 import { addBalances, hasPrizes, prizeAwards, prizeSettle, prizeSum, rankKind, settleBalances, type Award, type RankRow, type TourPrizes } from '../lib/tourprizes';
-import type { TourSeries } from '../lib/tourstore';
+import { loadSeries, loadTours, type TourSeries } from '../lib/tourstore';
+import { loadRounds } from '../lib/storage';
+import type { SeriesSettle } from '../lib/gamepay';
 import { tourPrizeResult } from './TourPrizeBoard';
 
 type PrizedEvent = RoundEvent & { prizes?: TourPrizes };
@@ -52,7 +54,7 @@ export function seriesPrizeResult(s: Pick<TourSeries, 'prizes' | 'paid'>, evs: (
 /** The series' prizes on its page (Sascha 15.11.2026, "Auf der Serienseite" + "Eine Abrechnung am Ende"): what the
  *  series is played for and who wins it – provisional until the last round –, the day prizes of its rounds, and once
  *  every round is in, who pays whom over all of it; the host marks a payment "Bezahlt". */
-export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'paid'>; evs: (PrizedEvent | null)[]; host: boolean; onPaid: (key: string, on: boolean) => void }) {
+export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'paid' | 'payments'>; evs: (PrizedEvent | null)[]; host: boolean; onPaid: (key: string, on: boolean) => void }) {
   const r = seriesPrizeResult(props.series, props.evs);
   if (!r.any || !r.ref) return null;
   const amt = (v: number) => prizeAmount(v, r.ref!);
@@ -114,7 +116,8 @@ export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'p
           <span className="eyebrow tour-prize-pay-head">{tr('Who pays whom', 'Wer zahlt wem')}</span>
           <ul className="tour-prize-pays">
             {r.transfers.map((t) => {
-              const paid = !!props.series.paid?.[t.key];
+              // the host's mark – or paid in Bilanz and confirmed by the receiver (18.11.2026)
+              const paid = !!props.series.paid?.[t.key] || (props.series.payments ?? []).filter((x) => !x.undoneAt && !!x.receivedAt && x.from.trim().toLowerCase() === t.from.trim().toLowerCase() && x.to.trim().toLowerCase() === t.to.trim().toLowerCase()).reduce((n, x) => n + x.amount, 0) >= t.amount - 0.004;
               return (
                 <li key={t.key} className={paid ? 'paid' : undefined}>
                   <span className="grow">
@@ -139,4 +142,40 @@ export function SeriesPrizeBoard(props: { series: Pick<TourSeries, 'prizes' | 'p
       )}
     </section>
   );
+}
+
+/** Every series over that this phone's player played in, with prizes – its one settlement for Bilanz (Sascha 18.11.2026:
+ *  "Serie als eigene Karte wie ein Wett-Pool", its amounts under "Offene Beträge" and in each player's sheet). */
+export function seriesSettles(): SeriesSettle[] {
+  const tours = loadTours();
+  const rounds = loadRounds();
+  const out: SeriesSettle[] = [];
+  for (const sr of loadSeries()) {
+    if (sr.series.deletedAt || !sr.series.rounds.length) continue;
+    const evs = sr.series.rounds.map((r) => {
+      const live = cachedEvent(r.code);
+      return live ? { ...live, prizes: tours.find((x) => x.code === r.code)?.ev.prizes ?? undefined } : null;
+    });
+    const res = seriesPrizeResult(sr.series, evs);
+    if (!res.any || !res.done || !res.ref) continue;
+    const codes = new Set(sr.series.rounds.map((r) => r.code));
+    const me = rounds.find((r) => !!r.shared && codes.has(r.shared.code))?.players.find((p) => p.isMe)?.name;
+    if (!me) continue;
+    const st = seriesStandings(evs.filter((e): e is NonNullable<typeof e> => !!e), { field: evs });
+    const row = st.rows.find((x) => x.name.trim().toLowerCase() === me.trim().toLowerCase());
+    out.push({
+      code: sr.code,
+      title: sr.series.name,
+      day: sr.series.rounds[sr.series.rounds.length - 1].date,
+      first: sr.series.rounds[0].date,
+      sym: prizeSym(res.ref),
+      prize: res.ref,
+      me,
+      transfers: res.transfers,
+      ...(sr.series.paid ? { paid: sr.series.paid } : {}),
+      ...(sr.series.payments ? { payments: sr.series.payments } : {}),
+      ...(row && !row.guest ? { place: row.pos.replace(/^T/, ''), of: st.rows.filter((x) => !x.guest).length } : {}),
+    });
+  }
+  return out;
 }

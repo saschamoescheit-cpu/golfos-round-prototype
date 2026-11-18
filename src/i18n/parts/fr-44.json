@@ -1,0 +1,11 @@
+{
+ "win": "victoire",
+ "tournament": "tournoi",
+ "tournaments": "tournois",
+ "Ø tournament round": "Ø tour de tournoi",
+ "{0}. of {1}": "{0}e sur {1}",
+ "Prizes and entry fees": "Prix et droits d’inscription",
+ "series": "série",
+ "Where do I find what a series came to – and my tournaments?": "Où trouver le règlement d’une série – et mes tournois ?",
+ "Once the series is over: in Games & Bets → \"Bilanz\" as its own card (place, what it came to, what is open), its amounts under \"Offene Beträge\" and in each player's sheet (\"· Serie\"). Who pays taps \"Bezahlt\", the receiver confirms \"Erhalten\" in the inbox – it counts once confirmed, and the tournament's page shows it paid too. In Rounds → \"Mein Golf\" the block \"Turniere\": wins, how many, your average tournament round (gross to par, 18 holes) and each series or tournament with your place – a tap opens its final standing.": "Dès que la série est terminée : dans Games & Bets → « Bilanz », en carte à part (place, résultat, reste dû), ses montants sous « Montants ouverts » et dans la fiche de chaque joueur (« · Série »). Qui paie touche « Payé », celui qui reçoit confirme « Reçu » dans la boîte de réception – cela compte une fois confirmé, et la page du tournoi l’affiche aussi comme payé. Dans Rounds → « Mon golf », le bloc « Tournois » : victoires, nombre, ton tour de tournoi moyen (brut par rapport au par, 18 trous) et chaque série ou tournoi avec ta place – un appui ouvre le classement final."
+}

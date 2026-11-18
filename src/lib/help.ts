@@ -329,6 +329,16 @@ export const FAQ: FaqTopic[] = [
         video: 'score',
       },
       {
+        // Sascha 18.11.2026: the series in Bilanz (its own card, paid and confirmed as the bets) and in "Mein Golf" (Mockup B)
+        q: () => tr('Where do I find what a series came to – and my tournaments?', 'Wo finde ich die Abrechnung einer Turnierserie – und meine Turniere?'),
+        a: () =>
+          tr(
+            'Once the series is over: in Games & Bets → "Bilanz" as its own card (place, what it came to, what is open), its amounts under "Offene Beträge" and in each player\'s sheet ("· Serie"). Who pays taps "Bezahlt", the receiver confirms "Erhalten" in the inbox – it counts once confirmed, and the tournament\'s page shows it paid too. In Rounds → "Mein Golf" the block "Turniere": wins, how many, your average tournament round (gross to par, 18 holes) and each series or tournament with your place – a tap opens its final standing.',
+            'Sobald die Serie beendet ist: in Games & Bets → „Bilanz“ als eigene Karte (Platz, was dabei herauskam, was offen ist), ihre Beträge unter „Offene Beträge“ und im Blatt jedes Mitspielers („· Serie“). Wer zahlt, tippt „Bezahlt“, der Empfänger bestätigt „Erhalten“ in der Inbox – es zählt, sobald bestätigt, und die Turnierseite zeigt es dann auch als bezahlt. In Rounds → „Mein Golf“ der Block „Turniere“: Siege, Anzahl, deine Ø Turnierrunde (brutto zu Par, 18 Löcher) und jede Serie oder jedes Turnier mit deinem Platz – ein Tipp öffnet den Endstand.',
+          ),
+        video: 'score',
+      },
+      {
         // Sascha 17./18.11.2026: the series over without a word – "Zählt nicht für ihn", "Alle Runden zuerst"
         q: () => tr('When is a series finished – and how is its final standing worked out?', 'Wann ist eine Turnierserie beendet – und wie wird der Endstand gerechnet?'),
         a: () =>

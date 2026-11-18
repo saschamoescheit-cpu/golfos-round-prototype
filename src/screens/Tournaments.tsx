@@ -1041,7 +1041,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         note={over ? undefined : liveNote(evs, at)}
         cutAfter={cutPlayed ? cut!.after : undefined}
       />
-      <SeriesPrizeBoard series={{ prizes: seriesPrizes, paid: s.paid }} evs={prizedEvs} host={host} onPaid={(k, on) => void markSeriesPaid(k, on)} />
+      <SeriesPrizeBoard series={{ prizes: seriesPrizes, paid: s.paid, payments: s.payments }} evs={prizedEvs} host={host} onPaid={(k, on) => void markSeriesPaid(k, on)} />
       {/* the host deals a round by result once the rounds before are played (Sascha 04.11.2026) */}
       {host &&
         toDeal.map(({ r, k, e }) => {

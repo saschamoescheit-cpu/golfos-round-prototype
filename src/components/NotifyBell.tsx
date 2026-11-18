@@ -10,7 +10,7 @@ import { keyName, wonBy } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
 import { SwipeRow } from './SwipeRow';
-import { isTourHost, loadSeries, loadTours } from '../lib/tourstore';
+import { changeSeriesPayments, isTourHost, loadSeries, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import type { SharedCell } from '../types';
 import { loadGames, saveGame } from '../lib/gamestore';
@@ -305,9 +305,24 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const labels = res.own.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
       out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), ask: true });
     }
+    const live = (sr.series.payments ?? []).filter((x) => !x.undoneAt);
     for (const x of res.transfers) {
       if (keyName(x.from) !== keyName(mine) || sr.series.paid?.[x.key]) continue;
+      // paid in Bilanz already (18.11.2026): no reminder – the receiver confirms
+      const paidHere = live.filter((p) => keyName(p.from) === keyName(mine) && keyName(p.to) === keyName(x.to)).reduce((n, p) => n + p.amount, 0);
+      if (paidHere >= x.amount - 0.004) continue;
       out.push({ key: `seriespay:${sr.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${sr.series.name} · prizes and entry fees`, `${sr.series.name} · Preise und Startgelder`), go: () => goTour(sr.code) });
+    }
+    // a payment of the series' settlement to me marked paid in Bilanz – its receipt confirmed right here (as a pool's)
+    for (const pm of live) {
+      if (pm.receivedAt || keyName(pm.to) !== keyName(mine)) continue;
+      const sum = amt(pm.amount);
+      out.push({
+        key: `seriesreceipt:${sr.code}:${pm.id}`,
+        title: tr(`${pm.from} marked ${sum} paid`, `${pm.from} hat ${sum} als bezahlt markiert`),
+        line: tr(`${sr.series.name} · confirm the receipt`, `${sr.series.name} · Erhalt bestätigen`),
+        action: { label: tr('Received', 'Erhalten'), aria: tr(`Received ${sum} from ${pm.from}`, `${sum} von ${pm.from} erhalten`), run: () => changeSeriesPayments(sr.code, (ps) => ps.map((y) => (y.id === pm.id ? { ...y, receivedAt: new Date().toISOString() } : y))) },
+      });
     }
   }
   const sign = roundsToSign(loadRounds());

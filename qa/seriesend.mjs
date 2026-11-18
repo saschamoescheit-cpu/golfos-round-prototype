@@ -85,6 +85,48 @@ await H.waitForTimeout(800);
 const inbox = await txt(H.getByRole('dialog').first());
 ok(/USA-Serie ist beendet/.test(inbox) && /Endstand: Platz 1 von 4 · \+2/.test(inbox), `the inbox: "USA-Serie ist beendet · Endstand: Platz 1 von 4 · +2" (${inbox.slice(0, 300)})`);
 if (shots) await H.screenshot({ path: `${shots}/seriesend-inbox.png` });
+await H.getByRole('dialog').first().getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
+
+// 4. Bilanz (Sascha 18.11.2026, Bilanz-Mockup): the series as its own card, its amounts with each player ("· Serie")
+await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+await H.goto('about:blank');
+await H.goto(url);
+await H.waitForTimeout(2000);
+await H.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await H.waitForTimeout(1200);
+const sc = H.locator('.balance-series').first();
+const sct = await txt(sc);
+ok(/Turnierserie/i.test(sct) && /USA-Serie/.test(sct) && /beendet/.test(sct) && /Platz 1 von 4/.test(sct), `Bilanz: the series' card (${sct})`);
+const people = (await H.locator('.balance-people li').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
+ok(people.some((x) => /^Chris .*Serie/.test(x)), `Bilanz: Chris "· Serie" (${people.join(' | ')})`);
+if (shots) await H.screenshot({ path: `${shots}/seriesend-bilanz.png`, fullPage: true });
+
+// 5. Chris pays in Bilanz on his phone (simulated): Sascha confirms it in the inbox – counted once confirmed
+shared.get(series).game.payments = [{ id: 'pay-c', from: 'Chris', to: 'Sascha', amount: 50, paidAt: new Date().toISOString() }];
+shared.get(series).updated_at = new Date().toISOString();
+await H.evaluate(async () => (await import('/src/lib/tourstore.ts')).syncTours());
+await H.waitForTimeout(1200);
+await H.getByRole('button', { name: /^Inbox/ }).first().click();
+await H.waitForTimeout(800);
+const box = H.getByRole('dialog').first();
+ok(/Chris hat 50 \$ als bezahlt markiert/.test(await txt(box)), `the inbox: "Chris hat 50 $ als bezahlt markiert · USA-Serie · Erhalt bestätigen" (${(await txt(box)).slice(0, 300)})`);
+await box.getByRole('button', { name: /50 \$ von Chris erhalten/ }).click().catch(() => {});
+await H.waitForTimeout(1500);
+ok(!!shared.get(series).game.payments?.find((x) => x.id === 'pay-c')?.receivedAt, 'confirmed: "Erhalten" on the server');
+await box.getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
+
+// 6. Mein Golf (Mockup B): wins, tournaments, the average round – and the series with its place
+await H.evaluate(() => sessionStorage.setItem('golfos.module', 'rounds'));
+await H.goto('about:blank');
+await H.goto(url);
+await H.waitForTimeout(2000);
+await H.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
+await H.waitForTimeout(1200);
+const my = H.locator('.my-tours');
+const myt = await txt(my);
+ok(/1 Sieg/.test(myt) && /1 Turnier/.test(myt) && /Ø Turnierrunde/.test(myt), `Mein Golf: "1 Sieg · 1 Turnier · Ø Turnierrunde" (${myt.slice(0, 160)})`);
+ok(/USA-Serie Serie · 3 Runden · \+2 1\. von 4/.test(myt), `Mein Golf: "USA-Serie · Serie · 3 Runden · +2 · 1. von 4" (${myt.slice(0, 220)})`);
+if (shots) await my.screenshot({ path: `${shots}/seriesend-meingolf.png` });
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
