@@ -9,7 +9,7 @@ import { setMoneySym } from '../lib/gameforms';
 import { gamePrize } from '../lib/gamepay';
 import { prizeSym } from '../lib/prize';
 import { CLASS_NAMES, netClasses, eventCard, eventStandings, type RoundEvent } from '../lib/sharedround';
-import { seriesStandings } from '../lib/seriesstandings';
+import { roundOver, seriesStandings } from '../lib/seriesstandings';
 import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
 import { dayOf, withDuels } from '../lib/wagers';
@@ -171,7 +171,7 @@ function EventBoard(props: { ev: RoundEvent; label?: string }) {
   const net = (ev.format?.allowance ?? 100) > 0 && ev.format?.scoring !== 'stroke';
   const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
   const played = b.rows.some((r) => r.thru);
-  const done = b.rows.length > 0 && b.rows.every((r) => r.finished);
+  const done = b.rows.length > 0 && roundOver(ev);
   return (
     <>
       <LiveBoard
@@ -257,11 +257,8 @@ function EventLive(props: { ev: RoundEvent }) {
   );
 }
 
-/** A round played out: everyone in it through the last hole. */
-const roundDone = (e: RoundEvent) => {
-  const st = eventStandings(e);
-  return st.rows.length > 0 && st.rows.every((r) => r.finished);
-};
+/** A round played out (lib/seriesstandings roundOver – an empty card once every flight is in does not hold it open). */
+const roundDone = (e: RoundEvent) => roundOver(e);
 
 function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
   const { series } = props.v;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { DoneFab, FloatActions } from '../components/FloatActions';
-import { seriesStandings } from '../lib/seriesstandings';
+import { roundOver, seriesOver, seriesStandings } from '../lib/seriesstandings';
 import { TourPrizeBoard, tourPrizeResult } from '../components/TourPrizeBoard';
 import { SeriesPrizeBoard, settledInSeries } from '../components/SeriesPrizeBoard';
 import { TourPrizesRows } from '../components/TourPrizesRows';
@@ -16,7 +16,7 @@ import { planGuests } from '../lib/planinvite';
 import { loadFriends } from '../lib/friends';
 import { userId } from '../lib/sync';
 import { type RetiredFill, CLASS_NAMES, boardLive, cachedEvent, liveFrom, netClasses, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, standingsCsv, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
-import { adoptIntoSeries, changeSeriesPrizes, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
+import { adoptIntoSeries, changeSeriesPrizes, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, seriesState, syncTours, tourPlayed, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
 import { TopBar } from '../components/ui';
@@ -169,6 +169,9 @@ function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
   const { series } = props.s;
   const first = series.rounds[0]?.date ?? '';
   const last = series.rounds[series.rounds.length - 1]?.date ?? '';
+  // how it stands (Sascha 17.11.2026: "als abgeschlossen dargestellt") – as a pool of bets says "läuft" / "beendet"
+  const state = seriesState(series, dayOf(new Date()));
+  const word = { planned: tr('planned', 'geplant'), running: tr('running', 'läuft'), over: tr('finished', 'beendet'), waiting: tr('cards missing', 'Karten fehlen') }[state];
   return (
     <button type="button" className="list-item tour-series-row" onClick={props.onOpen}>
       <span className="round-date">
@@ -178,7 +181,8 @@ function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
       <span className="grow">
         <span className="title">{series.name}</span>
         <span className="muted small one-line">
-          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')}{first && last ? ` · ${dm(first)}–${dm(last)}` : ''}
+          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')}{first && last ? ` · ${dm(first)}–${dm(last)}` : ''} ·{' '}
+          <span className={state === 'over' ? 'good-text' : state === 'waiting' ? 'warn-text' : undefined}>{word}</span>
         </span>
       </span>
       <span className="game-row-result">
@@ -263,8 +267,8 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
   const today = dayOf(new Date());
   const live = all.filter((e) => !e.ev.deletedAt);
   const deleted = all.filter((e) => e.ev.deletedAt);
-  const planned = live.filter((e) => tourState(e, today) !== 'played');
-  const played = live.filter((e) => tourState(e, today) === 'played');
+  const planned = live.filter((e) => !tourPlayed(e, today));
+  const played = live.filter((e) => tourPlayed(e, today));
   const pick = (f: 'planned' | 'played' | 'bin') => setFilter(filter === f ? null : f);
   // a tournament swiped away: marked deleted for everyone, as from its page – "Undo" for a moment, then the bin
   const removeTour = async (e: TourEntry): Promise<boolean> => {
@@ -635,7 +639,11 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
     <section className="card tour-live" aria-label={props.label}>
       <div className="tour-live-head">
         {/* a round's tab: its own title, not "alle Runden" */}
-        <span className="eyebrow">{played.includes(view) ? `${tr('Live leaderboard', 'Live-Leaderboard')} · R${view + 1}` : props.title}</span>
+        <span className="eyebrow">
+          {played.includes(view)
+            ? `${props.rows.every((r) => r.parts.every((p) => p.k !== view || p.finished)) ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · R${view + 1}`
+            : props.title}
+        </span>
         {props.live && (
           <span className="tour-live-badge">
             <i aria-hidden="true" />
@@ -772,11 +780,9 @@ export function SeriesBoard(props: { label: string; title: string; live: boolean
     </section>
   );
 }
-/** A round played out: everyone in it through the last hole. */
-const roundDone = (e: RoundEvent) => {
-  const st = eventStandings(e);
-  return st.rows.length > 0 && st.rows.every((r) => r.finished);
-};
+/** A round played out: everyone in it through the last hole – an empty card once every flight is in does not hold it
+ *  open (Sascha 17.11.2026, lib/seriesstandings roundOver). */
+const roundDone = (e: RoundEvent) => roundOver(e);
 /** A player's card in a round's event, by his name. */
 const cardByName = (e: RoundEvent | null | undefined, name: string): Round | null => {
   if (!e) return null;
@@ -924,6 +930,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
   // the rounds' events in the series' order (the server's, else as kept here)
   const roundEvs = s.rounds.map((r) => evs.find((e) => tours.find((t) => t.code === r.code)?.ev.id === e.id) ?? tours.find((t) => t.code === r.code)?.ev ?? null);
   const total = seriesStandings(evs.filter((e) => (e as PlannedEvent).date <= today), { field: roundEvs });
+  // every round played out (Sascha 17.11.2026: "das Turnier sollte auch als abgeschlossen dargestellt werden"): the final standing
+  const over = seriesOver(roundEvs);
   // the cut (Sascha 04.11.2026): once its rounds are played, the best `top` and ties – the others below the line
   const cutPlayed = !!cut && roundEvs.slice(0, cut.after).every((e) => e && roundDone(e));
   const madeIt = cutPlayed ? new Set(madeCut(seriesStandings(roundEvs.slice(0, cut!.after).filter((e): e is RoundEvent => !!e)).rows, cut!.top).map((r) => r.name.trim().toLowerCase())) : null;
@@ -1014,8 +1022,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       <SeriesBoard
         label={tr('Total standing', 'Gesamtwertung')}
         higherBetter={total.higherBetter}
-        title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
-        live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
+        title={over ? tr('Final standing · all rounds', 'Endstand · alle Runden') : tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
+        live={!over && total.rows.some((r) => r.parts.some((p) => !p.finished))}
         rounds={s.rounds.map((r) => ({ date: r.date, name: r.name }))}
         rows={
           total.rows.length
@@ -1030,7 +1038,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
               }))
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, total: '–', parts: [] }))
         }
-        note={liveNote(evs, at)}
+        note={over ? undefined : liveNote(evs, at)}
         cutAfter={cutPlayed ? cut!.after : undefined}
       />
       <SeriesPrizeBoard series={{ prizes: seriesPrizes, paid: s.paid }} evs={prizedEvs} host={host} onPaid={(k, on) => void markSeriesPaid(k, on)} />
@@ -1298,7 +1306,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   // gross the strokes alone – a gross one planned before 04.11.2026 kept the full handicap
   const standings = eventStandings(live ?? ev, { gross: gross || (ev.format?.scoring ?? 'net') === 'stroke', cls });
   const played = started && standings.rows.some((r) => r.thru > 0);
-  const done = played && standings.rows.every((r) => r.finished);
+  const done = played && roundOver(live ?? ev);
   const net = (ev.format?.scoring ?? 'net') !== 'stroke' && (ev.format?.allowance ?? 100) > 0;
   // changed: the tournament as a whole (a round of a tournament over rounds: all its rounds) – `flights`: opened at the
   // flights, a round over rounds on its own page (Sascha 04.11.2026: "the flights, the scorer, the tee time not to change

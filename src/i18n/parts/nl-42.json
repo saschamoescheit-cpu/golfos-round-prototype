@@ -1,0 +1,11 @@
+{
+ "{0} pts": "{0} ptn",
+ "Final standing · you played as a guest ({0})": "Eindstand · je speelde als gast ({0})",
+ "Final standing: {0}. of {1} · {2}": "Eindstand: {0}e van {1} · {2}",
+ "{0} is finished": "{0} is afgelopen",
+ "When is a series finished – and how is its final standing worked out?": "Wanneer is een toernooiserie afgelopen – en hoe wordt de eindstand berekend?",
+ "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list \"beendet\", and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "Zodra elke ronde is uitgespeeld: elke kaart tot de laatste hole. Een speler zonder één score in een ronde waarvan alle flights binnen zijn, heeft die niet gespeeld – hij houdt de serie niet open; scores die achteraf worden ingevoerd tellen weer. Dan toont de serie „Eindstand”, de lijst „afgelopen”, en iedereen die meespeelde krijgt „… is afgelopen” met zijn plaats in de inbox; de prijzen van de serie worden afgerekend. Het totaal: wie alle rondes speelde eerst, op de som – dan wie minder rondes speelde („over 4 rondes”), dan No Return.",
+ "planned": "gepland",
+ "cards missing": "kaarten ontbreken",
+ "Final standing · all rounds": "Eindstand · alle rondes"
+}

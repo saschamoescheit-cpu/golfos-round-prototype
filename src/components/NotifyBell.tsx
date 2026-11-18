@@ -5,6 +5,7 @@ import { canLink, pendingAsk } from '../lib/friendlinks';
 import { amHost, cachedEvent, confirmReopen, eventOwner, liveFlights, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
 import { tourPrizeResult } from './TourPrizeBoard';
 import { seriesPrizeResult, settledInSeries } from './SeriesPrizeBoard';
+import { seriesOver, seriesStandings } from '../lib/seriesstandings';
 import { keyName, wonBy } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
@@ -254,10 +255,20 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const live = cachedEvent(r.code);
       return live ? { ...live, prizes: tours.find((x) => x.code === r.code)?.ev.prizes } : null;
     });
-    const res = seriesPrizeResult(sr.series, evs);
-    if (!res.any || !res.done || !res.ref) continue;
     const codes = new Set(sr.series.rounds.map((r) => r.code));
     const mine = loadRounds().find((r) => !!r.shared && codes.has(r.shared.code))?.players.find((p) => p.isMe)?.name;
+    // the series is over – its final standing for everyone who played in it (Sascha 17.11.2026: "Nach heute ist die
+    // offizielle Turnierserie beendet. Es gab aber keine Meldung in der Inbox"); swiped away, it stays away
+    if (mine && seriesOver(evs)) {
+      const st = seriesStandings(evs.filter((e): e is NonNullable<typeof e> => !!e), { field: evs });
+      const me = st.rows.find((r) => keyName(r.name) === keyName(mine));
+      const ranked = st.rows.filter((r) => !r.guest).length;
+      const sum = me ? (st.higherBetter ? tr(`${me.sum} pts`, `${me.sum} P.`) : me.sum === 0 ? 'Par' : me.sum > 0 ? `+${me.sum}` : `−${-me.sum}`) : '';
+      const line = !me ? sr.series.name : me.guest ? tr(`Final standing · you played as a guest (${sum})`, `Endstand · du warst Gast (${sum})`) : tr(`Final standing: ${me.pos.replace(/^T/, '')}. of ${ranked} · ${sum}`, `Endstand: Platz ${me.pos.replace(/^T/, '')} von ${ranked} · ${sum}`);
+      out.push({ key: `seriesend:${sr.code}`, title: tr(`${sr.series.name} is finished`, `${sr.series.name} ist beendet`), line, go: () => goTour(sr.code) });
+    }
+    const res = seriesPrizeResult(sr.series, evs);
+    if (!res.any || !res.done || !res.ref) continue;
     if (!mine) continue;
     const amt = (v: number) => prizeAmount(v, res.ref!);
     const w = wonBy(res.own).get(keyName(mine));
@@ -320,11 +331,14 @@ export function NotifyBell() {
     const t = window.setInterval(redraw, 30000);
     window.addEventListener('golfos:pools-changed', redraw);
     window.addEventListener('golfos:friend-ask', redraw);
+    // a series' rounds fetched (refreshSeriesEnds): "… ist beendet" at once (17.11.2026)
+    window.addEventListener('golfos:tours-changed', redraw);
     return () => {
       gone = true;
       window.clearInterval(t);
       window.removeEventListener('golfos:pools-changed', redraw);
       window.removeEventListener('golfos:friend-ask', redraw);
+      window.removeEventListener('golfos:tours-changed', redraw);
     };
   }, []);
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { tr } from '../lib/i18n';
 import { prizeAmount, prizeName, type Prize } from '../lib/prize';
 import { eventStandings, liveFlights, type RoundEvent } from '../lib/sharedround';
-import { seriesGuests, seriesStandings } from '../lib/seriesstandings';
+import { roundOver, seriesGuests, seriesStandings } from '../lib/seriesstandings';
 import { addBalances, hasPrizes, prizeAwards, prizeSettle, prizeSum, rankKind, settleBalances, type Award, type RankRow, type TourPrizes } from '../lib/tourprizes';
 import type { TourSeries } from '../lib/tourstore';
 import { tourPrizeResult } from './TourPrizeBoard';
@@ -24,10 +24,8 @@ export const settledInSeries = (s: Pick<TourSeries, 'prizes'>, dayPrizes: (TourP
   return !!ref && hasPrizes(own) && samePrize(ref, own.prize);
 };
 
-const isDone = (e: RoundEvent) => {
-  const rows = eventStandings(e, { gross: true }).rows;
-  return rows.length > 0 && rows.every((r) => r.finished);
-};
+// played out – an empty card once every flight is in does not hold it open (17.11.2026)
+const isDone = (e: RoundEvent) => roundOver(e);
 // a guest (Sascha 16.11.2026: "Nur Tageswertung") wins nothing of the series' own – as a No Return
 const rank = (rows: { name: string; pos: string; sum: number; noReturn: boolean; guest: boolean }[]): RankRow[] => rows.map((r) => ({ name: r.name, pos: r.noReturn || r.guest ? '–' : r.pos, sort: r.noReturn || r.guest ? null : r.sum }));
 
