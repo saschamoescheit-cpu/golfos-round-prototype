@@ -111,6 +111,24 @@ const FOCUS_WORDS: Record<Exclude<Focus, 'mixed'>, string[]> = {
   contact: ['treff', 'strike', 'kontakt', 'contact', 'sauber', 'clean', 'low point', 'tiefste', 'divot', 'ball zuerst', 'ball first', 'sweetspot', 'mitte der fläche', 'centre of the face'],
   pressure: ['druck', 'pressure', 'in folge', 'in a row', 'spiel', 'game', 'wettkampf', 'punkte', 'points', 'challenge', 'herausforderung'],
 };
+/** edit distance of two short words (speech recognition slips by a letter or two) */
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cur = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+  }
+  return row[b.length];
+}
+/** a word that starts like the stem, up to two letters off – "Rechnungskontrolle" heard for "Richtungskontrolle" */
+const soundsLike = (t: string, stems: string[]) =>
+  t.split(/[^a-zäöüß]+/).some((w) => stems.some((s) => w.length >= s.length && editDistance(w.slice(0, s.length), s) <= 2));
+
 /** the focus a wish names ("Richtungskontrolle", "Tempo", "unter Druck"), mixed when none */
 export function focusOf(text: string): Focus {
   const t = text.toLowerCase();
@@ -118,6 +136,10 @@ export function focusOf(text: string): Focus {
   if (has(t, ['länge', 'length', 'tempo', 'speed', 'distanz', 'distance', 'weite', 'lag'])) return 'distance';
   if (has(t, ['treff', 'kontakt', 'strike', 'contact', 'sauber', 'clean'])) return 'contact';
   if (has(t, ['druck', 'pressure', 'wettkampf', 'turnier', 'competition'])) return 'pressure';
+  // the microphone sometimes mishears the long words – a near miss still counts (Sascha 18.11.2026)
+  if (soundsLike(t, ['richtung', 'startlinie', 'direction'])) return 'direction';
+  if (soundsLike(t, ['distanz', 'distance'])) return 'distance';
+  if (soundsLike(t, ['kontakt', 'contact'])) return 'contact';
   return 'mixed';
 }
 

@@ -87,6 +87,10 @@ const say = async (q) => {
   await caddie.locator('.tr-caddie-ask input').press('Enter');
   await p.waitForTimeout(400);
 };
+// misheard by the microphone (Sascha 18.11.2026): "Rechnungskontrolle" still means direction
+await say('30 Minuten Rechnungskontrolle beim Putten');
+const rowsM = (await caddie.locator('.settings-row').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
+ok(rowsM[0].includes('Putten') && rowsM.some((r) => /Schwerpunkt.*Richtung/.test(r)), `a misheard focus: ${rowsM.join(' | ')}`);
 await say('20 Minuten, meine Chips sind fett');
 const rowsF = (await caddie.locator('.settings-row').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
 ok(rowsF[0].includes('Chippen') && rowsF.some((r) => /Fehler.*Fetter Chip/.test(r)) && (await mins()) === 20, `a fault: ${rowsF.join(' | ')}`);

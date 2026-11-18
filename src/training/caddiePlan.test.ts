@@ -35,6 +35,12 @@ describe('the wish in words', () => {
     expect(focusOf('Putten Richtungskontrolle')).toBe('direction');
     expect(focusOf('Tempo beim Putten')).toBe('distance');
     expect(focusOf('Chippen')).toBe('mixed');
+    // misheard by the microphone (Sascha 18.11.2026: "Rechnungskontrolle" for "Richtungskontrolle")
+    expect(focusOf('30 Minuten Rechnungskontrolle beim Putten')).toBe('direction');
+    expect(focusOf('Putten Richtungskontrole')).toBe('direction');
+    expect(focusOf('Putten Kontrolle')).toBe('mixed');
+    expect(focusOf('richtig trainieren')).toBe('mixed');
+    expect(focusOf('Kontrolle beim Chippen')).toBe('mixed');
     expect(whereOf('im Wohnzimmer putten')).toBe('home');
     expect(whereOf('auf der Range')).toBe('range');
     expect(whereOf('auf dem Puttinggrün')).toBe('green');
