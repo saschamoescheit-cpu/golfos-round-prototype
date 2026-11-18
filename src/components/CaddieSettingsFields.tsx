@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
-import { tr } from '../lib/i18n';
-import { autoHomeAlt } from '../lib/homealt';
+import { dec, tr } from '../lib/i18n';
+import { altEffect, autoHomeAlt, hereAltitude, homeAltitude } from '../lib/homealt';
 import { ChoiceRow, OnOffRow } from './Settings';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
@@ -24,6 +24,29 @@ export function CaddieSettingsFields() {
     return () => window.removeEventListener('golfos:pulled', again);
   }, []);
   const auto = autoHomeAlt();
+  // where the phone is now – asked when the sheet opens (GPS once), shown beside the home course to compare
+  const [here, setHere] = useState<{ name: string | null; alt: number | null } | null | 'asking'>('asking');
+  const askHere = () => {
+    setHere('asking');
+    // the home course's height too, when not known yet (asked once, kept on the phone)
+    void Promise.all([hereAltitude(), homeAltitude()]).then(([h]) => setHere(h));
+  };
+  const hereText =
+    here === 'asking'
+      ? tr('Here: finding your position …', 'Hier: Standort wird ermittelt …')
+      : !here
+        ? tr('Here: no GPS', 'Hier: kein GPS')
+        : tr(`Here: ${here.name ?? tr('your position', 'dein Standort')}${here.alt != null ? ` – ${here.alt} m` : ''}`, `Hier: ${here.name ?? tr('your position', 'dein Standort')}${here.alt != null ? ` – ${here.alt} m` : ''}`);
+  const homeText = auto.course
+    ? tr(`Home course ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`, `Heimatclub ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`)
+    : tr('Home course from the profile – not found yet: choose a height', 'Heimatclub aus dem Profil – noch nicht gefunden: Höhe wählen');
+  const eff = here && here !== 'asking' && here.alt != null && auto.alt != null ? altEffect(here.alt, auto.alt) : null;
+  const effText =
+    eff == null || Math.abs(eff) < 0.5
+      ? null
+      : eff < 0
+        ? tr(`the ball flies about ${dec((-eff).toFixed(1))} % shorter here`, `der Ball fliegt hier rund ${dec((-eff).toFixed(1))} % kürzer`)
+        : tr(`the ball flies about ${dec(eff.toFixed(1))} % farther here`, `der Ball fliegt hier rund ${dec(eff.toFixed(1))} % weiter`);
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...s, ...patch };
     setS(next);
@@ -57,13 +80,13 @@ export function CaddieSettingsFields() {
         title={tr('Where your distances come from', 'Wo deine Weiten entstanden sind')}
         value={String(s.homeAlt ?? 'auto')}
         onChange={(v) => set({ homeAlt: v === 'auto' ? 'auto' : Number(v) })}
+        onOpen={askHere}
         options={[
           {
             value: 'auto',
             name: tr('Automatic', 'Automatisch'),
-            text: auto.course
-              ? tr(`Your home course ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`, `Dein Heimatplatz ${auto.course}${auto.alt != null ? ` – ${auto.alt} m` : ''}`)
-              : tr('Your home course from the profile – not found yet: choose a height', 'Dein Heimatclub aus dem Profil – noch nicht gefunden: Höhe wählen'),
+            // here (GPS) and the home course, to compare (Sascha 18.11.2026)
+            text: [hereText, homeText, effText].filter(Boolean).join(' · '),
           },
           ...[0, 100, 200, 300, 400, 500, 600, 800, 1000, 1200, 1500, 2000].map((m) => ({ value: String(m), name: m === 0 ? tr('0 m – sea level', '0 m – Meereshöhe') : `${m} m` })),
         ]}

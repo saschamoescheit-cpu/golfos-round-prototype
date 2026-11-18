@@ -1,0 +1,10 @@
+{
+ "Here: finding your position …": "Täällä: haetaan sijaintia …",
+ "Here: no GPS": "Täällä: ei GPS:ää",
+ "Here: {0}{1}": "Täällä: {0}{1}",
+ "your position": "sijaintisi",
+ "Home course {0}{1}": "Kotikenttä {0}{1}",
+ "Home course from the profile – not found yet: choose a height": "Kotikenttä profiilista – ei vielä löytynyt: valitse korkeus",
+ "the ball flies about {0} % shorter here": "pallo lentää täällä noin {0} % lyhyemmälle",
+ "the ball flies about {0} % farther here": "pallo lentää täällä noin {0} % pidemmälle"
+}
