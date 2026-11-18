@@ -35,6 +35,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
+import { StatusMark, type RowState } from '../components/StatusMark';
 import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours, syncTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
@@ -81,6 +82,20 @@ export const BETS_ICON = (
 
 const live = isLive;
 
+/** the ticket of the tile "laufend", as a list row's mark */
+const TICKET_MARK = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3.5 7.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-2.2a2.3 2.3 0 0 0 0-4.6z" />
+    <path d="M15 6.5v11" strokeDasharray="1.6 2" />
+  </svg>
+);
+
+/** A pool's state for its row (Sascha 18.11.2026: marks as on the rounds): running, cards to sign, over. */
+const poolRowState = (e: PoolEntry, today: string): RowState => {
+  const end = poolEnd(e, today);
+  return end.phase === 'finished' ? 'over' : end.phase === 'cards' ? 'waiting' : live(e, today) ? 'running' : 'over';
+};
+
 /** On the start page of Games (Sascha 01.11.2026: "from the start page both 'start a game' and 'start a bet'"): only the
  *  start – following, changing and deleting the bets is in the menu "Bets" (its dot shows bets running). */
 export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void }) {
@@ -117,6 +132,7 @@ function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
         <strong>{dm(pool.from)}</strong>
         <span className="muted small">{pool.from.slice(0, 4)}</span>
       </span>
+      <StatusMark state={poolRowState(props.e, props.today)} running={TICKET_MARK} planned={TICKET_MARK} />
       <span className="grow">
         <span className="title">{pool.name}</span>
         <span className="muted small one-line">

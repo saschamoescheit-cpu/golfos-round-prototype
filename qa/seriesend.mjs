@@ -61,10 +61,11 @@ await H.waitForTimeout(2500);
 await H.getByRole('button', { name: 'Turniere' }).first().click().catch(() => {});
 await H.waitForTimeout(1200);
 
-// 1. the list: "beendet"
+// 1. the list: the seal "beendet" between date and name, as on the rounds (Sascha 18.11.2026: "überall einheitlich")
 const item = H.locator('.list-item').filter({ hasText: 'USA-Serie' }).first();
 await item.waitFor();
-ok(/beendet/.test(await txt(item)), `the list: "… · beendet" (${await txt(item)})`);
+ok((await item.locator('.list-mark [role="img"][aria-label="beendet"]').count()) === 1 && !/beendet/.test(await txt(item)), `the list: the mark "beendet", no word (${await txt(item)})`);
+if (shots) await H.screenshot({ path: `${shots}/seriesend-list.png` });
 await item.click();
 await H.waitForTimeout(2500);
 

@@ -4,7 +4,7 @@
  "Final standing: {0}. of {1} · {2}": "最终排名：{1} 人中第 {0} 名 · {2}",
  "{0} is finished": "{0} 已结束",
  "When is a series finished – and how is its final standing worked out?": "系列赛什么时候结束？最终排名如何计算？",
- "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list \"beendet\", and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "每一轮都打完时：每张记分卡都记到最后一洞。在所有组都已结束的一轮中没有任何成绩的球员视为未参加该轮——不会让系列赛一直不结束；之后补录的成绩会重新计入。此时系列赛显示“最终排名”，列表显示“已结束”，每位参赛者的收件箱都会收到带名次的“…已结束”；系列赛奖金随即结算。总排名：先是打满所有轮次的人，按总杆排序——然后是轮次较少的人（“4 轮”），最后是 No Return。",
+ "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list the seal (as a signed round), and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "每一轮都打完时：每张记分卡都记到最后一洞。在所有组都已结束的一轮中没有任何成绩的球员视为未参加该轮——不会让系列赛一直不结束；之后补录的成绩会重新计入。此时系列赛显示“最终排名”，列表显示与已签名轮次相同的认证标记，每位参赛者的收件箱都会收到带名次的“…已结束”；系列赛奖金随即结算。总排名：先是打满所有轮次的人，按总杆排序——然后是轮次较少的人（“4 轮”），最后是 No Return。",
  "planned": "计划中",
  "cards missing": "记分卡缺失",
  "Final standing · all rounds": "最终排名 · 全部轮次"

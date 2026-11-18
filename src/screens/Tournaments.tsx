@@ -32,6 +32,7 @@ import { LiveShare, liveAction, LiveSheet } from '../components/LiveShare';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
+import { StatusMark, type RowState } from '../components/StatusMark';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
 // now, put the flights together, choose the markers and send the invitations; in the USA everyone has it ready").
@@ -56,6 +57,23 @@ export const TOURS_ICON = (
     <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
   </svg>
 );
+
+/** the cup of the tile "geplant", as a list row's mark */
+const CUP_MARK = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4" />
+    <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
+  </svg>
+);
+
+/** One tournament's state for its row: planned, running today, over (every card in) – or its day past, cards missing. */
+export function tourRowState(code: string, date: string, today: string): RowState {
+  if (date > today) return 'planned';
+  const live = cachedEvent(code);
+  if (live && roundOver(live)) return 'over';
+  return date < today ? 'waiting' : 'running';
+}
 
 /** A series: tournaments stacked – the cup with two behind it (Sascha 03.11.2026: "icons would be good"). */
 export const SERIES_ICON = (
@@ -150,6 +168,7 @@ function TourRow(props: { e: TourEntry; onOpen: () => void }) {
         <strong>{dm(ev.date)}</strong>
         <span className="muted small">{ev.date.slice(0, 4)}</span>
       </span>
+      <StatusMark state={tourRowState(props.e.code, ev.date, dayOf(new Date()))} planned={CUP_MARK} />
       <span className="grow">
         <span className="title">{ev.name}</span>
         <span className="muted small one-line">
@@ -169,20 +188,19 @@ function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
   const { series } = props.s;
   const first = series.rounds[0]?.date ?? '';
   const last = series.rounds[series.rounds.length - 1]?.date ?? '';
-  // how it stands (Sascha 17.11.2026: "als abgeschlossen dargestellt") – as a pool of bets says "läuft" / "beendet"
+  // how it stands (Sascha 17.11.2026: "als abgeschlossen dargestellt") – as a mark like the rounds', not a word (18.11.)
   const state = seriesState(series, dayOf(new Date()));
-  const word = { planned: tr('planned', 'geplant'), running: tr('running', 'läuft'), over: tr('finished', 'beendet'), waiting: tr('cards missing', 'Karten fehlen') }[state];
   return (
     <button type="button" className="list-item tour-series-row" onClick={props.onOpen}>
       <span className="round-date">
         <strong>{first ? dm(first) : '–'}</strong>
         <span className="muted small">{first.slice(0, 4)}</span>
       </span>
+      <StatusMark state={state} planned={CUP_MARK} />
       <span className="grow">
         <span className="title">{series.name}</span>
         <span className="muted small one-line">
-          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')}{first && last ? ` · ${dm(first)}–${dm(last)}` : ''} ·{' '}
-          <span className={state === 'over' ? 'good-text' : state === 'waiting' ? 'warn-text' : undefined}>{word}</span>
+          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')}{first && last ? ` · ${dm(first)}–${dm(last)}` : ''}
         </span>
       </span>
       <span className="game-row-result">
@@ -1072,6 +1090,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
                 <strong>{dm(r.date)}</strong>
                 <span className="muted small">{tr(`Round ${k + 1}`, `Runde ${k + 1}`)}</span>
               </span>
+              <StatusMark state={tourRowState(r.code, r.date, dayOf(new Date()))} planned={CUP_MARK} />
               <span className="grow">
                 <span className="title">{r.name}</span>
                 <span className="muted small one-line">{r.course.name}</span>
