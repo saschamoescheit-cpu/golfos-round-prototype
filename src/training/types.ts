@@ -16,6 +16,7 @@ export interface L {
 export const L = (en: string, de: string): L => ({ en, de });
 
 export type CategoryId =
+  | 'psystem'
   | 'putting'
   | 'greenreading'
   | 'chipping'
@@ -151,6 +152,32 @@ export interface Category {
   sources?: Source[];
   /** related categories */
   see?: CategoryId[];
+  /** the positions of the basic swing, P1–P10 (content/psystem.ts) – the first tab of the topic */
+  positions?: SwingPosition[];
+}
+
+/** What a position is checked on, one line each. */
+export type PosRowKind = 'body' | 'arms' | 'hands' | 'shaft' | 'face' | 'weight' | 'feet' | 'contact';
+/**
+ * One position of the basic swing (Sascha 17./18.11.2026: the P system from down the line, one photo series with the
+ * golfer always on the same spot) – what you see, what to check, the typical faults and the drills for it.
+ */
+export interface SwingPosition {
+  /** p1 … p10 */
+  id: string;
+  name: L;
+  /** one line for the list */
+  short: L;
+  /** the photo in public/training/psystem/ (right-handed, down the line – mirrored for left-handers) */
+  photo: string;
+  look: L[];
+  checks: { k: PosRowKind; v: L }[];
+  faults: { name: L; fix: L }[];
+  drills?: string[];
+  /** a rule of thumb, highlighted */
+  fact?: L;
+  /** still open for our pro (not shown to players) */
+  open?: string;
 }
 
 /** How a drill result is entered and compared. */

@@ -127,6 +127,7 @@ export const CAT_ICON: Record<CategoryId, ReactNode> = {
   irons: ic(<><path d="M14 3l-6 14" /><path d="M8 17l-3 1 1 3 6-2-1-3" /></>),
   woods: ic(<><path d="M15 3l-6 13" /><ellipse cx="7.5" cy="18.5" rx="4" ry="2.5" /></>),
   driver: ic(<><path d="M16 3l-6 12" /><ellipse cx="8" cy="18" rx="5" ry="3" /><path d="M18 21v-4" /></>),
+  psystem: ic(<><circle cx="9" cy="4.5" r="1.8" /><path d="M9 7l1 6-3 7M10 13l3 7M9.5 9l4-3 5-3" /></>),
   basics: ic(<><path d="M9 4h6M12 4v6" /><path d="M8 10h8l-1 10H9z" /></>),
   swing: ic(<><path d="M5 18A9 9 0 0 1 19 6" /><path d="M19 6l-1 4M19 6l-4-1" /><circle cx="12" cy="12" r="1.3" /></>),
   ballflight: ic(<><path d="M4 20C8 8 14 6 20 9" /><path d="M4 20c6-8 12-11 14-16" strokeDasharray="2 2" /></>),

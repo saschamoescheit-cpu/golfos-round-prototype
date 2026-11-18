@@ -30,7 +30,7 @@ import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
 import { search } from '../training/search';
 import type { RoundsTarget } from '../training/content/rounds-links';
-import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, shotKey, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
+import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, posKey, reviewItems, reviewOn, sectionKey, setReviewOn, shotKey, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
   addLog,
@@ -60,7 +60,8 @@ import {
   type OwnPlan,
   type Session,
 } from '../training/store';
-import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan, Section, ShotPart, ShotRowKind, TopicShot, Video } from '../training/types';
+import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan, PosRowKind, Section, ShotPart, ShotRowKind, SwingPosition, TopicShot, Video } from '../training/types';
+import { leftHanded } from '../training/sides';
 import {
   bandName,
   bandOf,
@@ -104,6 +105,7 @@ type View =
   | { name: 'cat'; id: CategoryId }
   | { name: 'drill'; id: string }
   | { name: 'shot'; id: string }
+  | { name: 'pos'; id: string }
   | { name: 'plan'; plan: Plan | OwnPlan; own?: boolean }
   | { name: 'session'; id: string }
   | { name: 'done'; id: string }
@@ -334,6 +336,8 @@ export function TrainingApp(props: {
         return <DrillView id={view.id} nav={nav} />;
       case 'shot':
         return <ShotView id={view.id} nav={nav} />;
+      case 'pos':
+        return <PositionView id={view.id} nav={nav} />;
       case 'plan':
         return <PlanView plan={view.plan} own={view.own} nav={nav} />;
       case 'builder':
@@ -599,6 +603,149 @@ function ShotText(props: { p: ShotPart; label: string }) {
         </section>
       )}
     </>
+  );
+}
+
+// ---------- the basic swing, P1–P10 (Sascha 17./18.11.2026) ----------
+
+const PSYS_IMG = (file: string) => `${import.meta.env.BASE_URL}training/psystem/${file}`;
+const POS_ROW: Record<PosRowKind, () => string> = {
+  body: () => tr('Body', 'Körper'),
+  arms: () => tr('Arms', 'Arme'),
+  hands: () => tr('Hands and wrists', 'Hände und Handgelenke'),
+  shaft: () => tr('Shaft', 'Schaft'),
+  face: () => tr('Clubface', 'Schlagfläche'),
+  weight: () => tr('Weight', 'Gewicht'),
+  feet: () => tr('Legs and feet', 'Beine und Füße'),
+  contact: () => tr('Contact', 'Treffer'),
+};
+const allPositions = (): SwingPosition[] => CATEGORIES.flatMap((c) => c.positions ?? []);
+
+/** the photo of a position – the series is a right-hander; a left-hander sees it mirrored */
+function PosPhoto(props: { p: SwingPosition; thumb?: boolean }) {
+  return (
+    <img
+      className={`tr-pos-photo${props.thumb ? ' thumb' : ''}${leftHanded() ? ' mirror' : ''}`}
+      src={PSYS_IMG(props.p.photo)}
+      alt={t(props.p.name)}
+      loading={props.thumb ? 'lazy' : undefined}
+      width={1024}
+      height={1536}
+    />
+  );
+}
+
+/** the series to flip through – the golfer stays on the same spot, only the body moves */
+function SwingSequence(props: { positions: SwingPosition[]; nav: Nav }) {
+  const [i, setI] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const n = props.positions.length;
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => setI((x) => (x + 1) % n), 800);
+    return () => window.clearInterval(id);
+  }, [playing, n]);
+  // every photo loaded once, so flipping does not flicker
+  useEffect(() => {
+    for (const p of props.positions) new Image().src = PSYS_IMG(p.photo);
+  }, [props.positions]);
+  const p = props.positions[i];
+  if (!p) return null;
+  return (
+    <section className="card tr-seq">
+      <button type="button" className="tr-seq-photo" onClick={() => props.nav.push({ name: 'pos', id: p.id })} aria-label={t(p.name)}>
+        <PosPhoto p={p} />
+      </button>
+      <div className="tr-seq-ctl">
+        <strong>{t(p.name)}</strong>
+        <input
+          type="range"
+          min={0}
+          max={n - 1}
+          step={1}
+          value={i}
+          aria-label={tr('Position', 'Position')}
+          onChange={(e) => {
+            setPlaying(false);
+            setI(Number(e.target.value));
+          }}
+        />
+        <button type="button" className="chip" aria-pressed={playing} onClick={() => setPlaying(!playing)}>
+          {playing ? tr('Pause', 'Anhalten') : tr('Play the swing', 'Schwung abspielen')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PositionView(props: { id: string; nav: Nav }) {
+  const all = allPositions();
+  const at = all.findIndex((x) => x.id === props.id);
+  const p = all[at];
+  if (!p) return null;
+  const c = CATEGORIES.find((x) => x.positions?.includes(p))!;
+  const drills = (p.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
+  const prev = all[at - 1];
+  const next = all[at + 1];
+  const short = (x: SwingPosition) => t(x.name).split(' · ')[0];
+  return (
+    <main className="screen training">
+      <TopBar title={t(p.name)} onBack={props.nav.back} />
+      <span className="eyebrow">{t(c.name)}</span>
+      <p className="tr-shot-short">{t(p.short)}</p>
+      <div className="tr-pos-big">
+        <PosPhoto p={p} />
+      </div>
+      <div className="chip-set tr-pos-nav">
+        {prev && (
+          <button type="button" className="chip" onClick={() => props.nav.push({ name: 'pos', id: prev.id })}>
+            ‹ {short(prev)}
+          </button>
+        )}
+        {next && (
+          <button type="button" className="chip" onClick={() => props.nav.push({ name: 'pos', id: next.id })}>
+            {short(next)} ›
+          </button>
+        )}
+      </div>
+      <section className="card tr-section">
+        <span className="eyebrow">{tr('What you see', 'Was du siehst')}</span>
+        {p.look.map((x, k) => (
+          <p key={k}>{t(x)}</p>
+        ))}
+        {p.fact && <p className="tr-fact">{t(p.fact)}</p>}
+      </section>
+      <section className="card tr-section">
+        <span className="eyebrow">{tr('Check points', 'Prüfpunkte')}</span>
+        <dl className="tr-pos-list">
+          {p.checks.map((r, k) => (
+            <div key={k}>
+              <dt>{POS_ROW[r.k]()}</dt>
+              <dd>{t(r.v)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <section className="card tr-section">
+        <span className="eyebrow">{tr('Typical faults', 'Typische Fehler')}</span>
+        <dl className="tr-pos-list">
+          {p.faults.map((f, k) => (
+            <div key={k}>
+              <dt>{t(f.name)}</dt>
+              <dd>{t(f.fix)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      {drills.length > 0 && (
+        <>
+          <span className="eyebrow">{tr('Practise it', 'So übst du es')}</span>
+          <DrillList drills={drills} nav={props.nav} />
+        </>
+      )}
+      <ReviewBar itemKey={posKey(p.id)} />
+      <TopicRow id={c.id} nav={props.nav} />
+    </main>
   );
 }
 
@@ -1480,14 +1627,14 @@ function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   );
 }
 
-type CatTab = 'shots' | 'drills' | 'basics' | 'faults' | 'videos';
+type CatTab = 'positions' | 'shots' | 'drills' | 'basics' | 'faults' | 'videos';
 const CAT_TAB = new Map<CategoryId, CatTab>();
 
 function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const c = catById(props.id);
   const [tab, setTabState] = useState<CatTab>(() => {
     const saved = CAT_TAB.get(props.id);
-    return (saved === 'videos' && !TOPIC_VIDEOS_SHOWN ? undefined : saved) ?? (catById(props.id)?.shots?.length ? 'shots' : 'drills');
+    return (saved === 'videos' && !TOPIC_VIDEOS_SHOWN ? undefined : saved) ?? (catById(props.id)?.positions?.length ? 'positions' : catById(props.id)?.shots?.length ? 'shots' : 'drills');
   });
   const setTab = (x: typeof tab) => {
     CAT_TAB.set(props.id, x);
@@ -1503,7 +1650,9 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   // (Facelift 11.11.2026, tr1: the parts as the switch "‹ Übungen ›", each with a line what it holds)
   // Sascha 15.11.2026: the topic as shots – the first tab; the basics keep what is not a shot
   const shots = c.shots ?? [];
+  const positions = c.positions ?? [];
   const tabs: StepChoice<typeof tab>[] = [
+    ...(positions.length ? [{ value: 'positions' as const, name: tr('Positions', 'Positionen'), text: tr(`P1–P${positions.length} from behind`, `P1–P${positions.length} von hinten`) }] : []),
     ...(shots.length ? [{ value: 'shots' as const, name: tr('Shots', 'Schläge'), text: tr(`${shots.length} shots`, `${shots.length} Schläge`) }] : []),
     { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
     ...(c.sections.length || c.facts?.length || c.charts?.length ? [{ value: 'basics' as const, name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') }] : []),
@@ -1518,6 +1667,27 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         <p>{t(c.short)}</p>
       </div>
       <ViewPick options={tabs} value={tab} onChange={setTab} />
+
+      {tab === 'positions' && (
+        <>
+          <p className="muted">{t(c.intro)}</p>
+          <SwingSequence positions={positions} nav={props.nav} />
+          <ul className="list tr-shots">
+            {positions.map((p) => (
+              <li key={p.id}>
+                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'pos', id: p.id })}>
+                  <PosPhoto p={p} thumb />
+                  <span className="grow">
+                    <span className="title">{t(p.name)}</span>
+                    <span className="muted small tr-two-lines">{t(p.short)}</span>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {tab === 'shots' && (
         <>
@@ -2206,6 +2376,7 @@ function DrillView(props: { id: string; nav: Nav }) {
 const SIGN: Record<Verdict, JSX.Element> = { ok: <CheckGlyph />, edit: <PenGlyph />, cut: <CrossGlyph /> };
 const KIND_NAME: Record<ReviewKind, () => string> = {
   fact: () => tr('Numbers', 'Zahlen'),
+  position: () => tr('Swing positions', 'Schwungpositionen'),
   shot: () => tr('Shots', 'Schläge'),
   drill: () => tr('Drills', 'Übungen'),
   section: () => tr('Basics', 'Grundlagen'),
@@ -2231,6 +2402,7 @@ function ReviewView(props: { nav: Nav }) {
     const [kind, ...rest] = i.key.split(':');
     if (kind === 'drill') return props.nav.push({ name: 'drill', id: rest.join(':') });
     if (kind === 'shot') return props.nav.push({ name: 'shot', id: rest.slice(1).join(':') });
+    if (kind === 'pos') return props.nav.push({ name: 'pos', id: rest.slice(1).join(':') });
     if (kind === 'gear') return props.nav.push({ name: 'gear', id: rest.join(':') });
     if (kind === 'plan') {
       const p = PLANS.find((x) => x.id === rest.join(':'));

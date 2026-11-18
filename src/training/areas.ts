@@ -8,7 +8,7 @@ export type AreaId = 'short' | 'long' | 'swing' | 'course' | 'body';
 export const AREAS: { id: AreaId; name: L; cats: CategoryId[] }[] = [
   { id: 'short', name: L('Short game', 'Kurzes Spiel'), cats: ['putting', 'greenreading', 'chipping', 'pitching', 'lob', 'spin', 'bunker'] },
   { id: 'long', name: L('Long game', 'Langes Spiel'), cats: ['irons', 'woods', 'driver', 'highlow', 'lowpoint'] },
-  { id: 'swing', name: L('Swing and ball flight', 'Schwung & Ballflug'), cats: ['basics', 'swing', 'ballflight'] },
+  { id: 'swing', name: L('Swing and ball flight', 'Schwung & Ballflug'), cats: ['psystem', 'basics', 'swing', 'ballflight'] },
   { id: 'course', name: L('On the course', 'Auf dem Platz'), cats: ['slopes', 'trouble', 'strategy'] },
   { id: 'body', name: L('Mind and body', 'Kopf & Körper'), cats: ['mental', 'fitness', 'practice'] },
 ];

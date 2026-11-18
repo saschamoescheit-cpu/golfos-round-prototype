@@ -13,6 +13,7 @@ import { woods, woodsDrills } from './woods';
 import { driver, driverDrills } from './driver';
 import { basics, basicsDrills } from './basics';
 import { swing, swingDrills } from './swing';
+import { psystem } from './psystem';
 import { ballflight, ballflightDrills } from './ballflight';
 import { strategy, strategyDrills } from './strategy';
 import { mental, mentalDrills } from './mental';
@@ -80,7 +81,7 @@ const drillPicture = (id: string) => {
 };
 
 // the topics in the library; lob, spin, high & low and the low point are new as shots (Sascha 15.11.2026)
-const BUILT: Category[] = [putting, greenreading, chipping, pitching, lob, spin, bunker, slopes, trouble, highlow, lowpoint, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
+const BUILT: Category[] = [putting, greenreading, chipping, pitching, lob, spin, bunker, slopes, trouble, highlow, lowpoint, irons, woods, driver, psystem, basics, swing, ballflight, strategy, mental, fitness, practice]
   .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
   // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
   .map((c) => ({ ...c, sections: c.sections.map((x, i) => ({ ...SECTION_MEDIA[c.id]?.[i], ...x })) }))
@@ -149,6 +150,8 @@ export const videoById = (id: string): Video | undefined => TOPIC_VIDEOS.get(id)
 /** the topics whose shots use a drill (it shows in those topics too) */
 const SHOT_TOPICS = new Map<string, CategoryId[]>();
 for (const c of CATEGORIES) for (const s of c.shots ?? []) for (const d of s.drills ?? []) SHOT_TOPICS.set(d, [...new Set([...(SHOT_TOPICS.get(d) ?? []), c.id])]);
+// the drills of the swing positions show in the basic swing too (Sascha 18.11.2026)
+for (const c of CATEGORIES) for (const p of c.positions ?? []) for (const d of p.drills ?? []) SHOT_TOPICS.set(d, [...new Set([...(SHOT_TOPICS.get(d) ?? []), c.id])]);
 
 const ALL_DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch

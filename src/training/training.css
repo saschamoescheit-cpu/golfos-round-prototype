@@ -362,3 +362,24 @@
 .tr-caddie-mic.on { background: var(--brand); border-color: var(--brand); color: #ffffff; }
 .tr-caddie-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .tr-caddie-acts .btn-secondary { flex: 1 1 auto; }
+
+/* the basic swing, P1–P10 (Sascha 17./18.11.2026): one photo series, the golfer always on the same spot */
+.tr-pos-photo { display: block; width: 100%; height: auto; border-radius: 12px; background: #0e1418; }
+.tr-pos-photo.mirror { transform: scaleX(-1); }
+.tr-pos-photo.thumb { width: 48px; height: 72px; object-fit: cover; object-position: 40% 45%; border-radius: 8px; flex: none; }
+.tr-pos-big { max-width: 420px; margin: 0 auto; width: 100%; }
+.tr-pos-nav { justify-content: space-between; }
+.tr-seq { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 14px; align-items: center; }
+.tr-seq-photo { all: unset; cursor: pointer; display: block; }
+.tr-seq-photo:focus-visible { outline: 2px solid var(--accent, #79a128); outline-offset: 2px; border-radius: 12px; }
+.tr-seq-ctl { display: grid; gap: 10px; min-width: 0; }
+.tr-seq-ctl input[type='range'] { width: 100%; accent-color: var(--accent, #79a128); }
+@media (max-width: 420px) {
+  .tr-seq { grid-template-columns: minmax(0, 1fr); }
+  .tr-seq-photo { max-width: 260px; margin: 0 auto; }
+}
+/* check points and faults of a position: the name above its text (fits the iPhone SE) */
+.tr-pos-list { display: grid; gap: 10px; margin: 6px 0 0; }
+.tr-pos-list > div { display: grid; gap: 2px; min-width: 0; }
+.tr-pos-list dt { font-weight: 600; }
+.tr-pos-list dd { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
