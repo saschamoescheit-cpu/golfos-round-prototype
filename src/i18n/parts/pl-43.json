@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0} czeka na podpisy",
+ "{0} cards to sign · {1} of them yours": "Niepodpisane karty: {0} · twoje: {1}",
+ "{0} cards to sign – then the settlement": "Niepodpisane karty: {0} – potem rozliczenie",
+ "you still pay {0}": "jeszcze płacisz {0}",
+ "{0} still to come": "jeszcze do otrzymania {0}",
+ "all paid": "wszystko zapłacone",
+ "{0} is settled": "{0} rozliczona",
+ "Final: {0} · {1}": "Rozliczenie końcowe: {0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "Kiedy kończy się pula zakładów – i kiedy przychodzi rozliczenie końcowe?",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "Gdy każdy turniej w jej dniach jest rozegrany (albo minął jej ostatni dzień) i każda karta jej graczy jest podpisana – przez gracza i markera albo wpisana przez gospodarza. Do tego czasu pula pokazuje „czeka na podpisy”, jej karta pokazuje, czyje karty są otwarte, a każdy dostaje to w skrzynce. Potem telefon gospodarza sam zamyka pulę: zakłady są ostateczne, każdy dostaje w skrzynce „… rozliczona” z tym, co dostaje lub płaci (i powiadomienie). Gospodarz może ją zakończyć ręcznie w każdej chwili („Zakończ pulę”). Runda, która nie ma się liczyć: „Licz rundę · Wył.” – wtedy jej karty nie są potrzebne.",
+ "waiting for signatures": "czeka na podpisy",
+ "Cards to sign": "Niepodpisane karty",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "Wszystkie rundy rozegrane. Rozliczenie końcowe przyjdzie, gdy każda karta zostanie podpisana – albo gdy zakończysz pulę.",
+ "Every round is played. The final settlement comes once every card is signed.": "Wszystkie rundy rozegrane. Rozliczenie końcowe przyjdzie, gdy każda karta zostanie podpisana.",
+ "{0} (you)": "{0} (ty)"
+}

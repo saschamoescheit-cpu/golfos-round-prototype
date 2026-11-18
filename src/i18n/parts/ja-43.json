@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0}は署名待ちです",
+ "{0} cards to sign · {1} of them yours": "未署名のカード{0}枚 · うち{1}枚があなた",
+ "{0} cards to sign – then the settlement": "未署名のカード{0}枚 – その後に精算",
+ "you still pay {0}": "まだ{0}を支払います",
+ "{0} still to come": "まだ{0}を受け取ります",
+ "all paid": "すべて支払済み",
+ "{0} is settled": "{0}は精算されました",
+ "Final: {0} · {1}": "最終精算：{0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "賭けプールはいつ終わり、最終精算はいつ届きますか？",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "期間内のすべてのトーナメントが終わり（または最終日が過ぎ）、参加者のすべてのスコアカードが署名されたとき（プレーヤーとマーカー、またはホストの入力）です。それまでプールは「署名待ち」と表示され、誰のカードが未署名かが表示され、全員の受信箱に届きます。その後ホストの端末が自動でプールを閉じ、賭けが確定し、全員の受信箱に受け取る額・支払う額付きの「…は精算されました」が届きます（プッシュ通知も）。ホストはいつでも手動で終了できます（「プールを終了」）。数えないラウンドは「ラウンドを数える · オフ」にすると、そのカードは不要になります。",
+ "waiting for signatures": "署名待ち",
+ "Cards to sign": "未署名のカード",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "すべてのラウンドが終わりました。すべてのカードに署名されるか、あなたがプールを終了すると最終精算が届きます。",
+ "Every round is played. The final settlement comes once every card is signed.": "すべてのラウンドが終わりました。すべてのカードに署名されると最終精算が届きます。",
+ "{0} (you)": "{0}（あなた）"
+}

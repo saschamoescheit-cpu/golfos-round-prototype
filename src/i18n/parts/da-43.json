@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0} venter på underskrifter",
+ "{0} cards to sign · {1} of them yours": "{0} scorekort mangler · {1} af dem dine",
+ "{0} cards to sign – then the settlement": "{0} scorekort mangler – så afregningen",
+ "you still pay {0}": "du betaler stadig {0}",
+ "{0} still to come": "{0} kommer endnu",
+ "all paid": "alt betalt",
+ "{0} is settled": "{0} er afregnet",
+ "Final: {0} · {1}": "Slutafregning: {0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "Hvornår slutter en væddemålspulje – og hvornår kommer slutafregningen?",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "Så snart hver turnering i dens dage er spillet færdig (eller dens sidste dag er forbi), og hvert scorekort fra dens spillere er underskrevet – af spiller og markør eller tastet ind af værten. Indtil da viser puljen „venter på underskrifter“, dens kort viser, hvis scorekort mangler, og alle i den får det i indbakken. Så lukker værtens telefon puljen af sig selv: væddemålene er endelige, alle får „… er afregnet“ med det, de får eller betaler, i indbakken (og som push). Værten kan altid afslutte den manuelt („Afslut pulje“). En runde, der ikke skal tælle: „Tæl runden · Fra“ – så behøves dens scorekort ikke.",
+ "waiting for signatures": "venter på underskrifter",
+ "Cards to sign": "Scorekort mangler",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "Alle runder er spillet. Slutafregningen kommer, så snart hvert scorekort er underskrevet – eller når du afslutter puljen.",
+ "Every round is played. The final settlement comes once every card is signed.": "Alle runder er spillet. Slutafregningen kommer, så snart hvert scorekort er underskrevet.",
+ "{0} (you)": "{0} (dig)"
+}

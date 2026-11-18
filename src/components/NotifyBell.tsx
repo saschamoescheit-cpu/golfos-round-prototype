@@ -16,8 +16,8 @@ import type { SharedCell } from '../types';
 import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { gamePrize, meIn } from '../lib/gamepay';
-import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
-import { wagerLabel } from '../lib/wagers';
+import { changePool, loadPools, openChallenges, poolEnd } from '../lib/wagerstore';
+import { balances, dayOf, openPoolTransfers, owings, settleDebts, wagerLabel, withDuels } from '../lib/wagers';
 import { money } from '../lib/gameforms';
 import { prizeOf, prizeSym } from '../lib/prize';
 import { goPool, goRound, goTour } from '../lib/nav';
@@ -154,6 +154,35 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       },
       ask: true,
     });
+  }
+  // a pool played out (Sascha 18.11.2026: "Auch hierzu sollte es eine Meldung in der Inbox geben"): waiting for the cards'
+  // signatures – then closed and settled, the final settlement for everyone in it
+  const today = dayOf(new Date());
+  for (const e of pools) {
+    const end = poolEnd(e, today);
+    if (end.phase === 'cards') {
+      const n = end.open.length;
+      const mine = end.open.filter((x) => x.mine).length;
+      out.push({
+        key: `poolcards:${e.code}:${n}`,
+        title: tr(`${e.pool.name} is waiting for signatures`, `${e.pool.name} wartet auf Unterschriften`),
+        line: mine ? tr(`${n} cards to sign · ${mine} of them yours`, `${n} Karten offen · ${mine} davon deine`) : tr(`${n} cards to sign – then the settlement`, `${n} Karten offen – dann die Abrechnung`),
+        go: () => goPool(e.code),
+      });
+    }
+    const fin = e.pool.finishedAt;
+    if (fin && Date.now() - Date.parse(fin) < 14 * 864e5) {
+      const jp = withDuels(e.pool);
+      const bal = balances(jp, today, true);
+      const ts = openPoolTransfers(jp, bal, settleDebts(jp, owings(jp, today, true)));
+      const sym = prizeSym(prizeOf(e.pool));
+      const mine = bal[e.me!] ?? 0;
+      const pay = ts.filter((t) => t.from === e.me).reduce((s, t) => s + t.amount, 0);
+      const get = ts.filter((t) => t.to === e.me).reduce((s, t) => s + t.amount, 0);
+      const total = mine > 0.004 ? `+${money(mine, sym)}` : mine < -0.004 ? `−${money(-mine, sym)}` : money(0, sym);
+      const still = pay > 0.004 ? tr(`you still pay ${money(pay, sym)}`, `du zahlst noch ${money(pay, sym)}`) : get > 0.004 ? tr(`${money(get, sym)} still to come`, `${money(get, sym)} kommen noch`) : tr('all paid', 'alles bezahlt');
+      out.push({ key: `poolsettled:${e.code}`, title: tr(`${e.pool.name} is settled`, `${e.pool.name} ist abgerechnet`), line: tr(`Final: ${total} · ${still}`, `Endabrechnung: ${total} · ${still}`), go: () => goPool(e.code) });
+    }
   }
   // a payment to you marked paid – its receipt confirmed right here (Inbox-Mockups: "Zahlung bestätigen")
   for (const e of pools)

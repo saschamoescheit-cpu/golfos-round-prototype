@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0} venter på signaturer",
+ "{0} cards to sign · {1} of them yours": "{0} scorekort mangler · {1} av dem dine",
+ "{0} cards to sign – then the settlement": "{0} scorekort mangler – så oppgjøret",
+ "you still pay {0}": "du betaler fortsatt {0}",
+ "{0} still to come": "{0} kommer fortsatt",
+ "all paid": "alt betalt",
+ "{0} is settled": "{0} er gjort opp",
+ "Final: {0} · {1}": "Sluttoppgjør: {0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "Når slutter en veddemålspott – og når kommer sluttoppgjøret?",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "Så snart hver turnering i dagene er ferdigspilt (eller siste dag er over) og hvert scorekort fra spillerne er signert – av spiller og markør, eller lagt inn av verten. Til da viser potten «venter på signaturer», kortet viser hvem som mangler, og alle får det i innboksen. Så lukker vertens telefon potten av seg selv: veddemålene er endelige, alle får «… er gjort opp» med det de får eller betaler i innboksen (og som push). Verten kan når som helst avslutte manuelt («Avslutt pott»). En runde som ikke skal telle: «Tell runden · Av» – da trengs ikke kortene.",
+ "waiting for signatures": "venter på signaturer",
+ "Cards to sign": "Scorekort mangler",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "Alle runder er spilt. Sluttoppgjøret kommer når hvert scorekort er signert – eller når du avslutter potten.",
+ "Every round is played. The final settlement comes once every card is signed.": "Alle runder er spilt. Sluttoppgjøret kommer når hvert scorekort er signert.",
+ "{0} (you)": "{0} (deg)"
+}

@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0} aguarda assinaturas",
+ "{0} cards to sign · {1} of them yours": "{0} cartões por assinar · {1} são teus",
+ "{0} cards to sign – then the settlement": "{0} cartões por assinar – depois a liquidação",
+ "you still pay {0}": "ainda pagas {0}",
+ "{0} still to come": "ainda recebes {0}",
+ "all paid": "tudo pago",
+ "{0} is settled": "{0} está liquidado",
+ "Final: {0} · {1}": "Liquidação final: {0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "Quando termina um pool de apostas – e quando chega a liquidação final?",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "Assim que cada torneio nos seus dias estiver jogado (ou o seu último dia tiver passado) e cada cartão dos seus jogadores estiver assinado – pelo jogador e marcador, ou introduzido pelo anfitrião. Até lá o pool mostra «aguarda assinaturas», o seu cartão indica de quem faltam cartões e todos recebem isso na caixa de entrada. Depois o telemóvel do anfitrião fecha o pool sozinho: as apostas são definitivas e cada um recebe «… está liquidado» com o que recebe ou paga (e uma notificação). O anfitrião pode terminá-lo à mão a qualquer momento («Terminar pool»). Uma volta que não deve contar: «Contar a volta · Não» – os seus cartões deixam de ser precisos.",
+ "waiting for signatures": "aguarda assinaturas",
+ "Cards to sign": "Cartões por assinar",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "Todas as voltas estão jogadas. A liquidação final chega quando cada cartão estiver assinado – ou quando terminares o pool.",
+ "Every round is played. The final settlement comes once every card is signed.": "Todas as voltas estão jogadas. A liquidação final chega quando cada cartão estiver assinado.",
+ "{0} (you)": "{0} (tu)"
+}

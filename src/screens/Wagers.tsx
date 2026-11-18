@@ -22,7 +22,7 @@ import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
 import { SideBetsList, sideBetsOf } from '../components/SideBets';
-import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, poolEnd, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
@@ -907,6 +907,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
     );
   }
   const today = dayOf(new Date());
+  // played out, cards still to sign – or closed (Sascha 18.11.2026)
+  const poolEnded = poolEnd(entry, today);
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   // a tournament of this account today, in the pool's days – a round of the series (Sascha 09.11.2026)
   const tourToday = today >= pool.from && today <= pool.to ? loadTours().find((e) => tourState(e, today) === 'today') : undefined;
@@ -956,9 +958,25 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {host && !sheet && <FloatActions pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }} />}
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
-        {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
+        {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : poolEnded.phase === 'cards' ? ` · ${tr('waiting for signatures', 'wartet auf Unterschriften')}` : ''}
       </span>
       {!host && <span className="muted small">{ONLY_HOST()}</span>}
+      {/* every round played, cards still to sign (Sascha 18.11.2026: "Erst alle Karten signiert") – settled once they are */}
+      {poolEnded.phase === 'cards' && (
+        <section className="card pool-cards-open" aria-label={tr('Cards to sign', 'Karten offen')}>
+          <span className="eyebrow">{tr('Cards to sign', 'Karten offen')}</span>
+          <span className="small">
+            {host
+              ? tr('Every round is played. The final settlement comes once every card is signed – or when you finish the pool.', 'Alle Runden sind gespielt. Die Endabrechnung kommt, sobald jede Karte unterschrieben ist – oder wenn du den Pool beendest.')
+              : tr('Every round is played. The final settlement comes once every card is signed.', 'Alle Runden sind gespielt. Die Endabrechnung kommt, sobald jede Karte unterschrieben ist.')}
+          </span>
+          {[...new Set(poolEnded.open.map((x) => x.day))].sort().map((d) => (
+            <span key={d} className="muted small">
+              {dm(d)} · {poolEnded.open.filter((x) => x.day === d).map((x) => (x.mine ? tr(`${x.name} (you)`, `${x.name} (du)`) : x.name)).join(', ')}
+            </span>
+          ))}
+        </section>
+      )}
       {!entry.me && (
         <section className="card play-card">
           <span className="eyebrow">{tr('Who are you?', 'Wer bist du?')}</span>

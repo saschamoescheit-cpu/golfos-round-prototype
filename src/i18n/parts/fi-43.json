@@ -1,0 +1,17 @@
+{
+ "{0} is waiting for signatures": "{0} odottaa allekirjoituksia",
+ "{0} cards to sign · {1} of them yours": "{0} korttia allekirjoittamatta · {1} niistä sinun",
+ "{0} cards to sign – then the settlement": "{0} korttia allekirjoittamatta – sitten tilitys",
+ "you still pay {0}": "maksat vielä {0}",
+ "{0} still to come": "{0} tulee vielä",
+ "all paid": "kaikki maksettu",
+ "{0} is settled": "{0} on tilitetty",
+ "Final: {0} · {1}": "Lopputilitys: {0} · {1}",
+ "When does a pool end – and when does the final settlement come?": "Milloin vetopotti päättyy – ja milloin lopputilitys tulee?",
+ "Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says \"wartet auf Unterschriften\", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host's phone closes the pool by itself: the bets are final, everyone gets \"… ist abgerechnet\" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time (\"Pool beenden\"). A round that should not count: \"Runde werten · Aus\" – its cards are not needed then.": "Kun jokainen sen päivien turnaus on pelattu loppuun (tai sen viimeinen päivä on ohi) ja jokainen sen pelaajien kortti on allekirjoitettu – pelaajan ja merkitsijän toimesta tai isännän syöttämänä. Siihen asti potti näyttää ”odottaa allekirjoituksia”, sen kortti kertoo, keiden kortit puuttuvat, ja jokainen potissa saa sen saapuneisiin. Sitten isännän puhelin sulkee potin itse: vedot ovat lopullisia, jokainen saa ”… on tilitetty” ja mitä saa tai maksaa saapuneisiin (ja push-viestinä). Isäntä voi päättää sen käsin milloin tahansa (”Päätä potti”). Kierros, jonka ei pidä laskea: ”Laske kierros · Pois” – sen kortteja ei silloin tarvita.",
+ "waiting for signatures": "odottaa allekirjoituksia",
+ "Cards to sign": "Kortteja puuttuu",
+ "Every round is played. The final settlement comes once every card is signed – or when you finish the pool.": "Kaikki kierrokset on pelattu. Lopputilitys tulee, kun jokainen kortti on allekirjoitettu – tai kun päätät potin.",
+ "Every round is played. The final settlement comes once every card is signed.": "Kaikki kierrokset on pelattu. Lopputilitys tulee, kun jokainen kortti on allekirjoitettu.",
+ "{0} (you)": "{0} (sinä)"
+}

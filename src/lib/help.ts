@@ -680,6 +680,16 @@ export const FAQ: FaqTopic[] = [
         video: 'wagers',
       },
       {
+        // Sascha 18.11.2026: the pool over with the series – "Erst alle Karten signiert", a message in the inbox
+        q: () => tr('When does a pool end – and when does the final settlement come?', 'Wann endet ein Wett-Pool – und wann kommt die Endabrechnung?'),
+        a: () =>
+          tr(
+            'Once every tournament in its days is played out (or its last day is gone) and every card of its players is signed – by player and marker, or entered by the host. Until then the pool says "wartet auf Unterschriften", its card lists whose cards are open, and everyone in it gets that in the inbox. Then the host\'s phone closes the pool by itself: the bets are final, everyone gets "… ist abgerechnet" with what he gets or pays in the inbox (and a push). The host can finish it by hand at any time ("Pool beenden"). A round that should not count: "Runde werten · Aus" – its cards are not needed then.',
+            'Sobald jedes Turnier in seinen Tagen fertig gespielt ist (oder sein letzter Tag vorbei) und jede Karte seiner Spieler unterschrieben ist – von Spieler und Zähler oder vom Host eingetragen. Bis dahin zeigt der Pool „wartet auf Unterschriften“, seine Karte sagt, wessen Karten offen sind, und jeder im Pool bekommt das in die Inbox. Dann schließt das Handy des Hosts den Pool von selbst: Die Wetten sind endgültig, jeder bekommt „… ist abgerechnet“ mit dem, was er bekommt oder zahlt, in die Inbox (und als Push). Der Host kann jederzeit von Hand beenden („Pool beenden“). Eine Runde, die nicht zählen soll: „Runde werten · Aus“ – ihre Karten braucht es dann nicht.',
+          ),
+        video: 'wagers',
+      },
+      {
         // Sascha 09.11.2026, USA: an invitation taken back, a pool that does not load
         q: () => tr('I invited someone by mistake – or his phone does not get into the pool. What now?', 'Ich habe jemanden versehentlich eingeladen – oder sein Handy kommt nicht in den Pool. Was tun?'),
         a: () =>
