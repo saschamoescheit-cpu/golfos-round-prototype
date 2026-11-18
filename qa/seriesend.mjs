@@ -85,6 +85,13 @@ await H.getByRole('button', { name: /^Inbox/ }).first().click();
 await H.waitForTimeout(800);
 const inbox = await txt(H.getByRole('dialog').first());
 ok(/USA-Serie ist beendet/.test(inbox) && /Endstand: Platz 1 von 4 · \+2/.test(inbox), `the inbox: "USA-Serie ist beendet · Endstand: Platz 1 von 4 · +2" (${inbox.slice(0, 300)})`);
+// only to know – under "Zur Info", not "Zu erledigen" (Sascha 18.11.2026: "was soll ich da erledigen?")
+{
+  const groups = H.getByRole('dialog').first().locator('.bell-group');
+  const info = groups.filter({ has: H.locator('.eyebrow', { hasText: /^Zur Info$/i }) });
+  const todo = groups.filter({ has: H.locator('.eyebrow', { hasText: /^Zu erledigen$/i }) });
+  ok(/USA-Serie ist beendet/.test(await txt(info)) && !/ist beendet/.test(await txt(todo)), `"ist beendet" under "Zur Info" (${(await txt(info)).slice(0, 120)})`);
+}
 if (shots) await H.screenshot({ path: `${shots}/seriesend-inbox.png` });
 await H.getByRole('dialog').first().getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
 

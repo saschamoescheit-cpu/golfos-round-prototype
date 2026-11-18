@@ -41,6 +41,8 @@ interface InboxItem {
   decline?: { label: string; aria?: string; run: () => Promise<boolean> };
   /** asked of you by someone – else something to do (Sascha 13.11.2026: "in zwei Gruppen für die Übersichtlichkeit") */
   ask?: boolean;
+  /** only to know – nothing to do (Sascha 18.11.2026: "… ist beendet" under "Zu erledigen": "was soll ich da erledigen?") */
+  info?: boolean;
   /** swiped away: what it does instead of hiding the row (a request to join: declined) */
   remove?: () => Promise<boolean>;
 }
@@ -181,7 +183,7 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const get = ts.filter((t) => t.to === e.me).reduce((s, t) => s + t.amount, 0);
       const total = mine > 0.004 ? `+${money(mine, sym)}` : mine < -0.004 ? `−${money(-mine, sym)}` : money(0, sym);
       const still = pay > 0.004 ? tr(`you still pay ${money(pay, sym)}`, `du zahlst noch ${money(pay, sym)}`) : get > 0.004 ? tr(`${money(get, sym)} still to come`, `${money(get, sym)} kommen noch`) : tr('all paid', 'alles bezahlt');
-      out.push({ key: `poolsettled:${e.code}`, title: tr(`${e.pool.name} is settled`, `${e.pool.name} ist abgerechnet`), line: tr(`Final: ${total} · ${still}`, `Endabrechnung: ${total} · ${still}`), go: () => goPool(e.code) });
+      out.push({ key: `poolsettled:${e.code}`, title: tr(`${e.pool.name} is settled`, `${e.pool.name} ist abgerechnet`), line: tr(`Final: ${total} · ${still}`, `Endabrechnung: ${total} · ${still}`), go: () => goPool(e.code), info: pay <= 0.004 });
     }
   }
   // a payment to you marked paid – its receipt confirmed right here (Inbox-Mockups: "Zahlung bestätigen")
@@ -257,7 +259,7 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
     const w = wonBy(res.awards).get(keyName(mine));
     if (w && w.amount > 0) {
       const labels = res.awards.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
-      out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), ask: true });
+      out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), info: true });
     }
     for (const x of inSeries ? [] : res.settle.transfers) {
       if (keyName(x.from) !== keyName(mine) || res.tp.paid?.[x.key]) continue;
@@ -294,7 +296,7 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const ranked = st.rows.filter((r) => !r.guest).length;
       const sum = me ? (st.higherBetter ? tr(`${me.sum} pts`, `${me.sum} P.`) : me.sum === 0 ? 'Par' : me.sum > 0 ? `+${me.sum}` : `−${-me.sum}`) : '';
       const line = !me ? sr.series.name : me.guest ? tr(`Final standing · you played as a guest (${sum})`, `Endstand · du warst Gast (${sum})`) : tr(`Final standing: ${me.pos.replace(/^T/, '')}. of ${ranked} · ${sum}`, `Endstand: Platz ${me.pos.replace(/^T/, '')} von ${ranked} · ${sum}`);
-      out.push({ key: `seriesend:${sr.code}`, title: tr(`${sr.series.name} is finished`, `${sr.series.name} ist beendet`), line, go: () => goTour(sr.code) });
+      out.push({ key: `seriesend:${sr.code}`, title: tr(`${sr.series.name} is finished`, `${sr.series.name} ist beendet`), line, go: () => goTour(sr.code), info: true });
     }
     const res = seriesPrizeResult(sr.series, evs);
     if (!res.any || !res.done || !res.ref) continue;
@@ -303,7 +305,7 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
     const w = wonBy(res.own).get(keyName(mine));
     if (w && w.amount > 0) {
       const labels = res.own.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
-      out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), ask: true });
+      out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), info: true });
     }
     const live = (sr.series.payments ?? []).filter((x) => !x.undoneAt);
     for (const x of res.transfers) {
@@ -496,7 +498,9 @@ export function NotifyBell() {
               {items.length ? (
                 [
                   { name: tr('Asked of you', 'Anfragen an dich'), list: items.filter((x) => x.ask) },
-                  { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask) },
+                  { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask && !x.info) },
+                  // what is only to know – a series over, a pool settled, a prize won (18.11.2026)
+                  { name: tr('For your information', 'Zur Info'), list: items.filter((x) => !x.ask && x.info) },
                 ]
                   .filter((g) => g.list.length)
                   .map((g) => (
