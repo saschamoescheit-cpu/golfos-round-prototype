@@ -86,6 +86,11 @@ ok(/(Sascha und Chris|Chris und Sascha): je 20 \$ – gegeneinander verrechnet, 
 // the ledger: from whom Erik's bet brought its money (Sascha 11.11.2026: "Erik's 80 – from whom")
 const erikLine = (await settle.locator('.pool-standing > li').filter({ hasText: /^Erik/ }).first().innerText()).replace(/\s+/g, ' ');
 ok(/von Sascha, Chris – je 20 \$/.test(erikLine), `the ledger: Erik's bet "von Sascha, Chris – je 20 $" (${erikLine.slice(0, 120)})`);
+// "Gegen deine Mitspieler" in the pool as in Bilanz, at the top of "Abrechnung" (Sascha 18.11.2026)
+{
+  const against = (await settle.locator('.pool-against li').allInnerTexts().catch(() => [])).map((x) => x.replace(/\s+/g, ' ').trim());
+  ok(against.some((x) => /^Erik · offen 20 \$ −20 \$$/.test(x)), `the pool: "Gegen deine Mitspieler" – Erik −20 $, open (${against.join(' | ')})`);
+}
 if (process.env.SHOTS) await settle.screenshot({ path: `${process.env.SHOTS}/settleway.png` });
 const cw = await whyOf('Chris zahlt an Erik');
 ok(/Erik: .*Birdie/.test(cw) && /20 \$/.test(cw), `Chris → Erik: which bet it pays (${cw})`);

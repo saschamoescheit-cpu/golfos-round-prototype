@@ -54,7 +54,9 @@ export function myTours(): { list: MyTour[]; wins: number; avg: number | null } 
     const me = meIn(new Set(sr.series.rounds.map((r) => r.code)));
     if (!me || !seriesOver(evs)) continue;
     const played = evs.filter((e): e is NonNullable<typeof e> => !!e);
-    const st = seriesStandings(played, { gross: true, field: evs });
+    // the standing as the series' board has it – each round by its own scoring (Sascha 18.11.2026: "+44" here, "+39" on
+    // the board – this counted every round gross)
+    const st = seriesStandings(played, { field: evs });
     const row = st.rows.find((x) => keyName(x.name) === keyName(me));
     if (!row) continue;
     const res = seriesPrizeResult(sr.series, evs);
@@ -79,7 +81,7 @@ export function myTours(): { list: MyTour[]; wins: number; avg: number | null } 
     const ev = prized(t.code);
     const me = meIn(new Set([t.code]));
     if (!ev || !me || !liveFlights(ev).length || !roundOver(ev)) continue;
-    const st = eventStandings(ev, { gross: true });
+    const st = eventStandings(ev);
     const row = st.rows.find((x) => keyName(x.name) === keyName(me));
     if (!row || !row.thru || row.sort == null) continue;
     const res = tourPrizeResult(ev);
@@ -158,9 +160,11 @@ export function MyTours() {
                   {[x.kind === 'series' ? tr(`Series · ${x.rounds} rounds`, `Serie · ${x.rounds} Runden`) : tr('Tournament', 'Turnier'), sumText(x.sum, x.hb)].join(' · ')}
                 </span>
               </span>
+              {/* the place as the lists' right column has its number: big, what it counts small below (Sascha 18.11.2026:
+                  "1. von 6 sieht komisch aus") */}
               <span className="game-row-result">
-                <strong className={x.place === '1' ? 'good-text' : undefined}>{x.guest ? tr('Guest', 'Gast') : tr(`${x.place}. of ${x.of}`, `${x.place}. von ${x.of}`)}</strong>
-                {x.prize && <span className="muted small">{x.prize}</span>}
+                <strong className={x.place === '1' ? 'good-text' : undefined}>{x.guest ? tr('Guest', 'Gast') : `${x.place}.`}</strong>
+                <span className="muted small">{[x.guest ? null : tr(`of ${x.of}`, `von ${x.of}`), x.prize].filter(Boolean).join(' · ')}</span>
               </span>
             </button>
           </li>

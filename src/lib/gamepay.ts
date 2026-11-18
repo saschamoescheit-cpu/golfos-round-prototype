@@ -250,6 +250,20 @@ export function sums(items: Item[], pick: (i: Item) => number): Record<string, n
   return Object.fromEntries(Object.entries(out).filter(([, v]) => Math.abs(v) > 0.004));
 }
 
+/** The pools, games and series all paid and confirmed (Sascha 18.11.2026: "Wenn alle Beträge eines Wettpools erhalten sind,
+ *  dann kann gegen deine Mitspieler und offene Beträge hier verschwinden"): every amount of it with every player, nothing
+ *  open, nothing waiting for a confirmation – "kind:ref". */
+export function settledRefs(ps: Person[]): Set<string> {
+  const all = new Map<string, boolean>();
+  for (const p of ps)
+    for (const i of p.items) {
+      const k = `${i.kind}:${i.ref}`;
+      const clear = Math.abs(i.open) < 0.005 && Math.abs(i.pending) < 0.005;
+      all.set(k, (all.get(k) ?? true) && clear);
+    }
+  return new Set([...all.entries()].filter(([, clear]) => clear).map(([k]) => k));
+}
+
 /** Paid but not confirmed by the receiver yet – the line "Cedric bestätigt noch". */
 export const waiting = (i: Item): GamePayment[] => i.payments.filter((p) => !p.receivedAt && !p.undoneAt);
 

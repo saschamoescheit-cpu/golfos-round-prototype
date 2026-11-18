@@ -3,7 +3,7 @@ import { convert, fetchRate, homeMoney, moneyOfSym, symOf, type Money } from '..
 import { FloatActions } from '../components/FloatActions';
 import { tr } from '../lib/i18n';
 import { formDef, formatEuro, money, standingOf, type Game } from '../lib/gameforms';
-import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
+import { dm, meIn, people, settledRefs, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
 import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { newId } from '../lib/storage';
@@ -178,6 +178,12 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     return () => window.removeEventListener('golfos:tours-changed', again);
   }, []);
   const ps = people(props.games, pools, today, settles);
+  // "Gegen deine Mitspieler" without what is paid and confirmed in full (Sascha 18.11.2026) – it stays in the pool's own
+  // settlement; the tiles above and each player's sheet keep everything
+  const cleared = settledRefs(ps);
+  const against = ps
+    .map((p) => ({ ...p, items: p.items.filter((i) => !cleared.has(`${i.kind}:${i.ref}`)) }))
+    .filter((p, k) => p.items.length > 0 || (ps[k].items.length === 0 && p.games > 0));
   // the games and pools in another currency than the standard one, with their cut-off day
   const entriesFx = [
     ...done.map((g) => ({ m: moneyOfSym(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize }))), until: (g.finishedAt ?? g.createdAt).slice(0, 10) })),
@@ -598,11 +604,11 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         </section>
       )}
 
-      {!filter && ps.length > 0 && (
+      {!filter && against.length > 0 && (
         <section className="card">
           <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
           <ul className="game-pays balance-people">
-            {ps.map((p) => (
+            {against.map((p) => (
               <li key={p.key}>
                 <button type="button" className="balance-person" onClick={() => setOpen(p.key)} aria-label={tr(`${p.name} – the details`, `${p.name} – die Details`)}>
                   <span className="grow">

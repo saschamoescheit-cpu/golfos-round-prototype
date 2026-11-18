@@ -34,6 +34,7 @@ import { SwipeRow } from '../components/SwipeRow';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
+import { people } from '../lib/gamepay';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { StatusMark, type RowState } from '../components/StatusMark';
 import { pushBet, pushWagers } from '../lib/push';
@@ -1833,6 +1834,40 @@ function FreeMark(props: { state: WagerState }) {
   );
 }
 
+/** What this pool came to with each of the others, as "Gegen deine Mitspieler" in Bilanz (Sascha 18.11.2026: "Die
+ *  Informationen gegen deine Mitspieler sollte … im Wettpool auch über Abrechnung stehen") – with what is still open. */
+function AgainstFriends(props: { pool: WagerPool; me: string }) {
+  if (!props.me || !props.pool.players.some((p) => p.id === props.me)) return null;
+  const ps = people([], [{ code: '', me: props.me, pool: props.pool }], dayOf(new Date())).filter((p) => p.items.length > 0);
+  if (!ps.length) return null;
+  const sym = prizeSym(prizeOf(props.pool));
+  const signed = (v: number) => (Math.abs(v) < 0.005 ? money(0, sym) : `${v > 0 ? '+' : '−'}${money(Math.abs(v), sym)}`);
+  return (
+    <>
+      <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
+      <div className="card pool-against">
+        <ul className="game-pays balance-people">
+          {ps.map((p) => {
+            const amount = p.items.reduce((n, i) => n + i.amount, 0);
+            const open = p.items.reduce((n, i) => n + i.open, 0);
+            return (
+              <li key={p.key}>
+                <span className="balance-person">
+                  <span className="grow">
+                    {p.name}{' '}
+                    <span className="muted small">· {Math.abs(open) < 0.005 ? tr('paid', 'bezahlt') : tr(`open ${money(Math.abs(open), sym)}`, `offen ${money(Math.abs(open), sym)}`)}</span>
+                  </span>
+                  <strong className={amount > 0.004 ? 'good-text' : amount < -0.004 ? 'bad-text' : 'muted'}>{signed(amount)}</strong>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </>
+  );
+}
+
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
 function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; debts: Debt[]; owed: Owed[]; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
@@ -1855,6 +1890,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
         </span>
       </div>
       <ServerStale />
+      <AgainstFriends pool={pool} me={props.me} />
     <span className="eyebrow">{tr('Overview', 'Übersicht')}</span>
     <div className="card pool-settle-card">
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
