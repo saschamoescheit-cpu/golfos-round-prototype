@@ -665,7 +665,8 @@ ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.lis
 // no list of the courses under it (Sascha 12.11.2026): "Serie · 10.11.–11.11."
 {
   const sub = (await H.locator('.tour-series-row .muted.small.one-line').first().innerText()).trim();
-  ok(/^Serie · \d\d\.\d\d\.–\d\d\.\d\d\.$/.test(sub), `the series' line: kind and days only (${sub})`);
+  // + its state (Sascha 18.11.2026: "als abgeschlossen dargestellt"): geplant / läuft / beendet / Karten fehlen
+  ok(/^Serie · \d\d\.\d\d\.–\d\d\.\d\d\.( · (geplant|läuft|beendet|Karten fehlen))?$/.test(sub), `the series' line: kind, days and its state (${sub})`);
 }
 // a tile lists its rounds one by one – the series' too (Sascha 12.11.2026: "geplant should list the rounds left, it shows only the series")
 await H.locator('.tile').filter({ hasText: 'geplant' }).click();
