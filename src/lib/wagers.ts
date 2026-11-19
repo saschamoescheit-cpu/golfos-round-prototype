@@ -528,6 +528,22 @@ export function openPoolTransfers(pool: Pick<WagerPool, 'players' | 'currency' |
     .filter((t) => t.amount > 0.004);
 }
 
+/** Transfers set off between each two (Sascha 19.11.2026, the settlement push "du zahlst 60 $ an Erik · du bekommst
+ *  100 $ von Erik": "direkt das verrechnete Ergebnis") – one line per pair, the difference, the bigger side's way. */
+export function netTransfers(ts: { from: string; to: string; amount: number }[]): { from: string; to: string; amount: number }[] {
+  const by = new Map<string, { a: string; b: string; v: number }>(); // v > 0: a gives b
+  for (const t of ts) {
+    const [a, b] = t.from < t.to ? [t.from, t.to] : [t.to, t.from];
+    const x = by.get(`${a}|${b}`) ?? { a, b, v: 0 };
+    x.v += t.from === a ? t.amount : -t.amount;
+    by.set(`${a}|${b}`, x);
+  }
+  return [...by.values()]
+    .map((x) => ({ ...x, v: Math.round(x.v * 100) / 100 }))
+    .filter((x) => Math.abs(x.v) >= 0.005)
+    .map((x) => (x.v > 0 ? { from: x.a, to: x.b, amount: x.v } : { from: x.b, to: x.a, amount: -x.v }));
+}
+
 /** The pool's "with marker" carried to each of its bets – the judging reads the bet's own flag. */
 export function withCounted(p: WagerPool): WagerPool {
   if (p.counted == null || p.wagers.every((w) => !!w.counted === p.counted)) return p;

@@ -17,7 +17,7 @@ import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { gamePrize, meIn } from '../lib/gamepay';
 import { changePool, loadPools, openChallenges, poolEnd } from '../lib/wagerstore';
-import { balances, dayOf, openPoolTransfers, owings, settleDebts, wagerLabel, withDuels } from '../lib/wagers';
+import { balances, dayOf, openPoolTransfers, netTransfers, owings, settleDebts, wagerLabel, withDuels } from '../lib/wagers';
 import { money } from '../lib/gameforms';
 import { prizeOf, prizeSym } from '../lib/prize';
 import { goPool, goRound, goTour } from '../lib/nav';
@@ -176,7 +176,8 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
     if (fin && Date.now() - Date.parse(fin) < 14 * 864e5) {
       const jp = withDuels(e.pool);
       const bal = balances(jp, today, true);
-      const ts = openPoolTransfers(jp, bal, settleDebts(jp, owings(jp, today, true)));
+      // set off between each two, as the push (Sascha 19.11.2026: "direkt das verrechnete Ergebnis")
+      const ts = netTransfers(openPoolTransfers(jp, bal, settleDebts(jp, owings(jp, today, true))));
       const sym = prizeSym(prizeOf(e.pool));
       const mine = bal[e.me!] ?? 0;
       const pay = ts.filter((t) => t.from === e.me).reduce((s, t) => s + t.amount, 0);

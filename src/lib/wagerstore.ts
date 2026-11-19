@@ -7,7 +7,7 @@ import { newCode } from './sharedgame';
 import { tr } from './i18n';
 import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, isGuest, skipped, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, isGuest, skipped, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, netTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -323,7 +323,8 @@ export function tellSettlements(list: PoolEntry[], now = Date.now()): string[] {
     const end = e.pool.finishedAt ? Date.parse(e.pool.finishedAt) : Date.parse(`${e.pool.to}T23:59:59`);
     if (!(now - end < 10 * 864e5) || now - (told[e.code] ?? 0) < 6 * 3600e3) continue;
     const jp = withDuels(e.pool); // the 5+5+10s from the cards, as the pool shows them
-    pushSettle(e.code, openPoolTransfers(jp, balances(jp, today, true), settleDebts(jp, owings(jp, today, true))), prizeSym(prizeOf(jp)));
+    // set off between each two – the push says the result, not each way (Sascha 19.11.2026)
+    pushSettle(e.code, netTransfers(openPoolTransfers(jp, balances(jp, today, true), settleDebts(jp, owings(jp, today, true)))), prizeSym(prizeOf(jp)));
     told[e.code] = now;
     sent.push(e.code);
   }
