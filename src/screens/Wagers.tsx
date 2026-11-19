@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { DoneFab, FloatActions } from '../components/FloatActions';
 import { goTour } from '../lib/nav';
 import { useTop } from '../components/useTop';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import type { Course } from '../types';
@@ -35,7 +35,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { people } from '../lib/gamepay';
-import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
+import { DeletedIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 import { StatusMark, type RowState } from '../components/StatusMark';
 import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours, syncTours } from '../lib/tourstore';
@@ -975,8 +975,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {host && !sheet && <FloatActions pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }} />}
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
-        {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : poolEnded.phase === 'cards' ? ` · ${tr('waiting for signatures', 'wartet auf Unterschriften')}` : ''}
+        {/* over: the block below says it (Sascha 19.11.2026, Mockup B) */}
+        {!pool.finishedAt && poolEnded.phase === 'cards' ? ` · ${tr('waiting for signatures', 'wartet auf Unterschriften')}` : ''}
       </span>
+      {pool.finishedAt && <PoolDone pool={pool} bal={bal} pays={pays} settled={settled} me={entry.me} />}
       {!host && <span className="muted small">{ONLY_HOST()}</span>}
       {/* every round played, cards still to sign (Sascha 18.11.2026: "Erst alle Karten signiert") – settled once they are */}
       {poolEnded.phase === 'cards' && (
@@ -1638,8 +1640,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
     <section className="setup-part pool-part" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
       <div className="pool-part-head">
-        <span className="eyebrow">{tr('Standing', 'Stand')}</span>
-        <span className="muted small">{tr('live from the rounds', 'live aus den Runden')}</span>
+        <span className="eyebrow">{props.pool.finishedAt ? tr('Final standing', 'Endstand') : tr('Standing', 'Stand')}</span>
+        <span className="muted small">{props.pool.finishedAt ? tr('all rounds', 'alle Runden') : tr('live from the rounds', 'live aus den Runden')}</span>
       </div>
       <ServerStale />
     <div className="card pool-standings">
@@ -1836,6 +1838,72 @@ function FreeMark(props: { state: WagerState }) {
 
 /** What this pool came to with each of the others, as "Gegen deine Mitspieler" in Bilanz (Sascha 18.11.2026: "Die
  *  Informationen gegen deine Mitspieler sollte … im Wettpool auch über Abrechnung stehen") – with what is still open. */
+/** A pool over, on top (Sascha 19.11.2026: "oberhalb vom Pool auch etwas visuell darstellen wie bei einer signierten
+ *  Runde" – Mockup B): settled – every transfer given and confirmed – the green line with the seal as "Signiert" on a round,
+ *  with one's result, place and the bets decided; payments still open – the same line quiet with the pen, as "Prüfen &
+ *  signieren". Tapped: down to the settlement. */
+function PoolDone(props: { pool: WagerPool; bal: Record<string, number>; pays: { amount: number }[]; settled: number; me: string }) {
+  const { pool, bal } = props;
+  const unconfirmed = (pool.payments ?? []).filter((x) => x.paidAt && !x.receivedAt).length;
+  const open = props.pays.length + unconfirmed;
+  const done = open === 0;
+  const at = [pool.finishedAt, ...(pool.payments ?? []).map((x) => x.receivedAt)].filter((x): x is string => !!x).sort().pop()!;
+  const day = new Date(at).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const prize = prizeOf(pool);
+  const sym = prizeSym(prize);
+  const mine = props.me && pool.players.some((p) => p.id === props.me) ? (bal[props.me] ?? 0) : null;
+  const place = mine == null ? 0 : 1 + pool.players.filter((p) => (bal[p.id] ?? 0) > mine + 0.004).length;
+  const toSettle = () => document.getElementById('pool-settle')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const title = done ? tr('Settled', 'Abgerechnet') : tr('Finished – payments open', 'Beendet – Zahlungen offen');
+  const line = done
+    ? isNone(prize)
+      ? `${day} · ${tr('every bet decided', 'alle Wetten entschieden')}`
+      : `${day} · ${tr('every payment confirmed', 'alle Zahlungen bestätigt')}`
+    : [
+        props.pays.length === 1 ? tr('1 payment open', '1 Zahlung offen') : props.pays.length > 1 ? tr(`${props.pays.length} payments open`, `${props.pays.length} Zahlungen offen`) : null,
+        unconfirmed === 1 ? tr('1 to confirm', '1 zu bestätigen') : unconfirmed > 1 ? tr(`${unconfirmed} to confirm`, `${unconfirmed} zu bestätigen`) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+  return (
+    <section className={`card sc-status pool-done${done ? ' signed' : ''}`} aria-label={tr('Pool closed', 'Abschluss')}>
+      <div className="pool-done-head">
+        <span className="sc-status-icon" aria-hidden="true">
+          {done ? <SignedIcon size={22} /> : <ToSignIcon size={22} />}
+        </span>
+        <span className="grow">
+          <strong>{title}</strong>
+          <span className="muted small">{line}</span>
+        </span>
+      </div>
+      {mine != null && (
+        <div className="pool-done-stats">
+          {!isNone(prize) && (
+            <span>
+              <strong className={mine > 0.004 ? 'good-text' : mine < -0.004 ? 'bad-text' : undefined}>{Math.abs(mine) < 0.005 ? money(0, sym) : `${mine > 0 ? '+' : '−'}${money(Math.abs(mine), sym)}`}</strong>
+              <span className="muted small">{tr('your result', 'dein Ergebnis')}</span>
+            </span>
+          )}
+          <span>
+            <strong>{place}.</strong>
+            <span className="muted small">{tr(`of ${pool.players.length}`, `von ${pool.players.length}`)}</span>
+          </span>
+          <span>
+            <strong>{props.settled}</strong>
+            <span className="muted small">{tr('bets decided', 'Wetten entschieden')}</span>
+          </span>
+        </div>
+      )}
+      <button type="button" className="link-btn pool-done-go" onClick={toSettle}>
+        {tr('See the settlement', 'Abrechnung ansehen')}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
+    </section>
+  );
+}
+
 function AgainstFriends(props: { pool: WagerPool; me: string }) {
   if (!props.me || !props.pool.players.some((p) => p.id === props.me)) return null;
   const ps = people([], [{ code: '', me: props.me, pool: props.pool }], dayOf(new Date())).filter((p) => p.items.length > 0);
@@ -1881,7 +1949,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
     // three parts, each with its title above (Sascha 12.11.2026: "Bei der Abrechnung einzelne Kategorien bilden: Übersicht,
     // Wer zahlt wem, Bezahlt")
-    <section className="setup-part pool-part pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
+    <section id="pool-settle" className="setup-part pool-part pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
       <div className="pool-part-head">
         <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
         <span className="muted small">

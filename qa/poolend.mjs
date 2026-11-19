@@ -119,7 +119,16 @@ ok(!!sim.shared.get(code).game.finishedAt, 'every card in: the pool closed by th
 await fresh();
 await openPool();
 const head2 = await txt(H.locator('main').first());
-ok(/beendet/.test(head2) && !/wartet auf Unterschriften/.test(head2), 'the pool: "… · beendet"');
+ok(!/wartet auf Unterschriften/.test(head2), 'the pool: no "wartet auf Unterschriften"');
+// on top (Sascha 19.11.2026, Mockup B): over, a payment open – the quiet line with the pen; one's result, place, bets decided
+{
+  const done = H.locator('section.pool-done');
+  const t = await txt(done);
+  ok(/Beendet – Zahlungen offen/.test(t) && /1 Zahlung offen/.test(t) && !(await done.evaluate((e) => e.classList.contains('signed')).catch(() => true)), `the block: "Beendet – Zahlungen offen · 1 Zahlung offen" (${t})`);
+  ok(/−20 \$ dein Ergebnis/.test(t) && /2\. von 2/.test(t) && /1 Wetten entschieden/.test(t), `its stats: −20 $ · 2. von 2 · 1 Wetten entschieden (${t})`);
+  ok(/Endstand/i.test(await txt(H.locator('main').first())), '"Endstand" over the standing');
+  if (shots) await H.screenshot({ path: `${shots}/poolend-open.png` });
+}
 await H.goto(url);
 await H.waitForTimeout(2000);
 const in2 = await inbox();
@@ -128,6 +137,23 @@ ok(/USA-Wetten ist abgerechnet/.test(in2) && /Endabrechnung: −20 \$ · du zahl
 ok(!/wartet auf Unterschriften/.test(in2), '"wartet auf Unterschriften" gone');
 ok(!/Saison-Wetten/.test(in1 + in2), 'the pool running on: no message at all');
 ok(!sim.shared.get(code2).game.finishedAt, 'the pool running on (two weeks): stays open – only the tournament is over');
+// Sascha paid Cedric (no app: settled at once) – "Abgerechnet" with the seal, green as a signed round
+{
+  const at = new Date().toISOString();
+  sim.shared.get(code).game.payments = [{ id: 'pay-1', from: 'ps', to: 'pc', amount: 20, paidAt: at, receivedAt: at }];
+  sim.shared.get(code).updated_at = at;
+  await fresh();
+  await openPool();
+  const done = H.locator('section.pool-done');
+  const t = await txt(done);
+  ok(/Abgerechnet/.test(t) && /alle Zahlungen bestätigt/.test(t) && (await done.evaluate((e) => e.classList.contains('signed')).catch(() => false)), `all paid: "Abgerechnet · … · alle Zahlungen bestätigt", green (${t})`);
+  if (shots) await H.screenshot({ path: `${shots}/poolend-done.png` });
+  await done.getByRole('button', { name: 'Abrechnung ansehen' }).click();
+  await H.waitForTimeout(800);
+  const y = await H.locator('#pool-settle').evaluate((e) => e.getBoundingClientRect().top);
+  ok(y < 200, `"Abrechnung ansehen" scrolls to the settlement (top ${Math.round(y)})`);
+  if (shots) await H.screenshot({ path: `${shots}/poolend-settle.png` });
+}
 if (shots) await H.screenshot({ path: `${shots}/poolend-settled.png` });
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 3).join(' | ')}`);
 await b.close();

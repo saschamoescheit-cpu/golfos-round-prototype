@@ -1,0 +1,15 @@
+{
+ "Settled": "已结算",
+ "Finished – payments open": "已结束 – 有未付款项",
+ "every payment confirmed": "所有付款均已确认",
+ "every bet decided": "所有赌注均已决出",
+ "1 payment open": "1 笔付款未结",
+ "{0} payments open": "{0} 笔付款未结",
+ "1 to confirm": "1 笔待确认",
+ "{0} to confirm": "{0} 笔待确认",
+ "your result": "你的结果",
+ "bets decided": "已决出的赌注",
+ "See the settlement": "查看结算",
+ "Pool closed": "结束",
+ "Final standing": "最终排名"
+}

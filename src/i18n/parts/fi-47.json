@@ -1,0 +1,15 @@
+{
+ "Settled": "Selvitetty",
+ "Finished – payments open": "Päättynyt – maksuja avoinna",
+ "every payment confirmed": "kaikki maksut vahvistettu",
+ "every bet decided": "kaikki vedot ratkaistu",
+ "1 payment open": "1 maksu avoinna",
+ "{0} payments open": "{0} maksua avoinna",
+ "1 to confirm": "1 vahvistettavana",
+ "{0} to confirm": "{0} vahvistettavana",
+ "your result": "tuloksesi",
+ "bets decided": "vetoa ratkaistu",
+ "See the settlement": "Katso tilitys",
+ "Pool closed": "Päättäminen",
+ "Final standing": "Lopputilanne"
+}

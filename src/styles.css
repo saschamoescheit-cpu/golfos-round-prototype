@@ -2338,6 +2338,13 @@ button.tile:disabled { opacity: 1; }
 .invite-friend .grow { flex: 1; min-width: 0; }
 .invite-friend > button { flex: none; width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; }
 .sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }
+/* a pool over (Sascha 19.11.2026, Mockup B): the line as a signed round, below one's result and the way to the settlement */
+.sc-status.pool-done { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
+.pool-done-head { display: flex; align-items: center; gap: 12px; }
+.pool-done-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; border-top: 1px solid var(--line-strong); padding-top: 12px; }
+.pool-done-stats > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pool-done-stats strong { font-family: var(--display); font-size: 20px; }
+.pool-done-go { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; text-decoration: none; }
 
 /* the balance (03.11.2026): open amounts, the players tapped for their details, each pool on its own */
 .balance-open { display: flex; flex-direction: column; gap: 8px; }
