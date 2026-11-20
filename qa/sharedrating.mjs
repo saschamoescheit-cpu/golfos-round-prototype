@@ -7,7 +7,8 @@ import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
-const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+// without the service worker: once it holds the page its requests pass the test's answers (built app, gate 20.11.2026; as emptytiles)
+const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'block' });
 await mockNet(ctx);
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' };
 let posted = 0;
