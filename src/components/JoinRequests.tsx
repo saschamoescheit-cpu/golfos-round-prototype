@@ -83,10 +83,10 @@ export function JoinRequests() {
                   <strong>{a.name}</strong>
                   <span className="muted small">{hcp(a).replace(/^ · /, '')}</span>
                 </span>
-                <button type="button" className="btn-secondary join-no" disabled={busy} aria-label={tr(`Decline ${a.name}`, `${a.name} ablehnen`)} onClick={() => void answer([a], false)}>
+                <button type="button" className="chip row-act quiet join-no" disabled={busy} aria-label={tr(`Decline ${a.name}`, `${a.name} ablehnen`)} onClick={() => void answer([a], false)}>
                   {tr('Decline', 'Ablehnen')}
                 </button>
-                <button type="button" className="btn-primary" disabled={busy} aria-label={tr(`Let ${a.name} in`, `${a.name} zulassen`)} onClick={() => void answer([a], true)}>
+                <button type="button" className="chip row-act" disabled={busy} aria-label={tr(`Let ${a.name} in`, `${a.name} zulassen`)} onClick={() => void answer([a], true)}>
                   {tr('Let in', 'Zulassen')}
                 </button>
               </li>

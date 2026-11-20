@@ -2268,7 +2268,13 @@ button.tile:disabled { opacity: 1; }
 /* "Bezahlt" green, "Erhalten" red – filled, white words (Sascha 11.11.2026) */
 /* an open payment: a neutral outline saying what a tap does ("Als bezahlt markieren") – green only once it is done, as the
    tick of the "Bezahlt" list (Sascha 12.11.2026, replacing "Bezahlt grün, Erhalten rot" of 11.11.) */
-.paid-mark.mark-paid, .paid-mark.mark-received { background: transparent; border: 1px solid var(--line-strong); color: var(--text); white-space: normal; max-width: 140px; line-height: 1.15; text-align: center; }
+/* the confirming step of a row – Erhalten, Bezahlt, Zulassen – one small green button in Inbox, Turnier, Serie,
+   Wettpool and Bilanz (Sascha 20.11.2026, mockup B: replaces the neutral outline of 12.11. and the big green buttons of
+   the inbox and the prize boards); its "no" / undo beside it the quiet outline */
+.paid-mark.mark-paid, .paid-mark.mark-received, .chip.row-act { background: var(--brand); border: 1px solid var(--brand); color: #fff; font-weight: 700; white-space: normal; max-width: 140px; line-height: 1.15; text-align: center; }
+.chip.row-act { min-height: 34px; padding: 4px 12px; font-size: 14px; flex: none; }
+.chip.row-act.quiet { background: transparent; border-color: var(--line-strong); color: var(--text); font-weight: 600; }
+.chip.row-act:disabled { opacity: 0.6; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
 .friend-code .qr-box { width: min(200px, 56vw); }

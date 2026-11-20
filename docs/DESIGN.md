@@ -94,6 +94,9 @@ When everyone has joined or it is over, it shrinks to one `SheetRow`
 - Rows are `list-item` cards; deleting by swiping left (`SwipeRow`, red bin, undo in the toast), the bin tile
   "gelöscht" restores. Status as a small chip on the right of the row.
 - Counters at the top as tiles (laufend · geschafft · beendet · gelöscht) as in Rounds/Wetten.
+- **A row's own step** (Erhalten, Bezahlt, Zulassen …): one small green button on the right of the row – `chip row-act`
+  (in the payment lists `chip paid-mark`, same look); its "no" or undo beside it `chip row-act quiet` (outlined). Never
+  a big `btn-primary` inside a row. Inbox, Turnier, Serie, Wettpool, Bilanz alike (Sascha 20.11.2026, mockup B).
 
 ## Texts
 

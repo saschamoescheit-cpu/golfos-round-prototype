@@ -525,7 +525,7 @@ export function NotifyBell() {
                         {it.decline && (
                           <button
                             type="button"
-                            className="btn-secondary bell-act"
+                            className="chip row-act quiet bell-act"
                             aria-label={it.decline.aria}
                             disabled={busy === it.key}
                             onClick={async () => {
@@ -540,7 +540,7 @@ export function NotifyBell() {
                         )}
                         <button
                           type="button"
-                          className="btn-primary bell-act"
+                          className="chip row-act bell-act"
                           aria-label={it.action.aria}
                           disabled={busy === it.key}
                           onClick={async () => {

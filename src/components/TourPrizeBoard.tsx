@@ -80,7 +80,7 @@ export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: 
                   </span>
                   <strong className="tour-prize-amt">{amt(t.amount)}</strong>
                   {props.host ? (
-                    <button type="button" className={paid ? 'btn-secondary bell-act' : 'btn-primary bell-act'} aria-pressed={paid} aria-label={paid ? tr(`${t.from} → ${t.to}: paid – undo`, `${t.from} → ${t.to}: bezahlt – zurücknehmen`) : tr(`${t.from} → ${t.to}: mark paid`, `${t.from} → ${t.to}: als bezahlt markieren`)} onClick={() => props.onPaid(t.key, !paid)}>
+                    <button type="button" className={paid ? 'chip row-act quiet bell-act' : 'chip row-act bell-act'} aria-pressed={paid} aria-label={paid ? tr(`${t.from} → ${t.to}: paid – undo`, `${t.from} → ${t.to}: bezahlt – zurücknehmen`) : tr(`${t.from} → ${t.to}: mark paid`, `${t.from} → ${t.to}: als bezahlt markieren`)} onClick={() => props.onPaid(t.key, !paid)}>
                       {paid ? tr('Paid ✓', 'Bezahlt ✓') : tr('Paid', 'Bezahlt')}
                     </button>
                   ) : (
