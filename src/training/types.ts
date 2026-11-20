@@ -170,6 +170,8 @@ export interface SwingPosition {
   short: L;
   /** the photo in public/training/psystem/ (right-handed, down the line – mirrored for left-handers) */
   photo: string;
+  /** the same moment from the front (face-on), shown beside the photo (Sascha 20.11.2026, mockup B) */
+  photoFront?: string;
   look: L[];
   checks: { k: PosRowKind; v: L }[];
   faults: { name: L; fix: L }[];

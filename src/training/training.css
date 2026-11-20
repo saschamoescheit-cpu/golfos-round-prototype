@@ -368,6 +368,14 @@
 .tr-pos-photo.mirror { transform: scaleX(-1); }
 .tr-pos-photo.thumb { width: 48px; height: 72px; object-fit: cover; object-position: 40% 45%; border-radius: 8px; flex: none; }
 .tr-pos-big { max-width: 420px; margin: 0 auto; width: 100%; }
+/* P-System: both views side by side, a tap shows one large (Sascha 20.11.2026, mockup B) */
+.tr-pos-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 560px; margin: 0 auto; width: 100%; }
+.tr-pos-pair.one { grid-template-columns: minmax(0, 1fr); max-width: 420px; }
+.tr-pos-pair figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.tr-pos-pair figcaption { font-size: 13px; color: var(--muted); text-align: center; }
+.tr-pos-pair-btn { all: unset; cursor: zoom-in; display: block; border-radius: 12px; }
+.tr-pos-pair.one .tr-pos-pair-btn { cursor: zoom-out; }
+.tr-pos-pair-btn:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 2px; }
 .tr-pos-nav { justify-content: space-between; }
 .tr-seq { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 14px; align-items: center; }
 .tr-seq-photo { all: unset; cursor: pointer; display: block; }

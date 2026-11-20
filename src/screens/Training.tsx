@@ -622,12 +622,12 @@ const POS_ROW: Record<PosRowKind, () => string> = {
 const allPositions = (): SwingPosition[] => CATEGORIES.flatMap((c) => c.positions ?? []);
 
 /** the photo of a position – the series is a right-hander; a left-hander sees it mirrored */
-function PosPhoto(props: { p: SwingPosition; thumb?: boolean }) {
+function PosPhoto(props: { p: SwingPosition; thumb?: boolean; front?: boolean }) {
   return (
     <img
       className={`tr-pos-photo${props.thumb ? ' thumb' : ''}${leftHanded() ? ' mirror' : ''}`}
-      src={PSYS_IMG(props.p.photo)}
-      alt={t(props.p.name)}
+      src={PSYS_IMG(props.front && props.p.photoFront ? props.p.photoFront : props.p.photo)}
+      alt={`${t(props.p.name)} · ${props.front ? tr('from the front', 'von vorn') : tr('from behind', 'von hinten')}`}
       loading={props.thumb ? 'lazy' : undefined}
       width={1024}
       height={1536}
@@ -678,6 +678,36 @@ function SwingSequence(props: { positions: SwingPosition[]; nav: Nav }) {
   );
 }
 
+/** both views of a position side by side (Sascha 20.11.2026, mockup B) – a tap shows one large, a second tap both again */
+function PosPair(props: { p: SwingPosition }) {
+  const [big, setBig] = useState<'' | 'back' | 'front'>('');
+  useEffect(() => setBig(''), [props.p.id]);
+  const views: { k: 'back' | 'front'; label: string }[] = [
+    { k: 'back', label: tr('From behind', 'Von hinten') },
+    { k: 'front', label: tr('From the front', 'Von vorn') },
+  ];
+  return (
+    <div className={`tr-pos-pair${big ? ' one' : ''}`}>
+      {views
+        .filter((v) => !big || v.k === big)
+        .map((v) => (
+          <figure key={v.k}>
+            <button
+              type="button"
+              className="tr-pos-pair-btn"
+              aria-pressed={big === v.k}
+              aria-label={big ? tr('Show both views', 'Beide Ansichten zeigen') : tr(`${v.label} – large`, `${v.label} – groß`)}
+              onClick={() => setBig(big ? '' : v.k)}
+            >
+              <PosPhoto p={props.p} front={v.k === 'front'} />
+            </button>
+            <figcaption>{v.label}</figcaption>
+          </figure>
+        ))}
+    </div>
+  );
+}
+
 function PositionView(props: { id: string; nav: Nav }) {
   const all = allPositions();
   const at = all.findIndex((x) => x.id === props.id);
@@ -693,9 +723,13 @@ function PositionView(props: { id: string; nav: Nav }) {
       <TopBar title={t(p.name)} onBack={props.nav.back} />
       <span className="eyebrow">{t(c.name)}</span>
       <p className="tr-shot-short">{t(p.short)}</p>
-      <div className="tr-pos-big">
-        <PosPhoto p={p} />
-      </div>
+      {p.photoFront ? (
+        <PosPair p={p} />
+      ) : (
+        <div className="tr-pos-big">
+          <PosPhoto p={p} />
+        </div>
+      )}
       <div className="chip-set tr-pos-nav">
         {prev && (
           <button type="button" className="chip" onClick={() => props.nav.push({ name: 'pos', id: prev.id })}>

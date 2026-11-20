@@ -24,6 +24,8 @@ describe('the basic swing (P system)', () => {
     expect(pos.map((p) => p.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10']);
     for (const p of pos) {
       expect(existsSync(`public/training/psystem/${p.photo}`), p.photo).toBe(true);
+      expect(p.photoFront, p.id).toBeTruthy();
+      expect(existsSync(`public/training/psystem/${p.photoFront}`), p.photoFront).toBe(true);
       expect(t(p.name).startsWith(`${p.id.toUpperCase()} · `), p.id).toBe(true);
     }
   });

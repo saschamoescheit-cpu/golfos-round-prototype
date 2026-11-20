@@ -6,6 +6,8 @@ import { L, type Category, type SwingPosition } from '../types';
 // (features/040-neutraler-schwung/recherche-p-system.md, 32 sources); the numbers wait for Chris (review mode).
 
 const P = (n: number) => `p${n}.jpg`;
+/** the face-on photo of the same position (one series from the front, same golfer and studio) */
+const F = (n: number) => `fo-p${n}.jpg`;
 
 export const PSYSTEM_POSITIONS: SwingPosition[] = [
   {
@@ -13,6 +15,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P1 · Address', 'P1 · Ansprache'),
     short: L('The starting position: forward bend, arms hanging, shaft to the ball.', 'Die Ausgangsstellung: Vorneigung, Arme hängen, Schaft zum Ball.'),
     photo: P(1),
+    photoFront: F(1),
     look: [
       L(
         'The upper body bends forward from the hips with a straight back. The arms hang relaxed under the shoulders, the knees are slightly flexed. The shaft runs from the hands down to the ball, the ball sits in the middle of the clubface.',
@@ -38,6 +41,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P2 · Shaft parallel (takeaway)', 'P2 · Schaft waagerecht (Rückschwung)'),
     short: L('The backswing starts as one piece: shoulders, arms and club together.', 'Der Rückschwung beginnt als Einheit: Schultern, Arme und Schläger zusammen.'),
     photo: P(2),
+    photoFront: F(2),
     look: [
       L(
         'Shoulders, arms and club have moved together, the hands are low in front of the right thigh. From behind, the shaft points at the camera and hides behind the hands – you only see the small iron head right at the hands.',
@@ -63,6 +67,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P3 · Lead arm parallel', 'P3 · Linker Arm waagerecht'),
     short: L('Lead arm straight and level, wrists set, the shaft on plane.', 'Linker Arm gestreckt und waagerecht, Handgelenke angewinkelt, der Schaft auf der Ebene.'),
     photo: P(3),
+    photoFront: F(3),
     look: [
       L(
         'The lead arm is straight and level in front of the chest, the right elbow is bent and points down. The wrists are almost fully set.',
@@ -93,6 +98,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P4 · Top of the backswing', 'P4 · Top'),
     short: L('Fully turned: shoulders about 90°, hips about 45°, the shaft towards the target.', 'Ganz gedreht: Schultern etwa 90°, Hüfte etwa 45°, der Schaft zum Ziel.'),
     photo: P(4),
+    photoFront: F(4),
     look: [
       L(
         'The shoulders have turned about 90°, the hips about 45°, the forward bend is unchanged. The hands are high above the right shoulder, the lead arm runs straight across the chest, the right elbow points down. The shaft points at the target and shows only short from behind.',
@@ -119,6 +125,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P5 · Lead arm parallel (downswing)', 'P5 · Linker Arm waagerecht (Abschwung)'),
     short: L('The lower body leads, the hands lower than in the backswing, the shaft flatter.', 'Der Unterkörper führt, die Hände tiefer als im Rückschwung, der Schaft flacher.'),
     photo: P(5),
+    photoFront: F(5),
     look: [
       L(
         'The lower body has started the downswing: the weight moves left, the hips open. The lead arm is level again, the hands are lower than at P3 and the wrists still set. The shaft is flatter than in the backswing.',
@@ -143,6 +150,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P6 · Shaft parallel (downswing)', 'P6 · Schaft waagerecht (Abschwung)'),
     short: L('Hips open, shoulders still square, the club head covers the hands.', 'Hüfte offen, Schultern noch square, der Schlägerkopf verdeckt die Hände.'),
     photo: P(6),
+    photoFront: F(6),
     look: [
       L(
         'The hips are open, the shoulders still almost parallel to the target line. The hands are at hip height in front of the right thigh; from behind the shaft points at the camera again and hides – only the iron head shows right at the hands.',
@@ -168,6 +176,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P7 · Impact', 'P7 · Treffmoment'),
     short: L('Hips open, hands ahead of the ball, ball first then turf.', 'Hüfte offen, Hände vor dem Ball, erst Ball, dann Boden.'),
     photo: P(7),
+    photoFront: F(7),
     look: [
       L(
         'The hips are clearly open, the belt buckle turns to the target, the right heel lifts a little. The hands are slightly ahead of the ball and a little higher than at address. The shaft runs from the hands to the ball, the ball sits in the middle of the clubface.',
@@ -194,6 +203,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P8 · Shaft parallel (follow-through)', 'P8 · Schaft waagerecht (Durchschwung)'),
     short: L('Just after impact: turned to the target, still bent forward, arms extended.', 'Kurz nach dem Treffmoment: zum Ziel gedreht, weiter geneigt, Arme gestreckt.'),
     photo: P(8),
+    photoFront: F(8),
     look: [
       L(
         'Hips and chest have turned to the target, from behind you see his back. The forward bend is still there, the head at the same height as at impact. Both arms are extended towards the target, the right heel is up and the right foot stands on its toe.',
@@ -217,6 +227,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P9 · Trail arm parallel', 'P9 · Rechter Arm waagerecht'),
     short: L('Full extension: both arms straight to the upper left, the body still bent.', 'Volle Streckung: beide Arme gestreckt nach oben links, der Körper noch geneigt.'),
     photo: P(9),
+    photoFront: F(9),
     look: [
       L(
         'Both arms are straight and point up and to the left towards the target, the wrists start to set again. The upper body is still bent forward – it only comes up in the finish. The shaft continues the line of the arms upwards.',
@@ -240,6 +251,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
     name: L('P10 · Finish', 'P10 · Finish'),
     short: L('Fully turned, tall and in balance on the lead foot.', 'Ganz durchgedreht, aufrecht und im Gleichgewicht auf dem linken Fuß.'),
     photo: P(10),
+    photoFront: F(10),
     look: [
       L(
         'The body has turned through, chest and belt buckle face the target. The player stands tall and balanced on the lead foot, the sole of the right shoe faces the camera. The hands are at head height, the shaft lies almost level behind the neck.',
