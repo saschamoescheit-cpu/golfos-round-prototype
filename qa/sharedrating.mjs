@@ -45,8 +45,15 @@ await p.fill('#course-search', 'Frielinghausen');
 await p.waitForTimeout(2500);
 await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 60000 });
-await p.waitForTimeout(2000);
-const text = await p.locator('main').innerText();
+// the shared values come after the course; under the gate's load later than a fixed 2 s (gate 20.11.2026)
+let text = '';
+for (let i = 0; i < 30; i++) {
+  text = await p.locator('main').innerText();
+  if (/Course Rating\s*70,6\s*·\s*Slope\s*131/.test(text.replace(/\n/g, ' '))) break;
+  await p.waitForTimeout(500);
+}
+await p.waitForTimeout(500);
+text = await p.locator('main').innerText();
 const loops = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('golfos.sharedratings.v1.')));
 ok(loops.length === 1, `the shared values of the course kept on the phone (${loops.join(', ')})`);
 ok(/Course Rating 70,6 · Slope 131|Course Rating\s*70,6\s*·\s*Slope\s*131/.test(text.replace(/\n/g, ' ')), 'Frielinghausen yellow: 70,6 / 131 – the value most players agree on');
