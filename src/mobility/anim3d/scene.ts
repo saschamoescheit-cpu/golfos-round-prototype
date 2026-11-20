@@ -35,18 +35,9 @@ export interface Clip {
   dist?: number;
 }
 
-/** the realistic golfer of Training (23.10.2026, for Sascha to judge first): on with ?real3d=1, off with ?real3d=0 – the
- * same switch as Training's swing videos (localStorage golfos.real3d) */
-export function wantRealistic(): boolean {
-  try {
-    const q = new URLSearchParams(location.search).get('real3d');
-    if (q === '1') localStorage.setItem('golfos.real3d', '1');
-    if (q === '0') localStorage.removeItem('golfos.real3d');
-    return localStorage.getItem('golfos.real3d') === '1';
-  } catch {
-    return false;
-  }
-}
+/** the realistic golfer of Training (23.10.2026, for Sascha to judge first) – see realFlag.ts */
+import { wantRealistic } from './realFlag';
+export { wantRealistic };
 const skin = () => (wantRealistic() && realisticBodyReady() ? 'realistic' : 'classic');
 
 /** The lowest point of the realistic golfer's skin (its bones applied; every n-th vertex), or null for the classic one.
@@ -302,7 +293,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
   scene.add(pad);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
-  let rig = buildRig({ skin: skin() });
+  let rig = buildRig({ skin: skin(), plainArmpits: true });
   scene.add(rig.root);
   let propGroup = new THREE.Group();
   scene.add(propGroup);
@@ -407,7 +398,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     scene.remove(rig.root);
     scene.remove(propGroup);
     if (bar) scene.remove(bar);
-    rig = buildRig({ skin: skin() });
+    rig = buildRig({ skin: skin(), plainArmpits: true });
     scene.add(rig.root);
     floorOffs = clip ? skinFloor(rig, clip) : null;
     shift = clip ? plantShift(rig, clip) : null;

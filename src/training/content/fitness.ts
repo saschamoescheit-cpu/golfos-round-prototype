@@ -150,7 +150,7 @@ export const fitnessDrills: Drill[] = [
     place: 'gym',
     setup: L('Sit on the floor, both knees bent at 90°, one leg in front, one to the side.', 'Auf den Boden setzen, beide Knie 90° gebeugt, ein Bein vorn, eins seitlich.'),
     steps: [
-      L('Rotate both knees to the other side without using your hands – sit up tall.', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen.'),
+      L('Rotate both knees to the other side without using your hands – sit up tall, the arms reaching forward.', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen, die Arme nach vorn.'),
       L('10 switches, slowly.', '10 Wechsel, langsam.'),
     ],
     scoring: { kind: 'none' },

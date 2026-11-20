@@ -116,8 +116,9 @@ const REACH_START = stand({ ...ARMS_CROSSED, kneeL: [10, 0, 0], ankleL: [-10, 0,
 /** the left hand holds a stick in front of the body (90/90 stretch) */
 const STICK_L: J = { shoulderL: [-55, 0, -20], elbowL: [-25, 0, 0] };
 
-/** hands behind the head, elbows out (the deep squat retest) */
-const HANDS_HEAD: J = { shoulderL: [0, 90, 120], shoulderR: [0, -90, -120], elbowL: [-140, 0, 0], elbowR: [-140, 0, 0] };
+/** hands behind the head, elbows out (the deep squat retest) – at the back of the head (06.11.2026: the arms a little back,
+ *  the elbows more bent; before, the hands lay at the ears, 4 cm into the head) */
+const HANDS_HEAD: J = { shoulderL: [25, 85, 115], shoulderR: [25, -85, -115], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] };
 
 /** The retests (TPI breakouts): the deep squat with the hands behind the head instead of the stick overhead. */
 export const RETEST_CLIPS = {
@@ -137,22 +138,22 @@ export const RETEST_CLIPS = {
 
 /**
  * Sitting 90/90 on the floor: the front leg's thigh forward with the shin across in front, the back leg's thigh out to
- * the side with the shin back (hip twisted about the thigh, knees 90°). Left front, the right one mirrored.
+ * the side with the shin back (hip twisted about the thigh, knees 90°). Left front.
  */
 const SIT_9090_L: J = { hipL: [-90, 90, 0], kneeL: [90, 0, 0], hipR: [0, 0, -90], kneeR: [90, 0, 0] };
-const SIT_9090_R: J = { hipR: [-90, -90, 0], kneeR: [90, 0, 0], hipL: [0, 0, 90], kneeL: [90, 0, 0] };
-/** sitting with both knees up, feet flat apart (between the two sides of the switch) */
-const SIT_KNEES_UP: J = { hipL: [-135, 0, 22], hipR: [-135, 0, -22], kneeL: [89, 0, 0], kneeR: [89, 0, 0], ankleL: [35, 0, 0], ankleR: [35, 0, 0] };
-/** halfway between two positions (each angle) – a key between them, fitted so the body stays where it should */
-const mid = (a: J, b: J, extra: J = {}): J => {
-  const out: J = {};
-  for (const id of new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof J>) {
-    const x = a[id] ?? [0, 0, 0];
-    const y = b[id] ?? [0, 0, 0];
-    out[id] = [(x[0] + y[0]) / 2, (x[1] + y[1]) / 2, (x[2] + y[2]) / 2];
-  }
-  return { ...out, ...extra };
-};
+/** the 90/90 switch with the feet where they stand (fitted on the realistic golfer 6.11.2026 – before, the legs were
+ * mirrored with the body facing forward and the feet slid 80 cm over the mat): in between both knees up, the feet wide;
+ * on each side the body turns over the front shin, both knees down */
+const SWITCH_MID: J = { hipL: [-143, -26, -25], hipR: [-143, 26, 25], kneeL: [95, 0, 0], kneeR: [95, 0, 0], ankleL: [42, 0, 0], ankleR: [42, 0, 0] };
+const SWITCH_L: J = { hipL: [-91, 89, 0], kneeL: [78, 0, 0], hipR: [-51, 0, -90], kneeR: [103, 0, 0] };
+const SWITCH_R: J = { hipR: [-91, -89, 0], kneeR: [78, 0, 0], hipL: [-51, 0, 90], kneeL: [103, 0, 0] };
+const SWITCH_TURN = 59;
+// the arms reach forward at shoulder height (for the balance without the hands) – crossed on the chest they went 6 cm
+// into the thighs when both knees come up in the middle (clipcheck, 06.11.2026)
+const ARMS_FORWARD: J = { shoulderL: [-85, -8, 5], shoulderR: [-85, 8, -5], elbowL: [-15, 0, 0], elbowR: [-15, 0, 0] };
+/** halfway, the seat down and the feet in their place */
+const SWITCH_HALF_L: J = { hipL: [-132, 4, -60], kneeL: [89, 0, 0], hipR: [-103, 72, -8], kneeR: [100, 0, 0], ankleL: [21, 0, 0], ankleR: [21, 0, 0] };
+const SWITCH_HALF_R: J = { hipR: [-132, -4, 60], kneeR: [89, 0, 0], hipL: [-103, -72, 8], kneeL: [100, 0, 0], ankleL: [21, 0, 0], ankleR: [21, 0, 0] };
 /** open hands (flat on the floor) */
 const OPEN = { gripL: 0, gripR: 0 };
 /** the hands behind on the floor, fingers back, leaning back a little */
@@ -197,8 +198,12 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(2.6, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-36, 0, 70], elbowR: [-4, 0, 0], wristR: [0, 0, 0], neck: [10, -20, 0], shoulderL: [-40, 0, 5], elbowL: [-30, 0, 0] }), L('Slide the right arm under the body, shoulder towards the floor', 'Rechten Arm unter dem Körper durchschieben, Schulter Richtung Boden')),
       k(3.4, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-36, 0, 70], elbowR: [-4, 0, 0], wristR: [0, 0, 0], neck: [10, -20, 0], shoulderL: [-40, 0, 5], elbowL: [-30, 0, 0] })),
       k(4.4, quad()),
+      // (on the way up and back down the hand leaves the floor out to the side – straight from the floor to the ceiling the arm
+      // swung through the chest and the left thigh, 6–8 cm, 06.11.2026)
+      k(5.1, quad({ spine: [0, 3, 0], chest: [0, 7, 0], shoulderR: [-45, 0, -90], elbowR: [-10, 0, 0], wristR: [0, 0, 0], neck: [10, 12, 0], shoulderL: [-72, 0, 4] }, { roll: -8 })),
       k(5.8, quad({ spine: [0, 6, 0], chest: [0, 14, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], wristR: [0, 0, 0], neck: [10, 25, 0], shoulderL: [-69, 0, 4], elbowL: [4, 0, 0] }, { roll: -17 }), L('… then open it up to the ceiling, eyes follow', '… dann zur Decke öffnen, der Blick folgt')),
       k(6.6, quad({ spine: [0, 6, 0], chest: [0, 14, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], wristR: [0, 0, 0], neck: [10, 25, 0], shoulderL: [-69, 0, 4], elbowL: [4, 0, 0] }, { roll: -17 })),
+      k(7.3, quad({ spine: [0, 3, 0], chest: [0, 7, 0], shoulderR: [-45, 0, -90], elbowR: [-10, 0, 0], wristR: [0, 0, 0], neck: [10, 12, 0], shoulderL: [-72, 0, 4] }, { roll: -8 })),
       k(8.0, quad()),
     ],
   },
@@ -254,18 +259,17 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     ground: 'all',
     props: ['mat'],
     keys: [
-      k(0, P({ ...SIT_9090_L, ...ARMS_CROSSED }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
-      k(1.2, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
-      // (the seat stays on the floor through the switch: the legs turn in the hips – keys between, fitted)
-      k(1.9, P({ ...mid(SIT_9090_L, SIT_KNEES_UP, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
-      k(2.6, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED }), L('Turn both knees to the other side without the hands – sit tall', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen')),
-      k(3.3, P({ ...mid(SIT_KNEES_UP, SIT_9090_R, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
-      k(4.0, P({ ...SIT_9090_R, ...ARMS_CROSSED })),
-      k(5.0, P({ ...SIT_9090_R, ...ARMS_CROSSED }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
-      k(5.7, P({ ...mid(SIT_9090_R, SIT_KNEES_UP, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
-      k(6.4, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED })),
-      k(7.1, P({ ...mid(SIT_KNEES_UP, SIT_9090_L, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
-      k(7.8, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
+      k(0, P({ ...SWITCH_L, ...ARMS_FORWARD }, { turn: SWITCH_TURN }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
+      k(1.2, P({ ...SWITCH_L, ...ARMS_FORWARD }, { turn: SWITCH_TURN })),
+      k(1.9, P({ ...SWITCH_HALF_L, ...ARMS_FORWARD }, { turn: 22 })),
+      k(2.6, P({ ...SWITCH_MID, ...ARMS_FORWARD }), L('Turn both knees to the other side without the hands – sit tall, the arms forward', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen, die Arme nach vorn')),
+      k(3.3, P({ ...SWITCH_HALF_R, ...ARMS_FORWARD }, { turn: -22 })),
+      k(4.0, P({ ...SWITCH_R, ...ARMS_FORWARD }, { turn: -SWITCH_TURN })),
+      k(5.0, P({ ...SWITCH_R, ...ARMS_FORWARD }, { turn: -SWITCH_TURN }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
+      k(5.7, P({ ...SWITCH_HALF_R, ...ARMS_FORWARD }, { turn: -22 })),
+      k(6.4, P({ ...SWITCH_MID, ...ARMS_FORWARD })),
+      k(7.1, P({ ...SWITCH_HALF_L, ...ARMS_FORWARD }, { turn: 22 })),
+      k(7.8, P({ ...SWITCH_L, ...ARMS_FORWARD }, { turn: SWITCH_TURN })),
     ],
   },
   'mob-hip-ir': {
@@ -405,18 +409,20 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(3.6, P({ ...HANDS_BACK, hipL: [-90, 0, 14], hipR: [-90, 0, -14], kneeL: [0, 0, 0], kneeR: [0, 0, 0] }, OPEN)),
     ],
   },
+  // the arms in a Y, each 35° out from the head (06.11.2026: overhead the sideways turn goes the other way – with PRONE's
+  // they lay along the head and the forearms went 4 cm into it)
   'mob-prone-y': {
     view: 'side',
     views: ['side', 'angle', 'front'],
     ground: 'all',
     props: ['mat'],
     keys: [
-      k(0, P(PRONE, { tip: 90 }), L('On your belly, arms overhead in a Y, thumbs up', 'Bauchlage, Arme über dem Kopf im Y, Daumen oben')),
-      k(1.0, P(PRONE, { tip: 90 })),
-      k(2.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 }), L('Shoulder blades down and back – lift the arms', 'Schulterblätter nach hinten unten – Arme anheben')),
-      k(3.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 })),
-      k(4.6, P(PRONE, { tip: 90 }), L('Lower – 2 × 10', 'Ablegen – 2 × 10')),
-      k(5.2, P(PRONE, { tip: 90 })),
+      k(0, P({ ...PRONE, shoulderL: [-170, 0, -35], shoulderR: [-170, 0, 35] }, { tip: 90 }), L('On your belly, arms overhead in a Y, thumbs up', 'Bauchlage, Arme über dem Kopf im Y, Daumen oben')),
+      k(1.0, P({ ...PRONE, shoulderL: [-170, 0, -35], shoulderR: [-170, 0, 35] }, { tip: 90 })),
+      k(2.4, P({ ...PRONE, shoulderL: [-205, 0, -35], shoulderR: [-205, 0, 35], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 }), L('Shoulder blades down and back – lift the arms', 'Schulterblätter nach hinten unten – Arme anheben')),
+      k(3.4, P({ ...PRONE, shoulderL: [-205, 0, -35], shoulderR: [-205, 0, 35], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 })),
+      k(4.6, P({ ...PRONE, shoulderL: [-170, 0, -35], shoulderR: [-170, 0, 35] }, { tip: 90 }), L('Lower – 2 × 10', 'Ablegen – 2 × 10')),
+      k(5.2, P({ ...PRONE, shoulderL: [-170, 0, -35], shoulderR: [-170, 0, 35] }, { tip: 90 })),
     ],
   },
 

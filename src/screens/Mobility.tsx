@@ -21,6 +21,7 @@ import { L, type Drill } from '../training/types';
 import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
 import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
+import { preloadRealisticBody } from '../mobility/anim3d/realFlag';
 import type { Coach } from '../mobility/CameraTest';
 import { CameraTest, isFakeCamera, sideText, unlockAudio, CheckList } from '../mobility/CameraTest';
 import { cameraWish } from '../mobility/livecam';
@@ -193,6 +194,8 @@ function TestThumb(props: { test: TestDef }) {
 
 export function MobilityApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: MobilityTab; onTabChange?: (t: MobilityTab) => void; onOpenTraining?: () => void }) {
   useMobilityTick();
+  // the realistic golfer (?real3d=1): its body loads on the start page already, not with the first 3D video
+  useEffect(() => preloadRealisticBody(), []);
   const [stack, setStack] = useState<View[]>(() => [{ name: 'tab', tab: props.tab ?? 'test' }]);
   const view = stack[stack.length - 1];
   const push = (v: View) => {
