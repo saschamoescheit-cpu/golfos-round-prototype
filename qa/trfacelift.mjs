@@ -80,7 +80,8 @@ const areas = ['Für dich', 'Kurzes Spiel', 'Langes Spiel', 'Schwung & Ballflug'
 const counts = [];
 for (const a of areas) counts.push(await eyebrow(a).count());
 ok(counts.every((n) => n === 1) && (await eyebrow('Themen').count()) === 0, `Wissen: the blocks under eyebrows – FÜR DICH and the five areas (${counts.join(' ')})`);
-ok((await p.locator('.tr-cat').count()) === 21, `all 21 topics, each in its area (${await p.locator('.tr-cat').count()})`);
+// 22 since Grundschwung (P-System) joined Schwung & Ballflug (Sascha 21.11.2026)
+ok((await p.locator('.tr-cat').count()) === 22, `all 22 topics, each in its area (${await p.locator('.tr-cat').count()})`);
 // "Inhalte prüfen" only on a device that opened the review link (#pruefen)
 ok((await p.locator('.tr-review-entry').count()) === 0, 'Wissen: no "Inhalte prüfen" for a player');
 await p.goto(new URL('#pruefen', url).href);
