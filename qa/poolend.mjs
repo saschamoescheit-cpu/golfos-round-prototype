@@ -101,6 +101,9 @@ ok(/wartet auf Unterschriften/.test(head), 'the pool: "… · wartet auf Untersc
 const card = await txt(H.getByRole('region', { name: 'Karten offen' }));
 ok(/Alle Runden sind gespielt/.test(card) && /Sascha \(du\)/.test(card) && /Cedric/.test(card), `its card: whose cards are open (${card.slice(0, 200)})`);
 ok(!sim.shared.get(code).game.finishedAt, 'not closed while cards are open');
+// one below the other, not run together (night run 20.11.2026: "KARTEN OFFENAlle Runden … beendest.20.11.")
+const rows = await H.getByRole('region', { name: 'Karten offen' }).locator(':scope > span').evaluateAll((es) => es.map((e) => e.getBoundingClientRect()).map((r) => [r.top, r.bottom]));
+ok(rows.length >= 3 && rows.every((r, i) => i === 0 || r[0] >= rows[i - 1][1] - 1), `"Karten offen": its title, text and days one below the other (${rows.length} rows)`);
 if (shots) await H.screenshot({ path: `${shots}/poolend-cards.png` });
 await H.goto(url);
 await H.waitForTimeout(2000);

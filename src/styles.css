@@ -2340,6 +2340,8 @@ button.tile:disabled { opacity: 1; }
 .sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }
 /* a pool over (Sascha 19.11.2026, Mockup B): the line as a signed round, below one's result and the way to the settlement */
 .sc-status.pool-done { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
+/* "Karten offen": eyebrow, text and the days one below the other (night run 20.11.2026: "KARTEN OFFENAlle Runden …") */
+.pool-cards-open { display: flex; flex-direction: column; gap: 6px; }
 .pool-done-head { display: flex; align-items: center; gap: 12px; }
 .pool-done-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; border-top: 1px solid var(--line-strong); padding-top: 12px; }
 .pool-done-stats > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
