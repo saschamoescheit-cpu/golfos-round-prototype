@@ -86,39 +86,12 @@ export function SideBetsList(props: { pools: PoolEntry[]; onOpenPool: (code: str
   const [open, setOpen] = useState<string | null>(null);
   const bets = sideBetsOf(props.pools);
   if (!bets.length) return null;
-  // on the whole, per person (the duels' opponents; a side game: the share between the two) – in each currency
-  const left = new Map<string, { name: string; sym: string; v: number }>();
-  const add = (name: string, sym: string, v: number) => {
-    const k = `${name.toLowerCase()}|${sym}`;
-    const was = left.get(k);
-    left.set(k, { name: was?.name ?? name, sym, v: (was?.v ?? 0) + v });
-  };
-  for (const b of bets) {
-    if (b.amount == null) continue;
-    if (b.kind === 'duel') add(b.other, b.sym, b.amount);
-    else if (b.me) {
-      const cash = standingOf(sideGameView(b.s, b.round)).money ?? {};
-      const n = Object.keys(cash).length;
-      for (const p of b.s.players) if (p.id !== b.me && n > 1) add(p.name, b.sym, ((cash[b.me] ?? 0) - (cash[p.id] ?? 0)) / n);
-    }
-  }
-  const people = [...left.values()].filter((x) => Math.abs(x.v) >= 0.005);
+  // no "Unterm Strich" over them (Sascha 18.11.2026: "Side-Bet unterm Strich kann raus") – what is left with each
+  // person stands in Bilanz
   const shown = bets.find((b) => b.key === open) ?? null;
   return (
     <section className="setup-part side-bets" aria-label={tr('Side bets', 'Side-Bets')}>
       <span className="eyebrow">{tr('Side bets', 'Side-Bets')}</span>
-      {people.length > 0 && (
-        <div className="card side-bets-total">
-          <span className="muted small">{tr('On the whole', 'Unterm Strich')}</span>
-          <div className="side-bets-people">
-            {people.map((x) => (
-              <span key={`${x.name}|${x.sym}`} className={tone(x.v)}>
-                {x.name} {signed(x.v, x.sym)}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
       <ul className="list">
         {bets.map((b) => (
           <li key={b.key}>

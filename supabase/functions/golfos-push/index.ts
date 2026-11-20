@@ -397,6 +397,22 @@ export interface Transfer {
   to: string;
   amount: number;
 }
+/** Each two players set off against each other – one line each (Sascha 19.11.2026, "Du zahlst 60 $ an Erik · du bekommst
+ *  100 $ von Erik": "direkt das verrechnete Ergebnis"); the app does it too (src/lib/wagers.ts netTransfers), here also
+ *  for the apps of before. */
+export function netTransfers(ts: Transfer[]): Transfer[] {
+  const by = new Map<string, { a: string; b: string; v: number }>();
+  for (const t of ts) {
+    const [a, b] = t.from < t.to ? [t.from, t.to] : [t.to, t.from];
+    const x = by.get(`${a}|${b}`) ?? { a, b, v: 0 };
+    x.v += t.from === a ? t.amount : -t.amount;
+    by.set(`${a}|${b}`, x);
+  }
+  return [...by.values()]
+    .map((x) => ({ ...x, v: Math.round(x.v * 100) / 100 }))
+    .filter((x) => Math.abs(x.v) >= 0.005)
+    .map((x) => (x.v > 0 ? { from: x.a, to: x.b, amount: x.v } : { from: x.b, to: x.a, amount: -x.v }));
+}
 export function settleNote(o: { pool: string; code: string; me: string; names: Record<string, string>; transfers: Transfer[]; sym: string; remind: boolean }, lang?: string | null): Note | null {
   const pay = o.transfers.filter((t) => t.from === o.me);
   const get = o.transfers.filter((t) => t.to === o.me);
@@ -1223,10 +1239,12 @@ export async function handle(req: Request): Promise<Response> {
       if (g.game.deletedAt || !(endAt <= now)) return json({ error: 'not over' }, 409);
       const players = g.game.players ?? [];
       const ids = new Set(players.map((p) => p.id));
-      const transfers: Transfer[] = (Array.isArray(body.transfers) ? body.transfers : [])
-        .slice(0, 100)
-        .map((t) => ({ from: String(t?.from ?? ''), to: String(t?.to ?? ''), amount: Math.round(Number(t?.amount) * 100) / 100 }))
-        .filter((t) => ids.has(t.from) && ids.has(t.to) && t.from !== t.to && t.amount > 0 && t.amount < 1e6);
+      const transfers: Transfer[] = netTransfers(
+        (Array.isArray(body.transfers) ? body.transfers : [])
+          .slice(0, 100)
+          .map((t) => ({ from: String(t?.from ?? ''), to: String(t?.to ?? ''), amount: Math.round(Number(t?.amount) * 100) / 100 }))
+          .filter((t) => ids.has(t.from) && ids.has(t.to) && t.from !== t.to && t.amount > 0 && t.amount < 1e6),
+      );
       const sym = String(body.sym ?? '€').slice(0, 12);
       const names = Object.fromEntries(players.map((p) => [p.id, p.name]));
       const pool = String(g.game.name ?? 'GolfOS').slice(0, 60);

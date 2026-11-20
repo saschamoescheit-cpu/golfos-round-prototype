@@ -1,0 +1,11 @@
+{
+ "win": "勝利",
+ "tournament": "トーナメント",
+ "tournaments": "トーナメント",
+ "Ø tournament round": "Ø トーナメントラウンド",
+ "{0}. of {1}": "{1}人中{0}位",
+ "Prizes and entry fees": "賞金と参加費",
+ "series": "シリーズ",
+ "Where do I find what a series came to – and my tournaments?": "シリーズの精算と自分のトーナメントはどこで見られますか？",
+ "Once the series is over: in Games & Bets → \"Bilanz\" as its own card (place, what it came to, what is open), its amounts under \"Offene Beträge\" and in each player's sheet (\"· Serie\"). Who pays taps \"Bezahlt\", the receiver confirms \"Erhalten\" in the inbox – it counts once confirmed, and the tournament's page shows it paid too. In Rounds → \"Mein Golf\" the block \"Turniere\": wins, how many, your average tournament round (gross to par, 18 holes) and each series or tournament with your place – a tap opens its final standing.": "シリーズが終わると、Games & Bets → 「Bilanz」に独立したカード（順位、結果、未精算額）として表示され、金額は「未精算額」と各プレーヤーのシート（「· シリーズ」）にも出ます。支払う人が「支払済み」をタップし、受け取る人が受信箱で「受領」を確認すると計上され、トーナメントのページでも支払済みと表示されます。Rounds → 「マイゴルフ」の「トーナメント」ブロックには、勝利数、参加数、平均トーナメントラウンド（グロス対パー、18ホール）と、順位付きの各シリーズ・トーナメントが並び、タップで最終順位が開きます。"
+}

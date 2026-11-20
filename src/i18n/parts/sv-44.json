@@ -1,0 +1,11 @@
+{
+ "win": "seger",
+ "tournament": "tävling",
+ "tournaments": "tävlingar",
+ "Ø tournament round": "Ø tävlingsrunda",
+ "{0}. of {1}": "plats {0} av {1}",
+ "Prizes and entry fees": "Priser och startavgifter",
+ "series": "serie",
+ "Where do I find what a series came to – and my tournaments?": "Var hittar jag avräkningen för en serie – och mina tävlingar?",
+ "Once the series is over: in Games & Bets → \"Bilanz\" as its own card (place, what it came to, what is open), its amounts under \"Offene Beträge\" and in each player's sheet (\"· Serie\"). Who pays taps \"Bezahlt\", the receiver confirms \"Erhalten\" in the inbox – it counts once confirmed, and the tournament's page shows it paid too. In Rounds → \"Mein Golf\" the block \"Turniere\": wins, how many, your average tournament round (gross to par, 18 holes) and each series or tournament with your place – a tap opens its final standing.": "Så snart serien är avslutad: i Games & Bets → ”Bilanz” som eget kort (placering, resultat, vad som är öppet), beloppen under ”Öppna belopp” och på varje medspelares blad (”· Serie”). Den som betalar trycker ”Betalt”, mottagaren bekräftar ”Mottaget” i inkorgen – det räknas när det är bekräftat, och tävlingssidan visar det också som betalt. I Rounds → ”Min golf” blocket ”Tävlingar”: segrar, antal, din Ø tävlingsrunda (brutto mot par, 18 hål) och varje serie eller tävling med din placering – ett tryck öppnar slutställningen."
+}

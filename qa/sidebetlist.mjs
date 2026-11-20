@@ -1,7 +1,7 @@
 // QA (Sascha 16.11.2026, Legends: "Diese Sidebet sollte auch unter Games sein, finde sie aber nicht" → "Alle in ‚Wetten'";
 // "Bei den Sidebets brauchen wir im Nachgang auch die Details je Bet, wer Front, wer Back und wer total gemacht hat. Auch mit
 // Verrechnung"): under "Wetten" a block "Side-Bets" – Sascha's 5+5+10 against Daniel (the day's own settlement) and against
-// Erik (USA-Wetten), and a Skins of his round; "Unterm Strich" per person; a tap: front, back, 18 with both scores, who won,
+// Erik (USA-Wetten), and a Skins of his round; a tap: front, back, 18 with both scores, who won,
 // what it is worth, who pays whom, the pool's settlement a tap away; the side game with its standing and payments.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/sidebetlist.mjs [url]
 import { webkit } from 'playwright';
@@ -66,8 +66,8 @@ ok(rows.length === 3, `three side bets (${rows.join(' | ')})`);
 ok(rows.some((r) => /5\+5\+10 gegen Daniel .*\+10 \$/.test(r)), '5+5+10 against Daniel: +10 $');
 ok(rows.some((r) => /5\+5\+10 gegen Erik .*USA-Wetten.*−20 \$/.test(r)), '5+5+10 against Erik in USA-Wetten: −20 $');
 ok(rows.some((r) => /Skins · Sascha, Daniel/.test(r)), 'the Skins of the round');
-const total = (await block.locator('.side-bets-total').innerText()).replace(/\s+/g, ' ');
-ok(/Unterm Strich/.test(total) && /Daniel \+1\d(,\d+)? \$/.test(total) && /Erik −20 \$/.test(total), `on the whole per person: ${total}`);
+// no "Unterm Strich" over them (Sascha 18.11.2026: "Side-Bet unterm Strich kann raus")
+ok(!/Unterm Strich/.test(await block.innerText()), 'no "Unterm Strich" above the side bets');
 ok((await S.locator('main .eyebrow').filter({ hasText: /^Pools$/ }).count()) === 1, 'the pools below under "Pools"');
 if (process.env.SHOTS) await S.screenshot({ path: `${process.env.SHOTS}/sidebets.png`, fullPage: true });
 

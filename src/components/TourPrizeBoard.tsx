@@ -2,6 +2,7 @@ import { tr } from '../lib/i18n';
 import { prizeAmount, prizeName } from '../lib/prize';
 import { eventStandings, liveFlights, netClasses, CLASS_NAMES, type RoundEvent } from '../lib/sharedround';
 import { specialBoard } from '../lib/specials';
+import { roundOver } from '../lib/seriesstandings';
 import { hasPrizes, keyName, prizeAwards, prizeSettle, prizeSum, rankKind, type Award, type TourPrizes } from '../lib/tourprizes';
 
 type PrizedEvent = RoundEvent & { prizes?: TourPrizes };
@@ -18,7 +19,7 @@ export function tourPrizeResult(ev: PrizedEvent): { tp: TourPrizes; awards: Awar
   const specials = specialBoard(ev).map(({ special, rows }) => ({ special, name: rows[0]?.name ?? null }));
   const awards = prizeAwards(tp, { gross, net: netRows, classes, specials });
   const players = liveFlights(ev).flatMap((f) => f.players.flatMap((p) => (p.members?.length ? p.members.map((m) => m.name) : [p.name])));
-  return { tp, awards, players, settle: prizeSettle(tp, players, awards), done: gross.length > 0 && gross.every((r) => r.finished) };
+  return { tp, awards, players, settle: prizeSettle(tp, players, awards), done: gross.length > 0 && roundOver(ev) };
 }
 
 /** The tournament's prizes on its page (Sascha 14.11.2026, mock-ups 4 and 5): who wins what – provisional while it is
@@ -79,7 +80,7 @@ export function TourPrizeBoard(props: { ev: PrizedEvent; done: boolean; played: 
                   </span>
                   <strong className="tour-prize-amt">{amt(t.amount)}</strong>
                   {props.host ? (
-                    <button type="button" className={paid ? 'btn-secondary bell-act' : 'btn-primary bell-act'} aria-pressed={paid} aria-label={paid ? tr(`${t.from} → ${t.to}: paid – undo`, `${t.from} → ${t.to}: bezahlt – zurücknehmen`) : tr(`${t.from} → ${t.to}: mark paid`, `${t.from} → ${t.to}: als bezahlt markieren`)} onClick={() => props.onPaid(t.key, !paid)}>
+                    <button type="button" className={paid ? 'chip row-act quiet bell-act' : 'chip row-act bell-act'} aria-pressed={paid} aria-label={paid ? tr(`${t.from} → ${t.to}: paid – undo`, `${t.from} → ${t.to}: bezahlt – zurücknehmen`) : tr(`${t.from} → ${t.to}: mark paid`, `${t.from} → ${t.to}: als bezahlt markieren`)} onClick={() => props.onPaid(t.key, !paid)}>
                       {paid ? tr('Paid ✓', 'Bezahlt ✓') : tr('Paid', 'Bezahlt')}
                     </button>
                   ) : (

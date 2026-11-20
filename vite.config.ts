@@ -44,6 +44,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // registered by the app itself (src/lib/appupdate.ts registerWorker): the plugin's own line let a failed load of
+      // sw.js go unhandled (gate 19.11.2026: "Script …/sw.js load failed" as a page error) and never tried again
+      injectRegister: false,
       includeAssets: ['apple-touch-icon.png'],
       manifest: {
         name: 'GolfOS Rounds',
@@ -62,6 +65,10 @@ export default defineConfig({
       workbox: {
         // push notifications: shown and opened by public/push-sw.js (final list, Sascha 23.10.2026)
         importScripts: ['push-sw.js'],
+        // as with the plugin's own registration line: the new worker takes over at once and the open page with it
+        // (without that line the plugin leaves clientsClaim out – the offline tests found the page uncontrolled)
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         globIgnores: ['greens/**', 'mediapipe/**', 'models/**'], // green charts and the pose model load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB

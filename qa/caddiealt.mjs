@@ -47,8 +47,13 @@ await row.scrollIntoViewIfNeeded();
 ok((await row.count()) === 1 && /Automatisch/.test(await row.innerText()), `Profil → Caddie: "Höhe deiner Weiten · Automatisch" (${(await row.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
 await row.click();
 const sheet = p.getByRole('dialog', { name: /Wo deine Weiten entstanden sind|Höhe deiner Weiten/ });
+// "Automatisch": here by GPS with its height, beside the home course (Sascha 18.11.2026: "den Standort, wo man sich gerade
+// befindet mit der Höhenangabe – und zusätzlich den Heimatclub")
+await sheet.locator('.pick-option').first().filter({ hasText: /Hier: .* – \d+ m/ }).waitFor({ timeout: 15000 }).catch(() => {});
 const opts = (await sheet.locator('.pick-option').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
-ok(/Automatisch Dein Heimatplatz .*Hetzenhof/.test(opts[0] ?? '') && opts.some((t) => /^0 m – Meereshöhe/.test(t)) && opts.some((t) => /^1500 m/.test(t)), `the choices: Automatisch (Hetzenhof), 0 m … 2000 m (${opts.slice(0, 3).join(' | ')} …)`);
+// the built app's service worker fetches past the mock – the real height then (446 m), the same for both
+ok(/^Automatisch Hier: .* – (4\d\d) m · Heimatclub .*Hetzenhof – \1 m/.test(opts[0] ?? ''), `Automatisch: "Hier: … – 445 m · Heimatclub … Hetzenhof – 445 m" (${opts[0]})`);
+ok(/^Automatisch/.test(opts[0] ?? '') &&opts.some((t) => /^0 m – Meereshöhe/.test(t)) && opts.some((t) => /^1500 m/.test(t)), `the choices: Automatisch (Hetzenhof), 0 m … 2000 m (${opts.slice(0, 3).join(' | ')} …)`);
 await sheet.locator('.pick-option').filter({ hasText: /^0 m – Meereshöhe/ }).click();
 await p.waitForTimeout(300);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1') ?? '{}').homeAlt)) === 0, 'kept: 0 m');

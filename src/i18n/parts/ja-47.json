@@ -1,0 +1,15 @@
+{
+ "Settled": "精算済み",
+ "Finished – payments open": "終了 – 未払いあり",
+ "every payment confirmed": "すべての支払いを確認済み",
+ "every bet decided": "すべての賭けが確定",
+ "1 payment open": "未払い 1 件",
+ "{0} payments open": "未払い {0} 件",
+ "1 to confirm": "確認待ち 1 件",
+ "{0} to confirm": "確認待ち {0} 件",
+ "your result": "あなたの結果",
+ "bets decided": "確定した賭け",
+ "See the settlement": "精算を見る",
+ "Pool closed": "締め",
+ "Final standing": "最終順位"
+}

@@ -1,0 +1,10 @@
+{
+ "Here: finding your position …": "現在地：位置を取得中 …",
+ "Here: no GPS": "現在地：GPSなし",
+ "Here: {0}{1}": "現在地：{0}{1}",
+ "your position": "現在地",
+ "Home course {0}{1}": "ホームコース {0}{1}",
+ "Home course from the profile – not found yet: choose a height": "プロフィールのホームコース – まだ見つかりません：高度を選んでください",
+ "the ball flies about {0} % shorter here": "ここではボールが約{0}%短く飛びます",
+ "the ball flies about {0} % farther here": "ここではボールが約{0}%遠くへ飛びます"
+}

@@ -3,7 +3,7 @@ import { convert, fetchRate, homeMoney, moneyOfSym, symOf, type Money } from '..
 import { FloatActions } from '../components/FloatActions';
 import { tr } from '../lib/i18n';
 import { formDef, formatEuro, money, standingOf, type Game } from '../lib/gameforms';
-import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
+import { dm, meIn, people, settledRefs, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
 import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { newId } from '../lib/storage';
@@ -16,6 +16,9 @@ import { SwipeRow } from '../components/SwipeRow';
 import { markWord, TAKE_BACK } from '../components/PaidMarks';
 import { Verdict, WhyGroups } from '../components/BalanceWhy';
 import { loadProfile, shownName } from '../lib/profile';
+import { changeSeriesPayments } from '../lib/tourstore';
+import { seriesSettles } from '../components/SeriesPrizeBoard';
+import { goTour } from '../lib/nav';
 
 // The menu "Bilanz" (Sascha 03.11.2026): what I won and lost, against each player – which games and bets make it up –,
 // what is still open, "Bezahlt" when I paid, "Erhalten" when I got it (the other confirms what the one marked), and
@@ -102,6 +105,8 @@ async function record(i: Item, change: (ps: GamePayment[]) => GamePayment[]): Pr
     window.dispatchEvent(new Event('golfos:games-changed'));
     return true;
   }
+  // a series' settlement: into the series (Sascha 18.11.2026) – names as the players' ids
+  if (i.kind === 'series') return changeSeriesPayments(i.ref, (ps) => change(ps).filter((x) => !x.undoneAt));
   return !!(await changePool(i.ref, (p) => ({ ...p, payments: change(p.payments ?? []).filter((x) => !(x as GamePayment).undoneAt) })));
 }
 
@@ -118,7 +123,8 @@ async function settle(i: Item, as: 'paid' | 'received', him: string): Promise<bo
     return open > 0.004 ? [...out, { id: newId(), from: mine ? i.me : i.him, to: mine ? i.him : i.me, amount: open, ...(mine ? { paidAt: now() } : { receivedAt: now() }) }] : out;
   });
   // the other phone hears of it (a shared game's or the pool's code)
-  const code = i.kind === 'pool' ? i.ref : loadGames().find((x) => x.id === i.ref)?.shared?.code;
+  // (a series: the receiver sees it in his inbox – no push of its own)
+  const code = i.kind === 'pool' ? i.ref : i.kind === 'series' ? undefined : loadGames().find((x) => x.id === i.ref)?.shared?.code;
   if (ok && code && open + confirmed > 0.004) pushPaid(code, as, shownName(loadProfile()), him, money(open + confirmed, i.sym));
   return ok;
 }
@@ -130,7 +136,7 @@ let lastFilter: BalanceFilter = null;
 
 /** A game or a pool of bets as it came out for me – the list a tile filters. */
 interface Entry {
-  kind: 'game' | 'pool';
+  kind: 'game' | 'pool' | 'series';
   ref: string;
   head: string;
   line: string;
@@ -164,11 +170,25 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const done = props.games.filter((g) => g.finishedAt && g.signedAt);
   const toSign = props.games.filter((g) => g.finishedAt && !g.signedAt);
   const unconfirmed = toSign.length;
-  const ps = people(props.games, pools, today);
+  // a tournament series over, its one settlement (Sascha 18.11.2026: "Serie als eigene Karte wie ein Wett-Pool")
+  const settles = seriesSettles();
+  useEffect(() => {
+    const again = () => setTick((t) => t + 1);
+    window.addEventListener('golfos:tours-changed', again);
+    return () => window.removeEventListener('golfos:tours-changed', again);
+  }, []);
+  const ps = people(props.games, pools, today, settles);
+  // "Gegen deine Mitspieler" without what is paid and confirmed in full (Sascha 18.11.2026) – it stays in the pool's own
+  // settlement; the tiles above and each player's sheet keep everything
+  const cleared = settledRefs(ps);
+  const against = ps
+    .map((p) => ({ ...p, items: p.items.filter((i) => !cleared.has(`${i.kind}:${i.ref}`)) }))
+    .filter((p, k) => p.items.length > 0 || (ps[k].items.length === 0 && p.games > 0));
   // the games and pools in another currency than the standard one, with their cut-off day
   const entriesFx = [
     ...done.map((g) => ({ m: moneyOfSym(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize }))), until: (g.finishedAt ?? g.createdAt).slice(0, 10) })),
     ...pools.map((e) => ({ m: moneyOfSym(prizeSym(prizeOf(e.pool))), until: e.pool.to })),
+    ...settles.map((x) => ({ m: moneyOfSym(x.sym), until: x.day })),
   ].filter((x): x is { m: Money; until: string } => !!x.m && !!homeMoney() && x.m !== homeMoney());
   // the shared games' payments from the other phones when the balance opens (he marked it paid, or confirmed)
   useEffect(() => {
@@ -200,7 +220,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       gone = true;
     };
   }, [entriesFx.map((x) => `${x.m}|${x.until}`).join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!done.length && !unconfirmed && !pools.length) return props.inTab ? <p className="muted">{tr('No confirmed games or bets yet – they show here once played.', 'Noch keine bestätigten Spiele oder Wetten – sie erscheinen hier, sobald gespielt.')}</p> : null;
+  if (!done.length && !unconfirmed && !pools.length && !settles.length) return props.inTab ? <p className="muted">{tr('No confirmed games or bets yet – they show here once played.', 'Noch keine bestätigten Spiele oder Wetten – sie erscheinen hier, sobald gespielt.')}</p> : null;
 
   const total: Record<string, number> = {};
   // each game and each pool once, as it came out for me – newest first
@@ -241,6 +261,23 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       won: false,
       };
     }),
+    // a series: what its settlement comes to for me (prizes won, entry fees paid in)
+    ...settles.map((x): Entry => {
+      const mine = Math.round(x.transfers.reduce((n, t) => n + (t.to.trim().toLowerCase() === x.me.trim().toLowerCase() ? t.amount : t.from.trim().toLowerCase() === x.me.trim().toLowerCase() ? -t.amount : 0), 0) * 100) / 100;
+      return {
+        kind: 'series',
+        ref: x.code,
+        head: x.title,
+        line: [dm(x.first ?? x.day), tr('Tournament series', 'Turnierserie'), tr('finished', 'beendet'), x.place ? tr(`${x.place}. of ${x.of}`, `Platz ${x.place} von ${x.of}`) : null].filter(Boolean).join(' · '),
+        day: x.first ?? x.day,
+        until: x.day,
+        sym: x.sym,
+        mine,
+        plus: Math.max(0, mine),
+        minus: Math.min(0, mine),
+        won: x.place === '1',
+      };
+    }),
   ].sort((a, b) => b.day.localeCompare(a.day));
   const wins = entries.filter((x) => x.won).length;
   // nothing won or lost yet: 0 in the one currency all games and bets are in (a $ pool only: "0 $")
@@ -275,7 +312,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     if (v > 0) gain[sym] = (gain[sym] ?? 0) + v;
     else loss[sym] = (loss[sym] ?? 0) + v;
   };
-  for (const e of entries) if (e.kind === 'game') book(e.sym, e.mine, e.until);
+  for (const e of entries) if (e.kind === 'game' || e.kind === 'series') book(e.sym, e.mine, e.until);
   // a pool: each bet on its own – won on "Gewinn", lost on "Verlust", both in "Bilanz" (Sascha 12.11.2026: "Verlust 30 $,
   // Gewinn 320 $ – and Geld renamed Bilanz, there the 290 are right")
   for (const e of entries) if (e.kind === 'pool') {
@@ -292,7 +329,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   // a game or pool of the sheet tapped: there – the sheet closes (Sascha 10.11.2026: click paths everywhere)
   const openItem = (x: Item): (() => void) | undefined => {
     const g = x.kind === 'game' ? done.find((y) => y.id === x.ref) : undefined;
-    const to = x.kind === 'game' ? (g && props.onOpenGame ? () => props.onOpenGame!(g) : undefined) : props.onOpenPool ? () => props.onOpenPool!(x.ref) : undefined;
+    const to = x.kind === 'series' ? () => goTour(x.ref) : x.kind === 'game' ? (g && props.onOpenGame ? () => props.onOpenGame!(g) : undefined) : props.onOpenPool ? () => props.onOpenPool!(x.ref) : undefined;
     return to && (() => {
       setOpen(null);
       to();
@@ -307,6 +344,33 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const word = (p: Person, as: 'paid' | 'received') => {
     const things = p.items.some((i) => !isMoney(i.prize));
     return as === 'received' ? tr('Received', 'Erhalten') : things && p.items.every((i) => !isMoney(i.prize)) ? paidWord(p.items[0].prize) : tr('Paid', 'Bezahlt');
+  };
+  /** A tournament series over as its own card, as a pool (Sascha 18.11.2026): place, what it came to, what is open. */
+  const seriesCard = (x: (typeof settles)[number]) => {
+    const mineItems = ps.flatMap((p) => p.items.filter((i) => i.kind === 'series' && i.ref === x.code));
+    const amount = sums(mineItems, (i) => i.amount);
+    const left = sums(mineItems, (i) => i.open);
+    return (
+      <section key={x.code} className="card balance-pool balance-series" aria-label={x.title}>
+        <button type="button" className="balance-pool-head" onClick={() => goTour(x.code)}>
+          <span className="grow">
+            <span className="eyebrow">{tr('Tournament series', 'Turnierserie')}</span>
+            <strong>{x.title}</strong>
+            <span className="muted small">
+              {[x.first ? `${dm(x.first)}–${dm(x.day)}` : dm(x.day), tr('finished', 'beendet'), x.place ? tr(`${x.place}. of ${x.of}`, `Platz ${x.place} von ${x.of}`) : null].filter(Boolean).join(' · ')}
+              {Object.keys(left).length > 0 && ` · ${tr('open ', 'offen ')}`}
+              {Object.keys(left).length > 0 && <Amounts m={left} plain zero={x.sym} />}
+            </span>
+          </span>
+          <strong>
+            <Amounts m={amount} zero={x.sym} />
+          </strong>
+          <span className="muted" aria-hidden="true">
+            ›
+          </span>
+        </button>
+      </section>
+    );
   };
   /** A pool of bets as its own card – on the page and under the tile "Wetten" alike (Sascha 06.11.2026: "under the
    *  tapped tile the same as when Bilanz opens"). */
@@ -354,7 +418,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           <span aria-hidden="true">›</span>
         </button>
       )}
-      {(done.length > 0 || pools.length > 0) && (
+      {(done.length > 0 || pools.length > 0 || settles.length > 0) && (
         <section
           className="tile-row tile-row-3 balance-totals"
           aria-label={tr('Totals', 'Summen')}
@@ -416,7 +480,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           <ul className="balance-items balance-list">
             {shown.map((x) => {
               const g = x.kind === 'game' ? done.find((y) => y.id === x.ref) : undefined;
-              const go = x.kind === 'game' ? (g && props.onOpenGame ? () => props.onOpenGame!(g) : undefined) : props.onOpenPool ? () => props.onOpenPool!(x.ref) : undefined;
+              const go = x.kind === 'series' ? () => goTour(x.ref) : x.kind === 'game' ? (g && props.onOpenGame ? () => props.onOpenGame!(g) : undefined) : props.onOpenPool ? () => props.onOpenPool!(x.ref) : undefined;
               return (
                 <li key={`${x.kind}:${x.ref}`}>
                   <button type="button" className="balance-entry" disabled={!go} onClick={go}>
@@ -540,11 +604,11 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         </section>
       )}
 
-      {!filter && ps.length > 0 && (
+      {!filter && against.length > 0 && (
         <section className="card">
           <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
           <ul className="game-pays balance-people">
-            {ps.map((p) => (
+            {against.map((p) => (
               <li key={p.key}>
                 <button type="button" className="balance-person" onClick={() => setOpen(p.key)} aria-label={tr(`${p.name} – the details`, `${p.name} – die Details`)}>
                   <span className="grow">
@@ -552,6 +616,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
                     <span className="muted small">
                       {p.games > 0 && `· ${p.games} ${p.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · ${tr(`${p.won}× ahead · ${p.lost}× behind`, `${p.won}× vorne · ${p.lost}× hinten`)}`}
                       {p.items.some((i) => i.kind === 'pool') && ` · ${tr('bets', 'Wetten')}`}
+                      {p.items.some((i) => i.kind === 'series') && ` · ${tr('series', 'Serie')}`}
                     </span>
                   </span>
                   <strong>
@@ -569,6 +634,8 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
 
       {/* each pool of bets on its own (Sascha 03.11.2026: "two pools, not under one heading") */}
       {!filter && pools.map(poolCard)}
+      {/* each series over with its settlement (Sascha 18.11.2026, Bilanz-Mockup) */}
+      {!filter && settles.map(seriesCard)}
 
       {/* a payment (Sascha 12.11.2026: "+" in Bilanz): the round "+" bottom right – who you owe or who owes you, a tap
           opens him with "Bezahlt" and "Erhalten" */}

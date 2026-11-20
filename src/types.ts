@@ -94,8 +94,9 @@ export type FairwayResult = 'left' | 'hit' | 'right' | 'ob';
 /** 'semirough': the first cut next to the fairway (Sascha 18.10.2026) – between fairway and rough. */
 /** 'fringe': the collar around the green (Vorgrün, Sascha 18.10.2026). */
 export type Lie = 'tee' | 'fairway' | 'semirough' | 'rough' | 'fringe' | 'green' | 'bunker' | 'recovery'; // 'green': a chip played from the green (Sascha 11.11.2026)
-/** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, bunker shot. */
-export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
+/** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, lob (high and soft –
+ *  18.11.2026), bunker shot. */
+export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'lob' | 'bunker';
 /** 'Hy' is the 4-hybrid (shown as "4H"; the name stays for older rounds). Full list: lib/clubs.ts. */
 export type Club = 'Dr' | '3W' | '4W' | '5W' | '7W' | '9W' | '2H' | '3H' | 'Hy' | '5H' | '6H' | '2i' | '3i' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW' | 'Pt'; // 'Pt': the putter from off the green – the Texas wedge (Sascha 18.10.2026), not in the bag's distances
 /** Penalty after a shot: water (drop near where it went in), out of bounds and lost ball (stroke and distance),

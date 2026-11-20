@@ -35,3 +35,25 @@ export function watchForUpdates(): void {
       .catch(() => undefined); // offline on the course: next time
   });
 }
+
+// The service worker registered here, not by the plugin's own line (gate 19.11.2026: "Script …/sw.js load failed" – an
+// unhandled error, and the app stayed without its offline store until the next start). A failed load – a dead spot on
+// the course, a busy server – is tried again when the phone is back online or the app comes back to the front.
+export function registerWorker(): void {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || !import.meta.env.PROD) return;
+  let done = false;
+  let busy = false;
+  const go = () => {
+    if (done || busy) return;
+    busy = true;
+    navigator.serviceWorker
+      .register('./sw.js', { scope: './' })
+      .then(() => (done = true))
+      .catch(() => undefined) // next time online or in front
+      .finally(() => (busy = false));
+  };
+  if (document.readyState === 'complete') go();
+  else window.addEventListener('load', go, { once: true });
+  window.addEventListener('online', go);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && go());
+}

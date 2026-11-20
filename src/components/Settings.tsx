@@ -103,12 +103,15 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
 /** `shown`: the row's value other than the choice's name – e.g. in two lines (Sascha 13.11.2026: "Hcp 5 / (automatisch)") */
 /** `children`: rows under the choices in the same sheet (Sascha 15.11.2026: "Alle Funktionen" under "Turnier" in
  *  Rundenart); `stays`: a choice after which the sheet stays open, so those rows can be set at once. */
-export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string; shown?: ReactNode; children?: ReactNode; stays?: (v: T) => boolean }) {
+export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string; shown?: ReactNode; children?: ReactNode; stays?: (v: T) => boolean; onOpen?: () => void }) {
   const [open, setOpen] = useState(false);
   const current = props.options.find((o) => o.value === props.value);
   return (
     <>
-      <SettingsRow label={props.label} value={(current && props.shown) ?? current?.name ?? props.prompt ?? '–'} need={!current && !!props.prompt} onClick={() => setOpen(true)} disabled={props.disabled} />
+      <SettingsRow label={props.label} value={(current && props.shown) ?? current?.name ?? props.prompt ?? '–'} need={!current && !!props.prompt} onClick={() => {
+          setOpen(true);
+          props.onOpen?.();
+        }} disabled={props.disabled} />
       {open && (
         <PickSheet
           title={props.title ?? props.label}

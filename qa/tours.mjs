@@ -665,7 +665,8 @@ ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.lis
 // no list of the courses under it (Sascha 12.11.2026): "Serie · 10.11.–11.11."
 {
   const sub = (await H.locator('.tour-series-row .muted.small.one-line').first().innerText()).trim();
-  ok(/^Serie · \d\d\.\d\d\.–\d\d\.\d\d\.$/.test(sub), `the series' line: kind and days only (${sub})`);
+  // its state as a mark before the name, as on the rounds (Sascha 18.11.2026: "überall einheitlich")
+  ok(/^Serie · \d\d\.\d\d\.–\d\d\.\d\d\.$/.test(sub) && (await H.locator('.tour-series-row .list-mark [role="img"]').count()) === 1, `the series' line: kind and days, its state a mark (${sub})`);
 }
 // a tile lists its rounds one by one – the series' too (Sascha 12.11.2026: "geplant should list the rounds left, it shows only the series")
 await H.locator('.tile').filter({ hasText: 'geplant' }).click();

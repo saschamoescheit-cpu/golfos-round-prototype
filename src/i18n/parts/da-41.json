@@ -1,0 +1,6 @@
+{
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: not in the total, without the series' prizes and its entry fee. In the tab of his round (e.g. R7) he is ranked with \"Guest\".": "Tilføj dem kun i de runder: åbn runden i serien, „Ændr turneringen“, „Tilføj spiller“. I hver af deres runder tæller de fuldt – leaderboard og dagspræmier. Den, der er med i færre end halvdelen af runderne, er gæst: ikke i den samlede stilling, uden seriens præmier og dens startgebyr. I fanen for hans runde (f.eks. R7) står han med placering og „Gæst“.",
+ "1 guest in R{0}: {1}": "1 gæst i R{0}: {1}",
+ "{0} guests in R{1}: {2}": "{0} gæster i R{1}: {2}",
+ "{0} – round {1}: {2}, his scorecard": "{0} – runde {1}: {2}, hans scorekort"
+}

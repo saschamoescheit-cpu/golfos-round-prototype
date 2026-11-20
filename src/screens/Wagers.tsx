@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { DoneFab, FloatActions } from '../components/FloatActions';
 import { goTour } from '../lib/nav';
 import { useTop } from '../components/useTop';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import type { Course } from '../types';
@@ -17,12 +17,12 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { sumSoFar, dayPlayers, roundPayers, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { sumSoFar, dayPlayers, roundPayers, betOthers, decidedOf, isVoided, duelWaits, flipDuel, type BetRound, type PoolSkip, skipped, owings, settleDebts, roundChoices, progressOf, type Owed, type Debt, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, libraryStart, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
 import { SideBetsList, sideBetsOf } from '../components/SideBets';
-import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { uninvitePlayer, forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, poolEnd, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
 import { inviteFriend } from '../lib/push';
@@ -34,7 +34,9 @@ import { SwipeRow } from '../components/SwipeRow';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { PaidMarks, type WhyLine } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
-import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
+import { people } from '../lib/gamepay';
+import { DeletedIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
+import { StatusMark, type RowState } from '../components/StatusMark';
 import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours, syncTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
@@ -81,6 +83,20 @@ export const BETS_ICON = (
 
 const live = isLive;
 
+/** the ticket of the tile "laufend", as a list row's mark */
+const TICKET_MARK = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3.5 7.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-2.2a2.3 2.3 0 0 0 0-4.6z" />
+    <path d="M15 6.5v11" strokeDasharray="1.6 2" />
+  </svg>
+);
+
+/** A pool's state for its row (Sascha 18.11.2026: marks as on the rounds): running, cards to sign, over. */
+const poolRowState = (e: PoolEntry, today: string): RowState => {
+  const end = poolEnd(e, today);
+  return end.phase === 'finished' ? 'over' : end.phase === 'cards' ? 'waiting' : live(e, today) ? 'running' : 'over';
+};
+
 /** On the start page of Games (Sascha 01.11.2026: "from the start page both 'start a game' and 'start a bet'"): only the
  *  start – following, changing and deleting the bets is in the menu "Bets" (its dot shows bets running). */
 export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void }) {
@@ -117,6 +133,7 @@ function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
         <strong>{dm(pool.from)}</strong>
         <span className="muted small">{pool.from.slice(0, 4)}</span>
       </span>
+      <StatusMark state={poolRowState(props.e, props.today)} running={TICKET_MARK} planned={TICKET_MARK} />
       <span className="grow">
         <span className="title">{pool.name}</span>
         <span className="muted small one-line">
@@ -907,6 +924,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
     );
   }
   const today = dayOf(new Date());
+  // played out, cards still to sign – or closed (Sascha 18.11.2026)
+  const poolEnded = poolEnd(entry, today);
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   // a tournament of this account today, in the pool's days – a round of the series (Sascha 09.11.2026)
   const tourToday = today >= pool.from && today <= pool.to ? loadTours().find((e) => tourState(e, today) === 'today') : undefined;
@@ -956,9 +975,27 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {host && !sheet && <FloatActions pen={{ label: tr('Change the pool', 'Pool bearbeiten'), onClick: () => setSheet('pool') }} />}
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
-        {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
+        {/* over: the block below says it (Sascha 19.11.2026, Mockup B) */}
+        {!pool.finishedAt && poolEnded.phase === 'cards' ? ` · ${tr('waiting for signatures', 'wartet auf Unterschriften')}` : ''}
       </span>
+      {pool.finishedAt && <PoolDone pool={pool} bal={bal} pays={pays} settled={settled} me={entry.me} />}
       {!host && <span className="muted small">{ONLY_HOST()}</span>}
+      {/* every round played, cards still to sign (Sascha 18.11.2026: "Erst alle Karten signiert") – settled once they are */}
+      {poolEnded.phase === 'cards' && (
+        <section className="card pool-cards-open" aria-label={tr('Cards to sign', 'Karten offen')}>
+          <span className="eyebrow">{tr('Cards to sign', 'Karten offen')}</span>
+          <span className="small">
+            {host
+              ? tr('Every round is played. The final settlement comes once every card is signed – or when you finish the pool.', 'Alle Runden sind gespielt. Die Endabrechnung kommt, sobald jede Karte unterschrieben ist – oder wenn du den Pool beendest.')
+              : tr('Every round is played. The final settlement comes once every card is signed.', 'Alle Runden sind gespielt. Die Endabrechnung kommt, sobald jede Karte unterschrieben ist.')}
+          </span>
+          {[...new Set(poolEnded.open.map((x) => x.day))].sort().map((d) => (
+            <span key={d} className="muted small">
+              {dm(d)} · {poolEnded.open.filter((x) => x.day === d).map((x) => (x.mine ? tr(`${x.name} (you)`, `${x.name} (du)`) : x.name)).join(', ')}
+            </span>
+          ))}
+        </section>
+      )}
       {!entry.me && (
         <section className="card play-card">
           <span className="eyebrow">{tr('Who are you?', 'Wer bist du?')}</span>
@@ -1603,8 +1640,8 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
     <section className="setup-part pool-part" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
       <div className="pool-part-head">
-        <span className="eyebrow">{tr('Standing', 'Stand')}</span>
-        <span className="muted small">{tr('live from the rounds', 'live aus den Runden')}</span>
+        <span className="eyebrow">{props.pool.finishedAt ? tr('Final standing', 'Endstand') : tr('Standing', 'Stand')}</span>
+        <span className="muted small">{props.pool.finishedAt ? tr('all rounds', 'alle Runden') : tr('live from the rounds', 'live aus den Runden')}</span>
       </div>
       <ServerStale />
     <div className="card pool-standings">
@@ -1799,6 +1836,106 @@ function FreeMark(props: { state: WagerState }) {
   );
 }
 
+/** What this pool came to with each of the others, as "Gegen deine Mitspieler" in Bilanz (Sascha 18.11.2026: "Die
+ *  Informationen gegen deine Mitspieler sollte … im Wettpool auch über Abrechnung stehen") – with what is still open. */
+/** A pool over, on top (Sascha 19.11.2026: "oberhalb vom Pool auch etwas visuell darstellen wie bei einer signierten
+ *  Runde" – Mockup B): settled – every transfer given and confirmed – the green line with the seal as "Signiert" on a round,
+ *  with one's result, place and the bets decided; payments still open – the same line quiet with the pen, as "Prüfen &
+ *  signieren". Tapped: down to the settlement. */
+function PoolDone(props: { pool: WagerPool; bal: Record<string, number>; pays: { amount: number }[]; settled: number; me: string }) {
+  const { pool, bal } = props;
+  const unconfirmed = (pool.payments ?? []).filter((x) => x.paidAt && !x.receivedAt).length;
+  const open = props.pays.length + unconfirmed;
+  const done = open === 0;
+  const at = [pool.finishedAt, ...(pool.payments ?? []).map((x) => x.receivedAt)].filter((x): x is string => !!x).sort().pop()!;
+  const day = new Date(at).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const prize = prizeOf(pool);
+  const sym = prizeSym(prize);
+  const mine = props.me && pool.players.some((p) => p.id === props.me) ? (bal[props.me] ?? 0) : null;
+  const place = mine == null ? 0 : 1 + pool.players.filter((p) => (bal[p.id] ?? 0) > mine + 0.004).length;
+  const toSettle = () => document.getElementById('pool-settle')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const title = done ? tr('Settled', 'Abgerechnet') : tr('Finished – payments open', 'Beendet – Zahlungen offen');
+  const line = done
+    ? isNone(prize)
+      ? `${day} · ${tr('every bet decided', 'alle Wetten entschieden')}`
+      : `${day} · ${tr('every payment confirmed', 'alle Zahlungen bestätigt')}`
+    : [
+        props.pays.length === 1 ? tr('1 payment open', '1 Zahlung offen') : props.pays.length > 1 ? tr(`${props.pays.length} payments open`, `${props.pays.length} Zahlungen offen`) : null,
+        unconfirmed === 1 ? tr('1 to confirm', '1 zu bestätigen') : unconfirmed > 1 ? tr(`${unconfirmed} to confirm`, `${unconfirmed} zu bestätigen`) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+  return (
+    <section className={`card sc-status pool-done${done ? ' signed' : ''}`} aria-label={tr('Pool closed', 'Abschluss')}>
+      <div className="pool-done-head">
+        <span className="sc-status-icon" aria-hidden="true">
+          {done ? <SignedIcon size={22} /> : <ToSignIcon size={22} />}
+        </span>
+        <span className="grow">
+          <strong>{title}</strong>
+          <span className="muted small">{line}</span>
+        </span>
+      </div>
+      {mine != null && (
+        <div className="pool-done-stats">
+          {!isNone(prize) && (
+            <span>
+              <strong className={mine > 0.004 ? 'good-text' : mine < -0.004 ? 'bad-text' : undefined}>{Math.abs(mine) < 0.005 ? money(0, sym) : `${mine > 0 ? '+' : '−'}${money(Math.abs(mine), sym)}`}</strong>
+              <span className="muted small">{tr('your result', 'dein Ergebnis')}</span>
+            </span>
+          )}
+          <span>
+            <strong>{place}.</strong>
+            <span className="muted small">{tr(`of ${pool.players.length}`, `von ${pool.players.length}`)}</span>
+          </span>
+          <span>
+            <strong>{props.settled}</strong>
+            <span className="muted small">{tr('bets decided', 'Wetten entschieden')}</span>
+          </span>
+        </div>
+      )}
+      <button type="button" className="link-btn pool-done-go" onClick={toSettle}>
+        {tr('See the settlement', 'Abrechnung ansehen')}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
+    </section>
+  );
+}
+
+function AgainstFriends(props: { pool: WagerPool; me: string }) {
+  if (!props.me || !props.pool.players.some((p) => p.id === props.me)) return null;
+  const ps = people([], [{ code: '', me: props.me, pool: props.pool }], dayOf(new Date())).filter((p) => p.items.length > 0);
+  if (!ps.length) return null;
+  const sym = prizeSym(prizeOf(props.pool));
+  const signed = (v: number) => (Math.abs(v) < 0.005 ? money(0, sym) : `${v > 0 ? '+' : '−'}${money(Math.abs(v), sym)}`);
+  return (
+    <>
+      <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
+      <div className="card pool-against">
+        <ul className="game-pays balance-people">
+          {ps.map((p) => {
+            const amount = p.items.reduce((n, i) => n + i.amount, 0);
+            const open = p.items.reduce((n, i) => n + i.open, 0);
+            return (
+              <li key={p.key}>
+                <span className="balance-person">
+                  <span className="grow">
+                    {p.name}{' '}
+                    <span className="muted small">· {Math.abs(open) < 0.005 ? tr('paid', 'bezahlt') : tr(`open ${money(Math.abs(open), sym)}`, `offen ${money(Math.abs(open), sym)}`)}</span>
+                  </span>
+                  <strong className={amount > 0.004 ? 'good-text' : amount < -0.004 ? 'bad-text' : 'muted'}>{signed(amount)}</strong>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </>
+  );
+}
+
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
 function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; debts: Debt[]; owed: Owed[]; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
@@ -1812,7 +1949,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
     // the title as the small heading above the block, never in the card (Sascha 11.11.2026, Facelift-Abnahme W5)
     // three parts, each with its title above (Sascha 12.11.2026: "Bei der Abrechnung einzelne Kategorien bilden: Übersicht,
     // Wer zahlt wem, Bezahlt")
-    <section className="setup-part pool-part pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
+    <section id="pool-settle" className="setup-part pool-part pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
       <div className="pool-part-head">
         <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
         <span className="muted small">
@@ -1821,6 +1958,7 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
         </span>
       </div>
       <ServerStale />
+      <AgainstFriends pool={pool} me={props.me} />
     <span className="eyebrow">{tr('Overview', 'Übersicht')}</span>
     <div className="card pool-settle-card">
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
@@ -2383,9 +2521,10 @@ export function concedable(w: Wager, pool: WagerPool, today: string): boolean {
 }
 /** What giving up costs: the stake to each one the bet pays when missed (as the settlement counts a missed bet) – nothing
  *  for a bet paid "only when made". */
-export function concedeCost(w: Wager, pool: Pick<WagerPool, 'players'>): { to: string; amount: number }[] {
+export function concedeCost(w: Wager, pool: Pick<WagerPool, 'players' | 'wagers'>): { to: string; amount: number }[] {
   if (w.payout === 'success' || !(w.stake > 0)) return [];
-  const to = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
+  // not to a guest of the pool (isGuest, Sascha 17.11.2026)
+  const to = betOthers(pool, w);
   return to.map((id) => ({ to: id, amount: w.stake }));
 }
 

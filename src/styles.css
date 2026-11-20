@@ -2268,7 +2268,13 @@ button.tile:disabled { opacity: 1; }
 /* "Bezahlt" green, "Erhalten" red – filled, white words (Sascha 11.11.2026) */
 /* an open payment: a neutral outline saying what a tap does ("Als bezahlt markieren") – green only once it is done, as the
    tick of the "Bezahlt" list (Sascha 12.11.2026, replacing "Bezahlt grün, Erhalten rot" of 11.11.) */
-.paid-mark.mark-paid, .paid-mark.mark-received { background: transparent; border: 1px solid var(--line-strong); color: var(--text); white-space: normal; max-width: 140px; line-height: 1.15; text-align: center; }
+/* the confirming step of a row – Erhalten, Bezahlt, Zulassen – one small green button in Inbox, Turnier, Serie,
+   Wettpool and Bilanz (Sascha 20.11.2026, mockup B: replaces the neutral outline of 12.11. and the big green buttons of
+   the inbox and the prize boards); its "no" / undo beside it the quiet outline */
+.paid-mark.mark-paid, .paid-mark.mark-received, .chip.row-act { background: var(--brand); border: 1px solid var(--brand); color: #fff; font-weight: 700; white-space: normal; max-width: 140px; line-height: 1.15; text-align: center; }
+.chip.row-act { min-height: 34px; padding: 4px 12px; font-size: 14px; flex: none; }
+.chip.row-act.quiet { background: transparent; border-color: var(--line-strong); color: var(--text); font-weight: 600; }
+.chip.row-act:disabled { opacity: 0.6; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
 .friend-code .qr-box { width: min(200px, 56vw); }
@@ -2338,6 +2344,15 @@ button.tile:disabled { opacity: 1; }
 .invite-friend .grow { flex: 1; min-width: 0; }
 .invite-friend > button { flex: none; width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; }
 .sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }
+/* a pool over (Sascha 19.11.2026, Mockup B): the line as a signed round, below one's result and the way to the settlement */
+.sc-status.pool-done { flex-direction: column; align-items: stretch; gap: 12px; cursor: default; }
+/* "Karten offen": eyebrow, text and the days one below the other (night run 20.11.2026: "KARTEN OFFENAlle Runden …") */
+.pool-cards-open { display: flex; flex-direction: column; gap: 6px; }
+.pool-done-head { display: flex; align-items: center; gap: 12px; }
+.pool-done-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; border-top: 1px solid var(--line-strong); padding-top: 12px; }
+.pool-done-stats > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pool-done-stats strong { font-family: var(--display); font-size: 20px; }
+.pool-done-go { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; text-decoration: none; }
 
 /* the balance (03.11.2026): open amounts, the players tapped for their details, each pool on its own */
 .balance-open { display: flex; flex-direction: column; gap: 8px; }
@@ -2543,6 +2558,14 @@ button.balance-item-row { cursor: pointer; }
 .series-lb-thru, .series-lb-now { font: 600 15px var(--body); font-variant-numeric: tabular-nums; color: var(--text-2); }
 .lb-rows.series-lb li:not(:first-child) .lb-rank { background: var(--line-strong); color: var(--text); }
 .lb-rows.series-lb li.lb-out .series-lb-row { color: var(--text-2); }
+/* the series' board: "Gesamt" and each round as tabs; the guests in their round's board, a line to it under the total
+   (Sascha 17.11.2026, Mockup B) */
+.series-tabs { margin: 2px 0 4px; }
+.series-lb-head.series-lb-round, .series-lb-row.series-lb-round { grid-template-columns: 30px minmax(0, 1fr) 52px 48px; }
+.series-lb-row.series-lb-round .lb-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.series-lb-row .lb-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.series-lb-row .lb-guest { flex: none; font-size: 12px; font-weight: 600; background: none; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--text-2); }
+
 .series-player-sheet { display: flex; flex-direction: column; gap: 12px; }
 .series-player-sheet .sc-block, .series-player-sheet table { max-width: 100%; }
 .series-player-facts { display: flex; gap: 22px; }
@@ -2899,8 +2922,6 @@ section.pool-settle .pool-pays-block > .pool-pays, section.pool-settle .pool-pay
 .shot-aim-box .chip { white-space: nowrap; flex: none; }
 /* the side bets under "Wetten" (16.11.2026) */
 .side-bets { display: flex; flex-direction: column; gap: 8px; }
-.side-bets-total { display: flex; flex-direction: column; gap: 4px; }
-.side-bets-people { display: flex; flex-wrap: wrap; gap: 4px 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .side-bet-amount { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .side-bet-table .num { text-align: right; white-space: nowrap; }
 .side-bet-day { overflow-x: auto; }

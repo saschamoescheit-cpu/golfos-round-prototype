@@ -26,7 +26,7 @@ import { watchServer } from './lib/serverstate';
 import { guardStorage } from './lib/storageguard';
 import { cancelBigStore, openBigStore } from './lib/bigstore';
 import { startErrorLog } from './lib/errorlog';
-import { watchForUpdates } from './lib/appupdate';
+import { registerWorker, watchForUpdates } from './lib/appupdate';
 import { installNativeShims } from './lib/native';
 import { liveCodeOf } from './lib/live';
 import { loadLang } from './lib/i18n';
@@ -38,6 +38,7 @@ installNativeShims(); // the iOS app: its share sheet for sharing and downloads 
 installSwipeBack(); // back by a swipe from the left edge (Sascha 10.11.2026)
 guardStorage(); // storage full: course map copies make room, nothing the player entered is lost silently
 startErrorLog(); // app errors reported by themselves – from the live app only (final list, 22.10.2026)
+registerWorker(); // the service worker – a failed load is tried again (19.11.2026)
 watchForUpdates(); // a new version also reaches the home-screen app that is never closed (24.10.2026)
 // a part of the app from before the last deploy could not be loaded: once onto the new version (19.10.2026)
 window.addEventListener('vite:preloadError', (e) => {

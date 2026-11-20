@@ -1,0 +1,11 @@
+{
+ "{0} pts": "{0} pts",
+ "Final standing · you played as a guest ({0})": "Classificação final · jogaste como convidado ({0})",
+ "Final standing: {0}. of {1} · {2}": "Classificação final: {0}.º de {1} · {2}",
+ "{0} is finished": "{0} terminou",
+ "When is a series finished – and how is its final standing worked out?": "Quando termina uma série de torneios – e como é calculada a classificação final?",
+ "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list the mark of the tile \"played\", and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "Assim que cada volta estiver jogada: cada cartão até ao último buraco. Um jogador sem um único resultado numa volta cujos flights terminaram todos não a jogou – não mantém a série aberta; resultados introduzidos depois voltam a contar. Então a série mostra «Classificação final», a lista o símbolo do quadro «jogado», e cada um que jogou recebe «… terminou» com o seu lugar na caixa de entrada; os prémios da série são liquidados. A classificação total: primeiro quem jogou todas as voltas, pela soma – depois quem jogou menos voltas («em 4 voltas»), depois No Return.",
+ "planned": "planeado",
+ "cards missing": "faltam cartões",
+ "Final standing · all rounds": "Classificação final · todas as voltas"
+}

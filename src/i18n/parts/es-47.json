@@ -1,0 +1,15 @@
+{
+ "Settled": "Liquidado",
+ "Finished – payments open": "Terminado – pagos pendientes",
+ "every payment confirmed": "todos los pagos confirmados",
+ "every bet decided": "todas las apuestas decididas",
+ "1 payment open": "1 pago pendiente",
+ "{0} payments open": "{0} pagos pendientes",
+ "1 to confirm": "1 por confirmar",
+ "{0} to confirm": "{0} por confirmar",
+ "your result": "tu resultado",
+ "bets decided": "apuestas decididas",
+ "See the settlement": "Ver la liquidación",
+ "Pool closed": "Cierre",
+ "Final standing": "Clasificación final"
+}

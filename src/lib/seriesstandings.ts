@@ -1,4 +1,4 @@
-import { eventStandings, type RoundEvent } from './sharedround';
+import { eventStandings, liveFlights, type RoundEvent } from './sharedround';
 
 /** The total of a series (Sascha 01.11.2026: "the sum of all rounds"): each player's results of the rounds played added
  *  up – to par, or Stableford points – with the rounds counted. Players are the same by name. */
@@ -44,17 +44,22 @@ export function seriesStandings(evs: RoundEvent[], o: { gross?: boolean; /** all
       by.set(key, x);
     }
   });
-  // one with a "No Return" after those who played every round (on fewer rounds his total is not comparable)
-  const same = (a: { sum: number; noReturn: boolean }, b: { sum: number; noReturn: boolean }) => a.sum === b.sum && a.noReturn === b.noReturn;
+  // who played every round so far first, by the sum – then those on fewer rounds, by the sum – then a "No Return" (Sascha
+  // 18.11.2026, the series' end: "Alle Runden zuerst" – Moritz +30 on 4 rounds stood before Sascha +39 on 8; on fewer
+  // rounds a total is not comparable)
+  const held = evs.filter((ev) => eventStandings(ev).rows.some((r) => r.thru > 0)).length;
+  const group = (x: { rounds: number; noReturn: boolean }) => (x.noReturn ? 2 : x.rounds < held ? 1 : 0);
+  const same = (a: { sum: number; rounds: number; noReturn: boolean }, b: { sum: number; rounds: number; noReturn: boolean }) => a.sum === b.sum && group(a) === group(b);
   // a guest below them all, without a place (Sascha 16.11.2026: "Nur Tageswertung")
   const all = [...by.values()].map((x) => ({ ...x, guest: guests.has(x.name.trim().toLowerCase()) }));
-  const order = (a: { sum: number; noReturn: boolean }, b: { sum: number; noReturn: boolean }) => Number(a.noReturn) - Number(b.noReturn) || (hb ? b.sum - a.sum : a.sum - b.sum);
+  const order = (a: { sum: number; rounds: number; noReturn: boolean }, b: { sum: number; rounds: number; noReturn: boolean }) => group(a) - group(b) || (hb ? b.sum - a.sum : a.sum - b.sum);
   const ranked = all.filter((x) => !x.guest).sort(order);
   const rows = [
     ...ranked.map((x) => ({ ...x, pos: `${ranked.filter((y) => same(x, y)).length > 1 ? 'T' : ''}${ranked.findIndex((y) => same(x, y)) + 1}` })),
     ...all.filter((x) => x.guest).sort(order).map((x) => ({ ...x, pos: '–' })),
   ];
-  return { higherBetter: hb, anyNoReturn: rows.some((x) => x.noReturn), anyGuest: rows.some((x) => x.guest), rows };
+  // "auf N Runden" under the names once anyone stands on fewer rounds – a No Return, or rounds missed (18.11.2026)
+  return { higherBetter: hb, anyNoReturn: rows.some((x) => x.noReturn || (!x.guest && x.rounds < held)), anyGuest: rows.some((x) => x.guest), rows };
 }
 
 /** Guests of a series (Sascha 16.11.2026, Orlando: "Thomas und Daniel spielen morgen und übermorgen Legends mit" – "Nur
@@ -73,3 +78,17 @@ export function seriesGuests(evs: (RoundEvent | null | undefined)[]): Set<string
   for (const [n, c] of count) if (c * 2 < rounds.length) out.add(n);
   return out;
 }
+
+/** A round played out (Sascha 17.11.2026: "Nach heute ist die offizielle Turnierserie beendet. Es gab aber keine Meldung
+ *  in der Inbox"): everyone through the last hole – a player without a single score once every flight is in counts as
+ *  not played ("zählt nicht für ihn": Moritz on the Oaks 12.11., his card empty, held the series open). A score
+ *  entered afterwards counts again. */
+export function roundOver(ev: RoundEvent): boolean {
+  const rows = eventStandings(ev, { gross: true }).rows;
+  if (!rows.length) return false;
+  const flights = liveFlights(ev);
+  const allIn = flights.length > 0 && flights.every((f) => !!f.finishedAt);
+  return rows.some((r) => r.thru > 0) && rows.every((r) => r.finished || (allIn && !r.thru));
+}
+/** A series (or a tournament over several rounds) over: every round of it there and played out. */
+export const seriesOver = (evs: (RoundEvent | null | undefined)[]): boolean => evs.length > 0 && evs.every((e) => !!e && roundOver(e));

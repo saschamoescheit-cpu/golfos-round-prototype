@@ -1,12 +1,13 @@
 import type { Round } from '../types';
 import { loadRounds, newId } from './storage';
-import { cachedEvent, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, type Cell, type RoundEvent } from './sharedround';
+import { cachedEvent, eventStandings, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, type Cell, type RoundEvent } from './sharedround';
 import { loadTours } from './tourstore';
+import { roundOver } from './seriesstandings';
 import { newCode } from './sharedgame';
 import { tr } from './i18n';
 import { loadProfile } from './profile';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, isGuest, skipped, decidedOf, balances, owings, settleDebts, withDuels, cardsFor, dayOf, fromCards, inPool, mergeCards, mergeKept, openPoolTransfers, netTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
@@ -230,11 +231,76 @@ export async function syncPools(): Promise<boolean> {
       changed = true;
     }
     if (changed) savePools(list);
+    // a pool played out with every card signed: closed by the host's phone, then settled (Sascha 18.11.2026)
+    void closeReadyPools(list).catch(() => []);
     tellSettlements(list);
     return true;
   } catch {
     return false;
   }
+}
+
+/** How a pool ends (Sascha 18.11.2026: "Damit einhergehend sind auch die Wetten aus dem Wettpool USA beendet. Demzufolge
+ *  sollte auch dieser Wettpool geschlossen werden und die finale Abrechnung erfolgen" – "Erst alle Karten signiert"):
+ *  its last day gone – or that day its last tournament's and every tournament in its days played out (a pool running on
+ *  after its series stays open, only the series ends) – then every card of its players in them signed by
+ *  player and marker, or entered by the host; a card left empty (not played) holds nothing. 'cards': waiting for the
+ *  signatures; 'ready': to be closed (by the host's phone) and settled. A pool without tournaments ends by its day. */
+export interface PoolEnd {
+  phase: 'running' | 'cards' | 'ready' | 'finished';
+  /** the cards still to sign: whose, which day, this phone's player's */
+  open: { name: string; day: string; mine: boolean }[];
+  /** the tournaments in its days */
+  tours: number;
+}
+export function poolEnd(e: PoolEntry, today: string): PoolEnd {
+  const p = e.pool;
+  if (p.finishedAt) return { phase: 'finished', open: [], tours: 0 };
+  const tours = loadTours().filter((t) => !t.ev.deletedAt && t.ev.date >= p.from && t.ev.date <= p.to && !skipped(p.skip, { day: t.ev.date, course: t.ev.course.name }));
+  const dayGone = p.to < today;
+  if (!tours.length) return { phase: dayGone ? 'ready' : 'running', open: [], tours: 0 };
+  const evs = tours.map((t) => ({ t, ev: cachedEvent(t.code) }));
+  const played = evs.every(({ t, ev }) => t.ev.date <= today && !!ev && roundOver(ev));
+  // before its last day only when that day is its last tournament's (Sascha 18.11.2026: "Sollte unser Pool bspw bis
+  // 01.12. laufen und die aktuelle Serie heute enden, dann bleibt der Pool offen und es schließt nur die Serie")
+  const lastTour = tours.reduce((m, t) => (t.ev.date > m ? t.ev.date : m), '');
+  if (!dayGone && !(played && p.to <= lastTour)) return { phase: 'running', open: [], tours: tours.length };
+  const open: PoolEnd['open'] = [];
+  // only the days the pool counts – a bet with a figure that day, or a 5+5+10 (Celebration 07.11. counted for no bet:
+  // its cards are no matter for the settlement)
+  const counts = (day: string) => Object.values(p.progress ?? {}).some((x) => x?.perRound?.some((r) => r.day === day && r.value != null) || x?.duels?.some((d) => d.day === day));
+  for (const { t, ev } of evs) {
+    if (!ev || !counts(t.ev.date)) continue;
+    const rows = new Map(eventStandings(ev, { gross: true }).rows.map((r) => [r.key, r]));
+    for (const pp of p.players) {
+      const at = flightPlayerOf(ev, pp);
+      const f = at ? ev.flights[at.flight] : undefined;
+      if (!at || !f || !rows.get(`${at.flight}/${at.player}`)?.thru) continue;
+      if (f.entered?.[at.player] || (markerOf(f, at.player) && isSigned(f, at.player))) continue;
+      open.push({ name: pp.name, day: t.ev.date, mine: pp.id === e.me });
+    }
+  }
+  return { phase: open.length ? 'cards' : 'ready', open, tours: tours.length };
+}
+
+const closing = new Set<string>();
+/** The host's phone closes a pool whose tournaments are played out and every card signed (poolEnd 'ready'): finished
+ *  for everyone, the final settlement follows (tellSettlements, the inbox). A pool without tournaments ends by its day,
+ *  as before. */
+export async function closeReadyPools(list: PoolEntry[], today = dayOf(new Date())): Promise<string[]> {
+  const done: string[] = [];
+  for (const e of list) {
+    if (!isHost(e) || e.pool.deletedAt || e.pool.finishedAt || closing.has(e.code)) continue;
+    const end = poolEnd(e, today);
+    if (end.phase !== 'ready' || !end.tours) continue;
+    closing.add(e.code);
+    try {
+      if (await changePool(e.code, (p) => (p.finishedAt ? null : { ...p, finishedAt: new Date().toISOString() }))) done.push(e.code);
+    } finally {
+      closing.delete(e.code);
+    }
+  }
+  return done;
 }
 
 const SETTLE_TOLD = 'golfos.settlepush.v1';
@@ -252,10 +318,13 @@ export function tellSettlements(list: PoolEntry[], now = Date.now()): string[] {
   const sent: string[] = [];
   for (const e of list) {
     if (!e.me || e.pool.deletedAt || isLive(e, today)) continue;
+    // its last day gone, cards still to sign: no settlement yet – it comes once they are (Sascha 18.11.2026)
+    if (!e.pool.finishedAt && poolEnd(e, today).phase === 'cards') continue;
     const end = e.pool.finishedAt ? Date.parse(e.pool.finishedAt) : Date.parse(`${e.pool.to}T23:59:59`);
     if (!(now - end < 10 * 864e5) || now - (told[e.code] ?? 0) < 6 * 3600e3) continue;
     const jp = withDuels(e.pool); // the 5+5+10s from the cards, as the pool shows them
-    pushSettle(e.code, openPoolTransfers(jp, balances(jp, today, true), settleDebts(jp, owings(jp, today, true))), prizeSym(prizeOf(jp)));
+    // set off between each two – the push says the result, not each way (Sascha 19.11.2026)
+    pushSettle(e.code, netTransfers(openPoolTransfers(jp, balances(jp, today, true), settleDebts(jp, owings(jp, today, true)))), prizeSym(prizeOf(jp)));
     told[e.code] = now;
     sent.push(e.code);
   }
@@ -348,7 +417,9 @@ export async function joinPool(code: string, who: { id: string } | { name: strin
   const joined = { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) };
   const pool = await changePool(code, (p) => {
     const there = p.players.find((x) => x.id === id);
-    const players: PoolPlayer[] = there ? p.players.map((x) => (x.id === id ? { ...x, joined } : x)) : [...p.players, { id, name: 'name' in who ? who.name.trim() : '?', joined }];
+    // a guest of the pool (in it for a 5+5+10 only) stays one when his phone joins (Sascha 17.11.2026: Daniel)
+    const guest = !!there && isGuest(p, id);
+    const players: PoolPlayer[] = there ? p.players.map((x) => (x.id === id ? { ...x, joined, ...(guest ? { guest: true } : {}) } : x)) : [...p.players, { id, name: 'name' in who ? who.name.trim() : '?', joined }];
     return { ...p, players };
   });
   if (!pool) return null;
@@ -651,7 +722,8 @@ export async function challengeDuels(
       };
       if (p.wagers.some((y) => sameDuel(y, w)) || fresh.some((y) => sameDuel(y, w))) continue;
       if (got.added) {
-        players = [...players, opp];
+        // brought in by this 5+5+10: a guest of the pool – never pays its bets (Sascha 17.11.2026)
+        players = [...players, { ...opp, guest: true }];
         if (opp.invited) invite.push({ uid: opp.invited.uid, name: opp.name });
       }
       fresh.push(w);

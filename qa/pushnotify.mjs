@@ -124,6 +124,9 @@ const openProfile = async (p) => {
   ok((await card.locator('.drawer-switch').count()) === 0 && /Aus/.test(await on.innerText()), 'in the design of the app: a row with An/Aus, no slider');
   await flip(on);
   await p.waitForTimeout(1500);
+  // under the gate's load the subscription comes later than 1.5 s (gate 19.11.2026, twice) – wait for it, at most 15 s
+  for (let i = 0; i < 27 && !calls.some((c) => c.action === 'subscribe'); i++) await p.waitForTimeout(500);
+  await p.waitForTimeout(300);
   const sub = calls.find((c) => c.action === 'subscribe');
   ok(calls.some((c) => c.action === 'key'), 'the key fetched from the function');
   ok(Number(await p.evaluate(() => localStorage.getItem('qa.keylength'))) === 65, 'subscribed with the function\'s key (65 bytes)');

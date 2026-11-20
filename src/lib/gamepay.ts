@@ -25,10 +25,11 @@ export function mergePayments(a: GamePayment[] | undefined, b: GamePayment[] | u
   return [...out.values()].map((p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) as GamePayment);
 }
 
-/** One thing between this account and another player: a game or a pool – what it came to, and what is still open. */
+/** One thing between this account and another player: a game, a pool, or a tournament series' settlement (prizes and
+ *  entry fees, Sascha 18.11.2026) – what it came to, and what is still open. */
 export interface Item {
-  kind: 'game' | 'pool';
-  /** the game's id or the pool's code */
+  kind: 'game' | 'pool' | 'series';
+  /** the game's id, the pool's code or the series' code (a series: me and him are the players' names) */
   ref: string;
   /** "Skins · Hetzenhof", the pool's name */
   title: string;
@@ -133,7 +134,28 @@ export function gameTransfers(g: Game, m: Record<string, number> | undefined): {
   return losers.flatMap((l) => to.map((o) => ({ from: l.id, to: o.id, amount: 1 })));
 }
 
-export function people(games: Game[], pools: { code: string; me: string; pool: WagerPool }[], today: string): Person[] {
+/** A tournament series over, its one settlement (prizes and entry fees) as this phone's player is in it – Bilanz
+ *  (Sascha 18.11.2026): the transfers between the players by name, the host's marks ("paid" by the transfer's key) and
+ *  the payments made in Bilanz. */
+export interface SeriesSettle {
+  code: string;
+  title: string;
+  /** its last day */
+  day: string;
+  sym: string;
+  prize: Prize;
+  /** this phone's player's name in it */
+  me: string;
+  transfers: { key: string; from: string; to: string; amount: number }[];
+  paid?: Record<string, string>;
+  payments?: GamePayment[];
+  /** for its card: this player's place in the final standing, of how many, its first day */
+  place?: string;
+  of?: number;
+  first?: string;
+}
+
+export function people(games: Game[], pools: { code: string; me: string; pool: WagerPool }[], today: string, series: SeriesSettle[] = []): Person[] {
   const map = new Map<string, Person>();
   const person = (name: string) => {
     const k = keyOf(name);
@@ -194,6 +216,30 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
       person(o.name).items.push({ kind: 'pool', ref: e.code, title: pool.name, day: pool.from, sym: prizeSym(prize), prize, amount, open: left, pending, me: e.me, him: o.id, payments: pays, ...(fits && lines.length ? { lines } : {}) });
     }
   }
+  // a series' settlement (18.11.2026): what goes between me and each one – a mark of the host's ("bezahlt" on the
+  // tournament's page) counts as paid and received; payments made here count once the receiver confirmed them
+  for (const s of series) {
+    const mine = keyOf(s.me);
+    const others = new Map<string, { name: string; amount: number; marked: number }>();
+    for (const t of s.transfers) {
+      const toMe = keyOf(t.to) === mine;
+      if (!toMe && keyOf(t.from) !== mine) continue;
+      const him = toMe ? t.from : t.to;
+      const x = others.get(keyOf(him)) ?? { name: him, amount: 0, marked: 0 };
+      x.amount += toMe ? t.amount : -t.amount;
+      if (s.paid?.[t.key]) x.marked += toMe ? t.amount : -t.amount;
+      others.set(keyOf(him), x);
+    }
+    for (const [hk, o] of others) {
+      const pays = livePayments(s.payments).filter((x) => (keyOf(x.from) === mine && keyOf(x.to) === hk) || (keyOf(x.from) === hk && keyOf(x.to) === mine));
+      const amount = round2(o.amount);
+      const open = round2(amount - o.marked - pays.reduce((n, x) => n + (keyOf(x.from) === hk ? x.amount : -x.amount), 0));
+      const pending = round2(pays.filter((x) => !x.receivedAt).reduce((n, x) => n + (keyOf(x.from) === hk ? x.amount : -x.amount), 0));
+      if (Math.abs(amount) < 0.005 && !pays.length) continue;
+      const line: WhyLine = { day: s.day, course: s.title, text: tr('Prizes and entry fees', 'Preise und Startgelder'), amount };
+      person(o.name).items.push({ kind: 'series', ref: s.code, title: s.title, day: s.day, sym: s.sym, prize: s.prize, amount, open, pending, me: s.me, him: o.name, payments: pays, lines: [line] });
+    }
+  }
   return [...map.values()].filter((p) => p.games || p.items.length).sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
 }
 
@@ -204,10 +250,24 @@ export function sums(items: Item[], pick: (i: Item) => number): Record<string, n
   return Object.fromEntries(Object.entries(out).filter(([, v]) => Math.abs(v) > 0.004));
 }
 
+/** The pools, games and series all paid and confirmed (Sascha 18.11.2026: "Wenn alle Beträge eines Wettpools erhalten sind,
+ *  dann kann gegen deine Mitspieler und offene Beträge hier verschwinden"): every amount of it with every player, nothing
+ *  open, nothing waiting for a confirmation – "kind:ref". */
+export function settledRefs(ps: Person[]): Set<string> {
+  const all = new Map<string, boolean>();
+  for (const p of ps)
+    for (const i of p.items) {
+      const k = `${i.kind}:${i.ref}`;
+      const clear = Math.abs(i.open) < 0.005 && Math.abs(i.pending) < 0.005;
+      all.set(k, (all.get(k) ?? true) && clear);
+    }
+  return new Set([...all.entries()].filter(([, clear]) => clear).map(([k]) => k));
+}
+
 /** Paid but not confirmed by the receiver yet – the line "Cedric bestätigt noch". */
 export const waiting = (i: Item): GamePayment[] => i.payments.filter((p) => !p.receivedAt && !p.undoneAt);
 
 /** The words of an item's date: "03.11." */
 export const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 
-export const noteOf = (i: Item): string => (i.kind === 'pool' ? tr('bets', 'Wetten') : tr('game', 'Spiel'));
+export const noteOf = (i: Item): string => (i.kind === 'pool' ? tr('bets', 'Wetten') : i.kind === 'series' ? tr('series', 'Serie') : tr('game', 'Spiel'));

@@ -105,3 +105,20 @@ describe('riding a cart: the phone stands where the cart parks', () => {
     expect(Math.round(distanceM(cartSpot(off(60), line), off(60)))).toBe(20);
   });
 });
+
+// Sascha 18.11.2026: "Bei Schlag sollten wir nach dem Chip noch Lob einfügen"
+describe('the lob', () => {
+  it('a choice of its own, right after the chip', async () => {
+    const { KINDS } = await import('./shots');
+    expect(KINDS.map((k) => k.value)).toEqual(['full', 'punch', 'pitch', 'chip', 'lob', 'bunker']);
+    expect(KINDS.find((k) => k.value === 'lob')?.label).toBe('Lob');
+  });
+  it('never suggested by itself – learned from his own checked lobs, with the wedge he took', () => {
+    expect(suggestKind('rough', 15)).toBe('chip');
+    const lobs: LearnedShot[] = Array.from({ length: 5 }, (_, k) => ({ toPin: 12 + k, lie: 'rough' as const, kind: 'lob' as const, club: 'LW' as const }));
+    expect(learnedKind(lobs, 'rough', 14)).toBe('lob');
+    expect(learnedClub(lobs, 'lob', 14)).toBe('LW');
+    useLearned(lobs);
+    expect(suggestKind('rough', 14)).toBe('lob');
+  });
+});

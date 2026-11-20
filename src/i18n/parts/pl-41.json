@@ -1,0 +1,6 @@
+{
+ "Add them in those rounds only: open the round in the series, \"Change the tournament\", \"Add player\". In each of their rounds they count in full – leaderboard and day prizes. Whoever is in fewer than half of the rounds is a guest: not in the total, without the series' prizes and its entry fee. In the tab of his round (e.g. R7) he is ranked with \"Guest\".": "Dodaj go tylko w tych rundach: otwórz rundę w serii, „Zmień turniej”, „Dodaj gracza”. W każdej swojej rundzie liczy się w pełni – tabela wyników i nagrody dnia. Kto gra w mniej niż połowie rund, jest gościem: nie ma go w stanie łącznym, bez nagród serii i jej wpisowego. Na karcie jego rundy (np. R7) stoi z miejscem i oznaczeniem „Gość”.",
+ "1 guest in R{0}: {1}": "1 gość w R{0}: {1}",
+ "{0} guests in R{1}: {2}": "Goście w R{1} ({0}): {2}",
+ "{0} – round {1}: {2}, his scorecard": "{0} – runda {1}: {2}, jego karta wyników"
+}

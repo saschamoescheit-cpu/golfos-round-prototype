@@ -5,18 +5,19 @@ import { canLink, pendingAsk } from '../lib/friendlinks';
 import { amHost, cachedEvent, confirmReopen, eventOwner, liveFlights, reopenAsked, roundInvites, type RoundInvite } from '../lib/sharedround';
 import { tourPrizeResult } from './TourPrizeBoard';
 import { seriesPrizeResult, settledInSeries } from './SeriesPrizeBoard';
+import { seriesOver, seriesStandings } from '../lib/seriesstandings';
 import { keyName, wonBy } from '../lib/tourprizes';
 import { prizeAmount } from '../lib/prize';
 import { answerJoins, dismissInbox, inboxDismissed, inboxInvites, inboxJoins, inboxRead, joinedCodes, markInboxRead, setInboxInvites } from '../lib/inboxstore';
 import { SwipeRow } from './SwipeRow';
-import { isTourHost, loadSeries, loadTours } from '../lib/tourstore';
+import { changeSeriesPayments, isTourHost, loadSeries, loadTours } from '../lib/tourstore';
 import { loadRounds } from '../lib/storage';
 import type { SharedCell } from '../types';
 import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { gamePrize, meIn } from '../lib/gamepay';
-import { changePool, loadPools, openChallenges } from '../lib/wagerstore';
-import { wagerLabel } from '../lib/wagers';
+import { changePool, loadPools, openChallenges, poolEnd } from '../lib/wagerstore';
+import { balances, dayOf, openPoolTransfers, netTransfers, owings, settleDebts, wagerLabel, withDuels } from '../lib/wagers';
 import { money } from '../lib/gameforms';
 import { prizeOf, prizeSym } from '../lib/prize';
 import { goPool, goRound, goTour } from '../lib/nav';
@@ -40,6 +41,8 @@ interface InboxItem {
   decline?: { label: string; aria?: string; run: () => Promise<boolean> };
   /** asked of you by someone – else something to do (Sascha 13.11.2026: "in zwei Gruppen für die Übersichtlichkeit") */
   ask?: boolean;
+  /** only to know – nothing to do (Sascha 18.11.2026: "… ist beendet" under "Zu erledigen": "was soll ich da erledigen?") */
+  info?: boolean;
   /** swiped away: what it does instead of hiding the row (a request to join: declined) */
   remove?: () => Promise<boolean>;
 }
@@ -154,6 +157,36 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       ask: true,
     });
   }
+  // a pool played out (Sascha 18.11.2026: "Auch hierzu sollte es eine Meldung in der Inbox geben"): waiting for the cards'
+  // signatures – then closed and settled, the final settlement for everyone in it
+  const today = dayOf(new Date());
+  for (const e of pools) {
+    const end = poolEnd(e, today);
+    if (end.phase === 'cards') {
+      const n = end.open.length;
+      const mine = end.open.filter((x) => x.mine).length;
+      out.push({
+        key: `poolcards:${e.code}:${n}`,
+        title: tr(`${e.pool.name} is waiting for signatures`, `${e.pool.name} wartet auf Unterschriften`),
+        line: mine ? tr(`${n} cards to sign · ${mine} of them yours`, `${n} Karten offen · ${mine} davon deine`) : tr(`${n} cards to sign – then the settlement`, `${n} Karten offen – dann die Abrechnung`),
+        go: () => goPool(e.code),
+      });
+    }
+    const fin = e.pool.finishedAt;
+    if (fin && Date.now() - Date.parse(fin) < 14 * 864e5) {
+      const jp = withDuels(e.pool);
+      const bal = balances(jp, today, true);
+      // set off between each two, as the push (Sascha 19.11.2026: "direkt das verrechnete Ergebnis")
+      const ts = netTransfers(openPoolTransfers(jp, bal, settleDebts(jp, owings(jp, today, true))));
+      const sym = prizeSym(prizeOf(e.pool));
+      const mine = bal[e.me!] ?? 0;
+      const pay = ts.filter((t) => t.from === e.me).reduce((s, t) => s + t.amount, 0);
+      const get = ts.filter((t) => t.to === e.me).reduce((s, t) => s + t.amount, 0);
+      const total = mine > 0.004 ? `+${money(mine, sym)}` : mine < -0.004 ? `−${money(-mine, sym)}` : money(0, sym);
+      const still = pay > 0.004 ? tr(`you still pay ${money(pay, sym)}`, `du zahlst noch ${money(pay, sym)}`) : get > 0.004 ? tr(`${money(get, sym)} still to come`, `${money(get, sym)} kommen noch`) : tr('all paid', 'alles bezahlt');
+      out.push({ key: `poolsettled:${e.code}`, title: tr(`${e.pool.name} is settled`, `${e.pool.name} ist abgerechnet`), line: tr(`Final: ${total} · ${still}`, `Endabrechnung: ${total} · ${still}`), go: () => goPool(e.code), info: pay <= 0.004 });
+    }
+  }
   // a payment to you marked paid – its receipt confirmed right here (Inbox-Mockups: "Zahlung bestätigen")
   for (const e of pools)
     for (const pm of e.pool.payments ?? []) {
@@ -227,7 +260,7 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
     const w = wonBy(res.awards).get(keyName(mine));
     if (w && w.amount > 0) {
       const labels = res.awards.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
-      out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), ask: true });
+      out.push({ key: `prizewon:${t.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${t.ev.name} · ${labels.join(', ')}`, go: () => goTour(t.code), info: true });
     }
     for (const x of inSeries ? [] : res.settle.transfers) {
       if (keyName(x.from) !== keyName(mine) || res.tp.paid?.[x.key]) continue;
@@ -254,20 +287,45 @@ function localItems(markReceived: (code: string, id: string) => Promise<boolean>
       const live = cachedEvent(r.code);
       return live ? { ...live, prizes: tours.find((x) => x.code === r.code)?.ev.prizes } : null;
     });
-    const res = seriesPrizeResult(sr.series, evs);
-    if (!res.any || !res.done || !res.ref) continue;
     const codes = new Set(sr.series.rounds.map((r) => r.code));
     const mine = loadRounds().find((r) => !!r.shared && codes.has(r.shared.code))?.players.find((p) => p.isMe)?.name;
+    // the series is over – its final standing for everyone who played in it (Sascha 17.11.2026: "Nach heute ist die
+    // offizielle Turnierserie beendet. Es gab aber keine Meldung in der Inbox"); swiped away, it stays away
+    if (mine && seriesOver(evs)) {
+      const st = seriesStandings(evs.filter((e): e is NonNullable<typeof e> => !!e), { field: evs });
+      const me = st.rows.find((r) => keyName(r.name) === keyName(mine));
+      const ranked = st.rows.filter((r) => !r.guest).length;
+      const sum = me ? (st.higherBetter ? tr(`${me.sum} pts`, `${me.sum} P.`) : me.sum === 0 ? 'Par' : me.sum > 0 ? `+${me.sum}` : `−${-me.sum}`) : '';
+      const line = !me ? sr.series.name : me.guest ? tr(`Final standing · you played as a guest (${sum})`, `Endstand · du warst Gast (${sum})`) : tr(`Final standing: ${me.pos.replace(/^T/, '')}. of ${ranked} · ${sum}`, `Endstand: Platz ${me.pos.replace(/^T/, '')} von ${ranked} · ${sum}`);
+      out.push({ key: `seriesend:${sr.code}`, title: tr(`${sr.series.name} is finished`, `${sr.series.name} ist beendet`), line, go: () => goTour(sr.code), info: true });
+    }
+    const res = seriesPrizeResult(sr.series, evs);
+    if (!res.any || !res.done || !res.ref) continue;
     if (!mine) continue;
     const amt = (v: number) => prizeAmount(v, res.ref!);
     const w = wonBy(res.own).get(keyName(mine));
     if (w && w.amount > 0) {
       const labels = res.own.filter((a) => a.winners.some((x) => keyName(x.name) === keyName(mine))).map((a) => a.label);
-      out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), ask: true });
+      out.push({ key: `serieswon:${sr.code}:${w.amount}`, title: tr(`You won ${amt(w.amount)}`, `Du hast ${amt(w.amount)} gewonnen`), line: `${sr.series.name} · ${labels.join(', ')}`, go: () => goTour(sr.code), info: true });
     }
+    const live = (sr.series.payments ?? []).filter((x) => !x.undoneAt);
     for (const x of res.transfers) {
       if (keyName(x.from) !== keyName(mine) || sr.series.paid?.[x.key]) continue;
+      // paid in Bilanz already (18.11.2026): no reminder – the receiver confirms
+      const paidHere = live.filter((p) => keyName(p.from) === keyName(mine) && keyName(p.to) === keyName(x.to)).reduce((n, p) => n + p.amount, 0);
+      if (paidHere >= x.amount - 0.004) continue;
       out.push({ key: `seriespay:${sr.code}:${x.key}:${x.amount}`, title: tr(`Pay ${amt(x.amount)} to ${x.to}`, `${amt(x.amount)} an ${x.to} zahlen`), line: tr(`${sr.series.name} · prizes and entry fees`, `${sr.series.name} · Preise und Startgelder`), go: () => goTour(sr.code) });
+    }
+    // a payment of the series' settlement to me marked paid in Bilanz – its receipt confirmed right here (as a pool's)
+    for (const pm of live) {
+      if (pm.receivedAt || keyName(pm.to) !== keyName(mine)) continue;
+      const sum = amt(pm.amount);
+      out.push({
+        key: `seriesreceipt:${sr.code}:${pm.id}`,
+        title: tr(`${pm.from} marked ${sum} paid`, `${pm.from} hat ${sum} als bezahlt markiert`),
+        line: tr(`${sr.series.name} · confirm the receipt`, `${sr.series.name} · Erhalt bestätigen`),
+        action: { label: tr('Received', 'Erhalten'), aria: tr(`Received ${sum} from ${pm.from}`, `${sum} von ${pm.from} erhalten`), run: () => changeSeriesPayments(sr.code, (ps) => ps.map((y) => (y.id === pm.id ? { ...y, receivedAt: new Date().toISOString() } : y))) },
+      });
     }
   }
   const sign = roundsToSign(loadRounds());
@@ -320,11 +378,14 @@ export function NotifyBell() {
     const t = window.setInterval(redraw, 30000);
     window.addEventListener('golfos:pools-changed', redraw);
     window.addEventListener('golfos:friend-ask', redraw);
+    // a series' rounds fetched (refreshSeriesEnds): "… ist beendet" at once (17.11.2026)
+    window.addEventListener('golfos:tours-changed', redraw);
     return () => {
       gone = true;
       window.clearInterval(t);
       window.removeEventListener('golfos:pools-changed', redraw);
       window.removeEventListener('golfos:friend-ask', redraw);
+      window.removeEventListener('golfos:tours-changed', redraw);
     };
   }, []);
   useEffect(() => {
@@ -438,7 +499,9 @@ export function NotifyBell() {
               {items.length ? (
                 [
                   { name: tr('Asked of you', 'Anfragen an dich'), list: items.filter((x) => x.ask) },
-                  { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask) },
+                  { name: tr('To do', 'Zu erledigen'), list: items.filter((x) => !x.ask && !x.info) },
+                  // what is only to know – a series over, a pool settled, a prize won (18.11.2026)
+                  { name: tr('For your information', 'Zur Info'), list: items.filter((x) => !x.ask && x.info) },
                 ]
                   .filter((g) => g.list.length)
                   .map((g) => (
@@ -462,7 +525,7 @@ export function NotifyBell() {
                         {it.decline && (
                           <button
                             type="button"
-                            className="btn-secondary bell-act"
+                            className="chip row-act quiet bell-act"
                             aria-label={it.decline.aria}
                             disabled={busy === it.key}
                             onClick={async () => {
@@ -477,7 +540,7 @@ export function NotifyBell() {
                         )}
                         <button
                           type="button"
-                          className="btn-primary bell-act"
+                          className="chip row-act bell-act"
                           aria-label={it.action.aria}
                           disabled={busy === it.key}
                           onClick={async () => {

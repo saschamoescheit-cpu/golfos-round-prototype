@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { balances, dayPlayers, roundLedger, roundPayers, type Wager, type WagerPool } from './wagers';
+import { balances, betOthers, dayPlayers, isGuest, owings, roundLedger, roundPayers, type Wager, type WagerPool } from './wagers';
 
 // Sascha 14.11.2026: "Bei den Wetten ist es so, dass es sich immer nur auf die Spieler der Runde erstreckt. Wenn also
 // Cedric, Sascha und Erik nur spielen, dann müssen Moritz und Chris auch nichts zahlen, sollte jemand Wetten auf dieser
@@ -47,5 +47,66 @@ describe('a bet made in a round: only the players of that round pay', () => {
   it('against one opponent who did not play that day: nothing', () => {
     const w = bet('wo', 'sascha', { payout: 'opponent', opponent: 'chris' });
     expect(roundPayers({ ...pool, wagers: [...pool.wagers, w] }, w, '2026-11-15')).toEqual([]);
+  });
+});
+
+// Sascha 17.11.2026: "Daniel nimmt aber ja gar nicht am Wettpool teil. Die USA Wetten laufen nur zwischen Chris, Erik,
+// Moritz, Cedric und Sascha. Daniel und Thomas haben nur die letzten beiden Tage als Gast mitgespielt – müssen bei
+// erfüllten Wetten nicht bezahlen." Daniel came into the pool by a 5+5+10 against Erik (16.11., Legends) – the Bilanz
+// asked 20 $ of him for Sascha's "Grüns 11".
+describe("a guest of the pool – in it only for a 5+5+10 – never pays the pool's bets", () => {
+  const duel: Wager = { id: 'd', player: 'daniel', opponent: 'erik', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: '2026-11-15', parts: { front: 5, back: 5, total: 10 }, challenge: { state: 'accepted', at: '' } };
+  const withDaniel: WagerPool = {
+    ...pool,
+    players: [...players, { id: 'daniel', name: 'Daniel', hcp: '10,7' }],
+    wagers: [...pool.wagers, duel],
+    progress: { ...pool.progress, d: { at: '', best: null, done: false, rounds: 1, amount: 20, duels: [{ day: '2026-11-15', course: 'Hawks Landing', front: 1, back: 1, total: 1 }] } },
+  };
+  it('Daniel is a guest, the five are not', () => {
+    expect(isGuest(withDaniel, 'daniel')).toBe(true);
+    for (const p of players) expect(isGuest(withDaniel, p.id)).toBe(false);
+  });
+  it('Sascha made his bet the day Daniel played too: Cedric and Erik pay, Daniel nothing', () => {
+    expect(roundPayers(withDaniel, withDaniel.wagers[0], '2026-11-15').sort()).toEqual(['cedric', 'erik']);
+    expect(owings(withDaniel, undefined, true).filter((o) => o.w.id !== 'd' && (o.from === 'daniel' || o.to === 'daniel'))).toEqual([]);
+  });
+  it("the pool's balances as without him (his 5+5+10 is judged from the cards, as every duel)", () => {
+    expect(balances(withDaniel, undefined, true)).toEqual({ ...balances(pool, undefined, true), daniel: 0 });
+  });
+  it("the round's own settlement leaves him out of the pool's bets", () => {
+    const r = roundLedger(withDaniel, '2026-11-15')!;
+    expect([r.sascha, r.cedric, r.daniel ?? 0]).toEqual([40, -20, 0]);
+  });
+  it('a bet made right against him still counts', () => {
+    expect(betOthers(withDaniel, { player: 'sascha', payout: 'opponent', opponent: 'daniel' })).toEqual(['daniel']);
+  });
+  it('a bet of his own: he is in the pool after all', () => {
+    const p2: WagerPool = { ...withDaniel, wagers: [...withDaniel.wagers, bet('wd', 'daniel')] };
+    expect(isGuest(p2, 'daniel')).toBe(false);
+  });
+  it('a player of the pool without any bet and without a 5+5+10 is no guest – he pays as before', () => {
+    const p2: WagerPool = { ...pool, players: [...players, { id: 'gast', name: 'Gast' }] };
+    expect(isGuest(p2, 'gast')).toBe(false);
+  });
+});
+
+// gate usarehearsal (17.11.2026): Erik joined the pool by its link, has no bet of his own yet, only a 5+5+10 – a member
+describe('a member with only a 5+5+10 is no guest', () => {
+  const duel: Wager = { id: 'd2', player: 'chris', opponent: 'erik', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', day: '2026-11-15' };
+  const base: WagerPool = { ...pool, wagers: [bet('ws', 'sascha'), duel], progress: { ws: pool.progress.ws } };
+  const withErik = (erik: Partial<(typeof players)[number]> & { joined?: { name: string; at: string }; invited?: { uid: string; name: string; at: string }; guest?: boolean }) => ({ ...base, players: players.map((p) => (p.id === 'erik' ? { ...p, ...erik } : p)) });
+  it('joined by his phone: a member – he pays Sascha', () => {
+    const p = withErik({ joined: { name: 'Erik', at: '' } });
+    expect(isGuest(p, 'erik')).toBe(false);
+    expect(roundPayers(p, p.wagers[0], '2026-11-15')).toContain('erik');
+  });
+  it('invited by the host: a member', () => {
+    expect(isGuest(withErik({ invited: { uid: 'u', name: 'Erik', at: '' } }), 'erik')).toBe(false);
+  });
+  it('brought in by the 5+5+10 (marked a guest): a guest even after his phone joined', () => {
+    expect(isGuest(withErik({ joined: { name: 'Erik', at: '' }, guest: true }), 'erik')).toBe(true);
+  });
+  it('from before, never joined nor invited, only the 5+5+10 (Daniel): a guest', () => {
+    expect(isGuest(withErik({}), 'erik')).toBe(true);
   });
 });

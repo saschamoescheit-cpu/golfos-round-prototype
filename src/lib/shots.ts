@@ -29,6 +29,9 @@ export const KINDS: { value: ShotKind; label: string }[] = [
   { value: 'punch', label: 'Punch' },
   { value: 'pitch', label: 'Pitch' },
   { value: 'chip', label: 'Chip' },
+  // high and soft over a bunker or to a close flag (Sascha 18.11.2026: "nach dem Chip noch Lob") – never suggested by
+  // itself, learned from the player's own checked lobs as the others
+  { value: 'lob', label: 'Lob' },
   { value: 'bunker', label: 'Bunker' },
 ];
 

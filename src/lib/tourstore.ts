@@ -1,4 +1,5 @@
-import { publishPlannedEvent, refreshEvent, updatePlannedEvent, type RoundEvent } from './sharedround';
+import { cachedEvent, publishPlannedEvent, refreshEvent, updatePlannedEvent, type RoundEvent } from './sharedround';
+import { roundOver, seriesOver } from './seriesstandings';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { myAccount } from './wagerstore';
@@ -55,6 +56,9 @@ export interface TourSeries {
   prizes?: TourPrizes | null;
   /** the one settlement at its end – day prizes and its own together: a payment marked paid by the host, `${from}>${to}` → when */
   paid?: Record<string, string>;
+  /** the payments of its settlement made in Bilanz (Sascha 18.11.2026: as the bets – "Bezahlt" by who pays, counted once
+   *  the receiver confirmed "Erhalten"); from / to are the players' names */
+  payments?: { id: string; from: string; to: string; amount: number; paidAt?: string; receivedAt?: string; undoneAt?: string }[];
 }
 export interface SeriesEntry {
   code: string;
@@ -126,6 +130,23 @@ export const isTourHost = (e: TourEntry): boolean => !!e.owner && e.owner === my
 /** Still to come (or today), played, deleted. */
 export const tourState = (e: TourEntry, today: string): 'planned' | 'today' | 'played' | 'deleted' =>
   e.ev.deletedAt ? 'deleted' : e.ev.date > today ? 'planned' : e.ev.date === today ? 'today' : 'played';
+/** Played – today's too once played out, every card in (Sascha 17.11.2026): the tiles "geplant" / "gespielt" of the
+ *  tournaments' list. ("Turnier heute" on the start page and in Rounds stays by the day: tourState.) */
+export const tourPlayed = (e: TourEntry, today: string): boolean => {
+  const st = tourState(e, today);
+  if (st !== 'today') return st === 'played';
+  const live = cachedEvent(e.code);
+  return !!live && roundOver(live);
+};
+
+/** A series as the list shows it (Sascha 17.11.2026: "das Turnier sollte auch als abgeschlossen dargestellt werden"):
+ *  before its first day, on its days, every round played out – or its last day past and cards still missing. */
+export function seriesState(s: Pick<SeriesEntry['series'], 'rounds'>, today: string): 'planned' | 'running' | 'over' | 'waiting' {
+  const days = s.rounds.map((r) => r.date).filter(Boolean).sort();
+  if (!days.length || days[0] > today) return 'planned';
+  if (seriesOver(s.rounds.map((r) => cachedEvent(r.code)))) return 'over';
+  return days[days.length - 1] < today ? 'waiting' : 'running';
+}
 
 /** For the module card on the start page (03.11.2026): the names of today's tournaments and how many are planned after today. */
 /** The codes of today's tournaments (the start page's card opens the one of today – night 10./11.11.2026). */
@@ -188,6 +209,8 @@ export async function syncTours(): Promise<boolean> {
     if (changed) saveTours(list);
     // the hosted plans' linked friends not in yet: invited now (Sascha 17.11.2026) – in the background
     void inviteHostedPlans().catch(() => null);
+    // a series just over: its rounds fetched, the inbox says it (17.11.2026)
+    void refreshSeriesEnds().catch(() => null);
     return true;
   } catch {
     return false;
@@ -211,6 +234,26 @@ export async function inviteHostedPlans(now = Date.now()): Promise<number> {
     const ev = await refreshEvent(e.code).catch(() => null);
     if (ev && !ev.deletedAt) n += (await invitePlanned(e.code, ev).catch(() => ({ invited: [] }))).invited.length;
   }
+  return n;
+}
+
+let endsAt = 0;
+/** The series of the last two weeks not yet over on this phone: their rounds fetched again – so the inbox says
+ *  "… ist beendet" by itself, without the series opened (Sascha 17.11.2026: no message after the last round). At
+ *  most every ten minutes; each round's event kept as the tournament's page keeps it. */
+export async function refreshSeriesEnds(now = Date.now()): Promise<number> {
+  if (now - endsAt < 10 * 60000) return 0;
+  endsAt = now;
+  const today = dayOf(new Date(now));
+  const from = dayOf(new Date(now - 14 * 86400000));
+  let n = 0;
+  for (const s of loadSeries()) {
+    const days = s.series.rounds.map((r) => r.date).filter(Boolean).sort();
+    if (s.series.deletedAt || !days.length || days[days.length - 1] < from || days[0] > today) continue;
+    if (seriesOver(s.series.rounds.map((r) => cachedEvent(r.code)))) continue;
+    for (const r of s.series.rounds) if (r.date <= today && (await refreshEvent(r.code).catch(() => null))) n++;
+  }
+  if (n) window.dispatchEvent(new Event('golfos:tours-changed'));
   return n;
 }
 
@@ -381,6 +424,15 @@ export async function renameSeries(code: string, name: string): Promise<boolean>
 }
 
 /** The host sets what the series is played for, or marks a payment of its settlement paid (Sascha 15.11.2026). */
+/** A payment of the series' settlement written (Bilanz, 18.11.2026) – false: no connection, or this account is not in the
+ *  series' row (only in single rounds of it). */
+export async function changeSeriesPayments(code: string, change: (ps: NonNullable<TourSeries['payments']>) => NonNullable<TourSeries['payments']>): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, payments: change(x.payments ?? []) }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
+  window.dispatchEvent(new Event('golfos:tours-changed'));
+  return true;
+}
 export async function changeSeriesPrizes(code: string, patch: { prizes?: TourPrizes | null; paid?: Record<string, string> }): Promise<boolean> {
   const s = await changeRow(code, isSeries, (x) => ({ ...x, ...patch }));
   if (!s) return false;

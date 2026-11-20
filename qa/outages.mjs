@@ -42,7 +42,8 @@ async function lit(p) {
 }
 
 async function scenario(name, routes, run) {
-  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+  // without the service worker: once it holds the page the hanging tiles go past the test's routes to the real net (built app, gate 20.11.2026; as emptytiles)
+  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'block' });
   await mockNet(ctx);
   for (const [re, h] of routes) await ctx.route(re, h); // registered last: they win over the net mock
   const p = await ctx.newPage();

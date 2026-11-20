@@ -35,12 +35,16 @@ await p.getByText('Runde starten').click();
 await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
 await p.waitForTimeout(2000);
 // to 2A, a par 3: the round goes on there (as after a hole played); the player stays at 1A's tee, the map measures from 2A's
-await p.evaluate(() => { const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1')); rs[0].currentHole = 1; localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs)); });
-await p.reload();
-await p.waitForTimeout(1500);
-if (!(await p.locator('.map-hole-no').count())) await p.getByRole('button', { name: /Runde fortsetzen|Fortsetzen/ }).first().click().catch(() => {});
-await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
-await p.waitForTimeout(2500);
+// under the gate's load the app may still save its own state (1A) after the line above – then once more (gate 19.11.2026)
+for (let i = 0; i < 3; i++) {
+  await p.evaluate(() => { const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1')); rs[0].currentHole = 1; localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs)); });
+  await p.reload();
+  await p.waitForTimeout(1500);
+  if (!(await p.locator('.map-hole-no').count())) await p.getByRole('button', { name: /Runde fortsetzen|Fortsetzen/ }).first().click().catch(() => {});
+  await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
+  await p.waitForTimeout(2500);
+  if ((await p.locator('.map-hole-no').innerText()).trim() === '2A') break;
+}
 ok((await p.locator('.map-hole-no').innerText()).trim() === '2A', 'on 2A (par 3)');
 const target = p.locator('.map-crosshair');
 ok((await target.count()) === 1, 'a target to move on the par 3');

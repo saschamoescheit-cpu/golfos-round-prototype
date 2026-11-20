@@ -442,7 +442,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     const lie = lieAt(p, hole, n === 0, true); // the fine lies (semi rough, fringe) for the player to check; the chain above keeps the coarse ones
     const kind = suggestKind(lie, toGreen(p), null, hole.green?.length ? (pointInRing(p, hole.green) ? 0 : distToLine(p, hole.green)) : null);
     // the short game: the club the player takes from here, as his checked shots tell (Sascha 13.11.2026)
-    const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? (learnedClub(learned(), kind, toGreen(p)) ?? clubForLength(Math.max(length, 50), false, bag)) : clubForLength(length, n === 0 && par >= 4, bag);
+    const club = kind === 'chip' || kind === 'pitch' || kind === 'lob' || kind === 'bunker' ? (learnedClub(learned(), kind, toGreen(p)) ?? clubForLength(Math.max(length, 50), false, bag)) : clubForLength(length, n === 0 && par >= 4, bag);
     return { pos: p, lie, club, penalty: false, kind, review: true, ...(nodes[chain[n]]?.hand ? { byHand: true } : {}) };
   });
   return { detail: { shots, onGreen: end, pin: null, holedOut: false }, suggested, total };

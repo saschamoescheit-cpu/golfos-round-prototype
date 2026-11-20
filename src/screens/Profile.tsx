@@ -44,7 +44,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
-  const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
   // the swings the Apple Watch recorded (only in the app)
   const [swings, setSwings] = useState({ count: 0, uri: '' });
@@ -57,7 +56,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return; // typing: the next sync brings it
       setP(loadProfile());
       setUnit(loadUnit());
-      setRev((r) => r + 1);
+      // the caddie's block reads its settings again itself – no rebuild, an open sheet stays (17.11.2026)
     };
     window.addEventListener('golfos:pulled', on);
     return () => window.removeEventListener('golfos:pulled', on);
@@ -294,7 +293,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
 
       {/* the caddie's settings as rows of the same look (Sascha 12.11.2026) */}
       <Block title={tr('Caddie', 'Caddie')}>
-        <CaddieSettingsFields key={rev} />
+        <CaddieSettingsFields />
       </Block>
 
       {teePick && (

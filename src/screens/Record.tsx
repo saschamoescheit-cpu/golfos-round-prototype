@@ -9,6 +9,7 @@ import { PlayedHcpStats } from '../components/PlayedHcp';
 import { dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
 import { Avatar } from '../components/Avatar';
+import { MyTours } from '../components/MyTours';
 
 // Tab "My golf" (Sascha 14.10.2026, instead of BeBrassie's "Dashboard"): who you are as a golfer in a few numbers –
 // handicap, average, what you played, how your holes end, your bests and where you are heading.
@@ -70,6 +71,8 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
         </div>
       </section>
 
+      {/* the tournaments and series over – wins, how many, the average round, each with its place (Sascha 18.11.2026, Mockup B) */}
+      <MyTours />
       {c.holes === 0 ? (
         unsignedRounds(props.rounds).length ? (
           // a tap: the rounds to sign – as in Statistik

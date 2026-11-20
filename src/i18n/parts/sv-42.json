@@ -1,0 +1,11 @@
+{
+ "{0} pts": "{0} p.",
+ "Final standing · you played as a guest ({0})": "Slutställning · du spelade som gäst ({0})",
+ "Final standing: {0}. of {1} · {2}": "Slutställning: plats {0} av {1} · {2}",
+ "{0} is finished": "{0} är avslutad",
+ "When is a series finished – and how is its final standing worked out?": "När är en tävlingsserie avslutad – och hur räknas slutställningen ut?",
+ "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list the mark of the tile \"played\", and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "Så snart varje runda är färdigspelad: varje scorekort till sista hålet. En spelare utan ett enda resultat i en runda där alla bollar är klara har inte spelat den – den håller inte serien öppen; resultat som läggs in i efterhand räknas igen. Då visar serien ”Slutställning”, listan symbolen från rutan ”spelade”, och alla som spelade får ”… är avslutad” med sin placering i inkorgen; seriens priser regleras. Totalen: den som spelat alla rundor först, efter summan – sedan de med färre rundor (”på 4 rundor”), sedan No Return.",
+ "planned": "planerad",
+ "cards missing": "scorekort saknas",
+ "Final standing · all rounds": "Slutställning · alla rundor"
+}

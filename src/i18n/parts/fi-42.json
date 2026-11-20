@@ -1,0 +1,11 @@
+{
+ "{0} pts": "{0} p.",
+ "Final standing · you played as a guest ({0})": "Lopputulos · pelasit vieraana ({0})",
+ "Final standing: {0}. of {1} · {2}": "Lopputulos: {0}. / {1} · {2}",
+ "{0} is finished": "{0} on päättynyt",
+ "When is a series finished – and how is its final standing worked out?": "Milloin turnaussarja päättyy – ja miten lopputulos lasketaan?",
+ "Once every round is played out: every card through the last hole. A player without a single score in a round whose flights are all in did not play it – it does not hold the series open; scores entered afterwards count again. Then the series says \"Endstand\", the list the mark of the tile \"played\", and everyone who played gets \"… ist beendet\" with his place in the inbox; the series' prizes are settled. The total: who played every round first, by the sum – then those on fewer rounds (\"auf 4 Runden\"), then a No Return.": "Kun jokainen kierros on pelattu loppuun: jokainen kortti viimeiseen reikään asti. Pelaaja, jolla ei ole yhtään tulosta kierroksella, jonka kaikki lähtöryhmät ovat valmiina, ei pelannut sitä – se ei pidä sarjaa avoinna; jälkikäteen syötetyt tulokset lasketaan taas. Silloin sarja näyttää ”Lopputulos”, lista ruudun ”pelattu” merkin, ja jokainen mukana pelannut saa ”… on päättynyt” sijoituksineen saapuneisiin; sarjan palkinnot selvitetään. Kokonaistilanne: ensin kaikki kierrokset pelanneet summan mukaan – sitten vähemmän kierroksia pelanneet (”4 kierroksella”), sitten No Return.",
+ "planned": "suunniteltu",
+ "cards missing": "kortteja puuttuu",
+ "Final standing · all rounds": "Lopputulos · kaikki kierrokset"
+}

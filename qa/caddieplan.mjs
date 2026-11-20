@@ -45,7 +45,7 @@ const mins = async () => (await caddie.locator('.tr-plan-row .muted').allInnerTe
 const names = () => caddie.locator('.tr-plan-row strong').allInnerTexts();
 const first = await names();
 ok(first.length >= 2 && (await mins()) === 30, `a session of ${first.length} drills, 30 minutes: ${first.join(' · ')}`);
-ok(/Tor|Linie|Startlinie/.test(first[0]), `the first drill is about the start line: ${first[0]}`);
+ok(/tor|linie|schnur/i.test(first[0]), `the first drill is about the start line: ${first[0]}`);
 ok((await caddie.getByRole('button', { name: 'Wie letztes Mal' }).count()) === 0, 'no "Wie letztes Mal" before a session was started');
 await caddie.getByRole('button', { name: 'Neue Übungen' }).click();
 await p.waitForTimeout(300);

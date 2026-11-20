@@ -9,7 +9,7 @@ import { setMoneySym } from '../lib/gameforms';
 import { gamePrize } from '../lib/gamepay';
 import { prizeSym } from '../lib/prize';
 import { CLASS_NAMES, netClasses, eventCard, eventStandings, type RoundEvent } from '../lib/sharedround';
-import { seriesStandings } from '../lib/seriesstandings';
+import { roundOver, seriesStandings } from '../lib/seriesstandings';
 import { specialName } from '../lib/specials';
 import { madeCut } from '../lib/tourdraw';
 import { dayOf, withDuels } from '../lib/wagers';
@@ -171,7 +171,7 @@ function EventBoard(props: { ev: RoundEvent; label?: string }) {
   const net = (ev.format?.allowance ?? 100) > 0 && ev.format?.scoring !== 'stroke';
   const classes = netClasses(ev).length ? CLASS_NAMES.slice(0, netClasses(ev).length + 1) : [];
   const played = b.rows.some((r) => r.thru);
-  const done = b.rows.length > 0 && b.rows.every((r) => r.finished);
+  const done = b.rows.length > 0 && roundOver(ev);
   return (
     <>
       <LiveBoard
@@ -257,11 +257,8 @@ function EventLive(props: { ev: RoundEvent }) {
   );
 }
 
-/** A round played out: everyone in it through the last hole. */
-const roundDone = (e: RoundEvent) => {
-  const st = eventStandings(e);
-  return st.rows.length > 0 && st.rows.every((r) => r.finished);
-};
+/** A round played out (lib/seriesstandings roundOver – an empty card once every flight is in does not hold it open). */
+const roundDone = (e: RoundEvent) => roundOver(e);
 
 function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
   const { series } = props.v;
@@ -314,6 +311,8 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
       {view < 0 && (
         <SeriesBoard
           label={tr('Total standing', 'Gesamtwertung')}
+          higherBetter={total.higherBetter}
+          onRound={setView}
           title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
           live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
           rounds={series.rounds.map((r) => ({ date: r.date, name: r.name }))}
@@ -324,7 +323,7 @@ function SeriesLive(props: { v: Extract<LiveView, { kind: 'series' }> }) {
             total: fmtSum(r.sum),
             // the part's index counts the rounds played – its round of the series
             ...(r.guest ? { sub: guestSub(), guest: true } : total.anyNoReturn ? { sub: onRounds(r.rounds) } : {}),
-            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
+            parts: r.parts.map((p) => ({ k: Math.max(0, evs.indexOf(played[p.k] ?? null)), text: p.noReturn ? 'NR' : fmtSum(p.sort), sort: p.sort, thru: p.thru, finished: p.finished, retired: p.retired, noReturn: p.noReturn, card: () => cardByName(played[p.k] ?? null, r.name) })),
             out: !r.guest && out(r.name),
           }))}
           note={total.rows.length ? tr('Tap a player for his rounds and scorecards.', 'Spieler antippen für seine Runden und Scorekarten.') : tr('Starts with the first round.', 'Startet mit der ersten Runde.')}
