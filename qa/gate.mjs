@@ -36,7 +36,8 @@ const DEV_ONLY = ['poolend', 'seriesend', 'duelnopool', 'sidebetlist', 'balancew
 const urlFor = (name) => (/^(offline|push)/.test(name) ? [] : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
-const SLOW = ['games', 'modes', 'het9', 'training', 'puttzoom', 'score', 'review', 'bin'];
+// (times of the gate of 19.11.2026: modes 894 s, het9 618, usarehearsal 576, offlineus 482, games 455, shots 401 …)
+const SLOW = ['modes', 'games', 'het9', 'usarehearsal', 'offlineus', 'shots', 'gameround', 'offlineround', 'tilefit', 'greensmade', 'ustrip', 'offline', 'plannedtourney', 'us2d', 'visual', 'training', 'puttzoom', 'score', 'review', 'bin'];
 const queue = (only.length ? only : ALL).slice().sort((a, b) => (SLOW.indexOf(a) < 0 ? 99 : SLOW.indexOf(a)) - (SLOW.indexOf(b) < 0 ? 99 : SLOW.indexOf(b)));
 const failed = [];
 const t0 = Date.now();
