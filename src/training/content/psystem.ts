@@ -275,7 +275,7 @@ export const PSYSTEM_POSITIONS: SwingPosition[] = [
 export const psystem: Category = {
   id: 'psystem',
   name: L('Basic swing (P system)', 'Grundschwung (P-System)'),
-  short: L('The ten positions of the full swing from behind – what they look like and how you check them.', 'Die zehn Positionen des vollen Schwungs von hinten – wie sie aussehen und woran du sie prüfst.'),
+  short: L('The ten positions of the full swing from behind and the front – what they look like and how you check them.', 'Die zehn Positionen des vollen Schwungs von hinten und vorn – wie sie aussehen und woran du sie prüfst.'),
   intro: L(
     "The full swing can be split into ten positions, the P system (after Mac O'Grady). Each one is a still you can compare your own swing with on video – filmed from behind on the target line (\"down the line\"). Shown is a right-hander with a 7-iron. Chips, pitches and every other shot build on this basic swing.",
     'Der volle Schwung lässt sich in zehn Positionen zerlegen, das P-System (nach Mac O’Grady). Jede ist ein Standbild, mit dem du deinen eigenen Schwung im Video vergleichen kannst – gefilmt von hinten auf der Ziellinie („Down the Line“). Gezeigt ist ein Rechtshänder mit einem Eisen 7. Chips, Pitches und alle anderen Schläge bauen auf diesem Grundschwung auf.',

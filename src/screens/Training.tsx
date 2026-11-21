@@ -1686,7 +1686,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const shots = c.shots ?? [];
   const positions = c.positions ?? [];
   const tabs: StepChoice<typeof tab>[] = [
-    ...(positions.length ? [{ value: 'positions' as const, name: tr('Positions', 'Positionen'), text: tr(`P1–P${positions.length} from behind`, `P1–P${positions.length} von hinten`) }] : []),
+    ...(positions.length ? [{ value: 'positions' as const, name: tr('Positions', 'Positionen'), text: tr(`P1–P${positions.length} from behind and the front`, `P1–P${positions.length} von hinten und vorn`) }] : []),
     ...(shots.length ? [{ value: 'shots' as const, name: tr('Shots', 'Schläge'), text: tr(`${shots.length} shots`, `${shots.length} Schläge`) }] : []),
     { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
     ...(c.sections.length || c.facts?.length || c.charts?.length ? [{ value: 'basics' as const, name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') }] : []),

@@ -847,6 +847,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'training',
       },
+      // the basic swing as the P system (17.–20.11.2026; FAQ night 20./21.11.2026)
+      {
+        q: () => tr('What is the P system?', 'Was ist das P-System?'),
+        a: () =>
+          tr(
+            'The full swing in ten positions, P1 (address) to P10 (finish): in "Library" under "Swing and ball flight" → "Basic swing (P system)". Each position shows the same golfer from behind and from the front side by side – a tap shows one view large. "Play the swing" flips through all ten. Below: what the position looks like, the check points (body, arms, hands, shaft, clubface, weight, legs and feet) and the typical faults with their fix. Film yourself from behind at hand height exactly on the target line and compare your stills. Left-handed in your profile: the pictures are mirrored.',
+            'Der volle Schwung in zehn Positionen, P1 (Ansprache) bis P10 (Finish): in „Wissen“ unter „Schwung & Ballflug“ → „Grundschwung (P-System)“. Jede Position zeigt denselben Golfer von hinten und von vorn nebeneinander – ein Tipp zeigt eine Ansicht groß. „Schwung abspielen“ blättert durch alle zehn. Darunter: wie die Position aussieht, die Prüfpunkte (Körper, Arme, Hände, Schaft, Schlagfläche, Gewicht, Beine und Füße) und die typischen Fehler mit ihrer Korrektur. Filme dich von hinten auf Handhöhe genau auf der Ziellinie und vergleiche deine Standbilder. Linkshänder im Profil: Die Bilder sind gespiegelt.',
+          ),
+        video: 'training',
+      },
       {
         q: () => tr('Can the caddie put a session together for me?', 'Kann mir der Caddie eine Einheit zusammenstellen?'),
         a: () =>
