@@ -6,11 +6,12 @@
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
-// every failure with its lines – which tests wobble under load, and why (night run 23./24.10.2026)
+// every failure with its lines – which tests wobble under load, and why (night run 23./24.10.2026); with Playwright's own
+// line ("page.goto: …") – trfacelift stopped twice after 4 s and the log only kept "waiting for navigation" (21.11.2026)
 const FLAKY_LOG = new URL('./gate-flaky.log', import.meta.url);
 const logFail = (name, phase, out) => {
   try {
-    const lines = out.split('\n').filter((l) => /^✗|TimeoutError|Error:|waiting for/.test(l.trim())).slice(0, 8).map((l) => '    ' + l.trim().slice(0, 240));
+    const lines = out.split('\n').filter((l) => /^✗|TimeoutError|Error:|waiting for|^(page|locator|browser|context)\.\w+:/.test(l.trim())).slice(0, 8).map((l) => '    ' + l.trim().slice(0, 240));
     appendFileSync(FLAKY_LOG, `${new Date().toISOString()} ${name} [${phase}]\n${lines.join('\n')}\n`);
   } catch {
     /* the log is a help only */

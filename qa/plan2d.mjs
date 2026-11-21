@@ -37,7 +37,7 @@ await p.waitForTimeout(1500);
 await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
-await p.waitForTimeout(9000);
+await p.waitForTimeout(3000);
 
 /** Share of the map area (between the top boxes and the hole bar) near each colour. */
 const shares = async (colours) => {
@@ -63,7 +63,14 @@ const shares = async (colours) => {
   );
 };
 const COLOURS = { ground: '#e3eed6', rough: '#23803d', fairway: '#3fb54d', crownDark: '#1d5a24' };
-const s2d = await shares(COLOURS);
+// the picture once it is there, at most `secs` – fixed waits of 9 s / 5 s failed in the gate beside 3 other browsers
+// (night 21.11.2026: six at a time the drawn hole needed longer; the last picture is judged as before)
+const until = async (done, secs) => {
+  let s = await shares(COLOURS);
+  for (const t0 = Date.now(); !done(s) && Date.now() - t0 < secs * 1000; s = await shares(COLOURS)) await p.waitForTimeout(1000);
+  return s;
+};
+const s2d = await until((s) => s.ground > 20 && s.rough > 5 && s.fairway > 5 && s.crownDark > 0.2, 30);
 ok(s2d.ground > 20, `2D: light ground around the hole (${s2d.ground} %)`);
 ok(s2d.rough > 5, `2D: the hole's dark rough as one shape (${s2d.rough} %)`);
 ok(s2d.fairway > 5, `2D: a bright fairway (${s2d.fairway} %)`);
@@ -71,13 +78,13 @@ ok(s2d.crownDark > 0.2, `2D: drawn tree crowns (${s2d.crownDark} %)`);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan2d-1A.png' });
 // next hole: still drawn
 await p.locator('.hole-bar button').last().click();
-await p.waitForTimeout(4000);
-const s2 = await shares(COLOURS);
+await p.waitForTimeout(2000); // 2A in view – else the first look still judges 1A
+const s2 = await until((s) => s.ground > 20 && s.rough > 3, 20);
 ok(s2.ground > 20 && s2.rough > 3, `2D on 2A too (ground ${s2.ground} %, rough ${s2.rough} %)`);
 // back to the aerial image: nothing of the drawing is left
 await p.getByRole('button', { name: 'Luftbild zeigen' }).click();
-await p.waitForTimeout(5000);
-const sAir = await shares(COLOURS);
+const sAir = await until((s) => s.ground < 1 && s.rough < 2, 20);
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan2d-air.png' });
 ok(sAir.ground < 1 && sAir.rough < 2, `aerial image: no drawn ground or rough left (ground ${sAir.ground} %, rough ${sAir.rough} %)`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
