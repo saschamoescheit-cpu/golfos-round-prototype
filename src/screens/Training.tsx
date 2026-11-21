@@ -795,6 +795,8 @@ function ShotView(props: { id: string; nav: Nav }) {
   const drills = (s.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
   const vids = DRILL_VIDEOS_SHOWN ? (s.videos ?? []).map(videoById).filter((v): v is Video => !!v) : [];
   vids.sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()));
+  // the positions: only "P1–P10" – the views are said in the line above, and with "· 1 of 3" any more was cut on the
+  // iPhone SE in every language (night run 21.11.2026)
   const tabs: StepChoice<typeof tab>[] = [
     { value: 'setup', name: tr('Set-up', 'Ansprache'), text: tr('Ball position, stance, weight, club', 'Ballposition, Stand, Gewicht, Schläger') },
     { value: 'move', name: tr('Motion', 'Bewegung'), text: tr('How the stroke goes', 'So läuft die Bewegung') },
@@ -1686,7 +1688,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const shots = c.shots ?? [];
   const positions = c.positions ?? [];
   const tabs: StepChoice<typeof tab>[] = [
-    ...(positions.length ? [{ value: 'positions' as const, name: tr('Positions', 'Positionen'), text: tr(`P1–P${positions.length} · behind and front`, `P1–P${positions.length} · hinten und vorn`) }] : []),
+    ...(positions.length ? [{ value: 'positions' as const, name: tr('Positions', 'Positionen'), text: `P1–P${positions.length}` }] : []),
     ...(shots.length ? [{ value: 'shots' as const, name: tr('Shots', 'Schläge'), text: tr(`${shots.length} shots`, `${shots.length} Schläge`) }] : []),
     { value: 'drills', name: tr('Drills', 'Übungen'), text: tr(`${all.length} drills`, `${all.length} Übungen`) },
     ...(c.sections.length || c.facts?.length || c.charts?.length ? [{ value: 'basics' as const, name: tr('Basics', 'Grundlagen'), text: tr('Knowledge, numbers, rules', 'Wissen, Zahlen, Regeln') }] : []),
