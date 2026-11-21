@@ -38,6 +38,9 @@ const DEV_ONLY = ['poolend', 'seriesend', 'duelnopool', 'sidebetlist', 'balancew
 // session may serve another state there (20.11.2026: golfos-serie's gate held 5173/4173 during the Agility merge)
 // DEV_ONLY first: pushmore imports the app's source modules and needs the dev server, though its name starts with push (gate 20.11.2026)
 const urlFor = (name) => (DEV_ONLY.includes(name) ? (base ? [base] : []) : /^(offline|push)/.test(name) ? (built ? [built] : []) : built ? [built] : base ? [base] : []);
+// time per test: games needs ~25 min alone and ran into its 30 min three gates of four beside the others – then 25 min
+// more on its own at the end (night 20./21.11.2026); 45 min lets it finish among them
+const LIMIT = (name) => (name === 'games' ? 2700000 : name === 'modes' ? 1800000 : 900000);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
 // (times of the gate of 19.11.2026: modes 894 s, het9 618, usarehearsal 576, offlineus 482, games 455, shots 401 …)
@@ -67,7 +70,7 @@ async function worker() {
   while (queue.length) {
     const name = queue.shift();
     const s = Date.now();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], LIMIT(name));
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     const secs = Math.round((Date.now() - s) / 1000);
     try {
@@ -102,7 +105,7 @@ const retry = failed.splice(0);
 async function again() {
   while (retry.length) {
     const name = retry.shift();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], LIMIT(name));
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     if (bad.length || code) {
       failed.push(name);
