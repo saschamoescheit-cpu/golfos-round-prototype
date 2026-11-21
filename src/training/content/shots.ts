@@ -1,4 +1,5 @@
 import { L, type CategoryId, type LieChart, type TopicShot } from '../types';
+import { CHIP_POSITIONS } from './chip';
 import { G0, S, aimCurve, ball, co, fig, ground, hill, landRoll } from './shots-kit';
 import { FIGURE_SKETCHES } from './sketches-figures';
 import { ABSORBS2, DRIVER_SHOTS, IRON_SHOTS, PUTT_SHOTS, WOOD_SHOTS } from './shots-more2';
@@ -65,6 +66,7 @@ const CHIP_SHOTS: TopicShot[] = [
     },
     drills: ['landing-ring', 'trail-toe', 'stick-lead-arm', 'chip-line', 'three-clubs-one-spot', 'chip-ladder'],
     videos: ['glV5Y8ZR4XY', 'nQ3FtVyBfCI'],
+    positions: CHIP_POSITIONS,
   },
   {
     id: 'chip-uphill',

@@ -382,9 +382,13 @@
 .tr-seq-photo:focus-visible { outline: 2px solid var(--accent, #79a128); outline-offset: 2px; border-radius: 12px; }
 .tr-seq-ctl { display: grid; gap: 10px; min-width: 0; }
 .tr-seq-ctl input[type='range'] { width: 100%; accent-color: var(--accent, #79a128); }
+/* a shot as photos (the standard chip, Sascha 21.11.2026, mockup B): from the front, from behind or both */
+.tr-seq > .segmented { grid-column: 1 / -1; }
+.tr-seq-photo.both { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @media (max-width: 420px) {
   .tr-seq { grid-template-columns: minmax(0, 1fr); }
   .tr-seq-photo { max-width: 260px; margin: 0 auto; }
+  .tr-seq-photo.both { max-width: none; width: 100%; }
 }
 /* check points and faults of a position: the name above its text (fits the iPhone SE) */
 .tr-pos-list { display: grid; gap: 10px; margin: 6px 0 0; }

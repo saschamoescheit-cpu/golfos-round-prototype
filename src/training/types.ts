@@ -113,6 +113,8 @@ export interface TopicShot {
   drills?: string[];
   /** YouTube ids from the topic videos that show exactly this shot */
   videos?: string[];
+  /** the shot as a photo series, e.g. the standard chip C1–C4 (content/chip.ts) – shown in the Motion tab instead of its sketch */
+  positions?: SwingPosition[];
 }
 
 /** The lie of the ball, drawn in the lie chart. */
@@ -168,7 +170,7 @@ export interface SwingPosition {
   name: L;
   /** one line for the list */
   short: L;
-  /** the photo in public/training/psystem/ (right-handed, down the line – mirrored for left-handers) */
+  /** the photo in public/training/psystem/, or with a folder ("chip/c1.jpg") in public/training/ (right-handed, down the line – mirrored for left-handers) */
   photo: string;
   /** the same moment from the front (face-on), shown beside the photo (Sascha 20.11.2026, mockup B) */
   photoFront?: string;

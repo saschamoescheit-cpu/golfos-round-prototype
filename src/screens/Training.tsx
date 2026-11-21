@@ -7,7 +7,7 @@ import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { ModuleTop, TopTools } from '../components/TopTools';
-import { Stepper, TopBar } from '../components/ui';
+import { Segmented, Stepper, TopBar } from '../components/ui';
 import { AddRow, ChoiceRow, SettingsList, StepPick, TickRow, type StepChoice } from '../components/Settings';
 import { canListen, startListening, type Listening } from '../lib/caddietalk';
 import { compose, DEFAULT_WISH, history, MINUTES, nothingThere, readWish, remember, total, upgrade, WHERE, type CaddieItem, type Focus, type Part, type Where, type Wish } from '../training/caddiePlan';
@@ -608,7 +608,8 @@ function ShotText(props: { p: ShotPart; label: string }) {
 
 // ---------- the basic swing, P1–P10 (Sascha 17./18.11.2026) ----------
 
-const PSYS_IMG = (file: string) => `${import.meta.env.BASE_URL}training/psystem/${file}`;
+/** "p1.jpg" lies in training/psystem/, a path with a folder ("chip/c1.jpg") in training/ */
+const PSYS_IMG = (file: string) => `${import.meta.env.BASE_URL}training/${file.includes('/') ? '' : 'psystem/'}${file}`;
 const POS_ROW: Record<PosRowKind, () => string> = {
   body: () => tr('Body', 'Körper'),
   arms: () => tr('Arms', 'Arme'),
@@ -619,7 +620,12 @@ const POS_ROW: Record<PosRowKind, () => string> = {
   feet: () => tr('Legs and feet', 'Beine und Füße'),
   contact: () => tr('Contact', 'Treffer'),
 };
-const allPositions = (): SwingPosition[] => CATEGORIES.flatMap((c) => c.positions ?? []);
+/** every photo series: the basic swing of a topic and a shot as photos (the standard chip, Sascha 21.11.2026) */
+const posSeries = (): { cat: Category; shot?: TopicShot; positions: SwingPosition[] }[] =>
+  CATEGORIES.flatMap((cat) => [
+    ...(cat.positions?.length ? [{ cat, positions: cat.positions }] : []),
+    ...(cat.shots ?? []).filter((s) => s.positions?.length).map((shot) => ({ cat, shot, positions: shot.positions! })),
+  ]);
 
 /** the photo of a position – the series is a right-hander; a left-hander sees it mirrored */
 function PosPhoto(props: { p: SwingPosition; thumb?: boolean; front?: boolean }) {
@@ -636,9 +642,11 @@ function PosPhoto(props: { p: SwingPosition; thumb?: boolean; front?: boolean })
 }
 
 /** the series to flip through – the golfer stays on the same spot, only the body moves */
-function SwingSequence(props: { positions: SwingPosition[]; nav: Nav }) {
+function SwingSequence(props: { positions: SwingPosition[]; nav: Nav; views?: boolean; play?: string }) {
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // a shot as photos (mockup B, Sascha 21.11.2026): from the front, from behind or both side by side
+  const [view, setView] = useState<'front' | 'back' | 'both'>('back');
   const n = props.positions.length;
   useEffect(() => {
     if (!playing) return;
@@ -647,14 +655,28 @@ function SwingSequence(props: { positions: SwingPosition[]; nav: Nav }) {
   }, [playing, n]);
   // every photo loaded once, so flipping does not flicker
   useEffect(() => {
-    for (const p of props.positions) new Image().src = PSYS_IMG(p.photo);
-  }, [props.positions]);
+    for (const p of props.positions) for (const f of [p.photo, ...(props.views && p.photoFront ? [p.photoFront] : [])]) new Image().src = PSYS_IMG(f);
+  }, [props.positions, props.views]);
   const p = props.positions[i];
   if (!p) return null;
+  const views = props.views && !!p.photoFront;
   return (
     <section className="card tr-seq">
-      <button type="button" className="tr-seq-photo" onClick={() => props.nav.push({ name: 'pos', id: p.id })} aria-label={t(p.name)}>
-        <PosPhoto p={p} />
+      {views && (
+        <Segmented
+          label={tr('Perspective', 'Perspektive')}
+          options={[
+            { value: 'front', label: tr('From the front', 'Von vorn') },
+            { value: 'back', label: tr('From behind', 'Von hinten') },
+            { value: 'both', label: tr('Both', 'Beide') },
+          ]}
+          value={view}
+          onChange={(v) => v && setView(v)}
+        />
+      )}
+      <button type="button" className={`tr-seq-photo${views && view === 'both' ? ' both' : ''}`} onClick={() => props.nav.push({ name: 'pos', id: p.id })} aria-label={t(p.name)}>
+        {(!views || view !== 'front') && <PosPhoto p={p} />}
+        {views && view !== 'back' && <PosPhoto p={p} front />}
       </button>
       <div className="tr-seq-ctl">
         <strong>{t(p.name)}</strong>
@@ -671,10 +693,30 @@ function SwingSequence(props: { positions: SwingPosition[]; nav: Nav }) {
           }}
         />
         <button type="button" className="chip" aria-pressed={playing} onClick={() => setPlaying(!playing)}>
-          {playing ? tr('Pause', 'Anhalten') : tr('Play the swing', 'Schwung abspielen')}
+          {playing ? tr('Pause', 'Anhalten') : (props.play ?? tr('Play the swing', 'Schwung abspielen'))}
         </button>
       </div>
     </section>
+  );
+}
+
+/** the positions of a series, one row each with its photo */
+function PosList(props: { positions: SwingPosition[]; nav: Nav }) {
+  return (
+    <ul className="list tr-shots">
+      {props.positions.map((p) => (
+        <li key={p.id}>
+          <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'pos', id: p.id })}>
+            <PosPhoto p={p} thumb />
+            <span className="grow">
+              <span className="title">{t(p.name)}</span>
+              <span className="muted small tr-two-lines">{t(p.short)}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -709,11 +751,12 @@ function PosPair(props: { p: SwingPosition }) {
 }
 
 function PositionView(props: { id: string; nav: Nav }) {
-  const all = allPositions();
+  // the series the position belongs to: ‹ › flip within it (P10 does not lead on to the chip)
+  const series = posSeries().find((x) => x.positions.some((y) => y.id === props.id));
+  if (!series) return null;
+  const { cat: c, shot, positions: all } = series;
   const at = all.findIndex((x) => x.id === props.id);
   const p = all[at];
-  if (!p) return null;
-  const c = CATEGORIES.find((x) => x.positions?.includes(p))!;
   const drills = (p.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
   const prev = all[at - 1];
   const next = all[at + 1];
@@ -721,7 +764,7 @@ function PositionView(props: { id: string; nav: Nav }) {
   return (
     <main className="screen training">
       <TopBar title={t(p.name)} onBack={props.nav.back} />
-      <span className="eyebrow">{t(c.name)}</span>
+      <span className="eyebrow">{t(shot ? shot.name : c.name)}</span>
       <p className="tr-shot-short">{t(p.short)}</p>
       {p.photoFront ? (
         <PosPair p={p} />
@@ -826,7 +869,17 @@ function ShotView(props: { id: string; nav: Nav }) {
           {(s.setup.text?.length || s.setup.points?.length) && <ShotText p={{ ...s.setup, sketch: undefined, graphic: undefined }} label={t(s.name)} />}
         </>
       )}
-      {tab === 'move' && <ShotText p={s.move} label={t(s.name)} />}
+      {tab === 'move' &&
+        (s.positions?.length ? (
+          // the shot as photos instead of the sketch (Sascha 21.11.2026, mockup B)
+          <>
+            <SwingSequence positions={s.positions} nav={props.nav} views play={tr('Play the stroke', 'Schlag abspielen')} />
+            <PosList positions={s.positions} nav={props.nav} />
+            <ShotText p={{ ...s.move, sketch: undefined }} label={t(s.name)} />
+          </>
+        ) : (
+          <ShotText p={s.move} label={t(s.name)} />
+        ))}
       {tab === 'watch' && <ShotText p={s.watch} label={t(s.name)} />}
       {tab === 'practise' && (
         <>
@@ -1708,20 +1761,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         <>
           <p className="muted">{t(c.intro)}</p>
           <SwingSequence positions={positions} nav={props.nav} />
-          <ul className="list tr-shots">
-            {positions.map((p) => (
-              <li key={p.id}>
-                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'pos', id: p.id })}>
-                  <PosPhoto p={p} thumb />
-                  <span className="grow">
-                    <span className="title">{t(p.name)}</span>
-                    <span className="muted small tr-two-lines">{t(p.short)}</span>
-                  </span>
-                  <span aria-hidden="true">›</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <PosList positions={positions} nav={props.nav} />
         </>
       )}
 

@@ -57,7 +57,9 @@ describe('the basic swing (P system)', () => {
 
   it('our pro can review every position', () => {
     const keys = reviewItems().filter((i) => i.kind === 'position').map((i) => i.key);
-    expect(keys).toEqual(pos.map((p) => `pos:psystem:${p.id}`));
+    expect(keys.filter((k) => /:p\d+$/.test(k))).toEqual(pos.map((p) => `pos:psystem:${p.id}`));
+    // and the standard chip as photos, C1–C4 (Sascha 21.11.2026)
+    expect(keys.filter((k) => !/:p\d+$/.test(k))).toEqual(['c1', 'c2', 'c3', 'c4'].map((id) => `pos:psystem:${id}`));
   });
 });
 
