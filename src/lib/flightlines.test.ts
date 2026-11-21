@@ -8,7 +8,8 @@ const course = 'osm:relation/1326323'; // Hetzenhof – bundled, every hole mapp
 const L3: LngLat[] = [[8.9481, 48.9612], [8.9502, 48.9631]];
 const L3b: LngLat[] = [[8.9485, 48.9615], [8.9502, 48.9631]];
 
-describe('the flight\'s lines over the course map', () => {
+// the first test loads the course data (2 s alone); in the gate beside the browsers it passed vitest's 5 s (21.11.2026)
+describe('the flight\'s lines over the course map', { timeout: 20000 }, () => {
   beforeEach(() => {
     const store = new Map<string, string>();
     globalThis.localStorage = {

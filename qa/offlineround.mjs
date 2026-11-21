@@ -15,7 +15,7 @@ const url = process.argv[2] ?? 'http://localhost:4173/';
 const [search = 'Hetzenhof', lat = '48.7808', lon = '9.689', loop = 'A · 9 Löcher'] = process.argv.slice(3);
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: Number(lat), longitude: Number(lon), accuracy: 6 }, permissions: ['geolocation'], serviceWorkers: 'allow' });
-await mockNet(ctx);
+await mockNet(ctx, { worker: true });
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });

@@ -6,7 +6,12 @@
 
 export const WEATHER = { tempC: 14, windKmh: 12, gustKmh: 22, windFromDeg: 250, code: 2 };
 
-export async function mockNet(ctx) {
+export async function mockNet(ctx, { worker = false } = {}) {
+  // no service worker unless a test asks for it ({ worker: true }: the offline… and push… tests). In the built app the
+  // worker takes the page at once (clientsClaim, as live) and its fetches pass the routes of the test to the real net –
+  // a real aerial picture, the real ratings instead of the test's answers (gate 20.11.2026: sharedrating, outages,
+  // emptytiles). Answered with a 404 the app's registerWorker gives up quietly; the dev server has no worker anyway.
+  if (!worker) await ctx.route(/\/sw\.js(\?|$)/, (r) => r.fulfill({ status: 404, body: '' }));
   // the push function (supabase/functions/golfos-push): "not deployed" unless a test answers it itself (pushnotify)
   await ctx.route(/supabase\.co\/functions\/v1\/golfos-push/, (r) =>
     r.fulfill({ status: r.request().method() === 'OPTIONS' ? 204 : 404, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }, body: '' }),

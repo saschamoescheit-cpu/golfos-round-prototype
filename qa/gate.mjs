@@ -83,26 +83,36 @@ async function worker() {
 }
 
 await Promise.all(Array.from({ length: par }, worker));
-// a test that failed among others runs once more on its own – the load of four browsers at a time can make a test
-// miss a timing; a real failure fails again
-for (const name of failed.splice(0)) {
-  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
-  const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
-  if (bad.length || code) {
-    failed.push(name);
-    logFail(name, "alone", out);
-    console.log(`✗ ${name} again on its own\n   ${bad.slice(0, 6).join('\n   ')}`);
-  } else console.log(`✓ ${name} on its own (it failed among the others)`);
+// the unit tests meanwhile (gate 21.11.2026: they ran after the retries, on top of the time) – vitest is no browser
+const vitest = only.length
+  ? Promise.resolve(null)
+  : new Promise((resolve) => {
+      const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+      const p = spawn(npx + ' vitest run', { shell: true });
+      let out = '';
+      p.stdout.on('data', (d) => (out += d));
+      p.stderr.on('data', (d) => (out += d));
+      p.on('close', () => resolve(out));
+    });
+// a test that failed among others runs once more – the load of three browsers at a time can make a test miss a timing;
+// a real failure fails again. Two at a time (gate 21.11.2026: 8–11 retries one by one took 30–45 min; two browsers are
+// still far less load than the pool)
+const retry = failed.splice(0);
+async function again() {
+  while (retry.length) {
+    const name = retry.shift();
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
+    if (bad.length || code) {
+      failed.push(name);
+      logFail(name, 'alone', out);
+      console.log(`✗ ${name} again on its own\n   ${bad.slice(0, 6).join('\n   ')}`);
+    } else console.log(`✓ ${name} on its own (it failed among the others)`);
+  }
 }
-if (!only.length) {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const v = await new Promise((resolve) => {
-    const p = spawn(npx + ' vitest run', { shell: true });
-    let out = '';
-    p.stdout.on('data', (d) => (out += d));
-    p.stderr.on('data', (d) => (out += d));
-    p.on('close', () => resolve(out));
-  });
+await Promise.all([again(), again()]);
+const v = await vitest;
+if (v !== null) {
   const line = String(v).split('\n').find((l) => /Tests\s/.test(l)) ?? 'vitest: no result';
   console.log(line.replace(/\x1b\[[0-9;]*m/g, '').trim());
   if (/failed/.test(line)) failed.push('vitest');

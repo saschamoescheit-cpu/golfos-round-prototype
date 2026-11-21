@@ -11,7 +11,7 @@ const { mockNet } = await import('./netmock.mjs');
 const url = process.argv[2] ?? 'http://localhost:4173/';
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 6 }, permissions: ['geolocation'], serviceWorkers: 'allow' });
-await mockNet(ctx);
+await mockNet(ctx, { worker: true });
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

@@ -8,7 +8,7 @@ import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:4177/';
 const b = await chromium.launch({ channel: 'msedge' });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'allow' });
-await mockNet(ctx);
+await mockNet(ctx, { worker: true });
 const p = await ctx.newPage();
 // the parts of a topic / a drill: the switch "‹ Übungen ›" (Facelift 11.11.2026, tr1) – picked from its list; false when
 // the page has no such part

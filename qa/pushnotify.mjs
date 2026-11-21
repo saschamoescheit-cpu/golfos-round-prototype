@@ -44,7 +44,7 @@ const SESSION = { access_token: 'test-token', refresh_token: 'r', expires_at: Ma
 async function context(device, { signedIn = true, fakePush = true } = {}) {
   const ctx = await b.newContext({ ...device, locale: 'de-DE', serviceWorkers: 'allow' });
   await ctx.grantPermissions(['notifications'], { origin });
-  await mockNet(ctx);
+  await mockNet(ctx, { worker: true });
   const calls = [];
   await ctx.route(/supabase\.co\/functions\/v1\/golfos-push/, async (r) => {
     const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };

@@ -66,12 +66,16 @@ async function run(lglBody, label) {
   // tests at once, the tiles came so late that a half-drawn map looked steady, 25.10.2026)
   let seen = await look(p);
   let same = 0;
-  for (let k = 0; k < 16 && same < 3; k++) {
+  // and where Esri is due (white tiles, an XML error) until it shows: the app waits up to 8 s for the state's picture, a
+  // steady half-loaded map before that is no answer (gate 21.11.2026: "Esri grass 36 %", one run in four)
+  const due = label !== 'picture';
+  for (let k = 0; k < 16 && (same < 3 || (due && seen.grass <= 60)); k++) {
     await p.waitForTimeout(2500);
     const again = await look(p);
     same = Math.abs(again.grass - seen.grass) < 2 && Math.abs(again.white - seen.white) < 2 ? same + 1 : 0;
     seen = again;
   }
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/emptytiles-${label}-${seen.grass}.png` });
   await ctx.close();
   return { seen, errs, label };
 }

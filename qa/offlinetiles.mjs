@@ -25,7 +25,7 @@ const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftsh
 /** A fresh phone with the app, its service worker in charge; lgl: 'png' | 'xml'; slow: ms per Esri/LGL tile. */
 async function phone({ lgl, slow = 0 }) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 6 }, permissions: ['geolocation'], serviceWorkers: 'allow' });
-  await mockNet(ctx);
+  await mockNet(ctx, { worker: true });
   const tile = (body, type) => async (r) => {
     if (slow) await new Promise((res) => setTimeout(res, slow));
     await r.fulfill({ status: 200, contentType: type, headers: { 'Access-Control-Allow-Origin': '*' }, body }).catch(() => {});
