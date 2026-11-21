@@ -54,8 +54,10 @@ def seg_dist(p, line):
     return best
 
 
-def run(path, only=None, dry=False, check=None):
+def run(path, only=None, dry=False, check=None, near=None):
     geo = unpack(json.load(open(path, encoding='utf-8')))
+    tees_before = list(geo.get('tee', []))
+    cands = {}
     pts = [p for h in geo['holes'] for p in h['line']]
     lat_c = sum(p[1] for p in pts) / len(pts)
     _, tmpl = wms(sum(p[0] for p in pts) / len(pts), lat_c)
@@ -157,6 +159,12 @@ def run(path, only=None, dry=False, check=None):
                      'not green' if not (30 <= info['hue'] <= 90 and info['sat'] >= 45) else '')
               if os.environ.get('DEBUG'):
                   print('   ', why or 'TEE', level, info)
+              # --near M (night 20./21.11.2026, Cypress and Reserve: dams by the lakes and mounds in the fairway passed the
+              # checks above): only the boxes of the tee complex – within M m of a mapped tee, at most 300 m², not long
+              if not why and near:
+                  mapped = [np.mean([merc(*q) for q in r], axis=0) for r in tees_before]
+                  dist = min((math.hypot(cm[0] - t[0], cm[1] - t[1]) / k for t in mapped), default=1e9)
+                  why = 'far' if dist > near else 'big' if area > 300 else 'oblong' if long_ / short > 2.5 else ''
               if why:
                   continue
               ring = cv2.approxPolyDP(cv2.convexHull(big), 0.6 / PX, True)[:, 0, :]  # a box or an oval: its hull
@@ -170,17 +178,25 @@ def run(path, only=None, dry=False, check=None):
         for ring, _, _ in found:
             added.append(ring)
             tees.append(ring)
+        cands[hole['ref']] = [r for r, _, _ in found]
         if check:
             os.makedirs(check, exist_ok=True)
             ov = img.copy()
-            for r in geo.get('tee', [])[: len(tees) - len(found)]:
+            for r in tees_before:
                 cv2.polylines(ov, [ring_px(r)], True, (255, 0, 255), 2)
-            for r, _, _ in found:
-                cv2.polylines(ov, [ring_px(r)], True, (0, 255, 255), 2)
+            for n_, (r, _, _) in enumerate(found, 1):
+                q = ring_px(r)
+                cv2.polylines(ov, [q], True, (0, 255, 255), 2)
+                # numbered, so a pad can be named for the decision (the candidates in tees.json beside the images)
+                x_, y_ = int(q[:, 0].max()) + 3, int(q[:, 1].min()) + 12
+                cv2.putText(ov, str(n_), (x_, y_), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3)
+                cv2.putText(ov, str(n_), (x_, y_), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
             rel = np.clip((zs - bg) / 1.0 * 255, 0, 255).astype(np.uint8)
             cv2.imwrite(os.path.join(check, f"tee{int(hole['ref']):02d}.jpg"),
                         np.hstack([ov, cv2.cvtColor(rel, cv2.COLOR_GRAY2BGR), cv2.cvtColor((mown * 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)]))
     geo['tee'] = tees
+    if check:
+        json.dump(cands, open(os.path.join(check, 'tees.json'), 'w', encoding='utf-8'), separators=(',', ':'))
     if not dry:
         json.dump(geo, open(path, 'w', encoding='utf-8'), separators=(',', ':'))
     print(os.path.basename(path), ':', len(added), 'tee pads added', '(dry run)' if dry else '')
@@ -190,9 +206,12 @@ def run(path, only=None, dry=False, check=None):
 if __name__ == '__main__':
     args = sys.argv[1:]
     dry = '--dry' in args
-    check = None
+    check = near = None
     if '--check' in args:
         check = args[args.index('--check') + 1]
         args = [a for a in args if a != check]
+    if '--near' in args:
+        near = float(args[args.index('--near') + 1])
+        args = [a for a in args if a != args[args.index('--near') + 1]]
     args = [a for a in args if not a.startswith('--')]
-    run(args[0], args[1].split(',') if len(args) > 1 else None, dry, check)
+    run(args[0], args[1].split(',') if len(args) > 1 else None, dry, check, near)
