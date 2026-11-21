@@ -847,6 +847,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'training',
       },
+      // Grundschwung (night run 21.11.2026): the P system with the series our pro approved, from behind and the front
+      {
+        q: () => tr('What is the basic swing (P system)?', 'Was ist der Grundschwung (P-System)?'),
+        a: () =>
+          tr(
+            'Under "Swing & ball flight" the topic "Basic swing (P system)" splits the full swing into ten positions, P1 (address) to P10 (finish). Each position shows the same golfer from behind and from the front – switch the view at the top or show both. Under the picture: body, arms, hands, shaft, clubface and weight, what to check and the typical faults. "Play the swing" runs through all ten. Our golf pro checked every picture; compare it with a video of your own swing, filmed at hand height on the target line or straight from the front.',
+            'Unter „Schwung & Ballflug“ zerlegt das Thema „Grundschwung (P-System)“ den vollen Schwung in zehn Positionen, P1 (Ansprache) bis P10 (Finish). Jede Position zeigt denselben Golfer von hinten und von vorn – oben die Ansicht umschalten oder beide zeigen. Unter dem Bild: Körper, Arme, Hände, Schaft, Schlagfläche und Gewicht, woran du sie prüfst und die typischen Fehler. „Schwung abspielen“ läuft alle zehn durch. Unser Golfprofi hat jedes Bild geprüft; vergleiche es mit einem Video deines eigenen Schwungs, gefilmt auf Handhöhe auf der Ziellinie oder genau von vorn.',
+          ),
+        video: 'training',
+      },
       {
         q: () => tr('Can the caddie put a session together for me?', 'Kann mir der Caddie eine Einheit zusammenstellen?'),
         a: () =>

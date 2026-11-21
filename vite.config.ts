@@ -69,7 +69,9 @@ export default defineConfig({
         // (without that line the plugin leaves clientsClaim out – the offline tests found the page uncontrolled)
         clientsClaim: true,
         skipWaiting: true,
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // + the Grundschwung pictures (P1–P10 from behind and the front, 1.8 MB): on the range without reception too
+        // (night run 21.11.2026 – before, a jpg was never kept and the positions showed empty offline)
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2}', 'training/**/*.jpg'],
         globIgnores: ['greens/**', 'mediapipe/**', 'models/**'], // green charts and the pose model load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
         runtimeCaching: [
