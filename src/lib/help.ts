@@ -847,13 +847,13 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'training',
       },
-      // the basic swing as the P system (17.–20.11.2026; FAQ night 20./21.11.2026)
+      // Grundschwung (night run 21.11.2026): the P system with the series our pro approved, from behind and the front
       {
-        q: () => tr('What is the P system?', 'Was ist das P-System?'),
+        q: () => tr('What is the basic swing (P system)?', 'Was ist der Grundschwung (P-System)?'),
         a: () =>
           tr(
-            'The full swing in ten positions, P1 (address) to P10 (finish): in "Library" under "Swing and ball flight" → "Basic swing (P system)". Each position shows the same golfer from behind and from the front side by side – a tap shows one view large. "Play the swing" flips through all ten. Below: what the position looks like, the check points (body, arms, hands, shaft, clubface, weight, legs and feet) and the typical faults with their fix. Film yourself from behind at hand height exactly on the target line and compare your stills. Left-handed in your profile: the pictures are mirrored.',
-            'Der volle Schwung in zehn Positionen, P1 (Ansprache) bis P10 (Finish): in „Wissen“ unter „Schwung & Ballflug“ → „Grundschwung (P-System)“. Jede Position zeigt denselben Golfer von hinten und von vorn nebeneinander – ein Tipp zeigt eine Ansicht groß. „Schwung abspielen“ blättert durch alle zehn. Darunter: wie die Position aussieht, die Prüfpunkte (Körper, Arme, Hände, Schaft, Schlagfläche, Gewicht, Beine und Füße) und die typischen Fehler mit ihrer Korrektur. Filme dich von hinten auf Handhöhe genau auf der Ziellinie und vergleiche deine Standbilder. Linkshänder im Profil: Die Bilder sind gespiegelt.',
+            'Under "Swing & ball flight" the topic "Basic swing (P system)" splits the full swing into ten positions, P1 (address) to P10 (finish). Each position shows the same golfer from behind and from the front – switch the view at the top or show both. Under the picture: body, arms, hands, shaft, clubface and weight, what to check and the typical faults. "Play the swing" runs through all ten. Our golf pro checked every picture; compare it with a video of your own swing, filmed at hand height on the target line or straight from the front.',
+            'Unter „Schwung & Ballflug“ zerlegt das Thema „Grundschwung (P-System)“ den vollen Schwung in zehn Positionen, P1 (Ansprache) bis P10 (Finish). Jede Position zeigt denselben Golfer von hinten und von vorn – oben die Ansicht umschalten oder beide zeigen. Unter dem Bild: Körper, Arme, Hände, Schaft, Schlagfläche und Gewicht, woran du sie prüfst und die typischen Fehler. „Schwung abspielen“ läuft alle zehn durch. Unser Golfprofi hat jedes Bild geprüft; vergleiche es mit einem Video deines eigenen Schwungs, gefilmt auf Handhöhe auf der Ziellinie oder genau von vorn.',
           ),
         video: 'training',
       },
