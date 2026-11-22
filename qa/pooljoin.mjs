@@ -56,6 +56,9 @@ await E.locator('section.pool-player').first().waitFor({ timeout: 20000 }).catch
 ok((await E.getByText(/Der Pool ließ sich nicht laden/).count()) === 0 && (await E.locator('section.pool-player').count()) === 2, "Erik's phone: the pool shows – in by its code, no \"could not be loaded\"");
 ok(shared.get(code).members.includes('Erik'), 'the server let Erik in (by the code)');
 await E.waitForTimeout(2000);
+// Erik's part done: his phone put away – with the pool open it looks every 20 s and takes the invitation sent anew
+// below at once ("Angenommen"), before the host could take it back (gate 21.11.2026, 5 of 12 under load)
+await E.close();
 ok(shared.get(code).game.players.find((p) => p.id === 'pe')?.joined?.uid === 'Erik', 'Erik is Erik – his phone took the player he was invited as');
 
 // not signed in: said so

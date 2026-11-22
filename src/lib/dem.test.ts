@@ -21,7 +21,7 @@ describe('terrain models for every course (19.10.2026)', () => {
   it('the services of a place: the state’s own, by a border also the neighbour’s', () => {
     expect(demProvidersAt([7.2359, 51.3147]).map((d) => d.id)).toEqual(['nrw', 'ni']); // Frielinghausen: NRW first, Lower Saxony's box reaches down here
     expect(demProvidersAt([9.73, 48.83]).map((d) => d.id)).toEqual(['bw']); // Hetzenhof
-    expect(demProvidersAt([8.68, 50.11]).map((d) => d.id)).toEqual(['he']); // Frankfurt
+    expect(demProvidersAt([8.68, 50.11])).toEqual([]); // Frankfurt: Hesse's service refuses the phone since 18.11.2026 – shipped
     expect(demProvidersAt([11.2, 48.3])).toEqual([]); // Bavaria: shipped with the app
     expect(demProvidersAt([2.6, 39.6])).toEqual([]); // Mallorca: built in
     expect(demProvidersAt([-81.4, 28.4]).map((d) => d.id)).toEqual(['usgs']);
