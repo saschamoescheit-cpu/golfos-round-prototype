@@ -96,7 +96,8 @@ await p.locator('.tr-shots .list-item').filter({ hasText: 'Der Standard-Chip' })
 await p.waitForTimeout(300);
 ok((await p.locator('main .tr-sketch svg').count()) >= 1, 'standard chip: the set-up picture');
 await view('Bewegung');
-ok((await p.locator('.tr-motion-btn').count()) >= 1, 'standard chip: the stroke moves (play symbol in the picture)');
+// since 22.11.2026 the stroke as the photo series C1–C4 (qa/chipfotos.mjs checks it in detail)
+ok((await p.locator('.tr-seq').count()) === 1 && (await p.locator('.tr-seq img').count()) >= 1, 'standard chip: the stroke as photos C1–C4');
 await view('Üben');
 // Sascha 15.11.2026: "Die Videos können wir vorerst aus allen Übungen entfernen" – no videos at the drills and shots
 ok((await p.locator('.tr-video-thumb img, .tr-video').count()) === 0, 'standard chip: no videos in Üben for now (Sascha 15.11.2026)');

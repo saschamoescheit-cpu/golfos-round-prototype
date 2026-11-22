@@ -857,6 +857,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'training',
       },
+      // Standard chip as a photo series C1–C4 (Sascha 21.11.2026, mockup B)
+      {
+        q: () => tr('Why does the standard chip show photos?', 'Warum zeigt der Standard-Chip Fotos?'),
+        a: () =>
+          tr(
+            'Like the basic swing, the standard chip (topic "Chipping") shows the stroke on the same golfer in four positions: C1 address, C2 end of the backswing, C3 impact, C4 finish. In "Motion", "Perspective" switches between from the front, from behind and both; the slider and "Play the stroke" run through the four. A row below opens a position with what to check, the typical faults and the drills for it.',
+            'Wie der Grundschwung zeigt der Standard-Chip (Thema „Chippen“) den Schlag am selben Golfer in vier Positionen: C1 Ansprache, C2 Ende Rückschwung, C3 Treffmoment, C4 Finish. Unter „Bewegung“ schaltet „Perspektive“ zwischen von vorn, von hinten und beiden; der Regler und „Schlag abspielen“ laufen die vier durch. Eine Zeile darunter öffnet eine Position mit dem, woran du sie prüfst, den typischen Fehlern und den Übungen dazu.',
+          ),
+        video: 'training',
+      },
       {
         q: () => tr('Can the caddie put a session together for me?', 'Kann mir der Caddie eine Einheit zusammenstellen?'),
         a: () =>

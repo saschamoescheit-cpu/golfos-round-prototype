@@ -103,9 +103,10 @@ const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
 ok((await p.locator('.tr-video-thumb, .tr-video-cover, iframe').count()) === 0, 'no videos in the basics (Sascha 16.11.2026: "alle Videos raus")');
 // moving pictures: the chip stroke drawn (Sascha 17.10.2026) – no 3D since 17.11.2026 ("die 3D-Animationen sind nicht
-// gut", "alles mit Bildern"): the movement as phase pictures under the picture; the drawn movement still plays
+// gut", "alles mit Bildern"): the movement as phase pictures under the picture; the drawn movement still plays. The
+// standard chip shows photos since 22.11.2026 (qa/chipfotos.mjs) – the chip uphill keeps the drawn stroke
 await view('Schläge');
-await p.locator('.tr-shots .list-item').filter({ hasText: 'Der Standard-Chip' }).click();
+await p.locator('.tr-shots .list-item').filter({ hasText: 'Chip bergauf' }).click();
 await p.waitForTimeout(300);
 await view('Bewegung');
 const stroke = p.locator('main figure.tr-sketch').first();
