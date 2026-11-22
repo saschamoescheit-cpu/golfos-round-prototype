@@ -42,7 +42,7 @@ const CHIP_SHOTS: TopicShot[] = [
       rows: [
         { k: 'ball', v: L('Middle or slightly back (towards the trail foot)', 'Mitte oder leicht zurück (Richtung hinterer Fuß)') },
         { k: 'stance', v: L('Narrow – about one foot width between the feet, slightly open, close to the ball', 'Schmal – etwa eine Fußbreite zwischen den Füßen, leicht offen, nah am Ball') },
-        { k: 'weight', v: L('60–70 % on the lead foot – and it stays there', '60–70 % auf dem vorderen Fuß – und es bleibt dort') },
+        { k: 'weight', v: L('About 60 % on the lead foot – and it stays there', 'Etwa 60 % auf dem vorderen Fuß – und es bleibt dort') },
         { k: 'grip', v: L('A little down the grip, hands slightly ahead of the ball', 'Etwas kürzer greifen, Hände leicht vor dem Ball') },
         { k: 'club', v: L('By carry : roll – SW 1:1, PW 1:2, 9-iron 1:3, 7-iron 1:5', 'Nach Flug : Rollen – SW 1:1, PW 1:2, Eisen 9 1:3, Eisen 7 1:5') },
       ],

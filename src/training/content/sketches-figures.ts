@@ -610,7 +610,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
       ball(1.86),
       co('trailAnkle', L('narrow stance, ball back of centre', 'schmaler Stand, Ball hinter der Mitte'), [0.7, 0.75]),
       co('hands', L('hands ahead of the ball', 'Hände vor dem Ball'), [3.1, 1.15]),
-      co('pelvis', L('60–70 % weight on the lead foot', '60–70 % Gewicht vorn'), [3.1, 1.75]),
+      co('pelvis', L('About 60 % weight on the lead foot', 'Etwa 60 % Gewicht vorn'), [3.1, 1.75]), // Chris 22.11.2026
     ], L('Face-on, target to the right.', 'Von vorn, Ziel rechts.')),
   },
   putting: {
