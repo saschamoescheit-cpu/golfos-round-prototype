@@ -115,7 +115,10 @@ const pause = async () => {
 };
 let firstCase = true;
 // GAMES_ONLY=Skins,Wolf: only these forms (a quick run of the rest of the test)
-const RUN = CASES.filter(([f]) => !process.env.GAMES_ONLY || process.env.GAMES_ONLY.split(",").includes(f));
+// GAMES_PART=1|2: every second form – the gate runs both halves side by side; part 1 ends after its forms, part 2 goes on
+// with the rest of the test (Sascha 22.11.2026: games alone took 25–33 min and held the gate far beyond its hour)
+const PART = Number(process.env.GAMES_PART) || 0;
+const RUN = CASES.filter(([f]) => !process.env.GAMES_ONLY || process.env.GAMES_ONLY.split(",").includes(f)).filter((_, i) => !PART || i % 2 === PART - 1);
 for (const [form, n] of RUN) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
@@ -170,6 +173,12 @@ for (const [form, n] of RUN) {
   if (form !== RUN[RUN.length - 1][0] || n !== RUN[RUN.length - 1][1]) await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 }
 ok((await p.locator('.list-item').count()) === RUN.length, `${RUN.length} games in the list`);
+if (PART === 1) {
+  ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
+  console.log(bad ? `${bad} FAILED` : 'all ok');
+  await b.close();
+  process.exit(bad ? 1 : 0);
+}
 // the result: share it, read the standing aloud (Sascha 15.10.2026)
 await p.locator('.list-item').first().click();
 await p.waitForTimeout(1500);

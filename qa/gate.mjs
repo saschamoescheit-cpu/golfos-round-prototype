@@ -18,7 +18,7 @@ const logFail = (name, phase, out) => {
   }
 };
 
-const ALL = ['settledgone', 'poolend', 'seriesend', 'sheetstay', 'emptycard', 'legendsfind', 'setupyards', 'duelnopool', 'sidebetlist', 'balancewhy', 'caddiealt', 'tilefit', 'scoregir', 'shotaim', 'teeboxfirst', 'resetuphole', 'roundplayers', 'shotdragsync', 'seriesguest', 'inplaysub', 'hawksheal', 'us2d', 'seriesprizes', 'poolrestore', 'balance', 'balancebets', 'poolwhois', 'reviewback', 'rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'shareround', 'sharemarker', 'shareprompt', 'shareguest', 'sharenotes', 'sharetourney', 'sharesign', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'shots', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help', 'offlineus', 'spread', 'par3target', 'gamefavs', 'whitenumbers', 'offlinetiles', 'reviewwind', 'bookrecord', 'gamestart', 'starthints', 'pushmore', 'tourteams', 'tourrejoin', 'ownplace', 'ownonly', 'betrounds', 'duels', 'tourclasses', 'pooljoin', 'seriesinvite', 'seriesboard', 'sidebet', 'swipeback', 'paypal', 'settleway', 'scorersign', 'gamenomap', 'gpshole', 'falsetee', 'bigstore', 'watchsim', 'launchimport', 'rangesession', 'remotesetup', 'hawkslanding', 'octettiles', 'ustrip', 'holejump', 'obtee', 'readaloud', 'wagers', 'tours', 'nativeoffline', 'plannedtourney', 'usarehearsal', 'tourseries', 'tourrounds', 'scorer', 'poolround', 'swipe', 'friends', 'friendinvite', 'qrscan', 'gameprize', 'teeswitch', 'pushzone', 'scoreopen', 'seriesadopt', 'livewatch', 'tourscores', 'gameextras', 'puttplace', 'pickrounds', 'pastduel', 'retire', 'sharelines', 'flholes', 'shotplace', 'reviewnomap', 'backnav', 'detectlate', 'courselines', 'skipround', 'balancegross', 'cigreen', 'modulesheet', 'fabs', 'poolautosave', 'runningcard', 'fxbilanz', 'designround', 'savebuttons', 'puttipad', 'statsrange', 'trfacelift', 'setuporder', 'tourfacelift', 'wettenface', 'nightfix', 'faceliftprof', 'faceliftplay', 'agilface', 'bell', 'liveaction', 'inboxjoin', 'puttsrows', 'langs', 'shotdelete', 'shotsuggest', 'hostpays', 'teeround', 'serverstale', 'teeafter', 'tourtee', 'tourprizes', 'seriesbets', 'sctabs', 'concedebet', 'stickytop', 'flightpar', 'tourhere', 'planinvite', 'tabfit', 'caddieplan', 'greenwords'];
+const ALL = ['settledgone', 'poolend', 'seriesend', 'sheetstay', 'emptycard', 'legendsfind', 'setupyards', 'duelnopool', 'sidebetlist', 'balancewhy', 'caddiealt', 'tilefit', 'scoregir', 'shotaim', 'teeboxfirst', 'resetuphole', 'roundplayers', 'shotdragsync', 'seriesguest', 'inplaysub', 'hawksheal', 'us2d', 'seriesprizes', 'poolrestore', 'balance', 'balancebets', 'poolwhois', 'reviewback', 'rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games#1', 'games#2', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'shareround', 'sharemarker', 'shareprompt', 'shareguest', 'sharenotes', 'sharetourney', 'sharesign', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'shots', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help', 'offlineus', 'spread', 'par3target', 'gamefavs', 'whitenumbers', 'offlinetiles', 'reviewwind', 'bookrecord', 'gamestart', 'starthints', 'pushmore', 'tourteams', 'tourrejoin', 'ownplace', 'ownonly', 'betrounds', 'duels', 'tourclasses', 'pooljoin', 'seriesinvite', 'seriesboard', 'sidebet', 'swipeback', 'paypal', 'settleway', 'scorersign', 'gamenomap', 'gpshole', 'falsetee', 'bigstore', 'watchsim', 'launchimport', 'rangesession', 'remotesetup', 'hawkslanding', 'octettiles', 'ustrip', 'holejump', 'obtee', 'readaloud', 'wagers', 'tours', 'nativeoffline', 'plannedtourney', 'usarehearsal', 'tourseries', 'tourrounds', 'scorer', 'poolround', 'swipe', 'friends', 'friendinvite', 'qrscan', 'gameprize', 'teeswitch', 'pushzone', 'scoreopen', 'seriesadopt', 'livewatch', 'tourscores', 'gameextras', 'puttplace', 'pickrounds', 'pastduel', 'retire', 'sharelines', 'flholes', 'shotplace', 'reviewnomap', 'backnav', 'detectlate', 'courselines', 'skipround', 'balancegross', 'cigreen', 'modulesheet', 'fabs', 'poolautosave', 'runningcard', 'fxbilanz', 'designround', 'savebuttons', 'puttipad', 'statsrange', 'trfacelift', 'setuporder', 'tourfacelift', 'wettenface', 'nightfix', 'faceliftprof', 'faceliftplay', 'agilface', 'bell', 'liveaction', 'inboxjoin', 'puttsrows', 'langs', 'shotdelete', 'shotsuggest', 'hostpays', 'teeround', 'serverstale', 'teeafter', 'tourtee', 'tourprizes', 'seriesbets', 'sctabs', 'concedebet', 'stickytop', 'flightpar', 'tourhere', 'planinvite', 'tabfit', 'caddieplan', 'greenwords'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));
@@ -37,21 +37,24 @@ const DEV_ONLY = ['poolend', 'seriesend', 'duelnopool', 'sidebetlist', 'balancew
 // offline… and push… need the built app – with --built that one, not whatever runs on their default :4173: another
 // session may serve another state there (20.11.2026: golfos-serie's gate held 5173/4173 during the Agility merge)
 // DEV_ONLY first: pushmore imports the app's source modules and needs the dev server, though its name starts with push (gate 20.11.2026)
-const urlFor = (name) => (DEV_ONLY.includes(name) ? (base ? [base] : []) : /^(offline|push)/.test(name) ? (built ? [built] : []) : built ? [built] : base ? [base] : []);
+// games#1, games#2: one test file in two halves side by side (GAMES_PART, 22.11.2026) – the file is the part before #
+const fileOf = (name) => name.split('#')[0];
+const partOf = (name) => name.split('#')[1];
+const urlFor = (name) => (DEV_ONLY.includes(fileOf(name)) ? (base ? [base] : []) : /^(offline|push)/.test(name) ? (built ? [built] : []) : built ? [built] : base ? [base] : []);
 // time per test: games needs ~25 min alone and ran into its 30 min three gates of four beside the others – then 25 min
 // more on its own at the end (night 20./21.11.2026); 45 min lets it finish among them
-const LIMIT = (name) => (name === 'games' ? 2700000 : name === 'modes' ? 1800000 : 900000);
+const LIMIT = (name) => (name === 'games' ? 2700000 : fileOf(name) === 'games' ? 1800000 : name === 'modes' ? 1800000 : 900000);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
 // (times of the gate of 19.11.2026: modes 894 s, het9 618, usarehearsal 576, offlineus 482, games 455, shots 401 …)
-const SLOW = ['modes', 'games', 'het9', 'usarehearsal', 'offlineus', 'shots', 'gameround', 'offlineround', 'tilefit', 'greensmade', 'ustrip', 'offline', 'plannedtourney', 'us2d', 'visual', 'training', 'puttzoom', 'score', 'review', 'bin'];
+const SLOW = ['modes', 'games#1', 'games#2', 'games', 'het9', 'usarehearsal', 'offlineus', 'shots', 'gameround', 'offlineround', 'tilefit', 'greensmade', 'ustrip', 'offline', 'plannedtourney', 'us2d', 'visual', 'training', 'puttzoom', 'score', 'review', 'bin'];
 const queue = (only.length ? only : ALL).slice().sort((a, b) => (SLOW.indexOf(a) < 0 ? 99 : SLOW.indexOf(a)) - (SLOW.indexOf(b) < 0 ? 99 : SLOW.indexOf(b)));
 const failed = [];
 const t0 = Date.now();
 
-function run(cmd, argv, timeoutMs) {
+function run(cmd, argv, timeoutMs, part) {
   return new Promise((resolve) => {
-    const p = spawn(cmd, argv, { shell: false });
+    const p = spawn(cmd, argv, { shell: false, env: part ? { ...process.env, GAMES_PART: part } : process.env });
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
@@ -70,11 +73,11 @@ async function worker() {
   while (queue.length) {
     const name = queue.shift();
     const s = Date.now();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], LIMIT(name));
+    const { code, out } = await run(process.execPath, [`qa/${fileOf(name)}.mjs`, ...urlFor(name)], LIMIT(name), partOf(name));
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     const secs = Math.round((Date.now() - s) / 1000);
     try {
-      appendFileSync(TIMES_LOG, `${new Date().toISOString()} ${name} ${secs}s ${bad.length || code ? 'fail' : 'ok'}${built && !DEV_ONLY.includes(name) ? ' built' : ''}\n`);
+      appendFileSync(TIMES_LOG, `${new Date().toISOString()} ${name} ${secs}s ${bad.length || code ? 'fail' : 'ok'}${built && !DEV_ONLY.includes(fileOf(name)) ? ' built' : ''}\n`);
     } catch {
       /* the log is a help only */
     }
@@ -105,7 +108,7 @@ const retry = failed.splice(0);
 async function again() {
   while (retry.length) {
     const name = retry.shift();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], LIMIT(name));
+    const { code, out } = await run(process.execPath, [`qa/${fileOf(name)}.mjs`, ...urlFor(name)], LIMIT(name), partOf(name));
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     if (bad.length || code) {
       failed.push(name);
