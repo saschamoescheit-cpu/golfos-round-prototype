@@ -34,6 +34,11 @@ for (const [dev, left] of [['iPhone 13', false], ['iPhone SE', true]]) {
   await p.getByRole('button', { name: 'Nächste' }).first().click();
   await p.waitForTimeout(500);
   ok((await p.locator('.tr-seq').count()) === 1, `${dev}: Motion shows the chip as photos`);
+  // under the tab's name only "2 von 4" – with its text the line was cut on the iPhone SE (Sascha 22.11.2026)
+  {
+    const sub = await p.locator('.step-pick-now .muted').first().evaluate((s) => ({ t: s.textContent.trim(), fits: s.scrollWidth <= s.clientWidth + 1 }));
+    ok(sub.t === '2 von 4' && sub.fits, `${dev}: the tab says only "2 von 4" and fits (${sub.t})`);
+  }
   ok((await p.locator('.tr-shots .list-item').count()) === 4, `${dev}: four positions C1–C4 listed`);
   ok((await p.locator('.sketch, .tr-sketch').count()) === 0, `${dev}: the photos instead of the sketch`);
   const seg = p.getByRole('group', { name: 'Perspektive', exact: true });

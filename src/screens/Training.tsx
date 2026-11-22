@@ -838,12 +838,12 @@ function ShotView(props: { id: string; nav: Nav }) {
   const drills = (s.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
   const vids = DRILL_VIDEOS_SHOWN ? (s.videos ?? []).map(videoById).filter((v): v is Video => !!v) : [];
   vids.sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()));
-  // the positions: only "P1–P10" – the views are said in the line above, and with "· 1 of 3" any more was cut on the
-  // iPhone SE in every language (night run 21.11.2026)
+  // under the name only "2 of 4" – with the text before it the line was cut on the iPhone SE in 12 of 13 languages
+  // (Sascha 22.11.2026: "Ja, anpassen", as the topic's "P1–P10"); the text stays in the list a tap opens
   const tabs: StepChoice<typeof tab>[] = [
-    { value: 'setup', name: tr('Set-up', 'Ansprache'), text: tr('Ball position, stance, weight, club', 'Ballposition, Stand, Gewicht, Schläger') },
-    { value: 'move', name: tr('Motion', 'Bewegung'), text: tr('How the stroke goes', 'So läuft die Bewegung') },
-    { value: 'watch', name: tr('What to watch', 'Worauf achten'), text: tr('What matters and the typical faults', 'Was wichtig ist, typische Fehler') },
+    { value: 'setup', name: tr('Set-up', 'Ansprache'), text: tr('Ball position, stance, weight, club', 'Ballposition, Stand, Gewicht, Schläger'), short: '' },
+    { value: 'move', name: tr('Motion', 'Bewegung'), text: tr('How the stroke goes', 'So läuft die Bewegung'), short: '' },
+    { value: 'watch', name: tr('What to watch', 'Worauf achten'), text: tr('What matters and the typical faults', 'Was wichtig ist, typische Fehler'), short: '' },
     { value: 'practise', name: tr('Practise', 'Üben'), text: tr(`${drills.length} drills${vids.length ? ` · ${vids.length} videos` : ''}`, `${drills.length} Übungen${vids.length ? ` · ${vids.length} Videos` : ''}`) },
   ];
   return (
