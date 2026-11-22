@@ -42,9 +42,11 @@ await p.waitForTimeout(500);
 await p.locator('button').filter({ hasText: /Hetzenhof|Son|Alcanada/ }).first().click();
 await p.waitForTimeout(800);
 await p.getByRole('button', { name: /Schläge prüfen/ }).first().click();
-await p.waitForTimeout(2500);
-
+// until the check is there – a fixed 2.5 s was too short beside other browsers (6 of 6 red under load, 22.11.2026)
 const line = p.locator('.review-wind');
+await p.locator('.review-shots-head').waitFor({ timeout: 30000 }).catch(() => {});
+await line.waitFor({ timeout: 15000 }).catch(() => {});
+await p.waitForTimeout(500);
 ok((await line.count()) === 1, 'the hole\'s wind above the shots');
 // above the heading "Schläge", right under the map (Sascha 25.10.2026 evening)
 const above = await p.evaluate(() => {

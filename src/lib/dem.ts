@@ -50,15 +50,8 @@ export const DEM_PROVIDERS: DemProvider[] = [
     url: (w, s, e, n) =>
       `https://opendata.geoservices.lgln.niedersachsen.de/dgm_wcs?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=ni_dgm1&FORMAT=image/tiff&SUBSET=x(${w},${e})&SUBSET=y(${s},${n})`,
   },
-  {
-    id: 'he',
-    credit: 'Grünhöhen: © HVBG Hessen, DGM1',
-    cell: 1,
-    boxes: [[7.77, 49.39, 10.24, 51.66]],
-    zone: () => 32,
-    url: (w, s, e, n) =>
-      `https://inspire-hessen.de/raster/dgm1/ows?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=he_dgm1&FORMAT=image/tiff&SUBSET=E(${w},${e})&SUBSET=N(${s},${n})`,
-  },
+  // Hesse: its WCS refuses the phone since 18.11.2026 (403 for every request with an Origin, even from its own
+  // geoportal) – its courses' heights are shipped with the app now (lidar/de_static.py he, 22.11.2026)
   {
     id: 'bb',
     credit: 'Grünhöhen: © GeoBasis-DE/LGB, DGM1 (dl-de/by-2-0)',

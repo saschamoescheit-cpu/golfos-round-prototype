@@ -1,5 +1,6 @@
 // Green slopes on every course (Sascha 19.10.2026): a course without built-in charts gets them on the phone from the
 // region's official terrain model – here courses in German states and the USA, loaded from
+// (Frankfurt since 22.11.2026 from the heights shipped with the app: Hesse's service refuses the phone since 18.11.)
 // OpenStreetMap as any course. The slope button on the holes, the chart on the map, the credit in the ⓘ, and the
 // second time without the service (kept on the phone).
 // Usage: node qa/greensmade.mjs [url] [course name …]
@@ -19,7 +20,7 @@ for (const name of COURSES) {
   // a map tile a state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app
   p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message) && !/sw\.js load failed/.test(e.message)) errs.push(e.message); });
   let dem = 0;
-  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de|\/dem\/(by|rp|sn)\/[\w-]+\.json/.test(r.url())) dem++; });
+  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de|\/dem\/(by|rp|sn|he)\/[\w-]+\.json/.test(r.url())) dem++; });
   await p.goto(url);
   await p.evaluate(() => { localStorage.clear(); localStorage.setItem('golfos.intro.v1', '1'); localStorage.setItem('golfos.tip.shots.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds'); });
   await p.reload();
