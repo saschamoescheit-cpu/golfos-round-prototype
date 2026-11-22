@@ -3,11 +3,11 @@ import { L, type SwingPosition } from '../types';
 // The standard chip as a photo series (Sascha 21.11.2026, mockup B): four positions, C1–C4, from behind and from the
 // front – the same golfer and studio as the basic swing (features/040-neutraler-schwung), a right-hander with a
 // pitching wedge gripped about 5 cm down. Values: the common teaching standard of the shot (content/shots.ts); our pro
-// confirms them on his chip page (CODE chip …).
+// confirmed them on his chip page (Chris 22.11.2026: CODE chip schlaeger=1;stand=1;c1=1;c2=1;c3=0;c4=1 – C3: the weight
+// stays about 60 % on the lead foot, as at address).
 
 const C = (n: number) => `chip/c${n}.jpg`;
 const F = (n: number) => `chip/fo-c${n}.jpg`;
-const OPEN = 'Chris: Chip-Seite (CODE chip …)';
 
 export const CHIP_POSITIONS: SwingPosition[] = [
   {
@@ -24,7 +24,7 @@ export const CHIP_POSITIONS: SwingPosition[] = [
     ],
     checks: [
       { k: 'feet', v: L('Heels about 15 cm apart, lead foot turned out about 20°, stance slightly open', 'Fersen etwa 15 cm auseinander, vorderer Fuß etwa 20° aufgedreht, Stand leicht offen') },
-      { k: 'weight', v: L('60–70 % on the lead foot', '60–70 % auf dem vorderen Fuß') },
+      { k: 'weight', v: L('About 60 % on the lead foot', 'Etwa 60 % auf dem vorderen Fuß') },
       { k: 'hands', v: L('About 5 cm down the grip, hands in front of the lead thigh', 'Etwa 5 cm kürzer gegriffen, Hände vor dem vorderen Oberschenkel') },
       { k: 'shaft', v: L('Leans about 10° towards the target, ball in the middle or slightly back', 'Etwa 10° zum Ziel geneigt, Ball in der Mitte oder leicht zurück') },
       { k: 'face', v: L('Square to the target, the sole rests on the grass', 'Square zum Ziel, die Sohle liegt auf dem Gras') },
@@ -34,7 +34,6 @@ export const CHIP_POSITIONS: SwingPosition[] = [
       { name: L('Weight on the trail foot', 'Gewicht hinten'), fix: L('The low point moves behind the ball – weight on the lead foot before you start.', 'Der tiefste Punkt wandert hinter den Ball – vor dem Start das Gewicht auf den vorderen Fuß.') },
     ],
     drills: ['trail-toe'],
-    open: OPEN,
   },
   {
     id: 'c2',
@@ -61,7 +60,6 @@ export const CHIP_POSITIONS: SwingPosition[] = [
       { name: L('Weight moves back', 'Gewicht geht nach hinten'), fix: L('The low point moves behind the ball – the lead foot keeps the weight the whole stroke.', 'Der tiefste Punkt wandert hinter den Ball – der vordere Fuß behält das Gewicht den ganzen Schlag.') },
     ],
     drills: ['stick-lead-arm'],
-    open: OPEN,
   },
   {
     id: 'c3',
@@ -80,14 +78,14 @@ export const CHIP_POSITIONS: SwingPosition[] = [
       { k: 'shaft', v: L('Leans to the target as at address', 'Neigt sich wie bei der Ansprache zum Ziel') },
       { k: 'contact', v: L('Ball first, the club brushes the grass', 'Erst der Ball, der Schläger streift das Gras') },
       { k: 'body', v: L('Belt buckle turned slightly to the target', 'Gürtelschnalle leicht zum Ziel gedreht') },
-      { k: 'weight', v: L('About 70 % on the lead foot', 'Etwa 70 % auf dem vorderen Fuß') },
+      // Chris 22.11.2026: "immer 60 % links oder Gewicht gleich wie am Start des Schwunges"
+      { k: 'weight', v: L('As at address: about 60 % on the lead foot', 'Wie bei der Ansprache: etwa 60 % auf dem vorderen Fuß') },
     ],
     faults: [
       { name: L('Scooping', 'Schaufeln'), fix: L('The lead wrist bends to lift the ball – thin or fat. The loft lifts the ball: the grip leads.', 'Das vordere Handgelenk knickt, um den Ball zu heben – getoppt oder fett. Der Loft hebt den Ball: Der Griff führt.') },
       { name: L('Slowing down', 'Abbremsen'), fix: L('A long backswing and then braking – shorter back, gently accelerating through.', 'Langer Rückschwung, dann bremsen – kürzer zurück, sanft beschleunigt durch.') },
     ],
     drills: ['chip-line'],
-    open: OPEN,
   },
   {
     id: 'c4',
@@ -113,6 +111,5 @@ export const CHIP_POSITIONS: SwingPosition[] = [
       { name: L('No finish', 'Kein Finish'), fix: L('The club stops at the ball – the finish as long as the backswing.', 'Der Schläger bleibt am Ball stehen – das Finish so lang wie der Rückschwung.') },
     ],
     drills: ['stick-lead-arm', 'landing-ring'],
-    open: OPEN,
   },
 ];

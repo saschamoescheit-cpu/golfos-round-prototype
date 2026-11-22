@@ -34,7 +34,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'balance', title: () => tr('Balance', 'Bilanz'), about: () => tr('Tiles and their filter, open amounts, a player\'s games, Paid and Received', 'Kacheln und Filter, offene Beträge, die Spiele mit einem Mitspieler, Bezahlt und Erhalten'), length: '1:08' },
   { id: 'tourrounds', title: () => tr('A tournament over several rounds', 'Turnier über mehrere Runden'), about: () => tr('Rounds, cut, the final dealt by result, the scorecards in the leaderboard', 'Runden, Cut, Finalrunde nach Ergebnis, Scorekarten im Leaderboard'), length: '0:58' },
   // Training (night 16./17.11.2026): topics as shots, a shot's four parts, a drill and its result, plans, history
-  { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:09' },
+  { id: 'training', title: () => tr('Training', 'Training'), about: () => tr('Topics and their shots, set-up and motion, a drill and its result, plans, history', 'Themen und ihre Schläge, Ansprache und Bewegung, eine Übung und ihr Ergebnis, Pläne, Verlauf'), length: '1:20' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '9:09' };
