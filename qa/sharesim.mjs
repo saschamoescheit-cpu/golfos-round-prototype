@@ -306,8 +306,9 @@ export function sharedServer(b, url, o = {}) {
     const p = await ctx.newPage();
     const errs = [];
     // the simulated server: WebKit does not route the CORS preflight of the sync – not the app
-    // (22.11.2026: the friend card's save and the friends' cards too – pooljoin under load)
-    p.on('pageerror', (e) => { if (!/golfos_items.*access control|golfos_friend_card(s|_save)\S* due to access control|golfos_shared_games\?select=code,game,near_requests.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+    // (22.11.2026: the friend card's save and the friends' cards too – pooljoin under load; an Esri tile without its CORS
+    // header, as greensmade lets it pass – one tile missing, no fault of the app)
+    p.on('pageerror', (e) => { if (!/golfos_items.*access control|golfos_friend_card(s|_save)\S* due to access control|golfos_shared_games\?\S* due to access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de|server\.arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
     await p.goto(url);
     await p.waitForTimeout(1200);
     await p.evaluate(({ name, guest, token }) => {
