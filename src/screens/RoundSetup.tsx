@@ -11,7 +11,7 @@ import { lengthText } from '../lib/geo';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
-import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
+import { courseTees, defaultTee, profileTee, teeColour, TEES, teeName } from '../data/tees';
 import { ogaTees } from '../lib/ogaratings';
 import { inUsa } from '../lib/weather';
 import { dec, tr } from '../lib/i18n';
@@ -697,7 +697,7 @@ export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[
   const rated = holes.length === 18 || holes.length === 9;
   return [...new Set(ids.filter(Boolean))].map((t) => {
     const i = data ? data.tees.indexOf(t) : -1;
-    return { id: t, name: teeName(t), colour: TEE_COLOURS[t] ?? '#999', total: i >= 0 ? holes.reduce((s, h) => s + (data!.holes[h.label]?.[i] ?? 0), 0) : 0, rating: rated ? ratingFor(courseId, t, holes, lady) : null };
+    return { id: t, name: teeName(t), colour: teeColour(t), total: i >= 0 ? holes.reduce((s, h) => s + (data!.holes[h.label]?.[i] ?? 0), 0) : 0, rating: rated ? ratingFor(courseId, t, holes, lady) : null };
   });
 }
 

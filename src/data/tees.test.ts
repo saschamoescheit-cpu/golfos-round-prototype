@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getLang, useLangForTests } from '../lib/i18n';
-import { COMMON_TEES, courseTees, defaultTee, profileTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
+import { COMMON_TEES, courseTees, defaultTee, profileTee, sortTees, STANDARD_TEES, TEE_COLOURS, TEES, teeColour, teeId, teeName } from './tees';
 import { geometryFromOsm, parseOsmXml } from '../lib/courses';
 
 describe('the tees a course offers (Sascha 22.10.2026)', () => {
@@ -77,5 +77,29 @@ describe('the standard tee in the USA', () => {
   });
   it('at home the colour stays the colour', () => {
     expect(profileTee(courseTees('osm:relation/1326323'), 'Yellow', 'osm:relation/1326323', false)).toBe('Yellow');
+  });
+});
+
+// Southern Dunes' combination tees, as on Sascha's card of 25.11.2026: each hole from one of the two colours
+describe('combination tees', () => {
+  const sd = TEES['southerndunes:fl'];
+  const yards = (tee: string) => Math.round(Object.values(sd.holes).reduce((a, h) => a + (h[sd.tees.indexOf(tee)] ?? 0), 0) / 0.9144);
+  it('Blue/White and White/Gold between their colours, the totals of the card', () => {
+    expect(sd.tees).toEqual(['Black', 'Blue', 'Blue/White', 'White', 'White/Gold', 'Gold', 'Red']);
+    expect(Math.abs(yards('Blue/White') - 6476)).toBeLessThanOrEqual(5);
+    expect(Math.abs(yards('White/Gold') - 5810)).toBeLessThanOrEqual(5);
+    for (const [h, l] of Object.entries(sd.holes)) {
+      expect([l[1], l[3]], `Blue/White ${h}`).toContain(l[2]);
+      expect([l[3], l[5]], `White/Gold ${h}`).toContain(l[4]);
+    }
+  });
+  it('the name of both colours, the dot split corner to corner', () => {
+    expect(teeName('Blue/White')).toBe(`${teeName('Blue')}/${teeName('White')}`);
+    expect(teeColour('Blue/White')).toBe(`linear-gradient(135deg, ${TEE_COLOURS.Blue} 50%, ${TEE_COLOURS.White} 50%)`);
+    expect(teeColour('Blue')).toBe(TEE_COLOURS.Blue);
+    expect(teeColour('Mauve')).toBe('#999');
+  });
+  it('never the standard tee', () => {
+    for (const t of STANDARD_TEES) expect(profileTee(courseTees('southerndunes:fl'), t, 'southerndunes:fl', true) ?? '').not.toContain('/');
   });
 });

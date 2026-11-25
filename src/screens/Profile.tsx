@@ -18,7 +18,7 @@ import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/profile';
-import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
+import { STANDARD_TEES, teeColour, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { shareBackup } from '../lib/backup';
@@ -250,7 +250,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
             <span>Tee</span>
             <span className="settings-value std-tee-name">
-              {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
+              {p.tee && <span className="tee-dot" style={{ background: teeColour(p.tee) }} />}
               <span>{p.tee ? teeName(p.tee) : tr('none', 'keins')}</span>
             </span>
             <span aria-hidden="true">›</span>
@@ -317,7 +317,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                     setTeePick(false);
                   }}
                 >
-                  {t ? <span className="tee-dot" style={{ background: TEE_COLOURS[t] ?? '#999' }} /> : <span className="tee-dot none" />}
+                  {t ? <span className="tee-dot" style={{ background: teeColour(t) }} /> : <span className="tee-dot none" />}
                   <span className="grow">
                     <strong>{t ? teeName(t) : tr('None', 'Keins')}</strong>
                   </span>

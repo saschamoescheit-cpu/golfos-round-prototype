@@ -24,6 +24,8 @@ describe('course ratings of the bundled courses', () => {
   it('Southern Dunes from the scorecard (men)', () => {
     expect(RATINGS['southerndunes:fl'].Blue).toEqual({ cr: 72.9, slope: 136 });
     expect(RATINGS['southerndunes:fl'].Red).toBeUndefined(); // only a women's rating published
+    expect(RATINGS['southerndunes:fl']['Blue/White']).toEqual({ cr: 71.7, slope: 134 }); // the card's combination tees (25.11.2026)
+    expect(RATINGS['southerndunes:fl']['White/Gold']).toEqual({ cr: 68.5, slope: 127 });
   });
 });
 

@@ -2,7 +2,7 @@
 // before the start). A row in the hole drawer, the same choice as in "Neue Runde": colour, length, course rating and slope;
 // the lengths, the caddie, the course rating and the player's own playing handicap follow the new tee.
 import type { Round } from '../types';
-import { TEES, TEE_COLOURS, courseTees, teeName } from '../data/tees';
+import { TEES, teeColour, courseTees, teeName } from '../data/tees';
 import { loadGeometry, loadUnit } from '../lib/storage';
 import { lengthText } from '../lib/geo';
 import { ogaTees } from '../lib/ogaratings';
@@ -45,7 +45,7 @@ export function TeeSwitchSheet(props: { round: Round; /** the tee shown as chose
   const tees = roundTees(round).map((t) => {
     const i = data ? data.tees.indexOf(t) : -1;
     const total = i >= 0 ? round.holes.reduce((s, h) => s + (data!.holes[h.label]?.[i] ?? 0), 0) : 0;
-    return { id: t, name: teeName(t), colour: TEE_COLOURS[t] ?? '#999', total, rating: rated ? ratingFor(round.courseId, t, round.holes, lady) : null };
+    return { id: t, name: teeName(t), colour: teeColour(t), total, rating: rated ? ratingFor(round.courseId, t, round.holes, lady) : null };
   });
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>

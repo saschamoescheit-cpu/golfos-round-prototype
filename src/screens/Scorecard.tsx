@@ -22,7 +22,7 @@ import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
 import { loadTrack } from '../lib/track';
 import { loadCaddieLog } from '../lib/caddielog';
-import { TEE_COLOURS, teeName } from '../data/tees';
+import { teeColour, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { TeeSwitchSheet, roundTees, withTee } from '../components/TeeSwitch';
 import { comparisonGroup, roundsSg } from '../lib/sg';
@@ -246,7 +246,7 @@ export function Scorecard(props: {
           {shownTee && !shownEditable && (
             <>
               {' · '}
-              <span className="tee-dot" style={{ background: TEE_COLOURS[shownTee] ?? '#888' }} />
+              <span className="tee-dot" style={{ background: teeColour(shownTee, '#888') }} />
               {teeName(shownTee)}
             </>
           )}
@@ -256,7 +256,7 @@ export function Scorecard(props: {
             <>
               {' · '}
               <button type="button" className="link-text sc-tee" aria-label={tr(`Tee ${teeName(shownTee!)} – change`, `Abschlag ${teeName(shownTee!)} – ändern`)} onClick={() => setTeeOpen(true)}>
-                <span className="tee-dot" style={{ background: TEE_COLOURS[shownTee!] ?? '#888' }} />
+                <span className="tee-dot" style={{ background: teeColour(shownTee!, '#888') }} />
                 {teeName(shownTee!)} <span className="good-text" aria-hidden="true">›</span>
               </button>
             </>

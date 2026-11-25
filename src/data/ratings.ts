@@ -26,6 +26,7 @@ import { withAliases } from './seedAliases';
 // - Southern Dunes: men as on the club's card (07/26) and GolfPass, every hole to the metre (Black 7192 yd = the card's
 //   "Red", Blue 6737, White 6220, Gold 5498). Women FSGA (white 76.4; gold 72.5 and the forward tee 68.5/120 – the card
 //   prints 72.1 and 68.1/119). Our "Red" (the card's "Green", 4825 yd) has no men's rating at FSGA.
+//   Its combination tees from the card (25.11.2026): Blue/White 71.7/134, White/Gold 68.5/127 – men only, none for women.
 // - StoneGate Cypress and Oaks: the club's 2025 card (one value per tee) and FSGA; the green tee's value on the card
 //   (68.6 / 67.4) is the women's – the men's from FSGA. No women's rating from gold.
 // - Kissimmee Bay: FSGA's current set (gold 72.0/135 …); the club's website still shows the older one (72.4/132 …).
@@ -77,7 +78,7 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:relation/4039888': { Green: { cr: 70.1, slope: 126 }, Blue: { cr: 68.7, slope: 124 }, White: { cr: 67.7, slope: 121 }, Yellow: { cr: 62.7, slope: 106 } }, // Orange Lake – The Reserve: the current card (orangelakegolf.com = GolfPass, 14.11.2026), men's
   'osm:relation/4039887': { Green: { cr: 73.7, slope: 135 }, Black: { cr: 71.9, slope: 131 }, Blue: { cr: 70.1, slope: 126 }, White: { cr: 67.5, slope: 121 }, Yellow: { cr: 65.0, slope: 112 } }, // Orange Lake – Legends: GolfCourseAPI (night 22./23.10.2026) = FSGA, men's values
   'osm:relation/4040123': { Gold: { cr: 72.9, slope: 132 }, Blue: { cr: 71.3, slope: 129 }, White: { cr: 69.3, slope: 126 }, Green: { cr: 65.6, slope: 122 }, Purple: { cr: 62.8, slope: 111 }, Silver: { cr: 59.7, slope: 98 } }, // Legends G&CC, Clermont: club card 08/2025 = FSGA
-  'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, White: { cr: 70.4, slope: 133 }, Gold: { cr: 67.2, slope: 121 } },
+  'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, 'Blue/White': { cr: 71.7, slope: 134 }, White: { cr: 70.4, slope: 133 }, 'White/Gold': { cr: 68.5, slope: 127 }, Gold: { cr: 67.2, slope: 121 } },
   'osm:relation/1326323': {
     'White@AB': { cr: 74.2, slope: 134, par: 71 }, 'Yellow@AB': { cr: 71.6, slope: 130, par: 71 }, 'Blue@AB': { cr: 68.7, slope: 127, par: 70 }, 'Red@AB': { cr: 66.2, slope: 119, par: 68 },
     'White@BC': { cr: 73.2, slope: 132, par: 71 }, 'Yellow@BC': { cr: 71.4, slope: 131, par: 71 }, 'Blue@BC': { cr: 68.5, slope: 123, par: 70 }, 'Red@BC': { cr: 66.8, slope: 118, par: 69 },
